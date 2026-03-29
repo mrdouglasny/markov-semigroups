@@ -71,6 +71,12 @@ not on the lattice size N.
 This eliminates the need for cluster expansions to prove
 `spectral_gap_uniform` on the torus.
 
+## Development plan
+
+See [docs/plan.md](docs/plan.md) for the full development plan, including
+the Gemini review identifying the Holley-Stroock obstacle for unbounded
+interactions and three alternative approaches.
+
 ## Dependencies
 
 - [hille-yosida](https://github.com/mrdouglasny/hille-yosida) — C₀-semigroup

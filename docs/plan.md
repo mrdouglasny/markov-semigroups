@@ -2,8 +2,14 @@
 
 ## Overview
 
-Build the Holley-Stroock path from Gaussian log-Sobolev to interacting
-spectral gap in three phases, plus a fourth connecting back to pphi2.
+Build functional inequality infrastructure (Poincaré, log-Sobolev,
+Bakry-Émery) for Markov semigroups and apply it to establish a spectral
+gap for P(Φ)₂ on the torus.
+
+Phases 1-3 (Gaussian LSI, convergence to equilibrium) are
+straightforward. Phase 4 (interacting spectral gap) is the research
+frontier — see the "Gemini Review" section below for why the naive
+Holley-Stroock approach fails and what alternatives exist.
 
 ## Phase 1: Ornstein-Uhlenbeck on T^d (3-4 weeks)
 
@@ -276,6 +282,83 @@ to gaussian-field's existing hypercontractivity), then tensorize to get
 LSI for the product Gaussian on T^d (product of Fourier modes). This
 avoids the $\Gamma_2$ machinery entirely.
 
+## Gemini Review: The Holley-Stroock Obstacle
+
+*Review date: 2026-03-29. Reviewed by Gemini 2.5 Pro (deep think).*
+
+Gemini identified a **critical flaw** in the Phase 4 plan: the standard
+Holley-Stroock perturbation lemma requires bounded oscillation
+$\mathrm{osc}(V) = \sup V - \inf V < \infty$, but the P(Phi)_2
+interaction $V_a$ is an unbounded polynomial of a Gaussian field:
+
+- $V_a = a^2 \sum_x {:}P(\phi(x)){:}_{c_a}$ where $P$ is degree $\geq 4$
+- $\phi(x)$ is Gaussian, so $:P(\phi(x)):$ is unbounded above
+- Therefore $\sup V_a = \infty$ and $\mathrm{osc}(V_a) = \infty$
+- The Holley-Stroock bound $\rho_1 = \rho_0 \cdot e^{-\mathrm{osc}(V)}$
+  gives $\rho_1 = 0$, which is useless
+
+The bounded-below estimate $V_a \geq -L^2 A$ ensures the measure is
+well-defined (the Boltzmann weight $e^{-V_a}$ is integrable), but it
+does NOT give bounded oscillation. This is the fundamental reason why
+the interacting spectral gap is hard.
+
+### What still works (Phases 1-3)
+
+- OU process on T^d: correct
+- Gaussian LSI via Bakry-Émery or tensorization: correct
+- LSI constant for GFF: $\rho = m^2 + 4\pi^2/L^2$ (first nonzero
+  eigenvalue of $-\Delta + m^2$, not $m^2$ — the zero mode $k=0$ has
+  eigenvalue $m^2$ but corresponds to the spatial average)
+- Convergence to equilibrium: correct
+- Holley-Stroock itself (as a theorem about bounded perturbations):
+  correct and worth formalizing, just not applicable to P(Phi)_2
+
+### Alternative approaches for Phase 4
+
+Three methods that handle unbounded perturbations:
+
+**Option A: Bakry-Émery with local convexity (Helffer-Sjöstrand).** The
+generator of the interacting dynamics is $L = L_{\mathrm{GFF}} - \nabla V \cdot \nabla$.
+The Bakry-Émery condition needs $\mathrm{Hess}(U_{\mathrm{total}}) \geq \rho I$
+where $U_{\mathrm{total}} = U_{\mathrm{GFF}} + V$. The problem:
+$\mathrm{Hess}(V) \sim {:}\phi^2{:}$ which is not positive definite. But
+it is "not too negative" in regions where the measure concentrates. The
+Helffer-Sjöstrand approach makes this precise via Witten Laplacians.
+
+**Option B: Two-scale decomposition (Brydges-Fröhlich-Sokal).** Integrate
+out high-frequency modes first. The effective action for low-frequency
+modes is better behaved (more convex). Prove LSI for the low-frequency
+part, then use conditional LSI to lift to the full field.
+
+**Option C: Reflection positivity on Dirichlet forms (Otto-Reznikoff).**
+Use the existing RP structure (OS3, already formalized in pphi2) at the
+level of the Dirichlet form to control the spectral gap. The key idea:
+the Dirichlet form for the interacting theory on a large torus can be
+bounded by contributions from two half-tori, leading to a uniform bound.
+**This is the most synergistic with the existing pphi2 formalization.**
+
+### Revised assessment
+
+Phases 1-3 remain valuable independent of Phase 4. They provide:
+- Free-field stochastic quantization (OU invariant measure = GFF)
+- Gaussian LSI and hypercontractivity via semigroup methods
+- Reusable functional inequality infrastructure
+
+Phase 4 requires choosing one of Options A-C. Option C is recommended
+given the existing RP infrastructure. This is a research-level problem,
+not a routine formalization. The Holley-Stroock result is still worth
+proving as general infrastructure — it applies to many other systems
+with bounded perturbations — but it does not close the P(Phi)_2 gap.
+
+### Revised priority order
+
+1. `Torus.lean` — heat semigroup instance (foundation)
+2. `LogSobolev.lean` — Gross LSI for Gaussian (tensorization route)
+3. `HolleyStroock.lean` — perturbation lemma (valuable general tool)
+4. `SpectralGap.lean` — spectral gap from Poincaré (routine)
+5. `GFFIdentification.lean` — OU invariant measure = GFF (first theorem)
+6. Research: choose Option A, B, or C for the interacting case
+
 ## References
 
 - Bakry, Gentil, and Ledoux, *Analysis and Geometry of Markov Diffusion
@@ -288,3 +371,9 @@ avoids the $\Gamma_2$ machinery entirely.
   inequalities," Séminaire de Probabilités XXXVI, Springer LNM 1801
   (2003), 1-134. [Excellent survey with the perturbation argument]
 - Ledoux, "The concentration of measure phenomenon," AMS, 2001.
+- Helffer and Sjöstrand, "On the correlation for Kac-like models in the
+  convex case," *J. Stat. Phys.* 74 (1994), 349-409.
+- Otto and Reznikoff, "A new criterion for the logarithmic Sobolev
+  inequality and two applications," *J. Funct. Anal.* 243 (2007), 121-157.
+- Barashkov and Gubinelli, "A variational method for Φ⁴₃," *Duke Math. J.*
+  169 (2020), 3339-3415.
