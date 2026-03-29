@@ -29,26 +29,96 @@ The central result chain:
 5. **Convergence to equilibrium:** spectral gap → exponential mixing,
    LSI → entropy decay, ergodicity from spectral gap.
 
+## Architecture: three layers of abstraction
+
+The project is organized into three layers, each requiring progressively
+more structure. Most results live in the most general layer possible.
+
+### Layer 1: Abstract/ — Measure space + energy form
+
+**Assumes:** A probability space (X, mu) and a symmetric bilinear form
+E(f,g) (the Dirichlet form / energy). No gradient, no metric, no
+manifold.
+
+**Typeclass:**
+```
+class DirichletSpace (X : Type*) where
+  mu : Measure X                          -- reference probability measure
+  energy : (X -> R) -> (X -> R) -> R      -- Dirichlet form E(f,g)
+  -- symmetric, positive, closed, Markov property
+```
+
+**What lives here:** Poincare inequality, log-Sobolev inequality,
+Holley-Stroock perturbation, Gross equivalence (LSI <-> hypercontractivity),
+spectral gap, entropy decay, ergodicity. These are all statements about
+E and mu with no geometry.
+
+### Layer 2: Diffusion/ — Abstract diffusion generator
+
+**Assumes:** A Dirichlet space with a *carre du champ* operator
+Gamma(f,g), which plays the role of |nabla f|^2 without requiring an
+actual gradient or Riemannian metric.
+
+**Typeclass:**
+```
+class MarkovDiffusion (X : Type*) extends DirichletSpace X where
+  Gamma : (X -> R) -> (X -> R) -> (X -> R)    -- carre du champ
+  -- E(f,g) = integral Gamma(f,g) d mu
+```
+
+On a Riemannian manifold, Gamma(f,g) = <nabla f, nabla g>. But the
+abstract definition works for any diffusion generator. The iterated
+carre du champ Gamma_2 and the Bakry-Emery curvature condition
+Gamma_2 >= rho * Gamma are defined at this level. The Bochner-Weitzenbock
+formula (connecting Gamma_2 to Ricci curvature) is a *theorem* for
+specific instances, not part of the axioms.
+
+**What lives here:** Bakry-Emery criterion, carre du champ, iterated
+carre du champ, abstract Ornstein-Uhlenbeck semigroup, invariant measures.
+
+### Layer 3: Instances/ — Concrete spaces
+
+**Assumes:** A specific space with explicit structure.
+
+- **Euclidean.lean** (R^n): Gamma(f,g) = <nabla f, nabla g> via Mathlib's
+  `fderiv`. Standard Gaussian, Mehler formula, Bakry-Emery curvature = 1.
+- **Torus.lean** (T^d): Fourier eigenvalues lambda_k = 4 pi^2 |k|^2 / L^2 + m^2.
+  Heat semigroup as Fourier multiplier. Bakry-Emery curvature = m^2.
+  No dependence on Mathlib's manifold library — the torus is handled
+  entirely via its Fourier decomposition.
+- **GFFIdentification.lean**: OU invariant measure on T^d equals the
+  Gaussian free field from gaussian-field (by covariance uniqueness).
+
+### Why no Riemannian manifold library?
+
+The Bakry-Emery framework is designed to avoid needing the full
+Riemannian apparatus. The carre du champ Gamma is an *abstract*
+bilinear operation satisfying axioms, not necessarily <nabla f, nabla g>
+on a smooth manifold. For R^n we use Mathlib's `fderiv`; for T^d we use
+Fourier modes. If someone later wants to add a general Riemannian
+instance (using Mathlib's `SmoothManifold`), the abstract layers are
+ready for it.
+
 ## File structure
 
 ```
 MarkovSemigroups/
-  Abstract/                     -- No geometry, just measures + Dirichlet forms
+  Abstract/                     -- Layer 1: measures + Dirichlet forms
     DirichletForm.lean          -- Symmetric Dirichlet form, generator, semigroup
-    Poincare.lean               -- Spectral gap ↔ variance decay
+    Poincare.lean               -- Spectral gap <-> variance decay
     LogSobolev.lean             -- Gross LSI, entropy decay
     HolleyStroock.lean          -- Bounded density perturbation of LSI
-    Hypercontractivity.lean     -- LSI ↔ hypercontractivity (Gross)
-  Diffusion/                    -- Riemannian manifold diffusions
-    CarreDuChamp.lean           -- Γ and Γ₂ for diffusion generators
-    BakryEmery.lean             -- Γ₂ ≥ ρΓ ⟹ LSI(ρ)
+    Hypercontractivity.lean     -- LSI <-> hypercontractivity (Gross)
+  Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
+    CarreDuChamp.lean           -- Gamma and Gamma_2 for diffusion generators
+    BakryEmery.lean             -- Gamma_2 >= rho Gamma => LSI(rho)
     OrnsteinUhlenbeck.lean      -- Abstract OU semigroup on Hilbert space
     InvariantMeasure.lean       -- Invariant measures of diffusion semigroups
-  Instances/                    -- Concrete manifolds
-    Euclidean.lean              -- ℝⁿ: standard Gaussian, Mehler, LSI(1)
-    Torus.lean                  -- T^d: heat semigroup, Fourier modes, LSI(m²+4π²/L²)
+  Instances/                    -- Layer 3: concrete spaces
+    Euclidean.lean              -- R^n: standard Gaussian, Mehler, LSI(1)
+    Torus.lean                  -- T^d: heat semigroup, Fourier modes, LSI(m^2+4pi^2/L^2)
     GFFIdentification.lean      -- OU invariant measure on T^d = GFF
-  Convergence/                  -- Consequences (abstract)
+  Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
     RelativeEntropy.lean        -- Entropy decay under semigroup
     Ergodicity.lean             -- Uniqueness of invariant measure
