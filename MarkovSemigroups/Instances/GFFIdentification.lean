@@ -4,8 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 # Identification: OU Invariant Measure = Gaussian Free Field
 
-The invariant measure of the OU process on T^d equals the Gaussian free
-field measure constructed in the gaussian-field library.
+The invariant measure of the OU semigroup on T^d with generator
+Δ - m² equals the Gaussian free field measure constructed in the
+gaussian-field library.
 
 Both are centered Gaussian measures with covariance (-Δ + m²)⁻¹ (up to
 the factor of 1/2 from the normalization convention). By uniqueness of

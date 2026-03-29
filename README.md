@@ -10,72 +10,63 @@ Gaussian measure library.
 
 The central result chain:
 
-1. The **Ornstein-Uhlenbeck semigroup** on T^d with generator Δ - m² is
-   a C₀-contraction semigroup on L²(T^d). Its invariant measure is the
-   **Gaussian free field** with covariance (-Δ + m²)⁻¹.
+1. **Abstract functional inequalities** (Poincaré, log-Sobolev,
+   Holley-Stroock perturbation) for general Dirichlet forms and Markov
+   semigroups — no geometry required.
 
-2. The Gaussian measure satisfies the **log-Sobolev inequality** with
-   constant ρ = m² (via the **Bakry-Émery** curvature criterion).
+2. **Bakry-Émery curvature criterion** for diffusion generators on
+   Riemannian manifolds: $\Gamma_2 \geq \rho \Gamma$ implies LSI($\rho$).
 
-3. The **Holley-Stroock perturbation lemma** transfers the LSI to the
-   interacting P(Φ)₂ measure dμ = (1/Z) e^{-V} dμ_GFF with constant
-   ρ₁ = ρ₀ · e^{-osc(V)}, where osc(V) is the oscillation of the
-   interaction.
+3. **Ornstein-Uhlenbeck semigroup** defined abstractly for any Hilbert
+   space with a positive covariance operator. Mehler's formula, Gaussian
+   invariant measure, hypercontractivity.
 
-4. The LSI implies a **spectral gap** (Poincaré inequality), which gives
-   **exponential decay of correlations** (mass gap / clustering) and
-   **ergodicity** for the interacting theory.
+4. **Concrete instances:** R^n (standard Gaussian, Gross's theorem) and
+   T^d (torus GFF, Fourier mode decomposition). Identification of the
+   OU invariant measure on T^d with the Gaussian free field from
+   gaussian-field.
 
-This provides an alternative proof of the mass gap for P(Φ)₂ on the
-torus, bypassing cluster expansions entirely.
+5. **Convergence to equilibrium:** spectral gap → exponential mixing,
+   LSI → entropy decay, ergodicity from spectral gap.
 
 ## File structure
 
 ```
 MarkovSemigroups/
-  OrnsteinUhlenbeck/
-    FiniteDimensional.lean    -- OU on ℝⁿ, Mehler formula
-    Torus.lean                -- OU on T^d via Fourier modes
-    InvariantMeasure.lean     -- Gaussian invariant measure
-    GFFIdentification.lean    -- OU invariant measure = GFF
-  FunctionalInequalities/
-    Poincare.lean             -- Spectral gap → variance decay
-    LogSobolev.lean           -- Gross LSI for Gaussian measures
-    BakryEmery.lean           -- Γ₂ ≥ ρΓ criterion
-    HolleyStroock.lean        -- Bounded perturbation of LSI
-    Hypercontractivity.lean   -- LSI ↔ hypercontractivity (Gross)
-  Convergence/
-    RelativeEntropy.lean      -- Entropy decay under semigroup
-    SpectralGap.lean          -- Exponential mixing from gap
-    Ergodicity.lean           -- Uniqueness of invariant measure
+  Abstract/                     -- No geometry, just measures + Dirichlet forms
+    DirichletForm.lean          -- Symmetric Dirichlet form, generator, semigroup
+    Poincare.lean               -- Spectral gap ↔ variance decay
+    LogSobolev.lean             -- Gross LSI, entropy decay
+    HolleyStroock.lean          -- Bounded density perturbation of LSI
+    Hypercontractivity.lean     -- LSI ↔ hypercontractivity (Gross)
+  Diffusion/                    -- Riemannian manifold diffusions
+    CarreDuChamp.lean           -- Γ and Γ₂ for diffusion generators
+    BakryEmery.lean             -- Γ₂ ≥ ρΓ ⟹ LSI(ρ)
+    OrnsteinUhlenbeck.lean      -- Abstract OU semigroup on Hilbert space
+    InvariantMeasure.lean       -- Invariant measures of diffusion semigroups
+  Instances/                    -- Concrete manifolds
+    Euclidean.lean              -- ℝⁿ: standard Gaussian, Mehler, LSI(1)
+    Torus.lean                  -- T^d: heat semigroup, Fourier modes, LSI(m²+4π²/L²)
+    GFFIdentification.lean      -- OU invariant measure on T^d = GFF
+  Convergence/                  -- Consequences (abstract)
+    SpectralGap.lean            -- Exponential mixing from gap
+    RelativeEntropy.lean        -- Entropy decay under semigroup
+    Ergodicity.lean             -- Uniqueness of invariant measure
 ```
 
-## The Holley-Stroock path to the mass gap
+## Application to P(Phi)_2
 
-The key application: on the torus T²_L, the P(Φ)₂ interacting measure
-
-  dμ_a = (1/Z_a) exp(-V_a) dμ_GFF
-
-is a **bounded perturbation** of the GFF (because the Wick-ordered
-interaction V_a is bounded below by -L²A and the torus has finite
-volume). The GFF satisfies the log-Sobolev inequality with constant
-ρ₀ = m² (Bakry-Émery). By Holley-Stroock:
-
-  ρ₁ = m² · exp(-osc(V_a)) ≥ m² · exp(-2L²A)
-
-This gives a spectral gap (mass gap) bounded below **uniformly in the
-lattice spacing a**, because A depends only on the interaction
-polynomial P and the mass m (via `wickPolynomial_uniform_bounded_below`),
-not on the lattice size N.
-
-This eliminates the need for cluster expansions to prove
-`spectral_gap_uniform` on the torus.
+The Gaussian results (Phases 1-3) provide the free-field infrastructure
+for stochastic quantization. For the interacting theory, the simple
+Holley-Stroock perturbation does not apply (the interaction V_a is
+unbounded above, so osc(V) = infinity). See [docs/plan.md](docs/plan.md)
+for the Gemini review and three alternative approaches for the
+interacting spectral gap.
 
 ## Development plan
 
-See [docs/plan.md](docs/plan.md) for the full development plan, including
-the Gemini review identifying the Holley-Stroock obstacle for unbounded
-interactions and three alternative approaches.
+See [docs/plan.md](docs/plan.md) for the full development plan, timeline,
+risk assessment, and Gemini review.
 
 ## Dependencies
 
@@ -83,6 +74,8 @@ interactions and three alternative approaches.
   theory, generators, resolvents, Hille-Yosida bound
 - [gaussian-field](https://github.com/mrdouglasny/gaussian-field) — Gaussian
   measures on nuclear spaces, hypercontractivity, tightness
+- [stochasticpde-itocalculus](https://github.com/mrdouglasny/stochasticpde-itocalculus) —
+  Ito calculus (forked from xiyin137)
 - [Mathlib](https://github.com/leanprover-community/mathlib4) — Lean 4
   mathematics library
 
@@ -104,6 +97,8 @@ lake build
 - Da Prato and Zabczyk, *Stochastic Equations in Infinite Dimensions*,
   Cambridge, 2014.
 - Nelson, "The free Markoff field," *J. Funct. Anal.* 12 (1973), 211-227.
+- Fukushima, Oshima, and Takeda, *Dirichlet Forms and Symmetric Markov
+  Processes*, de Gruyter, 2011.
 
 ## License
 
