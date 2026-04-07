@@ -87,10 +87,25 @@ def SatisfiesPoincare (ρ : ℝ) : Prop :=
 def SatisfiesLogSobolev (ρ : ℝ) : Prop :=
   0 < ρ ∧ ∀ f : X → ℝ, entropy (f · f) ≤ (2 / ρ) * ds.energy f f
 
-/-- LSI implies Poincaré with the same constant. -/
+/-- LSI implies Poincaré with the same constant.
+
+Proof: Apply LSI to f = 1 + εg (with ∫g dμ = 0), expand to
+second order in ε:
+  Ent((1+εg)²) = ε² Var(g) + O(ε³)
+  E(1+εg, 1+εg) = ε² E(g,g)
+Divide by ε² and take ε → 0.
+
+Reference: Bakry-Gentil-Ledoux, Proposition 5.1.3 -/
 theorem logSobolev_implies_poincare {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ) :
     SatisfiesPoincare (ds := ds) ρ := by
-  sorry
+  constructor
+  · exact h.1
+  · intro f
+    -- The key inequality: Var(f) ≤ Ent(f²) / (2 · ∫f² / (∫f)²)
+    -- combined with LSI gives Var(f) ≤ (1/ρ) E(f,f).
+    -- The precise proof requires the second-order expansion of
+    -- entropy near a constant function.
+    sorry
 
 end DirichletSpace
 
