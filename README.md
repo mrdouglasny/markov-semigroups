@@ -170,6 +170,10 @@ lake build
 - Fukushima, Oshima, and Takeda, *Dirichlet Forms and Symmetric Markov
   Processes*, de Gruyter, 2011.
 
+## Author
+
+Michael R. Douglas
+
 ## License
 
 Copyright (c) 2026 Michael R. Douglas. Released under the Apache 2.0 license.
