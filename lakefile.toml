@@ -1,28 +1,15 @@
-[package]
 name = "MarkovSemigroups"
-leanOptions = [
-  { name = "autoImplicit", value = false }
-]
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["MarkovSemigroups"]
+
+[leanOptions]
+autoImplicit = false
 
 [[require]]
 name = "mathlib"
-git = "https://github.com/leanprover-community/mathlib4"
-rev = "v4.29.0"
-
-[[require]]
-name = "HilleYosida"
-git = "https://github.com/mrdouglasny/hille-yosida.git"
-rev = "main"
-
-[[require]]
-name = "GaussianField"
-git = "https://github.com/mrdouglasny/gaussian-field.git"
-rev = "main"
-
-[[require]]
-name = "StochasticPDEItoCalculus"
-git = "https://github.com/mrdouglasny/stochasticpde-itocalculus.git"
-rev = "main"
+scope = "leanprover-community"
+version = "git#v4.29.0"
 
 [[lean_lib]]
 name = "MarkovSemigroups"

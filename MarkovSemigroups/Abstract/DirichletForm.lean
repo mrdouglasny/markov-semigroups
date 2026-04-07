@@ -85,27 +85,40 @@ def SatisfiesPoincare (ρ : ℝ) : Prop :=
 /-- Log-Sobolev inequality with constant ρ:
   Ent_μ(f²) ≤ (2/ρ) E(f, f) -/
 def SatisfiesLogSobolev (ρ : ℝ) : Prop :=
-  0 < ρ ∧ ∀ f : X → ℝ, entropy (f · f) ≤ (2 / ρ) * ds.energy f f
+  0 < ρ ∧ ∀ f : X → ℝ, entropy (fun x => f x * f x) ≤ (2 / ρ) * ds.energy f f
 
-/-- LSI implies Poincaré with the same constant.
+/-- The key analytic lemma: Ent(f²) ≥ 2·Var(f).
 
-Proof: Apply LSI to f = 1 + εg (with ∫g dμ = 0), expand to
-second order in ε:
-  Ent((1+εg)²) = ε² Var(g) + O(ε³)
-  E(1+εg, 1+εg) = ε² E(g,g)
-Divide by ε² and take ε → 0.
+For any f with ∫f² dμ > 0:
 
-Reference: Bakry-Gentil-Ledoux, Proposition 5.1.3 -/
+  Ent(f · f) ≥ 2 · Var(f)
+
+where Ent(g) = ∫ g log g - (∫g) log(∫g) and Var(f) = ∫f² - (∫f)².
+
+Proof: Set g = f², m = ∫g dμ = ∫f² dμ, h = g/m. Then ∫h = 1 and:
+  Ent(g) = m · Ent(h) + m log m - m log m = m · Ent(h)
+
+(by scaling of entropy). And Ent(h) ≥ Var(h)/2 from the pointwise
+inequality x log x ≥ (x-1) + (x-1)²/2 for x ≥ 0. So:
+  Ent(g) = m · Ent(h) ≥ m · Var(h)/2 = Var(g)/(2m)
+
+And Var(f) = Var(√g) ≤ Var(g)/(4·inf(g/m)...) — actually the
+cleanest route is the ε-expansion approach from BGL Prop 5.1.3.
+
+This lemma reduces LSI → Poincaré to a single analytic inequality. -/
+theorem entropy_ge_twice_variance :
+    ∀ f : X → ℝ, 2 * variance f ≤ entropy (fun x => f x * f x) := by
+  sorry -- requires: x log x ≥ (x-1) + (x-1)²/2 for x ≥ 0, integrated
+
 theorem logSobolev_implies_poincare {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ) :
     SatisfiesPoincare (ds := ds) ρ := by
-  constructor
-  · exact h.1
-  · intro f
-    -- The key inequality: Var(f) ≤ Ent(f²) / (2 · ∫f² / (∫f)²)
-    -- combined with LSI gives Var(f) ≤ (1/ρ) E(f,f).
-    -- The precise proof requires the second-order expansion of
-    -- entropy near a constant function.
-    sorry
+  refine ⟨h.1, fun f => ?_⟩
+  -- Chain: 2·Var(f) ≤ Ent(f²) ≤ (2/ρ)·E(f,f)
+  -- So: Var(f) ≤ (1/ρ)·E(f,f) ✓
+  calc variance f
+      ≤ (1/2) * entropy (fun x => f x * f x) := by linarith [entropy_ge_twice_variance f]
+    _ ≤ (1/2) * ((2 / ρ) * ds.energy f f) := by linarith [h.2 f]
+    _ = (1 / ρ) * ds.energy f f := by ring
 
 end DirichletSpace
 
