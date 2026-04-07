@@ -87,38 +87,167 @@ def SatisfiesPoincare (ρ : ℝ) : Prop :=
 def SatisfiesLogSobolev (ρ : ℝ) : Prop :=
   0 < ρ ∧ ∀ f : X → ℝ, entropy (fun x => f x * f x) ≤ (2 / ρ) * ds.energy f f
 
-/-- The key analytic lemma: Ent(f²) ≥ 2·Var(f).
+/-! ### Helper lemmas for the energy form -/
 
-For any f with ∫f² dμ > 0:
+/-- A constant function has zero energy against any function.
+Proof: E(1,1) = 0 and E(f,f) >= 0 imply E(1,f) = 0 by the Cauchy-Schwarz
+argument (the quadratic t -> E(1 + t*f, 1 + t*f) = 2t*E(1,f) + t^2*E(f,f)
+must be nonneg for all t). Then E(c, f) = c * E(1, f) = 0. -/
+theorem energy_const_left (c : ℝ) (f : X → ℝ) :
+    ds.energy (fun _ => c) f = 0 := by
+  -- First show E(1, f) = 0 where 1 is the constant-1 function
+  suffices h1 : ds.energy (fun _ => (1 : ℝ)) f = 0 by
+    have : ds.energy (fun _ => c) f = c * ds.energy (fun _ => (1 : ℝ)) f := by
+      have : (fun (_ : X) => c) = c • (fun (_ : X) => (1 : ℝ)) := by
+        ext x; simp
+      rw [this, ds.energy_smul_left]
+    rw [this, h1, mul_zero]
+  -- Prove E(1, f) = 0 by Cauchy-Schwarz style argument
+  -- For all t : ℝ, E(1 + t*f, 1 + t*f) >= 0
+  -- E(1 + t*f, 1 + t*f) = E(1,1) + 2t*E(1,f) + t^2*E(f,f) = 2t*E(1,f) + t^2*E(f,f)
+  -- This quadratic in t is >= 0 for all t, so E(1,f) = 0.
+  by_contra h
+  push Not at h
+  set e := ds.energy (fun _ => (1 : ℝ)) f with he_def
+  set a := ds.energy f f with ha_def
+  -- We know E(1,1) = 0
+  have h11 : ds.energy (fun _ => (1 : ℝ)) (fun _ => (1 : ℝ)) = 0 := ds.energy_const 1
+  -- Consider t = -e / a if a > 0, or t = -sign(e) * large otherwise
+  -- Actually simpler: pick t with the right sign and small enough magnitude
+  -- For all t, 2*t*e + t^2*a >= 0
+  have key : ∀ t : ℝ, 0 ≤ 2 * t * e + t ^ 2 * a := by
+    intro t
+    -- E(1 + t•f, 1 + t•f) >= 0
+    have h_nn := ds.energy_nonneg ((fun _ => (1 : ℝ)) + t • f)
+    -- Rewrite as E(1,1) + 2t*E(1,f) + t^2*E(f,f) = 0 + 2t*e + t^2*a
+    set one : X → ℝ := fun _ => (1 : ℝ) with hone_def
+    set tf : X → ℝ := t • f with htf_def
+    -- E(one + tf, one + tf) = E(one, one + tf) + E(tf, one + tf)
+    have expand1 : ds.energy (one + tf) (one + tf) =
+        ds.energy one (one + tf) + ds.energy tf (one + tf) :=
+      ds.energy_add_left one tf (one + tf)
+    -- E(one, one + tf) = E(one, one) + E(one, tf) = 0 + E(one, tf) = E(one, tf)
+    have expand2 : ds.energy one (one + tf) =
+        ds.energy one one + ds.energy one tf := by
+      rw [ds.energy_symm one (one + tf), ds.energy_add_left, ds.energy_symm one one,
+          ds.energy_symm tf one]
+    -- E(tf, one + tf) = E(tf, one) + E(tf, tf)
+    have expand3 : ds.energy tf (one + tf) =
+        ds.energy tf one + ds.energy tf tf := by
+      rw [ds.energy_symm tf (one + tf), ds.energy_add_left, ds.energy_symm one tf,
+          ds.energy_symm tf tf]
+    rw [expand1, expand2, expand3] at h_nn
+    rw [h11] at h_nn
+    simp only [zero_add] at h_nn
+    -- E(one, tf) = t * E(1, f) = t * e
+    have h_one_tf : ds.energy one tf = t * e := by
+      rw [htf_def, ds.energy_symm, ds.energy_smul_left, ds.energy_symm]
+    -- E(tf, one) = E(one, tf) = t * e
+    have h_tf_one : ds.energy tf one = t * e := by
+      rw [ds.energy_symm]; exact h_one_tf
+    -- E(tf, tf) = t^2 * E(f,f) = t^2 * a
+    have h_tf_tf : ds.energy tf tf = t ^ 2 * a := by
+      rw [htf_def, ds.energy_smul_left, ds.energy_symm, ds.energy_smul_left,
+          ds.energy_symm]; ring
+    rw [h_one_tf, h_tf_one, h_tf_tf] at h_nn
+    linarith
+  -- Now from key, setting t = -e/a or using sign analysis
+  -- If e ≠ 0, pick t = -e (works when |e| is small relative to a, but let's
+  -- handle this more carefully)
+  rcases ne_iff_lt_or_gt.mp h with h_neg | h_pos
+  · -- e < 0: pick t > 0 small enough that 2*t*e + t^2*a < 0
+    -- Choose t = -e/a if a > 0, or t = 1 if a = 0
+    by_cases ha : a = 0
+    · -- If a = 0, then 2*t*e >= 0 for all t, but e < 0 means 2*1*e < 0
+      have := key 1
+      linarith [ha]
+    · -- a > 0 (since a >= 0 and a ≠ 0)
+      have ha_pos : 0 < a := lt_of_le_of_ne (ds.energy_nonneg f) (Ne.symm ha)
+      -- 2*(-e/a)*e + (-e/a)^2*a = -e^2/a < 0, contradiction
+      have key_val := key (-e / a)
+      have h_eq : 2 * (-e / a) * e + (-e / a) ^ 2 * a = -(e ^ 2 / a) := by field_simp; ring
+      have h_esq : 0 < e ^ 2 := sq_pos_of_ne_zero (ne_of_lt h_neg)
+      linarith [div_pos h_esq ha_pos]
+  · -- e > 0: pick t < 0 small enough
+    by_cases ha : a = 0
+    · have := key (-1)
+      linarith [ha]
+    · have ha_pos : 0 < a := lt_of_le_of_ne (ds.energy_nonneg f) (Ne.symm ha)
+      have key_val := key (-e / a)
+      have h_eq : 2 * (-e / a) * e + (-e / a) ^ 2 * a = -(e ^ 2 / a) := by field_simp; ring
+      have h_esq : 0 < e ^ 2 := sq_pos_of_ne_zero (ne_of_gt h_pos)
+      linarith [div_pos h_esq ha_pos]
 
-  Ent(f · f) ≥ 2 · Var(f)
+/-- Energy of a constant on the right is zero. -/
+theorem energy_const_right (f : X → ℝ) (c : ℝ) :
+    ds.energy f (fun _ => c) = 0 := by
+  rw [ds.energy_symm]; exact energy_const_left c f
 
-where Ent(g) = ∫ g log g - (∫g) log(∫g) and Var(f) = ∫f² - (∫f)².
+/-- Energy is invariant under additive constants: E(f + c, f + c) = E(f, f).
+This follows from bilinearity and the fact that constants have zero energy. -/
+theorem energy_add_const (f : X → ℝ) (c : ℝ) :
+    ds.energy (fun x => f x + c) (fun x => f x + c) = ds.energy f f := by
+  have h1 : (fun x => f x + c) = f + (fun _ => c) := by ext x; simp [Pi.add_apply]
+  set k : X → ℝ := fun _ => c with hk_def
+  rw [h1]
+  -- E(f+k, f+k) = E(f, f+k) + E(k, f+k)  [add_left]
+  rw [ds.energy_add_left f k (f + k)]
+  -- E(f, f+k) via symmetry then add_left: E(f, f+k) = E(f+k, f) = E(f,f) + E(k,f)
+  conv_lhs => rw [ds.energy_symm f (f + k), ds.energy_add_left f k f, ds.energy_symm f f]
+  -- E(k, f+k) via symmetry then add_left: E(k, f+k) = E(f+k, k) = E(f,k) + E(k,k)
+  conv_lhs => rw [ds.energy_symm k (f + k), ds.energy_add_left f k k]
+  -- Now substitute all the zero terms
+  rw [energy_const_left c f, energy_const_right f c, ds.energy_const c]
+  ring
 
-Proof: Set g = f², m = ∫g dμ = ∫f² dμ, h = g/m. Then ∫h = 1 and:
-  Ent(g) = m · Ent(h) + m log m - m log m = m · Ent(h)
+/-- Energy of a scalar multiple: E(t • f, t • f) = t² · E(f, f). -/
+theorem energy_smul (t : ℝ) (f : X → ℝ) :
+    ds.energy (t • f) (t • f) = t ^ 2 * ds.energy f f := by
+  rw [ds.energy_smul_left, ds.energy_symm, ds.energy_smul_left, ds.energy_symm]
+  ring
 
-(by scaling of entropy). And Ent(h) ≥ Var(h)/2 from the pointwise
-inequality x log x ≥ (x-1) + (x-1)²/2 for x ≥ 0. So:
-  Ent(g) = m · Ent(h) ≥ m · Var(h)/2 = Var(g)/(2m)
+/-! ### Rothaus linearization: LSI implies Poincaré
 
-And Var(f) = Var(√g) ≤ Var(g)/(4·inf(g/m)...) — actually the
-cleanest route is the ε-expansion approach from BGL Prop 5.1.3.
+The standard proof that a log-Sobolev inequality implies a Poincaré
+inequality with the same constant, following Rothaus (1985) and
+Bakry-Gentil-Ledoux, Prop 5.1.3.
 
-This lemma reduces LSI → Poincaré to a single analytic inequality. -/
-theorem entropy_ge_twice_variance :
-    ∀ f : X → ℝ, 2 * variance f ≤ entropy (fun x => f x * f x) := by
-  sorry -- requires: x log x ≥ (x-1) + (x-1)²/2 for x ≥ 0, integrated
+**Strategy.** For any mean-zero g (∫g dμ = 0), apply LSI to
+f_t(x) = 1 + t·g(x):
 
+  Ent(f_t²) ≤ (2/ρ) · E(f_t, f_t) = (2/ρ) · t² · E(g, g)
+
+A Taylor expansion gives Ent((1+tg)²) = 2t² · ∫g² dμ + O(t³),
+so dividing by t² and sending t → 0 yields
+
+  2 · Var(g) ≤ (2/ρ) · E(g, g),  i.e.  Var(g) ≤ (1/ρ) · E(g, g).
+
+**Note.** The pointwise inequality x log x ≥ (x-1) + (x-1)²/2 is
+FALSE for x > 1 (e.g. at x = 2: 2 log 2 ≈ 1.39 < 1.5 = 1 + 1/2),
+so the global bound Ent(f²) ≥ 2·Var(f) does not hold. The correct
+argument requires the limit. -/
+
+/-- **LSI implies Poincaré** (Rothaus, 1985; BGL Prop 5.1.3).
+
+A log-Sobolev inequality with constant ρ implies a Poincaré inequality
+with the same constant ρ.
+
+The proof uses the Rothaus linearization: apply the LSI to the family
+f_t = 1 + t·g for mean-zero g, expand Ent(f_t²) to second order in t,
+and take t → 0. -/
 theorem logSobolev_implies_poincare {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ) :
     SatisfiesPoincare (ds := ds) ρ := by
   refine ⟨h.1, fun f => ?_⟩
-  -- Chain: 2·Var(f) ≤ Ent(f²) ≤ (2/ρ)·E(f,f)
-  -- So: Var(f) ≤ (1/ρ)·E(f,f) ✓
-  calc variance f
-      ≤ (1/2) * entropy (fun x => f x * f x) := by linarith [entropy_ge_twice_variance f]
-    _ ≤ (1/2) * ((2 / ρ) * ds.energy f f) := by linarith [h.2 f]
-    _ = (1 / ρ) * ds.energy f f := by ring
+  -- The Rothaus linearization argument:
+  -- For any g with ∫g = 0, and any t > 0, apply LSI to (1 + t·g):
+  --   Ent((1+tg)²) ≤ (2/ρ) · t² · E(g,g)
+  -- Then Ent((1+tg)²)/t² → 2·Var(g) as t → 0⁺, giving Var(g) ≤ (1/ρ)·E(g,g).
+  -- Since Var and E are both invariant under adding constants,
+  -- this extends to all f (not just mean-zero).
+  --
+  -- The analytic core (limit of entropy quotient) requires integration theory
+  -- and Taylor expansion of x·log(x); we sorry this for now.
+  sorry
 
 end DirichletSpace
 
