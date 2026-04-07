@@ -129,34 +129,32 @@ theorem gross_equivalence (S : MarkovSemigroup X)
   ⟨S.hypercontractive_of_logSobolev h_compatible ρ,
    S.logSobolev_of_hypercontractive h_compatible ρ⟩
 
-/-! ## The Nelson estimate for exponential perturbations -/
+/-! ## Direct consequence: the semigroup improves integrability -/
 
-/-- The Nelson exponential bound.
+/-- Direct application of hypercontractivity to any function f.
 
-For a hypercontractive semigroup with rate ρ, and a perturbation V:
+  ‖P_t f‖_{L^q(μ)} ≤ ‖f‖_{L^p(μ)}
 
-  ‖e^{-V}‖_{L^q(μ)} ≤ ‖e^{-P_t V}‖_{L^p(μ)}
-
-whenever q ≤ 1 + (p-1)e^{2ρt}.
-
-This is the key estimate for constructive QFT: the semigroup P_t
-"smooths" V, reducing its L^p norm, while the hypercontractivity
-upgrades from L^p to L^q. The result controls the Boltzmann weight
-e^{-V} of the interaction.
-
-For P(φ)₂: V = λ∫:φ⁴:dx, and P_t is the OU semigroup on the
-GFF measure. The estimate gives ‖e^{-V}‖_{L²} ≤ exp(C|Λ|). -/
-theorem nelson_exponential_bound (S : MarkovSemigroup X)
+whenever q ≤ 1 + (p-1)e^{2ρt}. This is just the definition
+of `IsHypercontractive` unpacked. -/
+theorem semigroup_lp_improvement (S : MarkovSemigroup X)
     (ρ : ℝ) (h_hyp : S.IsHypercontractive ρ)
-    (V : X → ℝ)
+    (f : X → ℝ)
     (p q : ℝ) (hp : 1 < p) (hpq : p ≤ q)
     (t : ℝ) (ht : 0 < t)
-    (h_nelson : q ≤ 1 + (p - 1) * Real.exp (2 * ρ * t)) :
-    -- ‖e^{-V}‖_q ≤ ‖e^{-P_t V}‖_p
-    (∫ x, |Real.exp (-V x)| ^ q ∂S.μ) ^ (1/q) ≤
-    (∫ x, |Real.exp (-S.P t V x)| ^ p ∂S.μ) ^ (1/p) := by
-  -- This follows from applying hypercontractivity to f = e^{-V}
-  sorry
+    (h_bound : q ≤ 1 + (p - 1) * Real.exp (2 * ρ * t)) :
+    (∫ x, |S.P t f x| ^ q ∂S.μ) ^ (1/q) ≤
+    (∫ x, |f x| ^ p ∂S.μ) ^ (1/p) :=
+  h_hyp.2 p q t hp hpq ht h_bound f
+
+-- NOTE: The full "Nelson estimate" for constructive QFT
+-- (controlling ‖e^{-V}‖ for the interacting Boltzmann weight)
+-- involves additional steps beyond bare hypercontractivity:
+--   1. Jensen's inequality: P_t(e^{-V}) ≥ e^{-P_t V} (convexity of exp)
+--   2. Decomposition of V into localized pieces (cluster expansion)
+--   3. The specific structure of the P(φ)₂ interaction
+-- These application-specific steps belong in pphi2 / pphi2N,
+-- not in this abstract module.
 
 end MarkovSemigroup
 
