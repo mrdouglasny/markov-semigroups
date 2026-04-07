@@ -2,29 +2,162 @@
 Copyright (c) 2026 Michael R. Douglas. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 
-# Equivalence: Log-Sobolev ↔ Hypercontractivity
+# Hypercontractivity and the Gross Equivalence
 
-Gross's theorem (1975): A Markov semigroup P_t is hypercontractive
-(i.e., P_t : L^p → L^q is bounded for q = 1 + (p-1)e^{2ρt}) if and
-only if its invariant measure satisfies the log-Sobolev inequality
-with constant ρ.
+A Markov semigroup P_t is hypercontractive if it maps L^p → L^q
+for suitable (p, q, t). Nelson (1973) proved this for the OU
+semigroup. Gross (1975) showed the equivalence with the log-Sobolev
+inequality.
 
-This closes the circle:
-- gaussian-field proves hypercontractivity directly (Nelson's estimate)
-- This module derives it from the log-Sobolev inequality
-- The two approaches are equivalent by Gross's theorem
+## Main definitions
+
+- `IsHypercontractive` — P_t : L^p → L^q bounded with norm 1
+- `HypercontractiveRate` — the optimal rate ρ
+- `NelsonBound` — the optimal (p,q,t) relation: e^{-2ρt} ≤ (p-1)/(q-1)
 
 ## Main results
 
-- `gross_equivalence` — LSI with constant ρ ↔ hypercontractivity with
-  rate ρ for the associated semigroup
-- `hypercontractive_of_logSobolev` — LSI → hypercontractivity
-- `logSobolev_of_hypercontractive` — hypercontractivity → LSI
+- `hypercontractive_of_logSobolev` — LSI with constant ρ implies
+  hypercontractivity with rate ρ (Gross 1975)
+- `logSobolev_of_hypercontractive` — hypercontractivity with rate ρ
+  implies LSI with constant ρ (Gross 1975)
+- `gross_equivalence` — LSI ↔ hypercontractivity
+
+## The Nelson estimate
+
+For a semigroup with hypercontractivity rate ρ, and a perturbation
+V with ‖V‖_{L^p} < ∞:
+
+  ‖e^{-V}‖_{L^q} ≤ ‖e^{-P_t V}‖_{L^p} · (semigroup bound)
+
+This is the mechanism used to control interacting QFT:
+- P_t smooths V (reduces its L^p norm)
+- The L^p → L^q improvement gives room for the exponential
+- The result: ‖e^{-V}‖_{L^q} ≤ exp(C · ‖V‖)
 
 ## References
 
-- Gross, "Logarithmic Sobolev inequalities," Amer. J. Math. 97 (1975),
-  1061–1083
-- Gross, "Hypercontractivity and logarithmic Sobolev inequalities for
-  the Clifford-Dirichlet form," Duke Math. J. 42 (1975), 383–396
+- Nelson, "The free Markoff field," J. Funct. Anal. 12 (1973)
+- Gross, "Logarithmic Sobolev inequalities," Amer. J. Math. 97 (1975)
+- Gross, "Hypercontractivity and logarithmic Sobolev inequalities
+  for the Clifford-Dirichlet form," Duke Math. J. 42 (1975)
+- Simon, *The P(φ)₂ Euclidean QFT*, Princeton, 1974, Ch. I
 -/
+
+import MarkovSemigroups.Abstract.DirichletForm
+
+open MeasureTheory
+
+noncomputable section
+
+/-- A Markov semigroup P_t on a probability space (X, μ) is a
+family of operators P_t : L^∞(X) → L^∞(X) parametrized by t ≥ 0,
+satisfying the semigroup property P_{s+t} = P_s ∘ P_t and the
+contraction property ‖P_t f‖_p ≤ ‖f‖_p.
+
+This is the abstract version of the heat semigroup / OU semigroup. -/
+structure MarkovSemigroup (X : Type*) [MeasurableSpace X] where
+  /-- The reference probability measure. -/
+  μ : Measure X
+  hμ : IsProbabilityMeasure μ
+  /-- The semigroup operator at time t. -/
+  P : ℝ → (X → ℝ) → (X → ℝ)
+  /-- Semigroup property. -/
+  semigroup : ∀ s t f, P (s + t) f = P s (P t f)
+  /-- P_0 = identity. -/
+  identity : ∀ f, P 0 f = f
+  /-- L² contraction. -/
+  contraction : ∀ t f,
+    ∫ x, (P t f x) ^ 2 ∂μ ≤ ∫ x, (f x) ^ 2 ∂μ
+
+namespace MarkovSemigroup
+
+variable {X : Type*} [MeasurableSpace X]
+
+/-- A semigroup is hypercontractive with rate ρ if P_t maps L^p → L^q
+whenever e^{-2ρt} ≤ (p-1)/(q-1), with operator norm ≤ 1.
+
+This means: for any 1 < p ≤ q < ∞ and t > 0 satisfying the
+Nelson bound q ≤ 1 + (p-1)e^{2ρt}:
+
+  (∫ |P_t f|^q dμ)^{1/q} ≤ (∫ |f|^p dμ)^{1/p}
+
+Physically: the semigroup boosts integrability. Waiting time t
+buys you L^p → L^q improvement at rate ρ. -/
+def IsHypercontractive (S : MarkovSemigroup X) (ρ : ℝ) : Prop :=
+  0 < ρ ∧ ∀ (p q : ℝ) (t : ℝ),
+    1 < p → p ≤ q → 0 < t →
+    q ≤ 1 + (p - 1) * Real.exp (2 * ρ * t) →
+    -- ‖P_t f‖_q ≤ ‖f‖_p for all f:
+    ∀ f : X → ℝ,
+      (∫ x, |S.P t f x| ^ q ∂S.μ) ^ (1/q) ≤
+      (∫ x, |f x| ^ p ∂S.μ) ^ (1/p)
+
+/-- Gross's theorem (forward direction): LSI implies hypercontractivity.
+
+If the Dirichlet space (X, μ, E) satisfies the log-Sobolev inequality
+with constant ρ, and P_t is the associated semigroup (with E(f,f) =
+-∫ f · Lf dμ where L generates P_t), then P_t is hypercontractive
+with rate ρ.
+
+This is Gross (1975), Theorem 1. -/
+theorem hypercontractive_of_logSobolev (S : MarkovSemigroup X)
+    [ds : DirichletSpace X]
+    (h_compatible : ds.μ = S.μ) -- the Dirichlet form is associated to S
+    (ρ : ℝ) (h_lsi : ds.SatisfiesLogSobolev ρ) :
+    S.IsHypercontractive ρ := by
+  sorry
+
+/-- Gross's theorem (reverse direction): hypercontractivity implies LSI.
+
+Gross (1975), Theorem 2. -/
+theorem logSobolev_of_hypercontractive (S : MarkovSemigroup X)
+    [ds : DirichletSpace X]
+    (h_compatible : ds.μ = S.μ)
+    (ρ : ℝ) (h_hyp : S.IsHypercontractive ρ) :
+    ds.SatisfiesLogSobolev ρ := by
+  sorry
+
+/-- The Gross equivalence: LSI ↔ hypercontractivity.
+
+For a Markov semigroup with associated Dirichlet form:
+  LSI with constant ρ  ⟺  hypercontractivity with rate ρ -/
+theorem gross_equivalence (S : MarkovSemigroup X)
+    [ds : DirichletSpace X]
+    (h_compatible : ds.μ = S.μ) (ρ : ℝ) :
+    ds.SatisfiesLogSobolev ρ ↔ S.IsHypercontractive ρ :=
+  ⟨S.hypercontractive_of_logSobolev h_compatible ρ,
+   S.logSobolev_of_hypercontractive h_compatible ρ⟩
+
+/-! ## The Nelson estimate for exponential perturbations -/
+
+/-- The Nelson exponential bound.
+
+For a hypercontractive semigroup with rate ρ, and a perturbation V:
+
+  ‖e^{-V}‖_{L^q(μ)} ≤ ‖e^{-P_t V}‖_{L^p(μ)}
+
+whenever q ≤ 1 + (p-1)e^{2ρt}.
+
+This is the key estimate for constructive QFT: the semigroup P_t
+"smooths" V, reducing its L^p norm, while the hypercontractivity
+upgrades from L^p to L^q. The result controls the Boltzmann weight
+e^{-V} of the interaction.
+
+For P(φ)₂: V = λ∫:φ⁴:dx, and P_t is the OU semigroup on the
+GFF measure. The estimate gives ‖e^{-V}‖_{L²} ≤ exp(C|Λ|). -/
+theorem nelson_exponential_bound (S : MarkovSemigroup X)
+    (ρ : ℝ) (h_hyp : S.IsHypercontractive ρ)
+    (V : X → ℝ)
+    (p q : ℝ) (hp : 1 < p) (hpq : p ≤ q)
+    (t : ℝ) (ht : 0 < t)
+    (h_nelson : q ≤ 1 + (p - 1) * Real.exp (2 * ρ * t)) :
+    -- ‖e^{-V}‖_q ≤ ‖e^{-P_t V}‖_p
+    (∫ x, |Real.exp (-V x)| ^ q ∂S.μ) ^ (1/q) ≤
+    (∫ x, |Real.exp (-S.P t V x)| ^ p ∂S.μ) ^ (1/p) := by
+  -- This follows from applying hypercontractivity to f = e^{-V}
+  sorry
+
+end MarkovSemigroup
+
+end
