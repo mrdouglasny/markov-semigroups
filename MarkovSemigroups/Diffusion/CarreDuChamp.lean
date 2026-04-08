@@ -75,6 +75,8 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
     Γ (f * g) h x = f x * Γ g h x + g x * Γ f h x
   /-- Γ of a constant is zero. -/
   Γ_const : ∀ (c : ℝ) f, Γ (fun _ => c) f = 0
+  /-- The associated Markov semigroup P_t. -/
+  semigroup : ℝ → (X → ℝ) → (X → ℝ)
   /-- Curvature lower bound ρ > 0. -/
   ρ : ℝ
   hρ : 0 < ρ
@@ -93,8 +95,6 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
   gradient_decay : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
     ∫ x, Γ (semigroup t f) (semigroup t f) x ∂μ ≤
     Real.exp (-2 * ρ * t) * ∫ x, Γ f f x ∂μ
-  /-- The associated Markov semigroup P_t. -/
-  semigroup : ℝ → (X → ℝ) → (X → ℝ)
   /-- P_0 = id. -/
   semigroup_zero : ∀ f, semigroup 0 f = f
   /-- Semigroup property: P_{s+t} = P_s ∘ P_t. -/

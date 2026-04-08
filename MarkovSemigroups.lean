@@ -15,6 +15,7 @@ import MarkovSemigroups.Diffusion.InvariantMeasure
 import MarkovSemigroups.Instances.Euclidean
 import MarkovSemigroups.Instances.Torus
 import MarkovSemigroups.Instances.GFFIdentification
+import MarkovSemigroups.Instances.BrascampLieb
 
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
