@@ -1,6 +1,6 @@
 // Lean compiler output
 // Module: MarkovSemigroups.Abstract.DirichletForm
-// Imports: public import Init public import Mathlib.MeasureTheory.Integral.Bochner.Basic public import Mathlib.MeasureTheory.Measure.MeasureSpace
+// Imports: public import Init public import Mathlib.MeasureTheory.Integral.Bochner.Basic public import Mathlib.MeasureTheory.Measure.MeasureSpace public import Mathlib.Analysis.SpecialFunctions.Log.Basic public import Mathlib.Analysis.SpecialFunctions.Log.Deriv public import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 #include <lean/lean.h>
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wunused-parameter"
@@ -16,6 +16,9 @@ extern "C" {
 lean_object* initialize_Init(uint8_t builtin);
 lean_object* initialize_mathlib_Mathlib_MeasureTheory_Integral_Bochner_Basic(uint8_t builtin);
 lean_object* initialize_mathlib_Mathlib_MeasureTheory_Measure_MeasureSpace(uint8_t builtin);
+lean_object* initialize_mathlib_Mathlib_Analysis_SpecialFunctions_Log_Basic(uint8_t builtin);
+lean_object* initialize_mathlib_Mathlib_Analysis_SpecialFunctions_Log_Deriv(uint8_t builtin);
+lean_object* initialize_mathlib_Mathlib_Analysis_SpecialFunctions_Log_NegMulLog(uint8_t builtin);
 static bool _G_initialized = false;
 LEAN_EXPORT lean_object* initialize_MarkovSemigroups_MarkovSemigroups_Abstract_DirichletForm(uint8_t builtin) {
 lean_object * res;
@@ -28,6 +31,15 @@ res = initialize_mathlib_Mathlib_MeasureTheory_Integral_Bochner_Basic(builtin);
 if (lean_io_result_is_error(res)) return res;
 lean_dec_ref(res);
 res = initialize_mathlib_Mathlib_MeasureTheory_Measure_MeasureSpace(builtin);
+if (lean_io_result_is_error(res)) return res;
+lean_dec_ref(res);
+res = initialize_mathlib_Mathlib_Analysis_SpecialFunctions_Log_Basic(builtin);
+if (lean_io_result_is_error(res)) return res;
+lean_dec_ref(res);
+res = initialize_mathlib_Mathlib_Analysis_SpecialFunctions_Log_Deriv(builtin);
+if (lean_io_result_is_error(res)) return res;
+lean_dec_ref(res);
+res = initialize_mathlib_Mathlib_Analysis_SpecialFunctions_Log_NegMulLog(builtin);
 if (lean_io_result_is_error(res)) return res;
 lean_dec_ref(res);
 return lean_io_result_mk_ok(lean_box(0));

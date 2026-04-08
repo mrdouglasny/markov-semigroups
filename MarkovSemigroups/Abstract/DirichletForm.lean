@@ -28,6 +28,9 @@ No gradient, metric, or manifold structure is assumed.
 
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
+import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 
 open MeasureTheory
 
@@ -227,6 +230,132 @@ FALSE for x > 1 (e.g. at x = 2: 2 log 2 ≈ 1.39 < 1.5 = 1 + 1/2),
 so the global bound Ent(f²) ≥ 2·Var(f) does not hold. The correct
 argument requires the limit. -/
 
+/-! ### Analytic sub-lemmas for the Rothaus expansion
+
+The proof of `rothaus_entropy_expansion` is factored into three sub-lemmas:
+
+1. `mul_log_taylor2_lower` [PROVED]: A pointwise Taylor estimate for
+   `(1+s)·log(1+s)` near `s = 0`, proved using Mathlib's
+   `Real.abs_log_sub_add_sum_range_le` (Taylor remainder for `log`).
+
+2. `integral_sq_perturbation` [SORRY]: An algebraic identity computing
+   `∫ (1+tg)² dμ = 1 + t² · Var(f)` for mean-zero `g`. Requires Mathlib's
+   integral linearity and probability measure API. This is a helper for (3).
+
+3. `entropy_quadratic_lower` [SORRY]: The integration step combining the
+   pointwise Taylor bound with dominated convergence. This requires
+   Taylor estimates, Bochner integrability, and DCT. It is the remaining
+   analytical obstacle; `rothaus_entropy_expansion` delegates to it.
+-/
+
+/-- **Taylor lower bound for `(1+s) · log(1+s)` near 0.**
+
+For any `ε > 0`, there exists `δ > 0` such that for `|s| < δ`:
+  `(1+s) · log(1+s) ≥ s + (1 - ε)/2 · s²`
+
+Proved using `Real.abs_log_sub_add_sum_range_le` (Mathlib's bound on the Taylor
+remainder of `log(1-x)`). With `n = 2` and `x = -s`:
+  `|log(1+s) - (s - s²/2)| ≤ |s|³/(1 - |s|)`
+Multiplying by `1 + s > 0` and bounding the cubic error term by `ε/2 · s²`
+for `|s| < min(1/2, ε/8)` gives the result.
+
+The `s ≥ 0` case uses `8s ≤ ε` and `8(1-s) ≥ 3+s` to bound the error.
+The `s < 0` case simplifies because `1 - |s| = 1 + s` cancels the denominator,
+leaving only `|s|³/2 ≤ ε/2 · s²`. -/
+theorem mul_log_taylor2_lower (ε : ℝ) (hε : 0 < ε) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ s : ℝ, |s| < δ →
+      s + (1 - ε) / 2 * s ^ 2 ≤ (1 + s) * Real.log (1 + s) := by
+  refine ⟨min (1/2) (ε / 8), by positivity, fun s hs => ?_⟩
+  have h_half : |s| < 1 / 2 := lt_of_lt_of_le hs (min_le_left _ _)
+  have h_eps : |s| < ε / 8 := lt_of_lt_of_le hs (min_le_right _ _)
+  have h_pos : (0 : ℝ) < 1 + s := by linarith [neg_abs_le s]
+  have h_sub : (0 : ℝ) < 1 - |s| := by linarith
+  have h_one : |s| < 1 := by linarith
+  -- Taylor bound from Mathlib: |(-s + s²/2) + log(1+s)| ≤ |s|³/(1-|s|)
+  have habs_neg : |-s| < 1 := by rwa [abs_neg]
+  have hlog := Real.abs_log_sub_add_sum_range_le habs_neg 2
+  have hsum : ∑ i ∈ Finset.range 2, (-s) ^ (i + 1) / (↑i + 1) = -s + s ^ 2 / 2 := by
+    simp only [Finset.sum_range_succ, Finset.sum_range_zero]; ring
+  rw [hsum, show (1 : ℝ) - -s = 1 + s from by ring, abs_neg] at hlog
+  -- Extract lower bound: log(1+s) ≥ s - s²/2 - |s|³/(1-|s|)
+  have hlog_lb : s - s ^ 2 / 2 - |s| ^ 3 / (1 - |s|) ≤ Real.log (1 + s) := by
+    linarith [neg_abs_le ((-s + s ^ 2 / 2) + Real.log (1 + s))]
+  -- Multiply by (1+s) > 0
+  have hmul : (1 + s) * (s - s ^ 2 / 2 - |s| ^ 3 / (1 - |s|)) ≤ (1 + s) * Real.log (1 + s) :=
+    mul_le_mul_of_nonneg_left hlog_lb (le_of_lt h_pos)
+  suffices h : s + (1 - ε) / 2 * s ^ 2 ≤
+      (1 + s) * (s - s ^ 2 / 2 - |s| ^ 3 / (1 - |s|)) by linarith
+  -- Clear the (1-|s|) denominator: reduce to a polynomial inequality
+  have h_ne : (1 - |s|) ≠ 0 := ne_of_gt h_sub
+  suffices key : 0 ≤ ε / 2 * s ^ 2 * (1 - |s|) - s ^ 3 / 2 * (1 - |s|) - (1 + s) * |s| ^ 3 by
+    have expand : (s + (1 - ε) / 2 * s ^ 2) * (1 - |s|) ≤
+        (1 + s) * (s - s ^ 2 / 2) * (1 - |s|) - (1 + s) * |s| ^ 3 := by
+      nlinarith [sq_abs s]
+    have hdiv := div_le_div_of_nonneg_right expand (le_of_lt h_sub)
+    simp only [mul_div_cancel_right₀ _ h_ne] at hdiv
+    have key2 : ((1 + s) * (s - s ^ 2 / 2) * (1 - |s|) - (1 + s) * |s| ^ 3) / (1 - |s|) =
+        (1 + s) * (s - s ^ 2 / 2 - |s| ^ 3 / (1 - |s|)) := by field_simp
+    linarith
+  -- Split on sign of s for the polynomial inequality
+  by_cases hs_nn : 0 ≤ s
+  · -- s ≥ 0: |s| = s, factor as s² · (ε/2·(1-s) - s·(3/2+s/2))
+    rw [abs_of_nonneg hs_nn]
+    have hrw : ε / 2 * s ^ 2 * (1 - s) - s ^ 3 / 2 * (1 - s) - (1 + s) * s ^ 3 =
+      s ^ 2 * (ε / 2 * (1 - s) - s * (3 / 2 + s / 2)) := by ring
+    rw [hrw]
+    apply mul_nonneg (sq_nonneg s)
+    have : s < ε / 8 := by rwa [abs_of_nonneg hs_nn] at h_eps
+    have : s < 1 / 2 := by rwa [abs_of_nonneg hs_nn] at h_half
+    nlinarith
+  · -- s < 0: |s| = -s, 1-|s| = 1+s, factor as (1+s)·s²·(ε/2+s/2)
+    push Not at hs_nn
+    rw [abs_of_neg hs_nn]
+    have hrw : ε / 2 * s ^ 2 * (1 - -s) - s ^ 3 / 2 * (1 - -s) - (1 + s) * (-s) ^ 3 =
+      (1 + s) * s ^ 2 * (ε / 2 + s / 2) := by ring
+    rw [hrw]
+    apply mul_nonneg (mul_nonneg (le_of_lt h_pos) (sq_nonneg s))
+    have : -s < ε / 8 := by rwa [abs_of_neg hs_nn] at h_eps
+    linarith
+
+/-- **Integral of the squared perturbation.**
+
+For a probability measure μ and mean-zero g (i.e., g = f - ∫f),
+  `∫ (1 + t·g)² dμ = 1 + t² · Var(f)`
+
+Proof: expand (1+tg)² = 1 + 2tg + t²g², integrate using ∫1 = 1,
+∫g = 0, and ∫g² = Var(f) (since ∫g = 0 means Var = ∫g²). -/
+theorem integral_sq_perturbation (f : X → ℝ)
+    (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
+    (t : ℝ) :
+    ∫ x, (1 + t * (f x - ∫ y, f y ∂ds.μ)) ^ 2 ∂ds.μ = 1 + t ^ 2 * variance f := by
+  sorry
+
+/-- **Entropy lower bound via Taylor expansion and dominated convergence.**
+
+For a probability measure μ and f with finite first and second moments,
+let g = f - ∫f (mean zero). For any ε > 0, there exists δ > 0 such that
+for 0 < t < δ:
+
+  `(2 - ε) · t² · Var(f) ≤ Ent((1 + t·g)²)`
+
+This combines:
+- The pointwise Taylor bound `mul_log_taylor2_lower` applied to
+  `s = 2tg(x) + t²g(x)²` (since `(1+tg)² = 1 + s`)
+- Dominated convergence to exchange limit and integral
+- An upper bound on `(∫h) · log(∫h)` using `log(1+u) ≤ u`
+
+The `O(t³)` error terms vanish after dividing by `t²` and taking `t → 0`.
+This is the analytic core of the Rothaus linearization argument.
+
+*Reference*: Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
+Operators*, proof of Proposition 5.1.3. -/
+theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
+      (2 - ε) * t ^ 2 * variance f ≤
+        entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
+                          (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
+  sorry
+
 /-- **Rothaus entropy-variance inequality** (analytic core).
 
 For a probability measure μ and function f, let g(x) = f(x) - ∫f dμ be
@@ -244,9 +373,7 @@ applied to x = (1+tg)² = 1 + 2tg + t²g², giving
   (1+tg)² · log((1+tg)²) = 2tg + 2t²g² + O(t³)
 and integrating (using ∫g = 0, μ probability) yields Ent = 2t²·Var(f) + O(t³).
 
-**This is sorry'd**: it requires Lebesgue dominated convergence and
-pointwise Taylor estimates for x·log(x). The algebraic proof that LSI
-implies Poincaré is complete modulo this single analytic fact.
+Proved by delegation to `entropy_quadratic_lower`.
 
 *Reference*: Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
 Operators*, proof of Proposition 5.1.3. -/
@@ -254,8 +381,8 @@ theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
       (2 - ε) * t ^ 2 * variance f ≤
         entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
-                          (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
-  sorry
+                          (1 + t * (f x - ∫ y, f y ∂ds.μ))) :=
+  entropy_quadratic_lower f ε hε
 
 /-- **Energy of the Rothaus perturbation.**
 E(1 + t·g, 1 + t·g) = t² · E(g, g) for any g and t.

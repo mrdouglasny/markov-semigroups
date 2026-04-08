@@ -389,6 +389,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Opens.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Opens.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Opens.olean.private"],
+  "Mathlib.Topology.Sets.Closeds":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Closeds.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Closeds.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Closeds.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sets/Closeds.olean.private"],
   "Mathlib.Topology.Sequences":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sequences.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Sequences.ir",
@@ -434,6 +439,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Piecewise.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Piecewise.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Piecewise.olean.private"],
+  "Mathlib.Topology.Perfect":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Perfect.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Perfect.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Perfect.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Perfect.olean.private"],
   "Mathlib.Topology.Path":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Path.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Path.ir",
@@ -444,6 +454,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/T5.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/T5.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/T5.olean.private"],
+  "Mathlib.Topology.Order.Rolle":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/Rolle.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/Rolle.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/Rolle.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/Rolle.olean.private"],
   "Mathlib.Topology.Order.Real":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/Real.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/Real.ir",
@@ -509,6 +524,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/IntermediateValue.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/IntermediateValue.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/IntermediateValue.olean.private"],
+  "Mathlib.Topology.Order.ExtendFrom":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/ExtendFrom.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/ExtendFrom.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/ExtendFrom.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/ExtendFrom.olean.private"],
   "Mathlib.Topology.Order.DenselyOrdered":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/DenselyOrdered.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order/DenselyOrdered.ir",
@@ -539,6 +559,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Order.olean.private"],
+  "Mathlib.Topology.OpenPartialHomeomorph.IsImage":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/OpenPartialHomeomorph/IsImage.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/OpenPartialHomeomorph/IsImage.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/OpenPartialHomeomorph/IsImage.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/OpenPartialHomeomorph/IsImage.olean.private"],
   "Mathlib.Topology.OpenPartialHomeomorph.Defs":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/OpenPartialHomeomorph/Defs.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/OpenPartialHomeomorph/Defs.ir",
@@ -674,11 +699,21 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Defs.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Defs.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Defs.olean.private"],
+  "Mathlib.Topology.MetricSpace.Completion":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Completion.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Completion.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Completion.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Completion.olean.private"],
   "Mathlib.Topology.MetricSpace.Cauchy":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Cauchy.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Cauchy.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Cauchy.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Cauchy.olean.private"],
+  "Mathlib.Topology.MetricSpace.CauSeqFilter":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/CauSeqFilter.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/CauSeqFilter.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/CauSeqFilter.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/CauSeqFilter.olean.private"],
   "Mathlib.Topology.MetricSpace.Bounded":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Bounded.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/MetricSpace/Bounded.ir",
@@ -719,6 +754,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyFinite.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyFinite.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyFinite.olean.private"],
+  "Mathlib.Topology.LocallyConstant.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyConstant/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyConstant/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyConstant/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/LocallyConstant/Basic.olean.private"],
   "Mathlib.Topology.Irreducible":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Irreducible.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Irreducible.ir",
@@ -829,6 +869,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/GDelta/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/GDelta/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/GDelta/Basic.olean.private"],
+  "Mathlib.Topology.ExtendFrom":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/ExtendFrom.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/ExtendFrom.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/ExtendFrom.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/ExtendFrom.olean.private"],
   "Mathlib.Topology.EMetricSpace.Pi":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/EMetricSpace/Pi.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/EMetricSpace/Pi.ir",
@@ -1064,11 +1109,21 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Baire/Lemmas.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Baire/Lemmas.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Baire/Lemmas.olean.private"],
+  "Mathlib.Topology.Algebra.UniformRing":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformRing.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformRing.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformRing.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformRing.olean.private"],
   "Mathlib.Topology.Algebra.UniformMulAction":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformMulAction.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformMulAction.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformMulAction.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformMulAction.olean.private"],
+  "Mathlib.Topology.Algebra.UniformField":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformField.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformField.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformField.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformField.olean.private"],
   "Mathlib.Topology.Algebra.UniformConvergence":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformConvergence.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/UniformConvergence.ir",
@@ -1169,6 +1224,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Simple.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Simple.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Simple.olean.private"],
+  "Mathlib.Topology.Algebra.Module.PerfectSpace":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/PerfectSpace.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/PerfectSpace.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/PerfectSpace.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/PerfectSpace.olean.private"],
   "Mathlib.Topology.Algebra.Module.Multilinear.Topology":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Multilinear/Topology.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Multilinear/Topology.ir",
@@ -1224,6 +1284,16 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Basic.olean.private"],
+  "Mathlib.Topology.Algebra.Module.Alternating.Topology":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Topology.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Topology.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Topology.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Topology.olean.private"],
+  "Mathlib.Topology.Algebra.Module.Alternating.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Module/Alternating/Basic.olean.private"],
   "Mathlib.Topology.Algebra.MetricSpace.Lipschitz":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/MetricSpace/Lipschitz.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/MetricSpace/Lipschitz.ir",
@@ -1304,6 +1374,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupWithZero.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupWithZero.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupWithZero.olean.private"],
+  "Mathlib.Topology.Algebra.GroupCompletion":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupCompletion.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupCompletion.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupCompletion.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/GroupCompletion.olean.private"],
   "Mathlib.Topology.Algebra.Group.Quotient":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Group/Quotient.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Group/Quotient.ir",
@@ -1354,6 +1429,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousMonoidHom.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousMonoidHom.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousMonoidHom.olean.private"],
+  "Mathlib.Topology.Algebra.ContinuousAffineMap":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousAffineMap.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousAffineMap.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousAffineMap.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/ContinuousAffineMap.olean.private"],
   "Mathlib.Topology.Algebra.Constructions":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Constructions.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Topology/Algebra/Constructions.ir",
@@ -1729,6 +1809,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/ProxyType.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/ProxyType.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/ProxyType.olean.private"],
+  "Mathlib.Tactic.Positivity.Finset":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Finset.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Finset.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Finset.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Finset.olean.private"],
   "Mathlib.Tactic.Positivity.Core":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Core.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Core.ir",
@@ -1739,6 +1824,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity/Basic.olean.private"],
+  "Mathlib.Tactic.Positivity":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Positivity.olean.private"],
   "Mathlib.Tactic.Peel":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Peel.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Tactic/Peel.ir",
@@ -4759,6 +4849,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/DFinsupp.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/DFinsupp.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/DFinsupp.olean.private"],
+  "Mathlib.LinearAlgebra.Multilinear.Curry":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/Curry.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/Curry.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/Curry.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/Curry.olean.private"],
   "Mathlib.LinearAlgebra.Multilinear.Basis":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/Basis.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Multilinear/Basis.ir",
@@ -5144,6 +5239,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Alternating/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Alternating/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/Alternating/Basic.olean.private"],
+  "Mathlib.LinearAlgebra.AffineSpace.Slope":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/AffineSpace/Slope.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/AffineSpace/Slope.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/AffineSpace/Slope.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/AffineSpace/Slope.olean.private"],
   "Mathlib.LinearAlgebra.AffineSpace.Simplex.Basic":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/AffineSpace/Simplex/Basic.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/LinearAlgebra/AffineSpace/Simplex/Basic.ir",
@@ -6309,6 +6409,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorization/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorization/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorization/Basic.olean.private"],
+  "Mathlib.Data.Nat.Factorial.Cast":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorial/Cast.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorial/Cast.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorial/Cast.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorial/Cast.olean.private"],
   "Mathlib.Data.Nat.Factorial.BigOperators":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorial/BigOperators.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Factorial/BigOperators.ir",
@@ -6349,6 +6454,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Central.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Central.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Central.olean.private"],
+  "Mathlib.Data.Nat.Choose.Cast":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Cast.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Cast.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Cast.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Cast.olean.private"],
   "Mathlib.Data.Nat.Choose.Bounds":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Bounds.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Nat/Choose/Bounds.ir",
@@ -6934,6 +7044,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sum.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sum.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sum.olean.private"],
+  "Mathlib.Data.Fintype.Sort":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sort.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sort.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sort.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sort.olean.private"],
   "Mathlib.Data.Fintype.Sigma":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sigma.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/Fintype/Sigma.ir",
@@ -7409,6 +7524,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Pow.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Pow.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Pow.olean.private"],
+  "Mathlib.Data.ENat.Lattice":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Lattice.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Lattice.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Lattice.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Lattice.olean.private"],
   "Mathlib.Data.ENat.Defs":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Defs.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Data/ENat/Defs.ir",
@@ -7649,11 +7769,31 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Pow/Asymptotics.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Pow/Asymptotics.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Pow/Asymptotics.olean.private"],
+  "Mathlib.Analysis.SpecialFunctions.Log.NegMulLog":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/NegMulLog.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/NegMulLog.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/NegMulLog.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/NegMulLog.olean.private"],
+  "Mathlib.Analysis.SpecialFunctions.Log.Deriv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Deriv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Deriv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Deriv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Deriv.olean.private"],
   "Mathlib.Analysis.SpecialFunctions.Log.Basic":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Basic.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Log/Basic.olean.private"],
+  "Mathlib.Analysis.SpecialFunctions.Exponential":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Exponential.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Exponential.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Exponential.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Exponential.olean.private"],
+  "Mathlib.Analysis.SpecialFunctions.ExpDeriv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/ExpDeriv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/ExpDeriv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/ExpDeriv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/ExpDeriv.olean.private"],
   "Mathlib.Analysis.SpecialFunctions.Exp":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Exp.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/SpecialFunctions/Exp.ir",
@@ -7754,6 +7894,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Basic.olean.private"],
+  "Mathlib.Analysis.Normed.Operator.Asymptotics":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Asymptotics.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Asymptotics.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Asymptotics.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Operator/Asymptotics.olean.private"],
   "Mathlib.Analysis.Normed.MulAction":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/MulAction.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/MulAction.ir",
@@ -7769,6 +7914,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/RCLike/Real.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/RCLike/Real.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/RCLike/Real.olean.private"],
+  "Mathlib.Analysis.Normed.Module.Multilinear.Curry":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Multilinear/Curry.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Multilinear/Curry.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Multilinear/Curry.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Multilinear/Curry.olean.private"],
   "Mathlib.Analysis.Normed.Module.Multilinear.Basic":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Multilinear/Basic.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Multilinear/Basic.ir",
@@ -7779,6 +7929,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Convex.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Convex.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Convex.olean.private"],
+  "Mathlib.Analysis.Normed.Module.Completion":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Completion.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Completion.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Completion.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Completion.olean.private"],
   "Mathlib.Analysis.Normed.Module.Basic":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Basic.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Basic.ir",
@@ -7789,6 +7944,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Ball/Pointwise.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Ball/Pointwise.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Ball/Pointwise.olean.private"],
+  "Mathlib.Analysis.Normed.Module.Alternating.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Alternating/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Alternating/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Alternating/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Module/Alternating/Basic.olean.private"],
   "Mathlib.Analysis.Normed.Group.Uniform":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Uniform.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Uniform.ir",
@@ -7864,6 +8024,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Constructions.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Constructions.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Constructions.olean.private"],
+  "Mathlib.Analysis.Normed.Group.Completion":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Completion.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Completion.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Completion.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Completion.olean.private"],
   "Mathlib.Analysis.Normed.Group.Bounded":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Bounded.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Bounded.ir",
@@ -7874,6 +8039,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/Basic.olean.private"],
+  "Mathlib.Analysis.Normed.Group.AddTorsor":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/AddTorsor.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/AddTorsor.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/AddTorsor.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/AddTorsor.olean.private"],
   "Mathlib.Analysis.Normed.Group.AddCircle":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/AddCircle.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Group/AddCircle.ir",
@@ -7889,6 +8059,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Field/Basic.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Field/Basic.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Field/Basic.olean.private"],
+  "Mathlib.Analysis.Normed.Algebra.Exponential":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Algebra/Exponential.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Algebra/Exponential.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Algebra/Exponential.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Normed/Algebra/Exponential.olean.private"],
   "Mathlib.Analysis.MeanInequalitiesPow":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/MeanInequalitiesPow.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/MeanInequalitiesPow.ir",
@@ -7984,6 +8159,16 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Function.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Function.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Function.olean.private"],
+  "Mathlib.Analysis.Convex.EGauge":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/EGauge.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/EGauge.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/EGauge.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/EGauge.olean.private"],
+  "Mathlib.Analysis.Convex.Deriv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Deriv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Deriv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Deriv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Deriv.olean.private"],
   "Mathlib.Analysis.Convex.Combination":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Combination.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Convex/Combination.ir",
@@ -7999,6 +8184,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Trigonometric.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Trigonometric.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Trigonometric.olean.private"],
+  "Mathlib.Analysis.Complex.RealDeriv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/RealDeriv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/RealDeriv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/RealDeriv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/RealDeriv.olean.private"],
   "Mathlib.Analysis.Complex.Order":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Order.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Order.ir",
@@ -8024,6 +8214,261 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Asymptotics.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Asymptotics.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Complex/Asymptotics.olean.private"],
+  "Mathlib.Analysis.Calculus.TangentCone.Real":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Real.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Real.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Real.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Real.olean.private"],
+  "Mathlib.Analysis.Calculus.TangentCone.DimOne":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/DimOne.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/DimOne.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/DimOne.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/DimOne.olean.private"],
+  "Mathlib.Analysis.Calculus.TangentCone.Defs":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Defs.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Defs.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Defs.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Defs.olean.private"],
+  "Mathlib.Analysis.Calculus.TangentCone.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/TangentCone/Basic.olean.private"],
+  "Mathlib.Analysis.Calculus.MeanValue":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/MeanValue.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/MeanValue.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/MeanValue.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/MeanValue.olean.private"],
+  "Mathlib.Analysis.Calculus.LogDeriv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LogDeriv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LogDeriv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LogDeriv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LogDeriv.olean.private"],
+  "Mathlib.Analysis.Calculus.LocalExtr.Rolle":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Rolle.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Rolle.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Rolle.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Rolle.olean.private"],
+  "Mathlib.Analysis.Calculus.LocalExtr.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/LocalExtr/Basic.olean.private"],
+  "Mathlib.Analysis.Calculus.IteratedDeriv.Lemmas":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Lemmas.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Lemmas.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Lemmas.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Lemmas.olean.private"],
+  "Mathlib.Analysis.Calculus.IteratedDeriv.Defs":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Defs.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Defs.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Defs.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/IteratedDeriv/Defs.olean.private"],
+  "Mathlib.Analysis.Calculus.FormalMultilinearSeries":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FormalMultilinearSeries.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FormalMultilinearSeries.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FormalMultilinearSeries.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FormalMultilinearSeries.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.RestrictScalars":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/RestrictScalars.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/RestrictScalars.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/RestrictScalars.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/RestrictScalars.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Prod":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Prod.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Prod.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Prod.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Prod.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Pow":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Pow.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Pow.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Pow.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Pow.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Mul":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Mul.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Mul.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Mul.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Mul.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Linear":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Linear.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Linear.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Linear.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Linear.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Equiv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Equiv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Equiv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Equiv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Equiv.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Defs":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Defs.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Defs.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Defs.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Defs.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Const":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Const.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Const.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Const.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Const.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Congr":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Congr.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Congr.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Congr.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Congr.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.CompCLM":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/CompCLM.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/CompCLM.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/CompCLM.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/CompCLM.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Comp":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Comp.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Comp.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Comp.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Comp.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Bilinear":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Bilinear.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Bilinear.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Bilinear.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Bilinear.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Basic.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Analytic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Analytic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Analytic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Analytic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Analytic.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Affine":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Affine.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Affine.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Affine.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Affine.olean.private"],
+  "Mathlib.Analysis.Calculus.FDeriv.Add":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Add.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Add.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Add.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/FDeriv/Add.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.ZPow":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/ZPow.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/ZPow.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/ZPow.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/ZPow.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Support":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Support.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Support.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Support.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Support.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Slope":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Slope.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Slope.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Slope.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Slope.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Shift":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Shift.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Shift.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Shift.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Shift.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Pow":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Pow.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Pow.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Pow.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Pow.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Mul":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Mul.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Mul.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Mul.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Mul.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.MeanValue":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/MeanValue.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/MeanValue.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/MeanValue.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/MeanValue.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Linear":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Linear.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Linear.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Linear.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Linear.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Inverse":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inverse.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inverse.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inverse.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inverse.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Inv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Inv.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.CompMul":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/CompMul.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/CompMul.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/CompMul.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/CompMul.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Comp":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Comp.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Comp.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Comp.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Comp.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Basic.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.AffineMap":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/AffineMap.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/AffineMap.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/AffineMap.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/AffineMap.olean.private"],
+  "Mathlib.Analysis.Calculus.Deriv.Add":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Add.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Add.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Add.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/Deriv/Add.olean.private"],
+  "Mathlib.Analysis.Calculus.DSlope":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/DSlope.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/DSlope.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/DSlope.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/DSlope.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.RCLike":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/RCLike.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/RCLike.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/RCLike.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/RCLike.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.Operations":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Operations.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Operations.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Operations.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Operations.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.FaaDiBruno":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FaaDiBruno.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FaaDiBruno.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FaaDiBruno.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FaaDiBruno.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.FTaylorSeries":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FTaylorSeries.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FTaylorSeries.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FTaylorSeries.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/FTaylorSeries.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.Deriv":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Deriv.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Deriv.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Deriv.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Deriv.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.Defs":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Defs.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Defs.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Defs.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Defs.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.Comp":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Comp.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Comp.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Comp.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Comp.olean.private"],
+  "Mathlib.Analysis.Calculus.ContDiff.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Calculus/ContDiff/Basic.olean.private"],
   "Mathlib.Analysis.CStarAlgebra.Basic":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/CStarAlgebra/Basic.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/CStarAlgebra/Basic.ir",
@@ -8034,6 +8479,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Theta.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Theta.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Theta.olean.private"],
+  "Mathlib.Analysis.Asymptotics.TVS":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/TVS.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/TVS.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/TVS.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/TVS.olean.private"],
   "Mathlib.Analysis.Asymptotics.Lemmas":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Lemmas.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Lemmas.ir",
@@ -8044,6 +8494,76 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Defs.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Defs.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/Defs.olean.private"],
+  "Mathlib.Analysis.Asymptotics.AsymptoticEquivalent":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/AsymptoticEquivalent.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/AsymptoticEquivalent.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/AsymptoticEquivalent.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Asymptotics/AsymptoticEquivalent.olean.private"],
+  "Mathlib.Analysis.Analytic.Within":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Within.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Within.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Within.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Within.olean.private"],
+  "Mathlib.Analysis.Analytic.Uniqueness":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Uniqueness.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Uniqueness.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Uniqueness.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Uniqueness.olean.private"],
+  "Mathlib.Analysis.Analytic.OfScalars":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/OfScalars.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/OfScalars.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/OfScalars.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/OfScalars.olean.private"],
+  "Mathlib.Analysis.Analytic.Linear":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Linear.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Linear.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Linear.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Linear.olean.private"],
+  "Mathlib.Analysis.Analytic.IsolatedZeros":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/IsolatedZeros.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/IsolatedZeros.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/IsolatedZeros.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/IsolatedZeros.olean.private"],
+  "Mathlib.Analysis.Analytic.Inverse":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Inverse.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Inverse.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Inverse.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Inverse.olean.private"],
+  "Mathlib.Analysis.Analytic.ConvergenceRadius":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ConvergenceRadius.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ConvergenceRadius.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ConvergenceRadius.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ConvergenceRadius.olean.private"],
+  "Mathlib.Analysis.Analytic.Constructions":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Constructions.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Constructions.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Constructions.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Constructions.olean.private"],
+  "Mathlib.Analysis.Analytic.Composition":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Composition.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Composition.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Composition.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Composition.olean.private"],
+  "Mathlib.Analysis.Analytic.ChangeOrigin":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ChangeOrigin.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ChangeOrigin.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ChangeOrigin.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/ChangeOrigin.olean.private"],
+  "Mathlib.Analysis.Analytic.CPolynomialDef":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomialDef.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomialDef.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomialDef.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomialDef.olean.private"],
+  "Mathlib.Analysis.Analytic.CPolynomial":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomial.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomial.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomial.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/CPolynomial.olean.private"],
+  "Mathlib.Analysis.Analytic.Basic":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Basic.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Basic.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Basic.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Analysis/Analytic/Basic.olean.private"],
   "Mathlib.Algebra.Star.Unitary":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Star/Unitary.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Star/Unitary.ir",
@@ -8139,6 +8659,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/ULift.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/ULift.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/ULift.olean.private"],
+  "Mathlib.Algebra.Ring.TransferInstance":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/TransferInstance.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/TransferInstance.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/TransferInstance.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/TransferInstance.olean.private"],
   "Mathlib.Algebra.Ring.Torsion":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/Torsion.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Ring/Torsion.ir",
@@ -10734,6 +11259,11 @@
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/BigOperators/Balance.ir",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/BigOperators/Balance.olean.server",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/BigOperators/Balance.olean.private"],
+  "Mathlib.Algebra.Algebra.TransferInstance":
+  ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Algebra/TransferInstance.olean",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Algebra/TransferInstance.ir",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Algebra/TransferInstance.olean.server",
+   "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Algebra/TransferInstance.olean.private"],
   "Mathlib.Algebra.Algebra.Tower":
   ["/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Algebra/Tower.olean",
    "/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean/Mathlib/Algebra/Algebra/Tower.ir",
