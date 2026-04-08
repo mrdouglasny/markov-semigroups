@@ -152,7 +152,15 @@ theorem weighted_young (m : LogConcaveMeasure E)
   rw [hexpand, hHug, hHgg] at hpsd
   linarith
 
-/-- **Axiom 4 (Continuity of operator inversion).** -/
+/-- **Postulated (continuity of operator inversion).** The canonical
+inverse g(x) = (Hess V x)⁻¹(∇f x) defined via `ContinuousLinearMap.inverse`
+is continuous when V is C² (so Hess V is continuous) and f is C¹
+(so ∇f is continuous).
+
+The proof uses `contDiffAt_map_inverse` (smoothness of CLM inversion at
+invertible maps) composed with continuity of Hess V and ∇f. The type-level
+work to match `E →L[ℝ] (E →L[ℝ] ℝ)` with the NormedRing structure on
+endomorphisms is substantial and deferred. -/
 axiom continuous_hessianInverse_gradient {E : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
     [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
