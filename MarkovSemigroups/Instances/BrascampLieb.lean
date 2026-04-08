@@ -250,7 +250,23 @@ theorem brascampLieb_poincare
       ≤ ∫ x, (fderiv ℝ f x) (g x) ∂m.μ := hBL
     _ ≤ ∫ x, (1 / ρ * ‖fderiv ℝ f x‖ ^ 2) ∂m.μ := by
         apply MeasureTheory.integral_mono
-        · sorry -- Integrable (fun x => (fderiv ℝ f x) (g x)) m.μ
+        · -- Integrability: |(∇f)(g)| ≤ (1/ρ)‖∇f‖², and RHS is integrable.
+          -- Need: nonneg lower bound + upper bound + measurability.
+          have hnn : ∀ x, 0 ≤ (fderiv ℝ f x) (g x) := by
+            intro x
+            have hρg := hρ_bound x (g x)
+            have hkey : (fderiv ℝ f x) (g x) = hessianBilin m.V x (g x) (g x) := by
+              simp only [hessianBilin]; rw [← hg_solve x]
+            rw [hkey]
+            have : 0 ≤ ρ * ‖g x‖ ^ 2 := by positivity
+            linarith
+          apply (hf_grad_int.const_mul (1 / ρ)).mono'
+          · -- AEStronglyMeasurable: (∇f)(g) is measurable
+            -- Follows from continuity of C¹ functions (f and g)
+            sorry
+          · filter_upwards with x
+            rw [Real.norm_eq_abs, abs_of_nonneg (hnn x)]
+            exact hpw x
         · exact hf_grad_int.const_mul _
         · exact hpw
     _ = 1 / ρ * ∫ x, ‖fderiv ℝ f x‖ ^ 2 ∂m.μ :=
