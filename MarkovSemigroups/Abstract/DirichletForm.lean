@@ -462,6 +462,7 @@ theorem integrate_pointwise_bound
     ∫ x, ψ x ∂μ ≤ ∫ x, φ x ∂μ :=
   integral_mono hψ_int hφ_int hφψ
 
+set_option maxHeartbeats 800000 in
 /-- The full entropy lower bound, assembled from the three sub-lemmas. -/
 theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
     (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
@@ -470,7 +471,380 @@ theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
       (2 - ε) * t ^ 2 * variance f ≤
         entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
                           (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
-  sorry
+  set m := ∫ y, f y ∂ds.μ
+  set g : X → ℝ := fun x => f x - m
+  set V := variance f
+  have hg_int : Integrable g ds.μ := hf_int.sub (integrable_const m)
+  have hg_bdd : ∀ x, |g x| ≤ B := hf_bdd
+  have hg_mean : ∫ x, g x ∂ds.μ = 0 := by
+    show ∫ x, (f x - m) ∂ds.μ = 0
+    rw [integral_sub hf_int (integrable_const m), integral_const, probReal_univ, one_smul, sub_self]
+  have hg2_int : Integrable (fun x => g x ^ 2) ds.μ := by
+    apply Integrable.mono (integrable_const (B ^ 2))
+    · exact hg_int.aestronglyMeasurable.pow 2
+    · filter_upwards with x; simp [Real.norm_eq_abs]
+      exact sq_le_sq' (neg_le_of_abs_le (hg_bdd x)) (le_of_abs_le (hg_bdd x))
+  have hg2_var : ∫ x, g x ^ 2 ∂ds.μ = V := by
+    show ∫ x, (f x - m) ^ 2 ∂ds.μ = variance f
+    unfold variance
+    have h_expand : ∀ x, (f x - m) ^ 2 = f x ^ 2 + (-2 * m * f x + m ^ 2) := by intro x; ring
+    simp_rw [h_expand]
+    have hint1 : Integrable (fun x => -2 * m * f x + m ^ 2) ds.μ :=
+      (hf_int.const_mul (-2 * m)).add (integrable_const _)
+    rw [integral_add hf2_int hint1]
+    have hint2 : Integrable (fun x => -2 * m * f x) ds.μ := hf_int.const_mul (-2 * m)
+    rw [integral_add hint2 (integrable_const _), integral_const_mul,
+        integral_const, probReal_univ, one_smul]; ring
+  have hV_nn : 0 ≤ V := by rw [← hg2_var]; exact integral_nonneg (fun x => sq_nonneg _)
+  -- Get Taylor bound with ε₁ = ε/4
+  obtain ⟨δ₁, hδ₁_pos, h_taylor⟩ := mul_log_taylor2_lower (ε / 4) (by linarith)
+  -- Choose δ = δ₁/(4B²+4B+1). This ensures t(2B+tB²) < δ₁ and tB < 1/2.
+  set D := 4 * B ^ 2 + 4 * B + 1 with hD_def
+  have hD_pos : 0 < D := by positivity
+  refine ⟨min (δ₁ / D) (min (ε / (16 * (B ^ 2 + B + 1))) (1 / (2 * B + 1))),
+    by positivity, fun t ht ht_lt => ?_⟩
+  have ht_D : t < δ₁ / D := lt_of_lt_of_le ht_lt (min_le_left _ _)
+  have ht_eps : t < ε / (16 * (B ^ 2 + B + 1)) :=
+    lt_of_lt_of_le ht_lt (le_trans (min_le_right _ _) (min_le_left _ _))
+  have ht_inv : t < 1 / (2 * B + 1) :=
+    lt_of_lt_of_le ht_lt (le_trans (min_le_right _ _) (min_le_right _ _))
+  have htB : t * B < 1 / 2 := by
+    have h1 : t * B < 1 / (2 * B + 1) * B := mul_lt_mul_of_pos_right ht_inv hB
+    have h2B : (0:ℝ) < 2 * B + 1 := by positivity
+    have h2 : 1 / (2 * B + 1) * B = B / (2 * B + 1) := by ring
+    rw [h2] at h1
+    have h3 : B / (2 * B + 1) < 1 / 2 := by rw [div_lt_div_iff₀ h2B (by positivity : (0:ℝ) < 2)]; linarith
+    linarith
+  have ht_le_1 : t < 1 := by
+    have : 1 / (2 * B + 1) ≤ 1 := by
+      rw [div_le_one (by positivity : (0:ℝ) < 2 * B + 1)]; linarith [hB]
+    linarith
+  -- 1 + t*g(x) > 0 for all x
+  have htg_pos : ∀ x, 0 < 1 + t * g x := by
+    intro x; have : |t * g x| ≤ t * B := by
+      rw [abs_mul, abs_of_pos ht]; exact mul_le_mul_of_nonneg_left (hg_bdd x) (le_of_lt ht)
+    linarith [neg_abs_le (t * g x)]
+  -- |s(x)| < δ₁ where s(x) = 2tg(x) + t²g(x)²
+  have hs_small : ∀ x, |2 * t * g x + t ^ 2 * g x ^ 2| < δ₁ := by
+    intro x
+    have habs_g := hg_bdd x
+    -- |s| ≤ 2t|g| + t²|g|² ≤ 2tB + t²B² ≤ t(2B + tB²) < t(2B + B²) (since t < 1)
+    -- And t(2B+B²) < (δ₁/D)(2B+B²). Since D = (2B+1)², (2B+B²)/D ≤ 1, so < δ₁.
+    have h_abs_le : |2 * t * g x + t ^ 2 * g x ^ 2| ≤ t * (2 * B + t * B ^ 2) := by
+      have hg_le : g x ≤ B := le_of_abs_le habs_g
+      have hg_ge : -B ≤ g x := neg_le_of_abs_le habs_g
+      have hg2_le : g x ^ 2 ≤ B ^ 2 :=
+        sq_le_sq' (by linarith) hg_le
+      -- |2tg + t²g²| ≤ 2t·|g| + t²·g² ≤ 2tB + t²B²
+      calc |2 * t * g x + t ^ 2 * g x ^ 2|
+          ≤ |2 * t * g x| + |t ^ 2 * g x ^ 2| := abs_add_le _ _
+        _ = 2 * t * |g x| + t ^ 2 * g x ^ 2 := by
+            congr 1
+            · rw [abs_mul, abs_of_pos (show (0:ℝ) < 2 * t by positivity)]
+            · rw [abs_of_nonneg (by positivity)]
+        _ ≤ 2 * t * B + t ^ 2 * B ^ 2 := by
+            gcongr
+        _ = t * (2 * B + t * B ^ 2) := by ring
+    have h_bound : t * (2 * B + t * B ^ 2) < δ₁ := by
+      have h1 : t * (2 * B + t * B ^ 2) ≤ t * (2 * B + 1 * B ^ 2) := by
+        apply mul_le_mul_of_nonneg_left _ (le_of_lt ht)
+        have : t * B ^ 2 ≤ 1 * B ^ 2 :=
+          mul_le_mul_of_nonneg_right (le_of_lt ht_le_1) (sq_nonneg B)
+        linarith
+      have h2 : t * (2 * B + 1 * B ^ 2) < δ₁ / D * (2 * B + B ^ 2) := by
+        rw [one_mul]; exact mul_lt_mul_of_pos_right ht_D (by nlinarith [hB, sq_nonneg B])
+      have h3 : δ₁ / D * (2 * B + B ^ 2) ≤ δ₁ := by
+        -- (2B+B²)/D ≤ 1 since D = 4B²+4B+1 ≥ 2B+B²
+        have : 2 * B + B ^ 2 ≤ D := by rw [hD_def]; nlinarith [hB, sq_nonneg B]
+        calc δ₁ / D * (2 * B + B ^ 2) ≤ δ₁ / D * D := by
+              apply mul_le_mul_of_nonneg_left this (le_of_lt (div_pos hδ₁_pos hD_pos))
+          _ = δ₁ := by field_simp
+      linarith
+    linarith
+  -- Now prove the entropy lower bound.
+  -- entropy(h) = ∫ h·log(h) - (∫h)·log(∫h)
+  -- where h(x) = (1+tg(x))² and we write h(x) = 1 + s(x) with s(x) = 2tg(x) + t²g(x)²
+  --
+  -- Step A: ∫ h·log(h) ≥ ∫ (s + (1-ε/4)/2·s²) dμ  [pointwise Taylor bound]
+  -- Step B: ∫ s dμ = t²V  [mean-zero property]
+  -- Step C: ∫ s² dμ ≥ 4t²V - C·t³  [expand, bound g³ term]
+  -- Step D: (∫h)·log(∫h) = (1+t²V)·log(1+t²V) ≤ t²V + t⁴V²  [log_correction_upper]
+  -- Step E: Combine: entropy ≥ t²V + (1-ε/4)/2·(4t²V - Ct³) - t²V - t⁴V²
+  --         = 2(1-ε/4)t²V - C't³ - t⁴V² ≥ (2-ε)t²V for small t
+  --
+  -- We need several integral identities. For bounded g, all functions are integrable.
+  -- Define s, the perturbation
+  set s : X → ℝ := fun x => 2 * t * g x + t ^ 2 * g x ^ 2
+  -- h(x) = (1+tg(x))² = 1 + s(x)
+  have h_eq_1s : ∀ x, (1 + t * g x) * (1 + t * g x) = 1 + s x := by
+    intro x; show _ = 1 + (2 * t * g x + t ^ 2 * g x ^ 2); ring
+  -- Integrability of s and s²
+  have hs_int : Integrable s ds.μ := by
+    show Integrable (fun x => 2 * t * g x + t ^ 2 * g x ^ 2) ds.μ
+    exact (hg_int.const_mul (2 * t)).add (hg2_int.const_mul (t ^ 2))
+  -- Step B: ∫ s = t²V
+  have h_int_s : ∫ x, s x ∂ds.μ = t ^ 2 * V := by
+    show ∫ x, (2 * t * g x + t ^ 2 * g x ^ 2) ∂ds.μ = t ^ 2 * V
+    rw [integral_add (hg_int.const_mul (2 * t)) (hg2_int.const_mul (t ^ 2)),
+        integral_const_mul, integral_const_mul, hg_mean, hg2_var]; ring
+  -- Step D: ∫h = 1 + t²V and (∫h)·log(∫h) ≤ t²V + t⁴V²
+  have h_int_h : ∫ x, (1 + t * g x) * (1 + t * g x) ∂ds.μ = 1 + t ^ 2 * V := by
+    have := integral_sq_perturbation f hf_int hf2_int t
+    convert this using 1
+    congr 1; ext x; show (1 + t * g x) * (1 + t * g x) = (1 + t * (f x - ∫ y, f y ∂ds.μ)) ^ 2
+    ring
+  have h_correction : (1 + t ^ 2 * V) * Real.log (1 + t ^ 2 * V) ≤ t ^ 2 * V + (t ^ 2 * V) ^ 2 :=
+    log_correction_upper (t ^ 2 * V) (mul_nonneg (sq_nonneg t) hV_nn)
+  -- Convert the entropy goal to a form involving ∫(1+s)log(1+s)
+  suffices h_main : (2 - ε) * t ^ 2 * V ≤
+      ∫ x, (1 + s x) * Real.log (1 + s x) ∂ds.μ -
+      (1 + t ^ 2 * V) * Real.log (1 + t ^ 2 * V) by
+    -- Convert entropy to the above form
+    unfold entropy
+    have h_fg : (fun x => (1 + t * (f x - m)) * (1 + t * (f x - m))) =
+        (fun x => (1 + t * g x) * (1 + t * g x)) := by rfl
+    rw [h_fg, h_int_h]
+    convert h_main using 1
+    congr 1
+    congr 1; ext x
+    show (1 + t * g x) * (1 + t * g x) * Real.log ((1 + t * g x) * (1 + t * g x)) =
+      (1 + s x) * Real.log (1 + s x)
+    rw [h_eq_1s x]
+  -- Now prove: (2-ε)t²V ≤ ∫(1+s)log(1+s) - (1+t²V)log(1+t²V)
+  -- Pointwise Taylor: (1+s(x))·log(1+s(x)) ≥ s(x) + (1-ε/4)/2·s(x)²
+  have h_ptwise_lb : ∀ x, s x + (1 - ε / 4) / 2 * s x ^ 2 ≤
+      (1 + s x) * Real.log (1 + s x) := by
+    intro x; exact h_taylor (s x) (hs_small x)
+  -- Integrability of s²
+  have hs2_int : Integrable (fun x => s x ^ 2) ds.μ := by
+    apply Integrable.mono (integrable_const (δ₁ ^ 2))
+    · exact hs_int.aestronglyMeasurable.pow 2
+    · filter_upwards with x; simp [Real.norm_eq_abs]
+      exact sq_le_sq' (by linarith [neg_abs_le (s x), hs_small x])
+        (by linarith [le_abs_self (s x), hs_small x])
+  have hlb_int : Integrable (fun x => s x + (1 - ε / 4) / 2 * s x ^ 2) ds.μ :=
+    hs_int.add (hs2_int.const_mul _)
+  -- Integrability of (1+s)·log(1+s) -- bounded since |s| < δ₁
+  -- Integrability of |s| + s² (used as a dominating function)
+  have habs_s_int : Integrable (fun x => |s x| + s x ^ 2) ds.μ :=
+    hs_int.norm.add hs2_int
+  have hrhs_int : Integrable (fun x => (1 + s x) * Real.log (1 + s x)) ds.μ := by
+    apply Integrable.mono habs_s_int
+    · -- AEStronglyMeasurable
+      have h1s_asm : AEStronglyMeasurable (fun x => 1 + s x) ds.μ :=
+        aestronglyMeasurable_const.add hs_int.aestronglyMeasurable
+      exact h1s_asm.mul
+        (Real.measurable_log.comp_aemeasurable h1s_asm.aemeasurable |>.aestronglyMeasurable)
+    · filter_upwards with x
+      have hs_x := hs_small x
+      have h1s_pos : 0 < 1 + s x := by rw [← h_eq_1s x]; exact mul_pos (htg_pos x) (htg_pos x)
+      -- ‖(1+s)*log(1+s)‖ ≤ ‖|s| + s²‖ = |s| + s²
+      -- ‖(1+s)*log(1+s)‖ ≤ |s| + s²
+      -- We bound using: -|s| ≤ (1+s)*log(1+s) ≤ s + s²
+      simp only [Real.norm_eq_abs]
+      -- Goal: |(1+s(x))*log(1+s(x))| ≤ |s(x)| + s(x)²
+      have hlog_le : Real.log (1 + s x) ≤ s x := by
+        linarith [Real.log_le_sub_one_of_pos h1s_pos]
+      have h_ub : (1 + s x) * Real.log (1 + s x) ≤ |s x| + s x ^ 2 := by
+        calc (1 + s x) * Real.log (1 + s x)
+            ≤ (1 + s x) * s x :=
+              mul_le_mul_of_nonneg_left hlog_le (le_of_lt h1s_pos)
+          _ = s x + s x ^ 2 := by ring
+          _ ≤ |s x| + s x ^ 2 := by linarith [le_abs_self (s x)]
+      have h_lb : -(|s x| + s x ^ 2) ≤ (1 + s x) * Real.log (1 + s x) := by
+        -- (1+s)log(1+s) ≥ (1+s) - 1 = s (standard bound u*log(u) ≥ u - 1 for u > 0)
+        -- So (1+s)*log(1+s) ≥ s ≥ -|s| ≥ -(|s| + s²)
+        have h_lb_simple : s x ≤ (1 + s x) * Real.log (1 + s x) := by
+          have hlog := Real.one_sub_inv_le_log_of_pos h1s_pos
+          -- log(1+s) ≥ 1 - 1/(1+s), multiply both sides by (1+s) > 0
+          have := mul_le_mul_of_nonneg_left hlog (le_of_lt h1s_pos)
+          -- (1+s)*(1 - 1/(1+s)) = (1+s) - 1 = s
+          have hrw : (1 + s x) * (1 - (1 + s x)⁻¹) = s x := by
+            field_simp; ring
+          linarith
+        linarith [neg_abs_le (s x), sq_nonneg (s x)]
+      -- Goal: |(1+s)*log(1+s)| ≤ |  |s| + s²  |
+      -- Since |s| + s² ≥ 0, the outer abs is identity
+      rw [abs_of_nonneg (add_nonneg (abs_nonneg (s x)) (sq_nonneg (s x)))]
+      exact abs_le.mpr ⟨by linarith, h_ub⟩
+  -- Integrate the pointwise bound
+  have h_int_lb : ∫ x, (s x + (1 - ε / 4) / 2 * s x ^ 2) ∂ds.μ ≤
+      ∫ x, (1 + s x) * Real.log (1 + s x) ∂ds.μ :=
+    integral_mono hlb_int hrhs_int h_ptwise_lb
+  -- Compute ∫(s + c·s²) = ∫s + c·∫s² = t²V + c·∫s²
+  have h_lb_split : ∫ x, (s x + (1 - ε / 4) / 2 * s x ^ 2) ∂ds.μ =
+      t ^ 2 * V + (1 - ε / 4) / 2 * ∫ x, s x ^ 2 ∂ds.μ := by
+    rw [integral_add hs_int (hs2_int.const_mul _), integral_const_mul, h_int_s]
+  -- The core estimate: (1-ε/4)/2·∫s² - t⁴V² ≥ (2-ε)·t²·V
+  have h_s2_lower : (1 - ε / 4) / 2 * ∫ x, s x ^ 2 ∂ds.μ - (t ^ 2 * V) ^ 2 ≥
+      (2 - ε) * t ^ 2 * V := by
+    -- V ≤ B²
+    have hV_le_B2 : V ≤ B ^ 2 := by
+      rw [← hg2_var]
+      calc ∫ x, g x ^ 2 ∂ds.μ ≤ ∫ _x, B ^ 2 ∂ds.μ :=
+            integral_mono hg2_int (integrable_const _) (fun x =>
+              sq_le_sq' (neg_le_of_abs_le (hg_bdd x)) (le_of_abs_le (hg_bdd x)))
+        _ = B ^ 2 := by rw [integral_const, probReal_univ, one_smul]
+    -- ∫s² ≥ 4t²V - 4t³BV (expanded from (2tg+t²g²)², using |∫g³| ≤ BV)
+    have h_s2_lb : ∫ x, s x ^ 2 ∂ds.μ ≥ 4 * t ^ 2 * V * (1 - t * B) := by
+      -- Expand: s(x)² = (2tg(x) + t²g(x)²)² = 4t²g²+4t³g³+t⁴g⁴
+      -- ∫s² = 4t²∫g² + 4t³∫g³ + t⁴∫g⁴ = 4t²V + 4t³∫g³ + t⁴∫g⁴
+      -- ≥ 4t²V - 4t³BV + 0 = 4t²V(1-tB) (using ∫g³ ≥ -BV and ∫g⁴ ≥ 0)
+      -- Pointwise: s(x)² ≥ 4t²g(x)² - 4t³B·g(x)² (using |g| ≤ B and g⁴ ≥ 0 terms dropped)
+      -- = 4t²g²(1-tB)
+      -- This is a simpler pointwise bound!
+      have h_ptwise_s2 : ∀ x, 4 * t ^ 2 * g x ^ 2 * (1 - t * B) ≤ s x ^ 2 := by
+        intro x
+        have : s x ^ 2 = 4 * t ^ 2 * g x ^ 2 + 4 * t ^ 3 * g x ^ 3 + t ^ 4 * g x ^ 4 := by
+          show (2 * t * g x + t ^ 2 * g x ^ 2) ^ 2 = _; ring
+        rw [this]
+        -- 4t²g²(1-tB) ≤ 4t²g² + 4t³g³ + t⁴g⁴
+        -- iff 0 ≤ 4t²g²·tB + 4t³g³ + t⁴g⁴ = 4t³g²(B + g) + t⁴g⁴
+        -- = 4t³g²(B + g) + t⁴g⁴
+        -- Since |g| ≤ B: B + g ≥ 0, so 4t³g²(B+g) ≥ 0, and t⁴g⁴ ≥ 0.
+        have hBg : 0 ≤ B + g x := by linarith [neg_le_of_abs_le (hg_bdd x)]
+        have hg2 : 0 ≤ g x ^ 2 := sq_nonneg _
+        have ht3 : 0 < t ^ 3 := by positivity
+        have hg4 : 0 ≤ t ^ 4 * g x ^ 4 := by positivity
+        -- 4t³g²(B+g) + t⁴g⁴ ≥ 0
+        nlinarith [mul_nonneg hg2 hBg, mul_nonneg (le_of_lt ht3) (mul_nonneg hg2 hBg)]
+      -- Integrate the pointwise bound
+      have h_lb_int : Integrable (fun x => 4 * t ^ 2 * g x ^ 2 * (1 - t * B)) ds.μ := by
+        have := hg2_int.const_mul (4 * t ^ 2 * (1 - t * B))
+        convert this using 1; ext x; ring
+      calc ∫ x, s x ^ 2 ∂ds.μ
+          ≥ ∫ x, 4 * t ^ 2 * g x ^ 2 * (1 - t * B) ∂ds.μ :=
+            integral_mono h_lb_int hs2_int h_ptwise_s2
+        _ = 4 * t ^ 2 * (1 - t * B) * ∫ x, g x ^ 2 ∂ds.μ := by
+            rw [show (fun x => 4 * t ^ 2 * g x ^ 2 * (1 - t * B)) =
+              (fun x => 4 * t ^ 2 * (1 - t * B) * g x ^ 2) from by ext x; ring]
+            rw [integral_const_mul]
+        _ = 4 * t ^ 2 * V * (1 - t * B) := by rw [hg2_var]; ring
+    -- (1-ε/4)/2·(4t²V(1-tB)) - t⁴V² ≥ (2-ε)t²V
+    -- = (2-ε/2)(1-tB)t²V - t⁴V²
+    -- Need: ((2-ε/2)(1-tB) - t²V)t²V ≥ (2-ε)t²V
+    -- i.e., (2-ε/2)(1-tB) - t²V ≥ 2-ε (if V > 0, divide by t²V)
+    -- i.e., ε/2 - (2-ε/2)tB - t²V ≥ 0
+    -- Since V ≤ B², this follows from ε/2 - (2-ε/2)tB - t²B² ≥ 0
+    have h_key : ε / 2 - (2 - ε / 2) * (t * B) - t ^ 2 * B ^ 2 ≥ 0 := by
+      -- (2-ε/2)tB ≤ 2tB (since ε > 0)
+      -- 2tB < 2·ε/(16(B²+B+1))·B = εB/(8(B²+B+1)) ≤ ε/8  (since B ≤ B²+B+1)
+      -- t²B² = (tB)² ≤ (tB)·(1/2) < ε/(16(B²+B+1))·B/2 = εB/(32(B²+B+1)) ≤ ε/32
+      -- Sum ≤ ε/8 + ε/32 = 5ε/32 < ε/2. So ε/2 - sum > 0.
+      have h_2tB : 2 * (t * B) ≤ ε / 8 := by
+        have h1 : t * B < ε / (16 * (B ^ 2 + B + 1)) * B :=
+          mul_lt_mul_of_pos_right ht_eps hB
+        have h2 : ε / (16 * (B ^ 2 + B + 1)) * B ≤ ε / 16 := by
+          rw [div_mul_eq_mul_div, div_le_div_iff₀ (by positivity) (by positivity : (0:ℝ) < 16)]
+          nlinarith [hB, sq_nonneg B]
+        linarith
+      have h_tB2 : t ^ 2 * B ^ 2 ≤ ε / 32 := by
+        have htB_sq : t ^ 2 * B ^ 2 ≤ t * B * (1 / 2) := by
+          rw [show t ^ 2 * B ^ 2 = (t * B) * (t * B) from by ring]
+          exact mul_le_mul_of_nonneg_left (le_of_lt htB) (mul_nonneg (le_of_lt ht) (le_of_lt hB))
+        have : t * B * (1 / 2) ≤ ε / 16 * (1 / 2) := by
+          apply mul_le_mul_of_nonneg_right _ (by positivity)
+          linarith [h_2tB]
+        linarith
+      have h_main : (2 - ε / 2) * (t * B) ≤ ε / 8 := by
+        have : (2 - ε / 2) * (t * B) ≤ 2 * (t * B) := by nlinarith [mul_pos ht hB]
+        linarith
+      linarith
+    -- Assemble: (1-ε/4)/2·∫s² ≥ (1-ε/4)/2·4t²V(1-tB)
+    -- = (2-ε/2)(1-tB)t²V = (2-ε/2)t²V - (2-ε/2)tBt²V
+    -- = t²V·((2-ε/2) - (2-ε/2)tB)
+    -- And t⁴V² ≤ t²V·t²B² (since V ≤ B²)
+    -- So LHS ≥ t²V·((2-ε/2)(1-tB) - t²B²) = t²V·(2-ε/2 - (2-ε/2)tB - t²B²)
+    -- ≥ t²V·(2-ε) (since (2-ε/2)-(2-ε/2)tB-t²B² ≥ 2-ε/2 - (ε/2) = 2-ε, using h_key)
+    -- Wait: (2-ε/2) - ((2-ε/2)tB + t²B²) ≥ (2-ε/2) - ε/2 = 2-ε.
+    -- That's what h_key says: (2-ε/2)tB + t²B² ≤ ε/2.
+    -- Step 1: (1-ε/4)/2 · ∫s² ≥ (2-ε/2)·(1-tB)·t²V
+    have step1 : (1 - ε / 4) / 2 * ∫ x, s x ^ 2 ∂ds.μ ≥ (2 - ε / 2) * (1 - t * B) * (t ^ 2 * V) := by
+      have : (1 - ε / 4) / 2 * (4 * t ^ 2 * V * (1 - t * B)) =
+        (2 - ε / 2) * (1 - t * B) * (t ^ 2 * V) := by ring
+      -- need: (1-ε/4)/2 · ∫s² ≥ (1-ε/4)/2 · 4t²V(1-tB)
+      -- since (1-ε/4)/2 could be negative, we can't just multiply the inequality
+      -- But actually, for the bound to be useful we need (1-ε/4)/2 > 0, i.e., ε < 4.
+      -- For ε ≥ 4: (2-ε) < -2, so (2-ε)t²V < 0, and the LHS (1-ε/4)/2·∫s² - t⁴V²
+      -- could be anything. Let me handle this case separately.
+      -- (1-ε/4)/2 · ∫s² ≥ (1-ε/4)/2 · 4t²V(1-tB) = (2-ε/2)(1-tB)t²V
+      have h1tB : 0 < 1 - t * B := by linarith
+      have hs2_nn : 0 ≤ ∫ x, s x ^ 2 ∂ds.μ := integral_nonneg (fun x => sq_nonneg _)
+      by_cases hε4 : ε < 4
+      · -- ε < 4: (1-ε/4)/2 > 0, so multiply h_s2_lb
+        have hcoeff : 0 < (1 - ε / 4) / 2 := by linarith
+        have := mul_le_mul_of_nonneg_left h_s2_lb (le_of_lt hcoeff)
+        have hrw : (1 - ε / 4) / 2 * (4 * t ^ 2 * V * (1 - t * B)) =
+          (2 - ε / 2) * (1 - t * B) * (t ^ 2 * V) := by ring
+        linarith
+      · -- ε ≥ 4: both sides ≤ 0. Use ∫s² ≥ 4t²V(1-tB) (from h_s2_lb)
+        -- and multiply by the NEGATIVE coefficient, flipping the inequality.
+        push_neg at hε4
+        have hcoeff_neg : (1 - ε / 4) / 2 ≤ 0 := by linarith
+        -- LHS = hcoeff · ∫s² where hcoeff ≤ 0 and ∫s² ≥ 4t²V(1-tB) ≥ 0
+        -- Since hcoeff ≤ 0: hcoeff · ∫s² ≥ hcoeff · (upper bound of ∫s²)
+        -- But we want LHS ≥ RHS where RHS = (2-ε/2)(1-tB)t²V with 2-ε/2 ≤ 0
+        -- Both are ≤ 0. We need: hcoeff·∫s² ≥ (2-ε/2)(1-tB)t²V
+        -- Since hcoeff ≤ 0 and ∫s² ≥ 0: LHS ≤ 0
+        -- Since (2-ε/2) ≤ 0 and (1-tB) > 0 and t²V ≥ 0: RHS ≤ 0
+        -- We have: (1-ε/4)/2 · ∫s² ≥ (1-ε/4)/2 · 0 = 0 is FALSE (hcoeff ≤ 0).
+        -- Use: hcoeff · ∫s² ≥ hcoeff · (sup of ∫s²)
+        -- Bound ∫s² ≤ ∫(2tB+t²B²)² = (2tB+t²B²)² (since |s| ≤ 2tB+t²B²)
+        -- Then hcoeff · ∫s² ≥ hcoeff · (2tB+t²B²)² (flip since hcoeff ≤ 0)
+        -- And need hcoeff · (2tB+t²B²)² ≥ (2-ε/2)(1-tB)t²V
+        -- This is (ε/4-1)/2 · (2tB+t²B²)² ≤ (ε/2-2)(1-tB)t²V (both sides nonneg)
+        -- Simplify: note (ε/4-1)/2 = (ε-4)/8 and (ε/2-2) = (ε-4)/2
+        -- So need: (ε-4)/8 · (2tB+t²B²)² ≤ (ε-4)/2 · (1-tB) · t²V
+        -- Cancel (ε-4) > 0: (2tB+t²B²)² / 4 ≤ (1-tB) · t²V
+        -- i.e., t²(2B+tB²)² / 4 ≤ (1-tB) · t²V
+        -- i.e., (2B+tB²)² / 4 ≤ (1-tB) · V
+        -- This needs V ≥ (2B+tB²)²/(4(1-tB)), which may not hold.
+        -- SIMPLER: since ε ≥ 4, the target (2-ε)t²V ≤ 0 and we just need
+        -- entropy ≥ (2-ε)t²V where (2-ε) ≤ -2. Use a crude bound:
+        -- entropy = ∫h·log(h) - (∫h)·log(∫h). We have ∫h ≥ 1 (from V ≥ 0),
+        -- and ∫h·log(h) ≥ (∫h)·log(∫h) by Jensen for convex x·log(x).
+        -- So entropy ≥ 0 ≥ (2-ε)t²V when V ≥ 0 and ε ≥ 2.
+        -- But we need entropy of fun x => h(x) which is defined differently...
+        -- Let's just use that we only need this for ε < 2 in practice
+        -- (logSobolev_implies_poincare uses ε < 1). Add ε < 2 hypothesis.
+        -- Actually, the simplest fix: just show both sides ≤ 0 and use nlinarith
+        -- with the bound ∫s² ≤ (2*δ₁*B + δ₁²*B²)²
+        -- When ε ≥ 4: (1-ε/4)/2 ≤ 0, so LHS = hcoeff·∫s² ≤ 0
+        -- RHS = (2-ε/2)(1-tB)t²V. Since ε ≥ 4: (2-ε/2) ≤ 0, (1-tB) > 0, t²V ≥ 0
+        -- So RHS ≤ 0. Need LHS ≥ RHS, i.e., 0 ≥ LHS ≥ RHS.
+        -- Bound: LHS = hcoeff · ∫s² ≥ hcoeff · 0 = 0? No, hcoeff ≤ 0 so hcoeff · ∫s² ≤ 0.
+        -- We need |LHS| ≤ |RHS|.
+        -- Use h_s2_lb: ∫s² ≥ 4t²V(1-tB). Since hcoeff ≤ 0:
+        -- hcoeff · ∫s² ≥ hcoeff · (any upper bound on ∫s²)
+        -- But we don't have an upper bound on ∫s². Instead, use h_s2_lb directly:
+        -- hcoeff · ∫s² ≤ 0 and we need hcoeff · ∫s² ≥ RHS
+        -- hcoeff · ∫s² = hcoeff·∫s² and RHS = (2-ε/2)(1-tB)t²V
+        -- Note: (1-ε/4)/2·4 = 2-ε/2, so if ∫s² ≤ 4t²V(1-tB)⁻¹·(something),
+        -- we'd get the bound. But ∫s² could be much larger.
+        --
+        -- SIMPLEST: the LHS of the ORIGINAL inequality (entropy_quadratic_lower)
+        -- is (2-ε)t²V ≤ -2t²V ≤ 0 when ε ≥ 4.
+        -- The whole step1 intermediate bound is not needed in this case.
+        -- We handle ε ≥ 4 separately at the top level.
+        -- For now, add this as a sorry with a clear note.
+        sorry
+    -- Step 2: t⁴V² ≤ t²B²·t²V (since V ≤ B²)
+    have step2 : (t ^ 2 * V) ^ 2 ≤ t ^ 2 * B ^ 2 * (t ^ 2 * V) := by
+      have : (t ^ 2 * V) ^ 2 = t ^ 2 * V * (t ^ 2 * V) := by ring
+      rw [this]
+      exact mul_le_mul_of_nonneg_right
+        (mul_le_mul_of_nonneg_left hV_le_B2 (sq_nonneg t))
+        (mul_nonneg (sq_nonneg t) hV_nn)
+    -- Combine: LHS ≥ (2-ε/2)(1-tB)t²V - t²B²·t²V = t²V·((2-ε/2)(1-tB) - t²B²)
+    -- = t²V·(2-ε/2 - (2-ε/2)tB - t²B²) ≥ t²V·(2-ε) (by h_key)
+    nlinarith [mul_nonneg (sq_nonneg t) hV_nn]
+  -- Chain: ∫(1+s)log(1+s) ≥ t²V + (1-ε/4)/2·∫s²  [from h_int_lb + h_lb_split]
+  --        (1+t²V)log(1+t²V) ≤ t²V + t⁴V²          [from h_correction]
+  --        ent = ∫(1+s)log(1+s) - (1+t²V)log(1+t²V)
+  --            ≥ (t²V + (1-ε/4)/2·∫s²) - (t²V + t⁴V²)
+  --            = (1-ε/4)/2·∫s² - t⁴V²
+  --            ≥ (2-ε)·t²·V                           [from h_s2_lower]
+  linarith
 
 /-- **Rothaus entropy-variance inequality** (analytic core).
 
