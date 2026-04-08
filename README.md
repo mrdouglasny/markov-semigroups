@@ -130,6 +130,23 @@ MarkovSemigroups/
     Ergodicity.lean             -- Uniqueness of invariant measure
 ```
 
+## Formalization status
+
+**Zero sorry's.** Every theorem in the project is either fully proven
+or derived from one of 8 postulated axioms, each a standard textbook
+result with a precise reference:
+
+| Axiom | Reference |
+|-------|-----------|
+| `variance_nonneg'` | Cauchy-Schwarz: (∫f)² ≤ ∫f² |
+| `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
+| `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
+| `bakryEmery_poincare` | BGL Theorem 4.8.4 |
+| `bakryEmery_logSobolev` | BGL Theorem 5.5.2 |
+| `bakryEmery_variance_decay` | BGL Proposition 4.8.1 |
+| `resolvent_ibp_axiom` | Lax-Milgram + weighted IBP (BGL §1.15) |
+| `integrated_bochner_axiom` | Bochner-Weitzenböck identity (BGL §1.16) |
+
 ## Application to P(Phi)_2
 
 The Gaussian results (Phases 1-3) provide the free-field infrastructure
