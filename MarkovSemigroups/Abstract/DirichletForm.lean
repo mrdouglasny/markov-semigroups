@@ -464,7 +464,7 @@ theorem integrate_pointwise_bound
 
 set_option maxHeartbeats 800000 in
 /-- The full entropy lower bound, assembled from the three sub-lemmas. -/
-theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
+theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) (hε_lt : ε < 4)
     (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
     (B : ℝ) (hB : 0 < B) (hf_bdd : ∀ x, |f x - ∫ y, f y ∂ds.μ| ≤ B) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
@@ -826,8 +826,8 @@ theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
         -- is (2-ε)t²V ≤ -2t²V ≤ 0 when ε ≥ 4.
         -- The whole step1 intermediate bound is not needed in this case.
         -- We handle ε ≥ 4 separately at the top level.
-        -- For now, add this as a sorry with a clear note.
-        sorry
+        -- ε ≥ 4 contradicts the hypothesis hε_lt : ε < 4
+        linarith
     -- Step 2: t⁴V² ≤ t²B²·t²V (since V ≤ B²)
     have step2 : (t ^ 2 * V) ^ 2 ≤ t ^ 2 * B ^ 2 * (t ^ 2 * V) := by
       have : (t ^ 2 * V) ^ 2 = t ^ 2 * V * (t ^ 2 * V) := by ring
@@ -873,8 +873,39 @@ theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
     ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
       (2 - ε) * t ^ 2 * variance f ≤
         entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
-                          (1 + t * (f x - ∫ y, f y ∂ds.μ))) :=
-  entropy_quadratic_lower f ε hε hf_int hf2_int B hB hf_bdd
+                          (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
+  -- For ε < 4: delegate to entropy_quadratic_lower
+  -- For ε ≥ 4: (2-ε) ≤ -2, so (2-ε)t²V ≤ 0. Use δ = 1 and any bound.
+  by_cases hε4 : ε < 4
+  · exact entropy_quadratic_lower f ε hε hε4 hf_int hf2_int B hB hf_bdd
+  · -- ε ≥ 4: the target (2-ε)t²V ≤ 0 for V ≥ 0.
+    -- entropy can be anything, but (2-ε)t²V ≤ 0 ≤ entropy is too strong.
+    -- Actually we just need SOME δ. Use δ = 1 and sorry the bound.
+    -- But we can be smarter: (2-ε) ≤ -2, t² ≥ 0, V could be anything.
+    -- If V ≤ 0: (2-ε)t²V ≥ 0 (product of two negatives and a nonneg).
+    -- Hmm. Just use δ = 1 with entropy_quadratic_lower at ε' = 3 < 4:
+    push_neg at hε4
+    have hε3 : (0 : ℝ) < 3 := by norm_num
+    have hε3_lt : (3 : ℝ) < 4 := by norm_num
+    obtain ⟨δ, hδ_pos, hδ⟩ := entropy_quadratic_lower f 3 hε3 hε3_lt hf_int hf2_int B hB hf_bdd
+    refine ⟨δ, hδ_pos, fun t ht htδ => ?_⟩
+    have h3 := hδ t ht htδ
+    -- (2-ε)t²V ≤ (2-3)t²V = -t²V ≤ (2-3)t²V ≤ entropy (from h3)
+    -- Need: (2-ε)t²V ≤ (2-3)t²V when ε ≥ 4 and t²V could be pos or neg
+    -- (2-ε) ≤ -2 ≤ -1 = 2-3, so (2-ε)t²V ≤ (2-3)t²V when t²V ≥ 0
+    -- and (2-ε)t²V ≥ (2-3)t²V when t²V ≤ 0... hmm.
+    -- Actually: variance f = ∫f² - (∫f)², which can be negative? No:
+    -- By Cauchy-Schwarz (or Jensen), ∫f² ≥ (∫f)², so V ≥ 0.
+    -- Therefore t²V ≥ 0, and (2-ε) ≤ (2-3) = -1, so (2-ε)t²V ≤ -1·t²V ≤ (2-3)t²V.
+    -- Var(f) = ∫(f-m)² ≥ 0 (nonneg integral of squares)
+    -- For bounded f with |f-m| ≤ B: use the bound directly
+    have hV_nn : 0 ≤ variance f := by
+      -- Var(f) = ∫g² where g = f - ∫f. Use integral_nonneg.
+      -- We proved this in entropy_quadratic_lower's proof already at line ~498.
+      -- Here: variance f = ∫f² - (∫f)². Rewrite as ∫(f-m)².
+      -- ∫(f-m)² ≥ 0 by integral_nonneg.
+      sorry -- variance nonneg (needs integral_nonneg + rewriting)
+    nlinarith [mul_nonneg (sq_nonneg t) hV_nn]
 
 /-- **Energy of the Rothaus perturbation.**
 E(1 + t·g, 1 + t·g) = t² · E(g, g) for any g and t.
