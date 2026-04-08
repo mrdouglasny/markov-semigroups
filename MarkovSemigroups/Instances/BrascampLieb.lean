@@ -38,6 +38,7 @@ import Mathlib.Analysis.InnerProductSpace.Dual
 import Mathlib.Analysis.Calculus.ContDiff.Defs
 import Mathlib.Analysis.Calculus.FDeriv.Basic
 import Mathlib.Analysis.Calculus.FDeriv.Symmetric
+import Mathlib.Analysis.Calculus.ContDiff.Operations
 import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
 import Mathlib.LinearAlgebra.Dual.Lemmas
 import Mathlib.Topology.Algebra.Module.FiniteDimension
@@ -152,21 +153,37 @@ theorem weighted_young (m : LogConcaveMeasure E)
   rw [hexpand, hHug, hHgg] at hpsd
   linarith
 
-/-- **Postulated (continuity of operator inversion).** The canonical
-inverse g(x) = (Hess V x)⁻¹(∇f x) defined via `ContinuousLinearMap.inverse`
-is continuous when V is C² (so Hess V is continuous) and f is C¹
-(so ∇f is continuous).
+/-- Construct a ContinuousLinearEquiv from a bijective CLM in finite dimensions. -/
+def clmEquivOfBijective (H : E →L[ℝ] (E →L[ℝ] ℝ))
+    (hinj : Function.Injective H) (hsurj : Function.Surjective H) :
+    E ≃L[ℝ] (E →L[ℝ] ℝ) := by
+  let le := LinearEquiv.ofBijective H.toLinearMap ⟨hinj, hsurj⟩
+  let invCLM : (E →L[ℝ] ℝ) →L[ℝ] E := LinearMap.toContinuousLinearMap le.symm.toLinearMap
+  exact ContinuousLinearEquiv.equivOfInverse H invCLM
+    (fun x => le.symm_apply_apply x) (fun x => le.apply_symm_apply x)
 
-The proof uses `contDiffAt_map_inverse` (smoothness of CLM inversion at
-invertible maps) composed with continuity of Hess V and ∇f. The type-level
-work to match `E →L[ℝ] (E →L[ℝ] ℝ)` with the NormedRing structure on
-endomorphisms is substantial and deferred. -/
-axiom continuous_hessianInverse_gradient {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
-    [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
-    (f : E → ℝ) (hf : ContDiff ℝ 1 f) (g : E → E)
-    (hg_solve : ∀ x, (fderiv ℝ (fderiv ℝ m.V) x) (g x) = fderiv ℝ f x) :
-    Continuous g
+/-- **PROVEN.** Continuity of the canonical Hessian inverse applied to
+the gradient: g(x) = (Hess V x)⁻¹(∇f x) is continuous.
+
+Proof: the Hessian x ↦ Hess V x is continuous (V is C²), operator
+inversion is continuous at invertible maps (`contDiffAt_map_inverse`),
+and the gradient x ↦ ∇f x is continuous (f is C¹). The composition
+via `Continuous.clm_apply` is continuous. -/
+theorem continuous_hessianInverse_gradient (m : LogConcaveMeasure E)
+    (hinj : ∀ x, Function.Injective (fderiv ℝ (fderiv ℝ m.V) x))
+    (hsurj : ∀ x, Function.Surjective (fderiv ℝ (fderiv ℝ m.V) x))
+    (f : E → ℝ) (hf : ContDiff ℝ 1 f) :
+    Continuous (fun x => ContinuousLinearMap.inverse (fderiv ℝ (fderiv ℝ m.V) x) (fderiv ℝ f x)) := by
+  have hHess_cont : Continuous (fderiv ℝ (fderiv ℝ m.V)) := by
+    have h1 : ContDiff ℝ 1 (fderiv ℝ m.V) := m.hV_diff.fderiv_right (by norm_num)
+    exact h1.continuous_fderiv (by norm_num)
+  have hgrad_cont : Continuous (fderiv ℝ f) := hf.continuous_fderiv (by norm_num)
+  have hInv : ∀ x, ContinuousLinearMap.IsInvertible (fderiv ℝ (fderiv ℝ m.V) x) :=
+    fun x => ⟨clmEquivOfBijective _ (hinj x) (hsurj x), rfl⟩
+  have hInvHess : Continuous (fun x => ContinuousLinearMap.inverse (fderiv ℝ (fderiv ℝ m.V) x)) := by
+    rw [continuous_iff_continuousAt]; intro x
+    exact (((hInv x).contDiffAt_map_inverse (n := 0)).continuousAt).comp hHess_cont.continuousAt
+  exact hInvHess.clm_apply hgrad_cont
 
 namespace LogConcaveMeasure
 
@@ -274,11 +291,18 @@ theorem hessian_surjective (x : E) :
 theorem exists_hessian_inverse (f : E → ℝ) (hf : ContDiff ℝ 1 f) :
     ∃ g : E → E, Continuous g ∧
     ∀ x, (fderiv ℝ (fderiv ℝ m.V) x) (g x) = fderiv ℝ f x := by
-  have hsurj := m.hessian_surjective
-  let g : E → E := fun x => (hsurj x (fderiv ℝ f x)).choose
-  have hg_solve : ∀ x, (fderiv ℝ (fderiv ℝ m.V) x) (g x) = fderiv ℝ f x :=
-    fun x => (hsurj x (fderiv ℝ f x)).choose_spec
-  exact ⟨g, continuous_hessianInverse_gradient m f hf g hg_solve, hg_solve⟩
+  -- Define g explicitly via ContinuousLinearMap.inverse
+  let g : E → E := fun x =>
+    ContinuousLinearMap.inverse (fderiv ℝ (fderiv ℝ m.V) x) (fderiv ℝ f x)
+  refine ⟨g, ?_, ?_⟩
+  · -- Continuity: proven via contDiffAt_map_inverse
+    exact continuous_hessianInverse_gradient m
+      (fun x => m.hessian_injective x) (fun x => m.hessian_surjective x) f hf
+  · -- Solve equation: (Hess V x)(g x) = ∇f(x)
+    intro x
+    have hInv : ContinuousLinearMap.IsInvertible (fderiv ℝ (fderiv ℝ m.V) x) :=
+      ⟨clmEquivOfBijective _ (m.hessian_injective x) (m.hessian_surjective x), rfl⟩
+    exact ContinuousLinearMap.IsInvertible.self_apply_inverse hInv _
 
 /-! ### Poincaré corollary -/
 
