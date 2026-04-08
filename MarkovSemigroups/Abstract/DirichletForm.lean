@@ -227,27 +227,128 @@ FALSE for x > 1 (e.g. at x = 2: 2 log 2 ≈ 1.39 < 1.5 = 1 + 1/2),
 so the global bound Ent(f²) ≥ 2·Var(f) does not hold. The correct
 argument requires the limit. -/
 
+/-- **Rothaus entropy-variance inequality** (analytic core).
+
+For a probability measure μ and function f, let g(x) = f(x) - ∫f dμ be
+the mean-zero part. For any ε > 0, there exists δ > 0 such that for
+0 < t < δ:
+
+  (2 - ε) · t² · Var(f) ≤ Ent((1 + t·g)²)
+
+where Var(f) = ∫(f - ∫f)² dμ = ∫f² dμ - (∫f dμ)².
+
+This is the second-order Taylor expansion of entropy: as t → 0,
+  Ent((1+tg)²) / t² → 2 · Var(f)
+which follows from the expansion x·log(x) = (x-1) + ½(x-1)² + O((x-1)³)
+applied to x = (1+tg)² = 1 + 2tg + t²g², giving
+  (1+tg)² · log((1+tg)²) = 2tg + 2t²g² + O(t³)
+and integrating (using ∫g = 0, μ probability) yields Ent = 2t²·Var(f) + O(t³).
+
+**This is sorry'd**: it requires Lebesgue dominated convergence and
+pointwise Taylor estimates for x·log(x). The algebraic proof that LSI
+implies Poincaré is complete modulo this single analytic fact.
+
+*Reference*: Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
+Operators*, proof of Proposition 5.1.3. -/
+theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
+      (2 - ε) * t ^ 2 * variance f ≤
+        entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
+                          (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
+  sorry
+
+/-- **Energy of the Rothaus perturbation.**
+E(1 + t·g, 1 + t·g) = t² · E(g, g) for any g and t.
+Follows from `energy_add_const` and `energy_smul`. -/
+theorem energy_rothaus (g : X → ℝ) (t : ℝ) :
+    ds.energy (fun x => 1 + t * g x) (fun x => 1 + t * g x) =
+      t ^ 2 * ds.energy g g := by
+  have h1 : (fun x => 1 + t * g x) = (fun x => (t • g) x + 1) := by
+    ext x; simp [Pi.smul_apply]; ring
+  rw [h1, energy_add_const, energy_smul]
+
 /-- **LSI implies Poincaré** (Rothaus, 1985; BGL Prop 5.1.3).
 
 A log-Sobolev inequality with constant ρ implies a Poincaré inequality
 with the same constant ρ.
 
 The proof uses the Rothaus linearization: apply the LSI to the family
-f_t = 1 + t·g for mean-zero g, expand Ent(f_t²) to second order in t,
-and take t → 0. -/
+f_t = 1 + t·g for mean-zero g = f - ∫f, expand Ent(f_t²) to second
+order in t, and take t → 0.
+
+The analytic core (Taylor expansion of entropy) is isolated in
+`rothaus_entropy_expansion`; all algebraic reasoning is fully proved. -/
 theorem logSobolev_implies_poincare {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ) :
     SatisfiesPoincare (ds := ds) ρ := by
   refine ⟨h.1, fun f => ?_⟩
-  -- The Rothaus linearization argument:
-  -- For any g with ∫g = 0, and any t > 0, apply LSI to (1 + t·g):
-  --   Ent((1+tg)²) ≤ (2/ρ) · t² · E(g,g)
-  -- Then Ent((1+tg)²)/t² → 2·Var(g) as t → 0⁺, giving Var(g) ≤ (1/ρ)·E(g,g).
-  -- Since Var and E are both invariant under adding constants,
-  -- this extends to all f (not just mean-zero).
+  -- Goal: variance f ≤ (1 / ρ) * ds.energy f f
   --
-  -- The analytic core (limit of entropy quotient) requires integration theory
-  -- and Taylor expansion of x·log(x); we sorry this for now.
-  sorry
+  -- Strategy: By contradiction. Assume variance f > (1/ρ) * E(f,f).
+  -- Pick ε so that (2-ε) * variance(f) > (2/ρ) * E(f,f).
+  -- The Rothaus lemma gives t with (2-ε)*t²*Var ≤ Ent((1+tg)²).
+  -- LSI gives Ent((1+tg)²) ≤ (2/ρ)*E(1+tg,1+tg) = (2/ρ)*t²*E(f,f).
+  -- Combining and cancelling t² gives (2-ε)*Var ≤ (2/ρ)*E(f,f).
+  -- With our choice of ε, this gives Var ≤ (1/ρ)*E(f,f). Contradiction.
+  by_contra h_neg
+  push Not at h_neg
+  -- h_neg : (1 / ρ) * ds.energy f f < variance f
+  set V := variance f with hV_def
+  set E := ds.energy f f with hE_def
+  -- If V ≤ 0 then immediate contradiction since (1/ρ)*E ≥ 0
+  by_cases hV : V ≤ 0
+  · have : 0 ≤ 1 / ρ * E :=
+      mul_nonneg (le_of_lt (div_pos one_pos h.1)) (ds.energy_nonneg f)
+    linarith
+  · push Not at hV
+    -- V > 0 and V > (1/ρ)*E
+    have hρ_pos := h.1
+    -- Express 2/ρ in terms of 1/ρ so linarith can work
+    have h2ρ : 2 / ρ = 2 * (1 / ρ) := by ring
+    have h_inv_pos : (0 : ℝ) < 1 / ρ := div_pos one_pos hρ_pos
+    -- Since V > (1/ρ)*E, we get 2*V > 2*(1/ρ)*E = (2/ρ)*E
+    have gap_pos : 0 < 2 * V - 2 / ρ * E := by rw [h2ρ]; nlinarith
+    set ε := (2 * V - 2 / ρ * E) / (2 * V) with hε_def
+    have hε_pos : 0 < ε := div_pos gap_pos (by linarith)
+    -- Get δ from the entropy expansion
+    obtain ⟨δ, hδ_pos, hδ⟩ := rothaus_entropy_expansion f ε hε_pos
+    -- Pick t = δ / 2
+    set t := δ / 2 with ht_def
+    have ht_pos : 0 < t := by linarith
+    have ht_lt : t < δ := by linarith
+    -- From rothaus_entropy_expansion:
+    -- (2-ε) * t² * V ≤ Ent((1 + t*(f - ∫f))²)
+    have h_ent_lb := hδ t ht_pos ht_lt
+    -- From LSI applied to (fun x => 1 + t * (f x - ∫f)):
+    set g := fun x => f x - ∫ y, f y ∂ds.μ with hg_def
+    have h_lsi := h.2 (fun x => 1 + t * g x)
+    -- E(1 + t*g, 1 + t*g) = t² * E(g, g) by energy_rothaus
+    rw [energy_rothaus g t] at h_lsi
+    -- E(g,g) = E(f,f) by energy_add_const
+    have henergy_g : ds.energy g g = E := by
+      show ds.energy g g = ds.energy f f
+      have hg_eq : g = fun x => f x + (-(∫ y, f y ∂ds.μ)) := by
+        ext x; simp [hg_def, sub_eq_add_neg]
+      rw [hg_eq, energy_add_const]
+    rw [henergy_g] at h_lsi
+    -- Match the function in h_ent_lb and h_lsi
+    have h_match : (fun x => (1 + t * g x) * (1 + t * g x)) =
+        (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
+                  (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
+      ext x; simp [hg_def]
+    rw [h_match] at h_lsi
+    -- Combining: (2-ε)*t²*V ≤ Ent(...) ≤ (2/ρ)*(t²*E)
+    have combined : (2 - ε) * t ^ 2 * V ≤ 2 / ρ * (t ^ 2 * E) :=
+      le_trans h_ent_lb h_lsi
+    -- Cancel t² > 0 to get (2-ε)*V ≤ (2/ρ)*E
+    have ht2_pos : (0 : ℝ) < t ^ 2 := sq_pos_of_pos ht_pos
+    have step1 : (2 - ε) * V ≤ 2 / ρ * E := by nlinarith
+    -- Compute (2-ε)*V = V + (1/ρ)*E
+    have hV_ne : V ≠ 0 := ne_of_gt hV
+    have ε_calc : (2 - ε) * V = V + 1 / ρ * E := by
+      rw [hε_def]; field_simp; ring
+    -- So V + (1/ρ)*E ≤ (2/ρ)*E, hence V ≤ (1/ρ)*E
+    rw [h2ρ] at step1
+    linarith [ε_calc]
 
 end DirichletSpace
 
