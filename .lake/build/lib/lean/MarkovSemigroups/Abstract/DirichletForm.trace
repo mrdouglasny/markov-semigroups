@@ -1,18 +1,15 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["1abaf1c4f58faf90.olean"],
-  "i": "eb317776d5415c6f.ilean",
+ {"o": ["b715558623f5c7d2.olean"],
+  "i": "727b01441dff0a81.ilean",
   "c": "7e8c6ce0717e78ea.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/Cli/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/batteries/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/Qq/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/aesop/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/proofwidgets/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/importGraph/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/plausible/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/packages/mathlib/.lake/build/lib/lean:/Users/mrd/Documents/Github/markov-semigroups/.lake/build/lib/lean /Users/mrd/.elan/toolchains/leanprover--lean4---v4.29.0/bin/lean /Users/mrd/Documents/Github/markov-semigroups/MarkovSemigroups/Abstract/DirichletForm.lean -o /Users/mrd/Documents/Github/markov-semigroups/.lake/build/lib/lean/MarkovSemigroups/Abstract/DirichletForm.olean -i /Users/mrd/Documents/Github/markov-semigroups/.lake/build/lib/lean/MarkovSemigroups/Abstract/DirichletForm.ilean -c /Users/mrd/Documents/Github/markov-semigroups/.lake/build/ir/MarkovSemigroups/Abstract/DirichletForm.c --setup /Users/mrd/Documents/Github/markov-semigroups/.lake/build/ir/MarkovSemigroups/Abstract/DirichletForm.setup.json --json",
    "level": "trace"},
   {"message":
-   "MarkovSemigroups/Abstract/DirichletForm.lean:327:8: declaration uses `sorry`",
-   "level": "warning"},
-  {"message":
-   "MarkovSemigroups/Abstract/DirichletForm.lean:352:8: declaration uses `sorry`",
+   "MarkovSemigroups/Abstract/DirichletForm.lean:386:8: declaration uses `sorry`",
    "level": "warning"}],
  "inputs":
  [["MarkovSemigroups.Abstract.DirichletForm:deps",
@@ -48,10 +45,10 @@
   ["Lean 4.29.0, commit 98dc76e3c0a9b856c9b98726b713fb04fab16740",
    "60bb08ef22408c8a"],
   ["/Users/mrd/Documents/Github/markov-semigroups/MarkovSemigroups/Abstract/DirichletForm.lean",
-   "08fd84f123049060"],
+   "c39b55ca0eaf8815"],
   ["options", [["-DautoImplicit=false", "4a85acb881fd49d0"]]],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: MarkovSemigroups.Abstract.DirichletForm", "e12fe7a1ee62b3ce"],
   ["Package.id?: (some MarkovSemigroups)", "cc06b2f2eca46187"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "aa88575eae2e5e21"}
+ "depHash": "5072a1992aa34305"}

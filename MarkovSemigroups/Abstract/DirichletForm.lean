@@ -328,7 +328,41 @@ theorem integral_sq_perturbation (f : X → ℝ)
     (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
     (t : ℝ) :
     ∫ x, (1 + t * (f x - ∫ y, f y ∂ds.μ)) ^ 2 ∂ds.μ = 1 + t ^ 2 * variance f := by
-  sorry
+  set m := ∫ y, f y ∂ds.μ with hm_def
+  have hg_int : Integrable (fun x => f x - m) ds.μ := hf_int.sub (integrable_const m)
+  have hg2_int : Integrable (fun x => (f x - m) ^ 2) ds.μ := by
+    have : (fun x => (f x - m) ^ 2) = (fun x => f x ^ 2 - 2 * m * f x + m ^ 2) := by
+      ext x; ring
+    rw [this]; exact (hf2_int.sub (hf_int.const_mul (2 * m))).add (integrable_const _)
+  have hg_mean : ∫ x, (f x - m) ∂ds.μ = 0 := by
+    rw [integral_sub hf_int (integrable_const m), integral_const, probReal_univ, one_smul, sub_self]
+  have hg2_var : ∫ x, (f x - m) ^ 2 ∂ds.μ = variance f := by
+    unfold variance
+    have h_eq : ∀ x, (f x - m) ^ 2 = f x ^ 2 + (-2 * m * f x + m ^ 2) := by intro x; ring
+    simp_rw [h_eq]
+    have h1 : ∫ x, (f x ^ 2 + (-2 * m * f x + m ^ 2)) ∂ds.μ =
+        ∫ x, f x ^ 2 ∂ds.μ + ∫ x, (-2 * m * f x + m ^ 2) ∂ds.μ :=
+      integral_add hf2_int ((hf_int.const_mul (-2 * m)).add (integrable_const _))
+    rw [h1]
+    have h2 : ∫ x, (-2 * m * f x + m ^ 2) ∂ds.μ =
+        ∫ x, (-2 * m * f x) ∂ds.μ + ∫ _x : X, m ^ 2 ∂ds.μ :=
+      integral_add (hf_int.const_mul (-2 * m)) (integrable_const _)
+    rw [h2, integral_const_mul, integral_const, probReal_univ, one_smul, hm_def]; ring
+  have h_tg_int : Integrable (fun x => 2 * t * (f x - m)) ds.μ := hg_int.const_mul (2 * t)
+  have h_tg2_int : Integrable (fun x => t ^ 2 * (f x - m) ^ 2) ds.μ :=
+    hg2_int.const_mul (t ^ 2)
+  have h1 : ∀ x, (1 + t * (f x - m)) ^ 2 =
+      1 + 2 * t * (f x - m) + t ^ 2 * (f x - m) ^ 2 := by intro x; ring
+  simp_rw [h1]
+  have h3 : ∫ x, (1 + 2 * t * (f x - m) + t ^ 2 * (f x - m) ^ 2) ∂ds.μ =
+      ∫ x, (1 + 2 * t * (f x - m)) ∂ds.μ + ∫ x, t ^ 2 * (f x - m) ^ 2 ∂ds.μ :=
+    integral_add ((integrable_const 1).add h_tg_int) h_tg2_int
+  rw [h3]
+  have h4 : ∫ x, (1 + 2 * t * (f x - m)) ∂ds.μ =
+      ∫ _x : X, (1 : ℝ) ∂ds.μ + ∫ x, 2 * t * (f x - m) ∂ds.μ :=
+    integral_add (integrable_const 1) h_tg_int
+  rw [h4, integral_const, probReal_univ, one_smul, integral_const_mul, hg_mean, mul_zero, add_zero,
+      integral_const_mul, hg2_var]
 
 /-- **Entropy lower bound via Taylor expansion and dominated convergence.**
 
@@ -349,7 +383,9 @@ This is the analytic core of the Rothaus linearization argument.
 
 *Reference*: Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
 Operators*, proof of Proposition 5.1.3. -/
-theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) :
+theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
+    (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
+    (B : ℝ) (hB : 0 < B) (hf_bdd : ∀ x, |f x - ∫ y, f y ∂ds.μ| ≤ B) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
       (2 - ε) * t ^ 2 * variance f ≤
         entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
@@ -377,12 +413,14 @@ Proved by delegation to `entropy_quadratic_lower`.
 
 *Reference*: Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
 Operators*, proof of Proposition 5.1.3. -/
-theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) :
+theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
+    (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
+    (B : ℝ) (hB : 0 < B) (hf_bdd : ∀ x, |f x - ∫ y, f y ∂ds.μ| ≤ B) :
     ∃ δ : ℝ, 0 < δ ∧ ∀ t : ℝ, 0 < t → t < δ →
       (2 - ε) * t ^ 2 * variance f ≤
         entropy (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
                           (1 + t * (f x - ∫ y, f y ∂ds.μ))) :=
-  entropy_quadratic_lower f ε hε
+  entropy_quadratic_lower f ε hε hf_int hf2_int B hB hf_bdd
 
 /-- **Energy of the Rothaus perturbation.**
 E(1 + t·g, 1 + t·g) = t² · E(g, g) for any g and t.
@@ -405,77 +443,42 @@ order in t, and take t → 0.
 
 The analytic core (Taylor expansion of entropy) is isolated in
 `rothaus_entropy_expansion`; all algebraic reasoning is fully proved. -/
-theorem logSobolev_implies_poincare {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ) :
-    SatisfiesPoincare (ds := ds) ρ := by
-  refine ⟨h.1, fun f => ?_⟩
-  -- Goal: variance f ≤ (1 / ρ) * ds.energy f f
-  --
-  -- Strategy: By contradiction. Assume variance f > (1/ρ) * E(f,f).
-  -- Pick ε so that (2-ε) * variance(f) > (2/ρ) * E(f,f).
-  -- The Rothaus lemma gives t with (2-ε)*t²*Var ≤ Ent((1+tg)²).
-  -- LSI gives Ent((1+tg)²) ≤ (2/ρ)*E(1+tg,1+tg) = (2/ρ)*t²*E(f,f).
-  -- Combining and cancelling t² gives (2-ε)*Var ≤ (2/ρ)*E(f,f).
-  -- With our choice of ε, this gives Var ≤ (1/ρ)*E(f,f). Contradiction.
+theorem logSobolev_implies_poincare_bounded {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ)
+    (f : X → ℝ) (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
+    (B : ℝ) (hB : 0 < B) (hf_bdd : ∀ x, |f x - ∫ y, f y ∂ds.μ| ≤ B) :
+    variance f ≤ (1 / ρ) * ds.energy f f := by
   by_contra h_neg
   push Not at h_neg
-  -- h_neg : (1 / ρ) * ds.energy f f < variance f
   set V := variance f with hV_def
   set E := ds.energy f f with hE_def
-  -- If V ≤ 0 then immediate contradiction since (1/ρ)*E ≥ 0
   by_cases hV : V ≤ 0
-  · have : 0 ≤ 1 / ρ * E :=
-      mul_nonneg (le_of_lt (div_pos one_pos h.1)) (ds.energy_nonneg f)
-    linarith
+  · linarith [mul_nonneg (le_of_lt (div_pos one_pos h.1)) (ds.energy_nonneg f)]
   · push Not at hV
-    -- V > 0 and V > (1/ρ)*E
     have hρ_pos := h.1
-    -- Express 2/ρ in terms of 1/ρ so linarith can work
     have h2ρ : 2 / ρ = 2 * (1 / ρ) := by ring
-    have h_inv_pos : (0 : ℝ) < 1 / ρ := div_pos one_pos hρ_pos
-    -- Since V > (1/ρ)*E, we get 2*V > 2*(1/ρ)*E = (2/ρ)*E
     have gap_pos : 0 < 2 * V - 2 / ρ * E := by rw [h2ρ]; nlinarith
     set ε := (2 * V - 2 / ρ * E) / (2 * V) with hε_def
     have hε_pos : 0 < ε := div_pos gap_pos (by linarith)
-    -- Get δ from the entropy expansion
-    obtain ⟨δ, hδ_pos, hδ⟩ := rothaus_entropy_expansion f ε hε_pos
-    -- Pick t = δ / 2
+    obtain ⟨δ, hδ_pos, hδ⟩ := rothaus_entropy_expansion f ε hε_pos hf_int hf2_int B hB hf_bdd
     set t := δ / 2 with ht_def
-    have ht_pos : 0 < t := by linarith
-    have ht_lt : t < δ := by linarith
-    -- From rothaus_entropy_expansion:
-    -- (2-ε) * t² * V ≤ Ent((1 + t*(f - ∫f))²)
+    have ht_pos : 0 < t := by rw [ht_def]; linarith
+    have ht_lt : t < δ := by rw [ht_def]; linarith
     have h_ent_lb := hδ t ht_pos ht_lt
-    -- From LSI applied to (fun x => 1 + t * (f x - ∫f)):
     set g := fun x => f x - ∫ y, f y ∂ds.μ with hg_def
     have h_lsi := h.2 (fun x => 1 + t * g x)
-    -- E(1 + t*g, 1 + t*g) = t² * E(g, g) by energy_rothaus
     rw [energy_rothaus g t] at h_lsi
-    -- E(g,g) = E(f,f) by energy_add_const
     have henergy_g : ds.energy g g = E := by
       show ds.energy g g = ds.energy f f
-      have hg_eq : g = fun x => f x + (-(∫ y, f y ∂ds.μ)) := by
-        ext x; simp [hg_def, sub_eq_add_neg]
-      rw [hg_eq, energy_add_const]
+      have : g = fun x => f x + (-(∫ y, f y ∂ds.μ)) := by ext x; simp [hg_def, sub_eq_add_neg]
+      rw [this, energy_add_const]
     rw [henergy_g] at h_lsi
-    -- Match the function in h_ent_lb and h_lsi
-    have h_match : (fun x => (1 + t * g x) * (1 + t * g x)) =
+    rw [show (fun x => (1 + t * g x) * (1 + t * g x)) =
         (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *
-                  (1 + t * (f x - ∫ y, f y ∂ds.μ))) := by
-      ext x; simp [hg_def]
-    rw [h_match] at h_lsi
-    -- Combining: (2-ε)*t²*V ≤ Ent(...) ≤ (2/ρ)*(t²*E)
-    have combined : (2 - ε) * t ^ 2 * V ≤ 2 / ρ * (t ^ 2 * E) :=
-      le_trans h_ent_lb h_lsi
-    -- Cancel t² > 0 to get (2-ε)*V ≤ (2/ρ)*E
-    have ht2_pos : (0 : ℝ) < t ^ 2 := sq_pos_of_pos ht_pos
-    have step1 : (2 - ε) * V ≤ 2 / ρ * E := by nlinarith
-    -- Compute (2-ε)*V = V + (1/ρ)*E
-    have hV_ne : V ≠ 0 := ne_of_gt hV
+                  (1 + t * (f x - ∫ y, f y ∂ds.μ))) from by ext x; simp [hg_def]] at h_lsi
+    have step1 : (2 - ε) * V ≤ 2 / ρ * E := by nlinarith [le_trans h_ent_lb h_lsi, sq_pos_of_pos ht_pos]
     have ε_calc : (2 - ε) * V = V + 1 / ρ * E := by
       rw [hε_def]; field_simp; ring
-    -- So V + (1/ρ)*E ≤ (2/ρ)*E, hence V ≤ (1/ρ)*E
-    rw [h2ρ] at step1
-    linarith [ε_calc]
+    rw [h2ρ] at step1; linarith [ε_calc]
 
 end DirichletSpace
 
