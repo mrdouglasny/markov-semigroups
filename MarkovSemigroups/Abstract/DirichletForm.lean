@@ -364,25 +364,105 @@ theorem integral_sq_perturbation (f : X → ℝ)
   rw [h4, integral_const, probReal_univ, one_smul, integral_const_mul, hg_mean, mul_zero, add_zero,
       integral_const_mul, hg2_var]
 
-/-- **Entropy lower bound via Taylor expansion and dominated convergence.**
+/-! ### Entropy lower bound via sub-lemmas
 
-For a probability measure μ and f with finite first and second moments,
-let g = f - ∫f (mean zero). For any ε > 0, there exists δ > 0 such that
-for 0 < t < δ:
+The entropy lower bound `entropy_quadratic_lower` combines three
+sub-lemmas: a pointwise Taylor bound, an upper bound on the log
+correction term, and integration of the pointwise bound.
 
-  `(2 - ε) · t² · Var(f) ≤ Ent((1 + t·g)²)`
+*Reference*: Bakry-Gentil-Ledoux, proof of Proposition 5.1.3. -/
 
-This combines:
-- The pointwise Taylor bound `mul_log_taylor2_lower` applied to
-  `s = 2tg(x) + t²g(x)²` (since `(1+tg)² = 1 + s`)
-- Dominated convergence to exchange limit and integral
-- An upper bound on `(∫h) · log(∫h)` using `log(1+u) ≤ u`
+/-- **Sub-lemma 1:** Pointwise lower bound on h·log(h) for h = (1+tg)².
 
-The `O(t³)` error terms vanish after dividing by `t²` and taking `t → 0`.
-This is the analytic core of the Rothaus linearization argument.
+For |g(x)| ≤ B and t small enough (t < δ₁), the pointwise Taylor bound
+`mul_log_taylor2_lower` gives:
 
-*Reference*: Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
-Operators*, proof of Proposition 5.1.3. -/
+  (1+tg)² · log((1+tg)²) ≥ 2tg + (2-ε₁)·t²·g²
+
+where the error is controlled by choosing δ₁ depending on ε₁ and B. -/
+theorem pointwise_entropy_lower (g : ℝ) (t : ℝ) (ε₁ : ℝ) (hε₁ : 0 < ε₁)
+    (B : ℝ) (hB : 0 < B) (hg : |g| ≤ B)
+    (δ₁ : ℝ) (hδ₁ : 0 < δ₁)
+    (ht : 0 < t) (ht_small : t < δ₁)
+    (htg_pos : 0 < 1 + t * g)
+    (h_taylor : ∀ s : ℝ, |s| < δ₁ * (2 * B + δ₁ * B ^ 2) →
+      s + (1 - ε₁) / 2 * s ^ 2 ≤ (1 + s) * Real.log (1 + s)) :
+    2 * t * g + (2 - ε₁) * t ^ 2 * g ^ 2 ≤
+      (1 + t * g) ^ 2 * Real.log ((1 + t * g) ^ 2) := by
+  -- Domain bound for h_taylor at s = tg
+  have habs_tg_D : |t * g| < δ₁ * (2 * B + δ₁ * B ^ 2) := by
+    have h1 : |t * g| ≤ t * B := by
+      rw [abs_mul, abs_of_pos ht]; exact mul_le_mul_of_nonneg_left hg (le_of_lt ht)
+    have h2 : t * B < δ₁ * B := mul_lt_mul_of_pos_right ht_small hB
+    have h3 : δ₁ * B ≤ δ₁ * (2 * B + δ₁ * B ^ 2) := by
+      apply mul_le_mul_of_nonneg_left _ (le_of_lt hδ₁); nlinarith [sq_nonneg B, hB]
+    linarith
+  -- Case split on epsilon
+  by_cases heps : 1 ≤ ε₁
+  · -- Case ε₁ ≥ 1: LHS ≤ (1+tg)²-1 ≤ u·log(u) by standard bound
+    have hLHS : 2 * t * g + (2 - ε₁) * t ^ 2 * g ^ 2 ≤ (1 + t * g) ^ 2 - 1 := by
+      nlinarith [sq_nonneg (t * g)]
+    have hsq_pos : (0 : ℝ) < (1 + t * g) ^ 2 := by positivity
+    have hlog_lb := Real.one_sub_inv_le_log_of_pos hsq_pos
+    have hmul := mul_le_mul_of_nonneg_left hlog_lb (le_of_lt hsq_pos)
+    have hrw : (1 + t * g) ^ 2 * (1 - ((1 + t * g) ^ 2)⁻¹) = (1 + t * g) ^ 2 - 1 := by
+      field_simp
+    linarith
+  · -- Case ε₁ < 1: multiply h_taylor at s=tg by 2(1+tg) > 0
+    push_neg at heps
+    have htaylor := h_taylor (t * g) habs_tg_D
+    have hlog_sq : Real.log ((1 + t * g) ^ 2) = 2 * Real.log (1 + t * g) := by
+      rw [Real.log_pow]; push_cast; ring
+    rw [hlog_sq, show (1 + t * g) ^ 2 * (2 * Real.log (1 + t * g)) =
+        2 * (1 + t * g) * ((1 + t * g) * Real.log (1 + t * g)) from by ring]
+    have hmul : 2 * (1 + t * g) * (t * g + (1 - ε₁) / 2 * (t * g) ^ 2) ≤
+        2 * (1 + t * g) * ((1 + t * g) * Real.log (1 + t * g)) :=
+      mul_le_mul_of_nonneg_left htaylor (by linarith)
+    suffices halg : 2 * t * g + (2 - ε₁) * t ^ 2 * g ^ 2 ≤
+        2 * (1 + t * g) * (t * g + (1 - ε₁) / 2 * (t * g) ^ 2) by linarith
+    have htg_ge : -1 < t * g := by linarith
+    have h_pos : 0 ≤ (t * g) ^ 2 * (1 + (1 - ε₁) * (t * g)) := by
+      apply mul_nonneg (sq_nonneg _); nlinarith
+    have hring : 2 * (1 + t * g) * (t * g + (1 - ε₁) / 2 * (t * g) ^ 2) -
+        (2 * t * g + (2 - ε₁) * t ^ 2 * g ^ 2) =
+        (t * g) ^ 2 * (1 + (1 - ε₁) * (t * g)) := by ring
+    linarith
+
+/-- **Sub-lemma 2:** Upper bound on the integral correction term.
+
+For h = (1+tg)² with ∫g = 0 and ∫g² = V:
+  ∫h dμ = 1 + t²V  (from integral_sq_perturbation)
+
+The correction (∫h)·log(∫h) satisfies:
+  (1+t²V)·log(1+t²V) ≤ t²V + t⁴V²  (from x·log(x) ≤ x-1+(x-1)² for x ≥ 1)
+
+So the correction is at most t²V + t⁴V², and Ent(h) = ∫h·log(h) - (∫h)·log(∫h)
+≥ (2t²V - error from Taylor) - (t²V + t⁴V²). -/
+theorem log_correction_upper (u : ℝ) (hu : 0 ≤ u) :
+    (1 + u) * Real.log (1 + u) ≤ u + u ^ 2 := by
+  have h1u_pos : (0 : ℝ) < 1 + u := by linarith
+  have h1u_nonneg : (0 : ℝ) ≤ 1 + u := le_of_lt h1u_pos
+  have hlog : Real.log (1 + u) ≤ u := by
+    have := Real.log_le_sub_one_of_pos h1u_pos
+    linarith
+  calc (1 + u) * Real.log (1 + u)
+      ≤ (1 + u) * u := mul_le_mul_of_nonneg_left hlog h1u_nonneg
+    _ = u + u ^ 2 := by ring
+
+/-- **Sub-lemma 3:** Integration of the pointwise bound.
+
+Given ∫g dμ = 0 and ∫g² dμ = V, and the pointwise bound
+  h·log(h) ≥ 2tg + (2-ε₁)t²g²  for all x
+integrating gives:
+  ∫ h·log(h) dμ ≥ 2t·∫g + (2-ε₁)t²·∫g² = 0 + (2-ε₁)t²V -/
+theorem integrate_pointwise_bound
+    (μ : Measure X) [IsProbabilityMeasure μ]
+    (φ ψ : X → ℝ) (hφψ : ∀ x, ψ x ≤ φ x)
+    (hψ_int : Integrable ψ μ) (hφ_int : Integrable φ μ) :
+    ∫ x, ψ x ∂μ ≤ ∫ x, φ x ∂μ :=
+  integral_mono hψ_int hφ_int hφψ
+
+/-- The full entropy lower bound, assembled from the three sub-lemmas. -/
 theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
     (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
     (B : ℝ) (hB : 0 < B) (hf_bdd : ∀ x, |f x - ∫ y, f y ∂ds.μ| ≤ B) :
