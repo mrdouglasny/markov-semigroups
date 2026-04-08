@@ -15,7 +15,7 @@ Three textbook results are postulated as axioms, each more elementary
 than Brascamp-Lieb itself:
 
 1. `resolvent_ibp_axiom` — resolvent existence + weighted IBP
-2. `bochner_axiom` — the Bochner/Weitzenböck inequality
+2. `bochner_inequality` — the Bochner/Weitzenböck inequality
 3. `weighted_young` — Young's inequality for positive definite forms
 
 The Brascamp-Lieb inequality `brascampLieb` is PROVEN from these three
@@ -92,19 +92,45 @@ axiom resolvent_ibp_axiom {E : Type*} [NormedAddCommGroup E]
       ∫ x, (fderiv ℝ f x) (gradient u x) ∂m.μ ∧
     Integrable (fun x => (fderiv ℝ f x) (gradient u x)) m.μ
 
-/-- **Axiom 2 (Bochner inequality).** For the resolvent u,
-∫ H(∇u, ∇u) dμ ≤ Var_μ(f), and the integral is integrable.
+/-- **Postulated (Integrated Bochner identity).** For the resolvent u
+(solving Lu = -(f - μ(f))), the full Bochner-Weitzenböck identity gives:
 
-From the Bochner identity: ∫ ‖Hess u‖² + ∫ H(∇u,∇u) dμ = Var(f),
-dropping ‖Hess u‖² ≥ 0 gives the bound. (BGL §1.16.) -/
-axiom bochner_axiom {E : Type*} [NormedAddCommGroup E]
+  Var_μ(f) = ∫ ‖Hess u‖²_HS dμ + ∫ H(∇u, ∇u) dμ
+
+where ‖Hess u‖²_HS is the Hilbert-Schmidt norm of the Hessian of u.
+Since ‖Hess u‖²_HS ≥ 0, we have Var(f) ≥ ∫ H(∇u, ∇u) dμ.
+
+The axiom states this as: there exists a nonneg remainder R (= ∫‖Hess u‖²)
+such that Var(f) = R + ∫ H(∇u, ∇u) dμ.
+
+Proof sketch: integrate the pointwise Bochner formula
+  ½L(|∇u|²) = ⟨∇u, ∇(Lu)⟩ + ‖Hess u‖² + H(∇u, ∇u)
+against μ. The LHS vanishes (∫Lh dμ = 0). The ⟨∇u, ∇(Lu)⟩ term
+equals -Var(f) since ∇(Lu) = -∇f and Var(f) = ∫⟨∇f, ∇u⟩ dμ.
+
+Reference: Bakry-Gentil-Ledoux §1.16 (Bochner's formula). -/
+axiom integrated_bochner_inequality {E : Type*} [NormedAddCommGroup E]
+    [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
+    [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
+    (f : E → ℝ) (hf : ContDiff ℝ 1 f) (u : E → ℝ)
+    (hu : (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2) =
+          ∫ x, (fderiv ℝ f x) (gradient u x) ∂m.μ) :
+    ∃ R : ℝ, 0 ≤ R ∧
+    (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2) =
+      R + ∫ x, hessianBilin m.V x (gradient u x) (gradient u x) ∂m.μ
+
+/-- **Bochner inequality (PROVEN).** ∫ H(∇u, ∇u) dμ ≤ Var(f).
+Immediate from `integrated_bochner_inequality`: Var = R + ∫H(∇u,∇u) with R ≥ 0. -/
+theorem bochner_inequality {E : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
     [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
     (f : E → ℝ) (hf : ContDiff ℝ 1 f) (u : E → ℝ)
     (hu : (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2) =
           ∫ x, (fderiv ℝ f x) (gradient u x) ∂m.μ) :
     ∫ x, hessianBilin m.V x (gradient u x) (gradient u x) ∂m.μ ≤
-      (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2)
+      (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2) := by
+  obtain ⟨R, hR, hident⟩ := integrated_bochner_inequality m f hf u hu
+  linarith
 
 /-- **Weighted Young's inequality (PROVEN).** Pointwise:
 (∇f)(∇u) ≤ ½ H(∇u, ∇u) + ½ (∇f)(g)
@@ -210,7 +236,7 @@ theorem brascampLieb (f : E → ℝ) (hf : ContDiff ℝ 1 f)
     m.variance f ≤ ∫ x, (fderiv ℝ f x) (g x) ∂m.μ := by
   -- Step 1: Get resolvent u from Axiom 1
   obtain ⟨u, hu_var, hu_int⟩ := resolvent_ibp_axiom m f hf
-  have hu_bochner := bochner_axiom m f hf u hu_var
+  have hu_bochner := bochner_inequality m f hf u hu_var
   -- Step 2: Pointwise Young's (Axiom 3)
   have h_young : ∀ x, (fderiv ℝ f x) (gradient u x) ≤
       (1/2) * hessianBilin m.V x (gradient u x) (gradient u x) +
