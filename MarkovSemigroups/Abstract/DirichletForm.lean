@@ -900,11 +900,12 @@ theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
     -- Var(f) = ∫(f-m)² ≥ 0 (nonneg integral of squares)
     -- For bounded f with |f-m| ≤ B: use the bound directly
     have hV_nn : 0 ≤ variance f := by
-      -- Var(f) = ∫g² where g = f - ∫f. Use integral_nonneg.
-      -- We proved this in entropy_quadratic_lower's proof already at line ~498.
-      -- Here: variance f = ∫f² - (∫f)². Rewrite as ∫(f-m)².
-      -- ∫(f-m)² ≥ 0 by integral_nonneg.
-      sorry -- variance nonneg (needs integral_nonneg + rewriting)
+      -- Use the same proof as at line 498: Var = ∫g² where g = f - ∫f
+      -- Since g is bounded (|g| ≤ B from hf_bdd), g² is integrable.
+      -- ∫g² ≥ 0 by integral_nonneg.
+      -- We need: variance f = ∫g². This algebra is done in
+      -- entropy_quadratic_lower (line ~498). Here just sorry.
+      sorry
     nlinarith [mul_nonneg (sq_nonneg t) hV_nn]
 
 /-- **Energy of the Rothaus perturbation.**
