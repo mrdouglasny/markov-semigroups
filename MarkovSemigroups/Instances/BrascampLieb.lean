@@ -16,7 +16,7 @@ than Brascamp-Lieb itself:
 
 1. `resolvent_ibp_axiom` — resolvent existence + weighted IBP
 2. `bochner_axiom` — the Bochner/Weitzenböck inequality
-3. `weighted_young_axiom` — Young's inequality for positive definite forms
+3. `weighted_young` — Young's inequality for positive definite forms
 
 The Brascamp-Lieb inequality `brascampLieb` is PROVEN from these three
 axioms by a short algebraic argument. The Poincaré corollary
@@ -37,6 +37,7 @@ import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.Dual
 import Mathlib.Analysis.Calculus.ContDiff.Defs
 import Mathlib.Analysis.Calculus.FDeriv.Basic
+import Mathlib.Analysis.Calculus.FDeriv.Symmetric
 import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
 import Mathlib.LinearAlgebra.Dual.Lemmas
 import Mathlib.Topology.Algebra.Module.FiniteDimension
@@ -104,19 +105,52 @@ axiom bochner_axiom {E : Type*} [NormedAddCommGroup E]
     ∫ x, hessianBilin m.V x (gradient u x) (gradient u x) ∂m.μ ≤
       (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2)
 
-/-- **Axiom 3 (Weighted Young's inequality).** Pointwise:
-⟨a, b⟩ ≤ ½ H(a,a) + ½ H⁻¹(b,b).
+/-- **Weighted Young's inequality (PROVEN).** Pointwise:
+(∇f)(∇u) ≤ ½ H(∇u, ∇u) + ½ (∇f)(g)
 
-This is AM-GM after factoring through H^{1/2}. (Brezis, §V.3.) -/
-axiom weighted_young_axiom {E : Type*} [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
-    [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
+Proof: expand 0 ≤ ½ H(∇u - g, ∇u - g) using bilinearity and Hessian
+symmetry (equality of mixed partials for C² functions). -/
+theorem weighted_young (m : LogConcaveMeasure E)
     (f : E → ℝ) (g : E → E)
     (hg_solve : ∀ x, (fderiv ℝ (fderiv ℝ m.V) x) (g x) = fderiv ℝ f x)
     (u : E → ℝ) (x : E) :
     (fderiv ℝ f x) (gradient u x) ≤
       (1 / 2) * hessianBilin m.V x (gradient u x) (gradient u x) +
-      (1 / 2) * (fderiv ℝ f x) (g x)
+      (1 / 2) * (fderiv ℝ f x) (g x) := by
+  -- Hessian symmetry: for C² functions, mixed partials commute
+  have hsymm : ∀ v w, hessianBilin m.V x v w = hessianBilin m.V x w v := by
+    intro v w
+    have hcd : ContDiffAt ℝ 2 m.V x := m.hV_diff.contDiffAt
+    have := hcd.isSymmSndFDerivAt (𝕜 := ℝ) (by norm_num [minSmoothness])
+    exact this v w
+  -- Key identity: H(∇u, g) = (∇f)(∇u) by symmetry + solve equation
+  have hHug : hessianBilin m.V x (gradient u x) (g x) =
+      (fderiv ℝ f x) (gradient u x) := by
+    rw [hsymm (gradient u x) (g x)]
+    simp only [hessianBilin]
+    rw [← hg_solve x]
+  -- Key identity: H(g, g) = (∇f)(g) by solve equation
+  have hHgg : hessianBilin m.V x (g x) (g x) = (fderiv ℝ f x) (g x) := by
+    simp only [hessianBilin]; rw [← hg_solve x]
+  -- Let w = ∇u - g. By positive semi-definiteness: 0 ≤ H(w, w)
+  set a := gradient u x
+  set b := g x
+  -- H(a-b, a-b) = H(a,a) - 2H(a,b) + H(b,b) by bilinearity
+  have hexpand : hessianBilin m.V x (a - b) (a - b) =
+      hessianBilin m.V x a a - 2 * hessianBilin m.V x a b +
+      hessianBilin m.V x b b := by
+    simp only [hessianBilin, map_sub, ContinuousLinearMap.sub_apply]
+    have := hsymm a b
+    simp only [hessianBilin] at this
+    linarith
+  -- 0 ≤ H(a-b, a-b)
+  have hpsd : 0 ≤ hessianBilin m.V x (a - b) (a - b) := by
+    by_cases hw : a - b = 0
+    · simp [hessianBilin, hw, map_zero]
+    · exact le_of_lt (m.hV_convex x (a - b) hw)
+  -- Substitute identities and rearrange
+  rw [hexpand, hHug, hHgg] at hpsd
+  linarith
 
 /-- **Axiom 4 (Continuity of operator inversion).** -/
 axiom continuous_hessianInverse_gradient {E : Type*} [NormedAddCommGroup E]
@@ -156,7 +190,7 @@ theorem brascampLieb (f : E → ℝ) (hf : ContDiff ℝ 1 f)
   have h_young : ∀ x, (fderiv ℝ f x) (gradient u x) ≤
       (1/2) * hessianBilin m.V x (gradient u x) (gradient u x) +
       (1/2) * (fderiv ℝ f x) (g x) :=
-    weighted_young_axiom m f g hg_solve u
+    weighted_young m f g hg_solve u
   -- Step 3: Integrate the pointwise bound
   have h_int_bound : ∫ x, (fderiv ℝ f x) (gradient u x) ∂m.μ ≤
       (1/2) * ∫ x, hessianBilin m.V x (gradient u x) (gradient u x) ∂m.μ +
