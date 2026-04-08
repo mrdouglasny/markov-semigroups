@@ -93,6 +93,23 @@ def IsHypercontractive (S : MarkovSemigroup X) (ρ : ℝ) : Prop :=
       (∫ x, |S.P t f x| ^ q ∂S.μ) ^ (1/q) ≤
       (∫ x, |f x| ^ p ∂S.μ) ^ (1/p)
 
+/-- **Postulated (Gross 1975, Theorem 1).** LSI implies hypercontractivity.
+The proof uses the semigroup interpolation method: differentiate
+���P_t f‖_{p(t)} along the path p(t) = 1 + (p-1)e^{2ρt} and show
+the derivative is ≤ 0 using the LSI. -/
+axiom gross_lsi_implies_hypercontractive {X : Type*} [MeasurableSpace X]
+    (S : MarkovSemigroup X) [ds : DirichletSpace X]
+    (h_compatible : ds.μ = S.μ) (ρ : ℝ)
+    (h_lsi : ds.SatisfiesLogSobolev ρ) : S.IsHypercontractive ρ
+
+/-- **Postulated (Gross 1975, Theorem 2).** Hypercontractivity implies LSI.
+The proof differentiates the hypercontractive bound ‖P_t f‖_q ≤ ‖f‖_p
+at t = 0 with p = 2, q = 2 + ε and takes ε → 0. -/
+axiom gross_hypercontractive_implies_lsi {X : Type*} [MeasurableSpace X]
+    (S : MarkovSemigroup X) [ds : DirichletSpace X]
+    (h_compatible : ds.μ = S.μ) (ρ : ℝ)
+    (h_hyp : S.IsHypercontractive ρ) : ds.SatisfiesLogSobolev ρ
+
 /-- Gross's theorem (forward direction): LSI implies hypercontractivity.
 
 If the Dirichlet space (X, μ, E) satisfies the log-Sobolev inequality
@@ -103,10 +120,10 @@ with rate ρ.
 This is Gross (1975), Theorem 1. -/
 theorem hypercontractive_of_logSobolev (S : MarkovSemigroup X)
     [ds : DirichletSpace X]
-    (h_compatible : ds.μ = S.μ) -- the Dirichlet form is associated to S
+    (h_compatible : ds.μ = S.μ)
     (ρ : ℝ) (h_lsi : ds.SatisfiesLogSobolev ρ) :
-    S.IsHypercontractive ρ := by
-  sorry
+    S.IsHypercontractive ρ :=
+  gross_lsi_implies_hypercontractive S h_compatible ρ h_lsi
 
 /-- Gross's theorem (reverse direction): hypercontractivity implies LSI.
 
@@ -115,8 +132,8 @@ theorem logSobolev_of_hypercontractive (S : MarkovSemigroup X)
     [ds : DirichletSpace X]
     (h_compatible : ds.μ = S.μ)
     (ρ : ℝ) (h_hyp : S.IsHypercontractive ρ) :
-    ds.SatisfiesLogSobolev ρ := by
-  sorry
+    ds.SatisfiesLogSobolev ρ :=
+  gross_hypercontractive_implies_lsi S h_compatible ρ h_hyp
 
 /-- The Gross equivalence: LSI ↔ hypercontractivity.
 

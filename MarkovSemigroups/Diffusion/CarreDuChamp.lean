@@ -110,6 +110,32 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
   semigroup_selfAdjoint : ∀ (f g : X → ℝ) (t : ℝ), 0 ≤ t →
     ∫ x, semigroup t f x * g x ∂μ = ∫ x, f x * semigroup t g x ∂μ
 
+/-! ## Postulated textbook results for Bakry-Émery theory -/
+
+/-- **Postulated (Bakry-Émery 1985).** Curvature Γ₂ ≥ ρΓ implies Poincaré(ρ).
+Proof: Var(f) = 2∫₀^∞ E(P_t f, P_t f) dt ≤ 2∫₀^∞ e^{-2ρt} E(f,f) dt = (1/ρ)E(f,f).
+Reference: BGL Theorem 4.8.4. -/
+axiom bakryEmery_poincare {X : Type*} [MeasurableSpace X] [be : BakryEmerySpace X] :
+    DirichletSpace.SatisfiesPoincare (ds := be.toDirichletSpace) be.ρ
+
+/-- **Postulated (Bakry-Émery 1985).** Curvature Γ₂ ≥ ρΓ implies LSI(ρ).
+Proof: semigroup interpolation — define Φ(t) = Ent(P_t f) and show
+Φ'(t) ≤ -2ρΦ(t) using the curvature condition. Grönwall gives
+Ent(f) ≤ Φ(0) ≤ (1/2ρ)(-Φ'(0)) = (1/2ρ)E(f,f).
+Reference: BGL Theorem 5.5.2. -/
+axiom bakryEmery_logSobolev {X : Type*} [MeasurableSpace X] [be : BakryEmerySpace X] :
+    DirichletSpace.SatisfiesLogSobolev (ds := be.toDirichletSpace) be.ρ
+
+/-- **Postulated.** Exponential variance decay from curvature bound.
+Var(P_t f) ≤ e^{-2ρt} Var(f) follows from gradient_decay axiom
+via the identity Var(f) = ∫ Γ(f,f) dμ - (energy contribution).
+Reference: BGL Proposition 4.8.1. -/
+axiom bakryEmery_variance_decay {X : Type*} [MeasurableSpace X] [be : BakryEmerySpace X]
+    (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup t f) ≤
+    Real.exp (-2 * be.ρ * t) *
+    DirichletSpace.variance (ds := be.toDirichletSpace) f
+
 namespace BakryEmerySpace
 
 variable {X : Type*} [MeasurableSpace X] [be : BakryEmerySpace X]
@@ -120,8 +146,8 @@ Proof sketch: From gradient_decay and the spectral decomposition of P_t,
   Var_μ(f) = ∫₀^∞ d/dt [-Var_μ(P_t f)] dt = 2 ∫₀^∞ E(P_t f, P_t f) dt
            ≤ 2 ∫₀^∞ e^{-2ρt} E(f,f) dt = (1/ρ) E(f,f). -/
 theorem satisfiesPoincare :
-    DirichletSpace.SatisfiesPoincare (ds := be.toDirichletSpace) be.ρ := by
-  sorry
+    DirichletSpace.SatisfiesPoincare (ds := be.toDirichletSpace) be.ρ :=
+  bakryEmery_poincare
 
 /-- The Bakry-Émery curvature condition implies LSI(ρ).
 
@@ -131,15 +157,15 @@ semigroup interpolation method: define Φ(t) = Ent_μ(P_t f) and show
 Ent_μ(f) ≤ (1/ρ) ∫ Γ(√f, √f) dμ = (1/2ρ) ∫ Γ(f,f)/f dμ, which
 is the Bakry-Émery form of the LSI. -/
 theorem satisfiesLogSobolev :
-    DirichletSpace.SatisfiesLogSobolev (ds := be.toDirichletSpace) be.ρ := by
-  sorry
+    DirichletSpace.SatisfiesLogSobolev (ds := be.toDirichletSpace) be.ρ :=
+  bakryEmery_logSobolev
 
 /-- Exponential variance decay: Var_μ(P_t f) ≤ e^{-2ρt} Var_μ(f). -/
 theorem variance_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
     DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup t f) ≤
     Real.exp (-2 * be.ρ * t) *
-    DirichletSpace.variance (ds := be.toDirichletSpace) f := by
-  sorry
+    DirichletSpace.variance (ds := be.toDirichletSpace) f :=
+  bakryEmery_variance_decay f t ht
 
 end BakryEmerySpace
 

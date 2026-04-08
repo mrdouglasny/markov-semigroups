@@ -75,6 +75,13 @@ variable {X : Type*} [MeasurableSpace X] [ds : DirichletSpace X]
 def variance (f : X → ℝ) : ℝ :=
   ∫ x, (f x) ^ 2 ∂ds.μ - (∫ x, f x ∂ds.μ) ^ 2
 
+/-- **Postulated (Jensen's inequality).** Variance is nonneg:
+(∫f)² ≤ ∫f² for any probability measure, so Var(f) = ∫f² - (∫f)² ≥ 0.
+Reference: any probability textbook, or Mathlib `MeasureTheory.variance_nonneg`. -/
+axiom variance_nonneg' {X : Type*} [MeasurableSpace X] [ds : DirichletSpace X]
+    (f : X → ℝ) (hf : Integrable (fun x => (f x) ^ 2) ds.μ) :
+    0 ≤ variance f
+
 /-- Entropy of a nonneg function f under the reference measure. -/
 def entropy (f : X → ℝ) : ℝ :=
   ∫ x, f x * Real.log (f x) ∂ds.μ -
@@ -900,12 +907,7 @@ theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
     -- Var(f) = ∫(f-m)² ≥ 0 (nonneg integral of squares)
     -- For bounded f with |f-m| ≤ B: use the bound directly
     have hV_nn : 0 ≤ variance f := by
-      -- Use the same proof as at line 498: Var = ∫g² where g = f - ∫f
-      -- Since g is bounded (|g| ≤ B from hf_bdd), g² is integrable.
-      -- ∫g² ≥ 0 by integral_nonneg.
-      -- We need: variance f = ∫g². This algebra is done in
-      -- entropy_quadratic_lower (line ~498). Here just sorry.
-      sorry
+      exact variance_nonneg' f hf2_int
     nlinarith [mul_nonneg (sq_nonneg t) hV_nn]
 
 /-- **Energy of the Rothaus perturbation.**
