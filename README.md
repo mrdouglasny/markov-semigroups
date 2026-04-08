@@ -17,16 +17,21 @@ The central result chain:
 2. **Bakry-Émery curvature criterion** for diffusion generators on
    Riemannian manifolds: $\Gamma_2 \geq \rho \Gamma$ implies LSI($\rho$).
 
-3. **Ornstein-Uhlenbeck semigroup** defined abstractly for any Hilbert
+3. **Brascamp-Lieb inequality** for log-concave measures mu = e^{-V} dx
+   with V strictly convex: Var_mu(f) <= integral of (nabla f, (Hess V)^{-1} nabla f) dmu.
+   Proven from two analytical axioms (resolvent-IBP + integrated Bochner identity)
+   via weighted Young's inequality. Poincare corollary when Hess V >= rho I.
+
+4. **Ornstein-Uhlenbeck semigroup** defined abstractly for any Hilbert
    space with a positive covariance operator. Mehler's formula, Gaussian
    invariant measure, hypercontractivity.
 
-4. **Concrete instances:** R^n (standard Gaussian, Gross's theorem) and
+5. **Concrete instances:** R^n (standard Gaussian, Gross's theorem) and
    T^d (torus GFF, Fourier mode decomposition). Identification of the
    OU invariant measure on T^d with the Gaussian free field from
    gaussian-field.
 
-5. **Convergence to equilibrium:** spectral gap → exponential mixing,
+6. **Convergence to equilibrium:** spectral gap → exponential mixing,
    LSI → entropy decay, ergodicity from spectral gap.
 
 ## Architecture: three layers of abstraction
@@ -118,6 +123,7 @@ MarkovSemigroups/
     Euclidean.lean              -- R^n: standard Gaussian, Mehler, LSI(1)
     Torus.lean                  -- T^d: heat semigroup, Fourier modes, LSI(m^2+4pi^2/L^2)
     GFFIdentification.lean      -- OU invariant measure on T^d = GFF
+    BrascampLieb.lean           -- Brascamp-Lieb for log-concave measures (0 sorry's)
   Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
     RelativeEntropy.lean        -- Entropy decay under semigroup
@@ -144,8 +150,6 @@ risk assessment, and Gemini review.
   theory, generators, resolvents, Hille-Yosida bound
 - [gaussian-field](https://github.com/mrdouglasny/gaussian-field) — Gaussian
   measures on nuclear spaces, hypercontractivity, tightness
-- [stochasticpde-itocalculus](https://github.com/mrdouglasny/stochasticpde-itocalculus) —
-  Ito calculus (forked from xiyin137)
 - [Mathlib](https://github.com/leanprover-community/mathlib4) — Lean 4
   mathematics library
 
