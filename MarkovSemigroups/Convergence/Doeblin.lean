@@ -127,6 +127,24 @@ theorem MarkovKernel.transferOp_invariant {X : Type*} [MeasurableSpace X]
   ext A hA
   exact h_inv A hA
 
+/-- **Minorization is preserved by the transfer operator.**
+
+If K satisfies Doeblin's condition (K(x,A) ≥ ε·π(A) for all x),
+then for any probability measure μ:
+  (Tμ)(A) = ∫ K(x,A) dμ(x) ≥ ∫ ε·π(A) dμ(x) = ε·π(A)
+
+This means every T^n(δ_x) satisfies the minorization. -/
+theorem transferOp_preserves_minorization {X : Type*} [MeasurableSpace X]
+    {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
+    (hD : DoeblinCondition K π)
+    (μ : Measure X) [IsProbabilityMeasure μ]
+    (A : Set X) (hA : MeasurableSet A) :
+    hD.ε * (π A).toReal ≤ (K.transferOp μ A).toReal := by
+  -- (Tμ)(A) = (bind μ K)(A) = ∫⁻ x, K(x, A) dμ(x)
+  -- K(x,A) ≥ ε·π(A) for all x (minorization)
+  -- So ∫⁻ K(x,A) dμ ≥ ∫⁻ ε·π(A) dμ = ε·π(A)·μ(X) = ε·π(A)
+  sorry -- needs: lintegral_mono + Measure.bind_apply + ENNReal arithmetic
+
 /-- **N-step mixing bound (from contraction).**
 
 |K^n(x, A) - π(A)| ≤ (1-ε)^n for all x, A.
