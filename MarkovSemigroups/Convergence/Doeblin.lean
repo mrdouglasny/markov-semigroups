@@ -107,9 +107,20 @@ Proof sketch: K(x,A) = ε·π(A) + g(x) with g ∈ [0, 1-ε].
 This requires: Measure.bind_apply to unfold Tμ, stationarity for π,
 and the TV bound |∫f d(μ-π)| ≤ ‖f‖∞ · d_TV(μ,π) for bounded f. -/
 
-/-- **Postulated (TV contraction).** One step of T contracts
-the total variation gap by factor (1-ε). -/
-axiom doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
+/-- **TV contraction (sorry on layer cake integration).**
+
+One step of T contracts the total variation gap by factor (1-ε).
+
+Proof: (Tμ)(A) - π(A) = ∫ [K(x,A) - ε·π(A)] dμ - ∫ [K(x,A) - ε·π(A)] dπ
+(constant ε·π(A) cancels since both are probability measures).
+Set g(x) = K(x,A) - ε·π(A) ∈ [0, 1-ε] (Doeblin + complement bound).
+For h = g/(1-ε) ∈ [0,1], by the layer cake formula:
+  |∫h dμ - ∫h dπ| = |∫₀¹ [μ({h>t}) - π({h>t})] dt| ≤ ∫₀¹ δ dt = δ
+So |(Tμ)(A) - π(A)| ≤ (1-ε)·δ.
+
+The sorry is the layer cake integration step. Uses
+`Integrable.integral_eq_integral_meas_lt` from Mathlib. -/
+theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
     {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
     (hD : DoeblinCondition K π)
     (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
@@ -117,7 +128,8 @@ axiom doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
     (δ : ℝ) (hδ_nn : 0 ≤ δ)
     (hδ : ∀ (B : Set X), MeasurableSet B → |(μ B).toReal - (π B).toReal| ≤ δ)
     (A : Set X) (hA : MeasurableSet A) :
-    |(K.transferOp μ A).toReal - (π A).toReal| ≤ (1 - hD.ε) * δ
+    |(K.transferOp μ A).toReal - (π A).toReal| ≤ (1 - hD.ε) * δ := by
+  sorry
 
 /-! ## N-step mixing (PROVEN by induction from TV contraction) -/
 
@@ -156,15 +168,22 @@ theorem doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
 
 /-! ## Correlation decay (axiom) -/
 
-/-- **Correlation decay from Doeblin (postulated).**
+/-- **Correlation decay from Doeblin.**
+
 |E_π[f₁(X₀)f₂(X_d)] - E_π[f₁]E_π[f₂]| ≤ 4B²(1-ε)^d.
-Follows from n-step mixing by conditioning on X₀. -/
-axiom doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
+
+Proof: condition on X₀. By n-step mixing (doeblin_n_step_mixing):
+  |E[f₂|X₀=x] - E_π[f₂]| = |∫f₂ dK^d(x,·) - ∫f₂ dπ| ≤ 2B(1-ε)^d.
+Then: |cov| = |∫ f₁(x)(E[f₂|X₀=x] - E_π[f₂]) dπ(x)| ≤ B·2B(1-ε)^d.
+
+Sorry on the conditioning / iterated integral step. -/
+theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
     {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
     (hD : DoeblinCondition K π)
     (f₁ f₂ : X → ℝ) (B : ℝ) (hB1 : ∀ x, |f₁ x| ≤ B) (hB2 : ∀ x, |f₂ x| ≤ B)
     (d : ℕ) :
     |∫ x, f₁ x * f₂ x ∂π - (∫ x, f₁ x ∂π) * (∫ x, f₂ x ∂π)| ≤
-      4 * B ^ 2 * (1 - hD.ε) ^ d
+      4 * B ^ 2 * (1 - hD.ε) ^ d := by
+  sorry
 
 end
