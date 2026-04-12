@@ -27,6 +27,18 @@ open MeasureTheory
 
 noncomputable section
 
+/-- Convert Measure.bind to a real-valued integral:
+(μ.bind f A).toReal = ∫ x, (f x A).toReal ∂μ. -/
+theorem bind_toReal_eq_integral {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) [IsProbabilityMeasure μ]
+    (f : X → Measure X) [∀ x, IsProbabilityMeasure (f x)]
+    (hf : AEMeasurable f μ)
+    (A : Set X) (hA : MeasurableSet A) :
+    (μ.bind f A).toReal = ∫ x, (f x A).toReal ∂μ := by
+  rw [Measure.bind_apply hA hf, ← integral_toReal]
+  · exact (Measure.measurable_coe hA).comp_aemeasurable hf
+  · exact Filter.Eventually.of_forall (fun x => measure_lt_top (f x) A)
+
 /-! ## Structures -/
 
 /-- A Markov kernel: for each x, K(x, ·) is a probability measure. -/
@@ -125,7 +137,7 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
     {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
     (hD : DoeblinCondition K π)
     (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
-    (μ : Measure X)
+    (μ : Measure X) [IsProbabilityMeasure μ]
     (δ : ℝ) (hδ_nn : 0 ≤ δ)
     (hδ : ∀ (B : Set X), MeasurableSet B → |(μ B).toReal - (π B).toReal| ≤ δ)
     (A : Set X) (hA : MeasurableSet A) :
@@ -133,16 +145,39 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
   -- (Tμ)(A) - π(A) = ∫(K(x,A) - ε·π(A)) dμ - ∫(K(x,A) - ε·π(A)) dπ
   -- = ∫g dμ - ∫g dπ where g(x) = K(x,A) - ε·π(A) ∈ [0, 1-ε]
   -- By tv_integral_bound with C = 1-ε: |∫g dμ - ∫g dπ| ≤ (1-ε)·δ
-  -- The function f(x) = (K.kernel x A).toReal ∈ [0, 1].
-  -- Decompose f = ε·(π A).toReal + g where g ∈ [0, 1-ε] (Doeblin + complement).
-  -- (Tμ)(A).toReal = ∫ f dμ = ε·(πA).toReal + ∫ g dμ
-  -- π(A).toReal = ∫ f dπ = ε·(πA).toReal + ∫ g dπ  (by stationarity)
-  -- Difference = ∫ g dμ - ∫ g dπ where g ∈ [0, 1-ε]
-  -- By tv_integral_bound: |∫g dμ - ∫g dπ| ≤ (1-ε)·δ
-  --
-  -- Lean plumbing: bind_apply + integral_toReal for the ENNReal↔ℝ conversion,
-  -- integral_sub/integral_const for the decomposition.
-  sorry
+  -- Step 1: Convert bind to integral
+  have hK_meas : AEMeasurable K.kernel μ := by sorry
+  have hK_meas_π : AEMeasurable K.kernel π := by sorry
+  have h1 : (K.transferOp μ A).toReal = ∫ x, (K.kernel x A).toReal ∂μ :=
+    bind_toReal_eq_integral μ K.kernel hK_meas A hA
+  have h2 : (π A).toReal = ∫ x, (K.kernel x A).toReal ∂π := by
+    have := h_inv A hA
+    rw [← this]
+    exact bind_toReal_eq_integral π K.kernel hK_meas_π A hA
+  rw [h1, h2]
+  -- Step 2: Set g(x) = (K.kernel x A).toReal - ε·(π A).toReal
+  -- g ∈ [0, 1-ε] by Doeblin condition + complement
+  -- The constant ε·(π A).toReal cancels (both prob measures).
+  -- Apply tv_integral_bound to g with C = 1-ε.
+  set f : X → ℝ := fun x => (K.kernel x A).toReal
+  set c : ℝ := hD.ε * (π A).toReal
+  -- ∫f dμ - ∫f dπ = ∫(f-c) dμ - ∫(f-c) dπ  (constant cancels)
+  have hcancel : ∫ x, f x ∂μ - ∫ x, f x ∂π =
+      (∫ x, (f x - c) ∂μ) - (∫ x, (f x - c) ∂π) := by
+    simp [integral_sub (by sorry) (integrable_const c),
+          integral_const, IsProbabilityMeasure.measure_univ, c]
+  rw [hcancel]
+  -- g(x) = f(x) - c ∈ [0, 1-ε]
+  have hg_nn : ∀ x, 0 ≤ f x - c := fun x => by
+    simp [f, c]; exact hD.minorize x A hA
+  have hg_le : ∀ x, f x - c ≤ 1 - hD.ε := fun x => by
+    simp [f, c]
+    -- f(x) = K(x,A).toReal ≤ 1 - ε·(1-π(A).toReal) = 1-ε+ε·π(A).toReal
+    -- i.e., f(x) - ε·π(A).toReal ≤ 1-ε
+    -- From complement: K(x,Aᶜ) ≥ ε·π(Aᶜ), so K(x,A) ≤ 1-ε·π(Aᶜ) = 1-ε+ε·π(A)
+    sorry
+  exact tv_integral_bound μ π (fun x => f x - c) (by sorry) (1 - hD.ε) (by linarith [hD.hε_le])
+    (by sorry) (by sorry) hg_nn hg_le δ hδ_nn hδ
 
 /-! ## N-step mixing (PROVEN by induction from TV contraction) -/
 
@@ -159,6 +194,12 @@ theorem doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
     (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
     (n : ℕ) (x : X) (A : Set X) (hA : MeasurableSet A) :
     |(K.iteratePoint n x A).toReal - (π A).toReal| ≤ (1 - hD.ε) ^ n := by
+  -- Iterates of probability measures are probability measures
+  -- (bind of prob measures is prob — standard but needs AEMeasurable K.kernel)
+  have h_prob : ∀ m, IsProbabilityMeasure (K.transferOp^[m] (Measure.dirac x)) := by
+    intro m; induction m with
+    | zero => simp; infer_instance
+    | succ k ih => rw [Function.iterate_succ']; exact ⟨by sorry⟩
   induction n generalizing A with
   | zero =>
     simp only [MarkovKernel.iteratePoint, Function.iterate_zero, id, pow_zero]
