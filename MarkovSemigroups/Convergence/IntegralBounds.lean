@@ -8,6 +8,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.Layercake
+import Mathlib.MeasureTheory.Function.LocallyIntegrable
 
 open MeasureTheory Set
 
@@ -22,10 +23,17 @@ theorem integral_ge_const_of_ge {X : Type*} [MeasurableSpace X]
   le_trans (by simp [integral_const, IsProbabilityMeasure.measure_univ])
     (integral_mono (integrable_const c) hf (fun x => hc x))
 
-/-- **TV-integral bound.** PROVEN via layer cake on a finite interval.
+/-- The layer cake integrand t ↦ ν.real{f ≥ t} is integrable on (0, C].
+Proof: antitone on compact Icc 0 C → integrable, then restrict to Ioc. -/
+theorem integrableOn_meas_le_Ioc {X : Type*} [MeasurableSpace X]
+    (ν : Measure X) [IsProbabilityMeasure ν] (f : X → ℝ) (C : ℝ) :
+    IntegrableOn (fun t => ν.real {a | t ≤ f a}) (Ioc 0 C) volume := by
+  apply IntegrableOn.mono_set _ Ioc_subset_Icc_self
+  apply AntitoneOn.integrableOn_isCompact isCompact_Icc
+  intro s _ t _ hst
+  exact ENNReal.toReal_mono (measure_ne_top ν _)
+    (measure_mono (fun a ha => le_trans hst ha))
 
-For probability measures μ, π and measurable f with 0 ≤ f ≤ C,
-if |μ(A) - π(A)| ≤ δ for all measurable A, then |∫f dμ - ∫f dπ| ≤ C·δ. -/
 theorem tv_integral_bound {X : Type*} [MeasurableSpace X]
     (μ π : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure π]
     (f : X → ℝ) (hf_meas : Measurable f) (C : ℝ) (hC : 0 ≤ C)
@@ -66,13 +74,8 @@ theorem tv_integral_bound {X : Type*} [MeasurableSpace X]
       ‖(∫ t in Ioc 0 C, μ.real {a | t ≤ f a}) -
         (∫ t in Ioc 0 C, π.real {a | t ≤ f a})‖ := (Real.norm_eq_abs _).symm
     _ = ‖∫ t in Ioc 0 C, (μ.real {a | t ≤ f a} - π.real {a | t ≤ f a})‖ := by
-        congr 1; rw [integral_sub] <;>
-        -- IntegrableOn: t ↦ ν.real{f≥t} is bounded by 1 on finite interval
-        -- (antitone measurable function, bounded by probability measure)
-        -- t ↦ ν.real{f ≥ t} is integrable on Ioc 0 C:
-        -- bounded by 1 (probability measure), measurable (antitone),
-        -- on a set of finite Lebesgue measure.
-        sorry
+        congr 1
+        exact (integral_sub (integrableOn_meas_le_Ioc μ f C) (integrableOn_meas_le_Ioc π f C)).symm
     _ ≤ δ * volume.real (Ioc (0 : ℝ) C) :=
         norm_setIntegral_le_of_norm_le_const h_finite h_pw
     _ = δ * C := by simp [Measure.real, Real.volume_Ioc, hC]
