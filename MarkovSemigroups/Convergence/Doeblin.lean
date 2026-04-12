@@ -23,6 +23,7 @@ below by ε times the invariant measure, then the chain mixes exponentially.
 -/
 
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Measure.GiryMonad
 
 open MeasureTheory
 
@@ -97,12 +98,56 @@ theorem doeblin_kernel_contraction {X : Type*} [MeasurableSpace X]
   doeblin_one_step_contraction (K.kernel x) π hD.ε hD.hε_pos hD.hε_le
     (fun B hB => hD.minorize x B hB) A hA
 
-/-! ## Correlation decay (axiom)
+/-! ## Transfer operator and n-step contraction
 
-The full multi-step mixing theorem requires defining Kⁿ via measure
-integration: Kⁿ(x, A) = ∫...∫ K(y_{n-1}, A) dK(y_{n-2}, y_{n-1})...dδ_x(y_0).
-This is straightforward but requires substantial Lean plumbing for
-iterated measure integrals. We axiomatize the consequence. -/
+The transfer operator T maps measures to measures via the kernel:
+  (Tμ)(A) = ∫ K(x, A) dμ(x) = (Measure.bind μ K)(A)
+
+The n-step distribution from a point x is T^n(δ_x).
+Stationarity: T(π) = π. Contraction: d_TV contracts by (1-ε) per step. -/
+
+/-- The transfer operator: push a measure forward through the kernel.
+(Tμ)(A) = ∫ K(x, A) dμ(x). -/
+def MarkovKernel.transferOp {X : Type*} [MeasurableSpace X]
+    (K : MarkovKernel X) (μ : Measure X) : Measure X :=
+  μ.bind K.kernel
+
+/-- The n-step distribution from a point x: T^n(δ_x). -/
+def MarkovKernel.iteratePoint {X : Type*} [MeasurableSpace X]
+    (K : MarkovKernel X) (n : ℕ) (x : X) : Measure X :=
+  K.transferOp^[n] (Measure.dirac x)
+
+/-- **Stationarity: the invariant measure is a fixed point of T.**
+T(π)(A) = ∫ K(x,A) dπ(x) = π(A) by definition of invariance. -/
+theorem MarkovKernel.transferOp_invariant {X : Type*} [MeasurableSpace X]
+    (K : MarkovKernel X) (π : Measure X) [IsProbabilityMeasure π]
+    (h_inv : ∀ (A : Set X), MeasurableSet A →
+      (π.bind K.kernel) A = π A) :
+    K.transferOp π = π := by
+  ext A hA
+  exact h_inv A hA
+
+/-- **N-step mixing bound (from contraction).**
+
+|K^n(x, A) - π(A)| ≤ (1-ε)^n for all x, A.
+
+Proof sketch: T contracts d_TV by (1-ε) per step, and π is a fixed
+point, so d_TV(T^n δ_x, π) = d_TV(T^n δ_x, T^n π) ≤ (1-ε)^n · d_TV(δ_x, π) ≤ (1-ε)^n.
+
+The formal proof requires showing that the minorization K(x,A) ≥ ε·π(A)
+lifts to the pushforward: (Tμ)(A) ≥ ε·π(A) for any probability μ
+(because ∫ K(x,A) dμ(x) ≥ ∫ ε·π(A) dμ(x) = ε·π(A)). Then by
+induction, T^n δ_x satisfies minorization, and the one-step contraction
+gives |T^n δ_x(A) - π(A)| ≤ (1-ε). The geometric bound comes from
+iterating the stronger contraction d_TV(Tμ, π) ≤ (1-ε)·d_TV(μ, π). -/
+axiom doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
+    {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
+    (hD : DoeblinCondition K π)
+    (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
+    (n : ℕ) (x : X) (A : Set X) (hA : MeasurableSet A) :
+    |(K.iteratePoint n x A).toReal - (π A).toReal| ≤ (1 - hD.ε) ^ n
+
+/-! ## Correlation decay -/
 
 /-- **Exponential decay of correlations from Doeblin's condition.**
 
