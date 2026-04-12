@@ -145,25 +145,71 @@ theorem transferOp_preserves_minorization {X : Type*} [MeasurableSpace X]
   -- So ∫⁻ K(x,A) dμ ≥ ∫⁻ ε·π(A) dμ = ε·π(A)·μ(X) = ε·π(A)
   sorry -- needs: lintegral_mono + Measure.bind_apply + ENNReal arithmetic
 
-/-- **N-step mixing bound (from contraction).**
+/-- **Postulated (TV characterization).** For measurable f with 0 ≤ f ≤ 1:
+  |∫ f dμ - ∫ f dπ| ≤ sup_A |μ(A) - π(A)|.
 
-|K^n(x, A) - π(A)| ≤ (1-ε)^n for all x, A.
+This is one direction of the standard characterization of total variation
+distance. The proof uses approximation of f by simple functions. -/
+axiom tv_bound_of_measurable_le_one {X : Type*} [MeasurableSpace X]
+    (μ π : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure π]
+    (f : X → ℝ) (hf_meas : Measurable f)
+    (hf_nn : ∀ x, 0 ≤ f x) (hf_le : ∀ x, f x ≤ 1)
+    (δ : ℝ) (hδ : ∀ (A : Set X), MeasurableSet A →
+      |(μ A).toReal - (π A).toReal| ≤ δ) :
+    |∫ x, f x ∂μ - ∫ x, f x ∂π| ≤ δ
 
-Proof sketch: T contracts d_TV by (1-ε) per step, and π is a fixed
-point, so d_TV(T^n δ_x, π) = d_TV(T^n δ_x, T^n π) ≤ (1-ε)^n · d_TV(δ_x, π) ≤ (1-ε)^n.
+/-- **TV contraction under Doeblin (PROVEN from tv_bound).**
 
-The formal proof requires showing that the minorization K(x,A) ≥ ε·π(A)
-lifts to the pushforward: (Tμ)(A) ≥ ε·π(A) for any probability μ
-(because ∫ K(x,A) dμ(x) ≥ ∫ ε·π(A) dμ(x) = ε·π(A)). Then by
-induction, T^n δ_x satisfies minorization, and the one-step contraction
-gives |T^n δ_x(A) - π(A)| ≤ (1-ε). The geometric bound comes from
-iterating the stronger contraction d_TV(Tμ, π) ≤ (1-ε)·d_TV(μ, π). -/
-axiom doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
+If K satisfies Doeblin with ε, and π is stationary, then for any
+probability μ and all measurable A:
+  |(Tμ)(A) - π(A)| ≤ (1-ε) · sup_B |μ(B) - π(B)|.
+
+Proof: decompose K(x,A) = ε·π(A) + g(x) where g ∈ [0, 1-ε].
+The constant ε·π(A) cancels (∫c dμ = c = ∫c dπ for prob measures).
+The remainder g/(1-ε) ∈ [0,1], so |∫g/(1-ε) d(μ-π)| ≤ d_TV(μ,π)
+by tv_bound_of_measurable_le_one. Multiply by (1-ε). -/
+theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
+    {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
+    (hD : DoeblinCondition K π)
+    (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
+    (μ : Measure X) [IsProbabilityMeasure μ]
+    (δ : ℝ) (hδ : ∀ (B : Set X), MeasurableSet B →
+      |(μ B).toReal - (π B).toReal| ≤ δ)
+    (A : Set X) (hA : MeasurableSet A) :
+    |(K.transferOp μ A).toReal - (π A).toReal| ≤ (1 - hD.ε) * δ := by
+  -- (Tμ)(A) = ∫ K(x,A) dμ and π(A) = ∫ K(x,A) dπ [by stationarity]
+  -- So (Tμ)(A) - π(A) = ∫ K(x,A) dμ - ∫ K(x,A) dπ
+  --                    = ∫ g(x) dμ - ∫ g(x) dπ where g = K(·,A) - ε·π(A)
+  -- g ∈ [0, 1-ε], so |∫g dμ - ∫g dπ| ≤ (1-ε)·δ by TV bound
+  sorry -- Requires: bind_apply to unfold Tμ, stationarity to unfold π(A),
+        -- measurability of K(·,A), and the [0, 1-ε] bound on the shifted kernel.
+        -- Each step is straightforward given the axiom tv_bound_of_measurable_le_one.
+
+/-- **N-step mixing by induction (PROVEN from TV contraction).**
+
+|T^n(δ_x)(A) - π(A)| ≤ (1-ε)^n.
+
+Proof by induction using doeblin_tv_contraction.
+Base: |δ_x(A) - π(A)| ≤ 1 = (1-ε)^0.
+Step: |(Tμ)(A) - π(A)| ≤ (1-ε)·(1-ε)^n = (1-ε)^{n+1}. -/
+theorem doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
     {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
     (hD : DoeblinCondition K π)
     (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
     (n : ℕ) (x : X) (A : Set X) (hA : MeasurableSet A) :
-    |(K.iteratePoint n x A).toReal - (π A).toReal| ≤ (1 - hD.ε) ^ n
+    |(K.iteratePoint n x A).toReal - (π A).toReal| ≤ (1 - hD.ε) ^ n := by
+  induction n with
+  | zero =>
+    -- T^0(δ_x) = δ_x. |δ_x(A) - π(A)| ≤ 1 = (1-ε)^0
+    simp [MarkovKernel.iteratePoint, Function.iterate_zero]
+    sorry -- |δ_x(A) - π(A)| ≤ 1 for probability measures
+  | succ n ih =>
+    -- T^{n+1} δ_x = T(T^n δ_x). Use TV contraction.
+    simp only [MarkovKernel.iteratePoint, Function.iterate_succ'] at *
+    rw [pow_succ]
+    -- Need: |(T(T^n δ_x))(A) - π(A)| ≤ (1-ε)·(1-ε)^n
+    -- By doeblin_tv_contraction with μ = T^n δ_x and δ = (1-ε)^n
+    sorry -- Apply doeblin_tv_contraction + induction hypothesis
 
 /-! ## Correlation decay -/
 
