@@ -21,6 +21,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Measure.GiryMonad
+import MarkovSemigroups.Convergence.IntegralBounds
 
 open MeasureTheory
 
@@ -129,7 +130,11 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
     (hδ : ∀ (B : Set X), MeasurableSet B → |(μ B).toReal - (π B).toReal| ≤ δ)
     (A : Set X) (hA : MeasurableSet A) :
     |(K.transferOp μ A).toReal - (π A).toReal| ≤ (1 - hD.ε) * δ := by
-  sorry
+  -- (Tμ)(A) - π(A) = ∫(K(x,A) - ε·π(A)) dμ - ∫(K(x,A) - ε·π(A)) dπ
+  -- = ∫g dμ - ∫g dπ where g(x) = K(x,A) - ε·π(A) ∈ [0, 1-ε]
+  -- By tv_integral_bound with C = 1-ε: |∫g dμ - ∫g dπ| ≤ (1-ε)·δ
+  sorry -- Apply tv_integral_bound to g(x) = (K.kernel x A).toReal - hD.ε * (π A).toReal
+        -- after unfolding transferOp via Measure.bind_apply and using stationarity
 
 /-! ## N-step mixing (PROVEN by induction from TV contraction) -/
 

@@ -21,4 +21,5 @@ import MarkovSemigroups.Instances.BrascampLieb
 import MarkovSemigroups.Convergence.SpectralGap
 import MarkovSemigroups.Convergence.RelativeEntropy
 import MarkovSemigroups.Convergence.Ergodicity
+import MarkovSemigroups.Convergence.IntegralBounds
 import MarkovSemigroups.Convergence.Doeblin
