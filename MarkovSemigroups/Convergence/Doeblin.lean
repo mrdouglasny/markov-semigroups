@@ -133,8 +133,16 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
   -- (Tμ)(A) - π(A) = ∫(K(x,A) - ε·π(A)) dμ - ∫(K(x,A) - ε·π(A)) dπ
   -- = ∫g dμ - ∫g dπ where g(x) = K(x,A) - ε·π(A) ∈ [0, 1-ε]
   -- By tv_integral_bound with C = 1-ε: |∫g dμ - ∫g dπ| ≤ (1-ε)·δ
-  sorry -- Apply tv_integral_bound to g(x) = (K.kernel x A).toReal - hD.ε * (π A).toReal
-        -- after unfolding transferOp via Measure.bind_apply and using stationarity
+  -- The function f(x) = (K.kernel x A).toReal ∈ [0, 1].
+  -- Decompose f = ε·(π A).toReal + g where g ∈ [0, 1-ε] (Doeblin + complement).
+  -- (Tμ)(A).toReal = ∫ f dμ = ε·(πA).toReal + ∫ g dμ
+  -- π(A).toReal = ∫ f dπ = ε·(πA).toReal + ∫ g dπ  (by stationarity)
+  -- Difference = ∫ g dμ - ∫ g dπ where g ∈ [0, 1-ε]
+  -- By tv_integral_bound: |∫g dμ - ∫g dπ| ≤ (1-ε)·δ
+  --
+  -- Lean plumbing: bind_apply + integral_toReal for the ENNReal↔ℝ conversion,
+  -- integral_sub/integral_const for the decomposition.
+  sorry
 
 /-! ## N-step mixing (PROVEN by induction from TV contraction) -/
 
