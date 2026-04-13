@@ -28,6 +28,7 @@ No gradient, metric, or manifold structure is assumed.
 
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.Probability.Moments.Variance
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
@@ -75,13 +76,19 @@ variable {X : Type*} [MeasurableSpace X] [ds : DirichletSpace X]
 def variance (f : X → ℝ) : ℝ :=
   ∫ x, (f x) ^ 2 ∂ds.μ - (∫ x, f x ∂ds.μ) ^ 2
 
-/-- Variance is nonneg: (∫f)² ≤ ∫f² (Cauchy-Schwarz / Jensen).
-Proof: 0 ≤ ∫(f-∫f)² = ∫f² - (∫f)² = Var(f).
-Sorry on the integral algebra ∫(f-c)² = ∫f² - c² (needs
-integral_sub + integral_mul_left + integral_const + integrability). -/
-axiom variance_nonneg' {X : Type*} [MeasurableSpace X] [ds : DirichletSpace X]
-    (f : X → ℝ) (hf : Integrable (fun x => (f x) ^ 2) ds.μ) :
-    0 ≤ variance f
+/-- Variance is nonneg. Proved via Mathlib's `ProbabilityTheory.variance_nonneg`
+and `variance_eq_sub` which gives Var[f;μ] = ∫f² - (∫f)². -/
+theorem variance_nonneg' (f : X → ℝ)
+    (hf : Integrable (fun x => (f x) ^ 2) ds.μ)
+    (hfm : AEStronglyMeasurable f ds.μ := by fun_prop) :
+    0 ≤ variance f := by
+  unfold variance
+  have hMemLp : MeasureTheory.MemLp f 2 ds.μ :=
+    (MeasureTheory.memLp_two_iff_integrable_sq hfm).mpr hf
+  have h1 := ProbabilityTheory.variance_nonneg f ds.μ
+  rw [ProbabilityTheory.variance_eq_sub hMemLp] at h1
+  simp only [Pi.pow_apply] at h1
+  linarith
 
 /-- Entropy of a nonneg function f under the reference measure. -/
 def entropy (f : X → ℝ) : ℝ :=
