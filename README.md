@@ -128,13 +128,25 @@ MarkovSemigroups/
     SpectralGap.lean            -- Exponential mixing from gap
     RelativeEntropy.lean        -- Entropy decay under semigroup
     Ergodicity.lean             -- Uniqueness of invariant measure
+    IntegralBounds.lean         -- TV-integral bound (layer cake), integral lower bound
+    Doeblin.lean                -- Doeblin's condition, n-step mixing, correlation decay
 ```
 
 ## Formalization status
 
-**Zero sorry's.** Every theorem in the project is either fully proven
-or derived from one of 8 postulated axioms, each a standard textbook
-result with a precise reference:
+**Zero sorry's.** The project has two categories of results:
+
+### Fully proved (zero sorry's, zero axioms)
+
+- **Brascamp-Lieb inequality** and Poincaré corollary
+- **Doeblin's condition** — one-step contraction, TV contraction,
+  n-step mixing (by induction), correlation decay
+- **TV-integral bound** via layer cake formula
+- **Hessian invertibility** — injectivity, surjectivity, continuity
+  of inverse (via `contDiffAt_map_inverse`)
+- **Weighted Young's inequality** from Hessian symmetry
+
+### Postulated as textbook axioms (8 axioms)
 
 | Axiom | Reference |
 |-------|-----------|
