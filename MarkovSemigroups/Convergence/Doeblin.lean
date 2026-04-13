@@ -293,16 +293,40 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
     |∫ x, f₁ x * conditionalExpectation K f₂ d x ∂π -
      (∫ x, f₁ x ∂π) * (∫ x, f₂ x ∂π)| ≤
       2 * B ^ 2 * (1 - hD.ε) ^ d := by
-  -- The LHS = |∫ f₁(x) * (E[f₂|x] - E_π[f₂]) dπ(x)|
-  -- (since ∫ f₁ * const dπ = (∫f₁ dπ) * const)
-  -- Step 1: |E[f₂|X₀=x] - E_π[f₂]| ≤ 2B(1-ε)^d
-  -- From tv_integral_bound on (f₂+B) ∈ [0,2B] with K^d(x,·) vs π.
-  -- Step 2: |∫ f₁ * (E[f₂|·] - E_π[f₂]) dπ| ≤ B * 2B(1-ε)^d = 2B²(1-ε)^d
-  -- By |f₁| ≤ B and the pointwise bound.
-  --
-  -- This proof uses doeblin_n_step_mixing (proved) and tv_integral_bound (proved)
-  -- as key ingredients. The remaining plumbing is connecting them through
-  -- the conditional expectation and integral manipulation.
-  sorry
+  -- Abbreviations
+  set Ef₂ := ∫ y, f₂ y ∂π
+  set CE := conditionalExpectation K f₂ d
+  -- Step 1: Rewrite LHS = |∫ f₁(x) * (CE(x) - Ef₂) dπ|
+  have h_rewrite : ∫ x, f₁ x * CE x ∂π - (∫ x, f₁ x ∂π) * Ef₂ =
+      ∫ x, f₁ x * (CE x - Ef₂) ∂π := by
+    simp only [mul_sub]
+    rw [integral_sub
+      (by sorry) -- Integrable (f₁ * CE) π
+      (Integrable.mul_const ((integrable_const B).mono hf1.aestronglyMeasurable
+        (Filter.Eventually.of_forall fun x => by
+          rw [Real.norm_eq_abs]; exact le_trans (hB1 x) (le_abs_self B))) Ef₂)]
+    congr 1
+    rw [integral_mul_const]
+  rw [h_rewrite]
+  -- Step 2: Pointwise bound |CE(x) - Ef₂| ≤ 2B(1-ε)^d
+  -- This uses tv_integral_bound on (f₂+B) ∈ [0,2B] shifted,
+  -- or directly from doeblin_n_step_mixing.
+  have h_pw : ∀ x, |CE x - Ef₂| ≤ 2 * B * (1 - hD.ε) ^ d := by
+    sorry -- tv_integral_bound applied to f₂+B with K^d(x,·) vs π
+  -- Step 3: |∫ f₁ * (CE - Ef₂) dπ| ≤ ∫ |f₁| * |CE - Ef₂| dπ ≤ B * 2B(1-ε)^d
+  calc |∫ x, f₁ x * (CE x - Ef₂) ∂π|
+      ≤ ∫ x, |f₁ x * (CE x - Ef₂)| ∂π :=
+        abs_integral_le_integral_abs
+    _ = ∫ x, |f₁ x| * |CE x - Ef₂| ∂π := by
+        congr 1; ext x; exact abs_mul (f₁ x) (CE x - Ef₂)
+    _ ≤ ∫ x, B * (2 * B * (1 - hD.ε) ^ d) ∂π := by
+        apply integral_mono_of_nonneg
+        · exact Filter.Eventually.of_forall (fun x => by positivity)
+        · exact integrable_const _
+        · exact Filter.Eventually.of_forall (fun x => by
+            exact mul_le_mul (hB1 x) (h_pw x) (abs_nonneg _) hB)
+    _ = 2 * B ^ 2 * (1 - hD.ε) ^ d := by
+        simp [integral_const, IsProbabilityMeasure.measure_univ]
+        ring
 
 end
