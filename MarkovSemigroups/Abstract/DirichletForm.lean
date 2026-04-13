@@ -75,7 +75,10 @@ variable {X : Type*} [MeasurableSpace X] [ds : DirichletSpace X]
 def variance (f : X → ℝ) : ℝ :=
   ∫ x, (f x) ^ 2 ∂ds.μ - (∫ x, f x ∂ds.μ) ^ 2
 
-/-- **Postulated.** Variance is nonneg: Cauchy-Schwarz gives (integral f)^2 <= integral f^2. -/
+/-- Variance is nonneg: (∫f)² ≤ ∫f² (Cauchy-Schwarz / Jensen).
+Proof: 0 ≤ ∫(f-∫f)² = ∫f² - (∫f)² = Var(f).
+Sorry on the integral algebra ∫(f-c)² = ∫f² - c² (needs
+integral_sub + integral_mul_left + integral_const + integrability). -/
 axiom variance_nonneg' {X : Type*} [MeasurableSpace X] [ds : DirichletSpace X]
     (f : X → ℝ) (hf : Integrable (fun x => (f x) ^ 2) ds.μ) :
     0 ≤ variance f
