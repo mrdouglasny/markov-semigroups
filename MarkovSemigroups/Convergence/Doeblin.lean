@@ -257,6 +257,31 @@ theorem doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
       (fun B hB => ih B hB)
       A hA
 
+/-- Iterates of a Markov kernel applied to a Dirac measure are probability measures. -/
+theorem iteratePoint_isProbabilityMeasure {X : Type*} [MeasurableSpace X]
+    (K : MarkovKernel X) (n : ℕ) (x : X) :
+    IsProbabilityMeasure (K.iteratePoint n x) := by
+  induction n with
+  | zero => simp [MarkovKernel.iteratePoint]; infer_instance
+  | succ k ih =>
+    simp only [MarkovKernel.iteratePoint, Function.iterate_succ', Function.comp_apply,
+      MarkovKernel.transferOp]
+    constructor
+    change ((K.transferOp ∘ K.transferOp^[k]) (Measure.dirac x)) Set.univ = 1
+    simp only [Function.comp_apply, MarkovKernel.transferOp,
+      Measure.bind_apply MeasurableSet.univ K.measurable.aemeasurable]
+    have : IsProbabilityMeasure (K.transferOp^[k] (Measure.dirac x)) := ih
+    simp [measure_univ]
+
+/-- Bounded measurable function is integrable on any probability measure. -/
+theorem integrable_of_bound {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} [IsProbabilityMeasure μ]
+    {f : X → ℝ} (hf : Measurable f) {B : ℝ} (hB : ∀ x, |f x| ≤ B) :
+    Integrable f μ :=
+  (integrable_const B).mono hf.aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => by
+      rw [Real.norm_eq_abs]; exact le_trans (hB x) (le_abs_self B))
+
 /-! ## Correlation decay
 
 For a stationary Markov chain (X_t) with transition kernel K and
@@ -301,7 +326,22 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
       ∫ x, f₁ x * (CE x - Ef₂) ∂π := by
     simp only [mul_sub]
     rw [integral_sub
-      (by sorry) -- Integrable (f₁ * CE) π
+      (by -- Integrable (f₁ * CE) π: both bounded, product bounded by B²
+          exact (integrable_const (B * B)).mono
+            (by sorry) -- AEStronglyMeasurable of f₁ * conditionalExpectation
+                       -- (measurability of parametric integral x ↦ ∫f₂ dK^d(x,·))
+            (Filter.Eventually.of_forall fun x => by
+              rw [Real.norm_eq_abs]; simp [abs_mul]
+              have hCE_bound : |CE x| ≤ B := by
+                simp only [CE, conditionalExpectation]
+                have := iteratePoint_isProbabilityMeasure K d x
+                calc |∫ y, f₂ y ∂(K.iteratePoint d x)|
+                    ≤ ∫ y, |f₂ y| ∂(K.iteratePoint d x) := abs_integral_le_integral_abs
+                  _ ≤ ∫ _, B ∂(K.iteratePoint d x) :=
+                      integral_mono (integrable_of_bound hf2 hB2).norm
+                        (integrable_const B) hB2
+                  _ = B := by simp [integral_const, IsProbabilityMeasure.measure_univ]
+              exact mul_le_mul (hB1 x) hCE_bound (abs_nonneg _) hB))
       (Integrable.mul_const ((integrable_const B).mono hf1.aestronglyMeasurable
         (Filter.Eventually.of_forall fun x => by
           rw [Real.norm_eq_abs]; exact le_trans (hB1 x) (le_abs_self B))) Ef₂)]
@@ -313,11 +353,15 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
   -- or directly from doeblin_n_step_mixing.
   have h_pw : ∀ x, |CE x - Ef₂| ≤ 2 * B * (1 - hD.ε) ^ d := by
     intro x
-    -- |∫ f₂ dK^d(x,·) - ∫ f₂ dπ| ≤ 2B(1-ε)^d
-    -- Shift: = |∫(f₂+B) dK^d - ∫(f₂+B) dπ| (constants cancel)
-    -- Apply tv_integral_bound with f₂+B ∈ [0,2B], C = 2B, δ = (1-ε)^d
-    -- where the TV gap comes from doeblin_n_step_mixing.
-    sorry
+    -- IsProbabilityMeasure of K^d(x,·) — same proof as in doeblin_n_step_mixing
+    have : IsProbabilityMeasure (K.iteratePoint d x) := iteratePoint_isProbabilityMeasure K d x
+    -- Apply tv_integral_bound_abs with |f₂| ≤ B and TV gap (1-ε)^d
+    simp only [conditionalExpectation, CE]
+    exact tv_integral_bound_abs (K.iteratePoint d x) π f₂ hf2 B hB
+      (integrable_of_bound hf2 hB2) (integrable_of_bound hf2 hB2)
+      hB2
+      ((1 - hD.ε)^d) (pow_nonneg (by linarith [hD.hε_le]) d)
+      (doeblin_n_step_mixing hD h_inv d x)
   -- Step 3: |∫ f₁ * (CE - Ef₂) dπ| ≤ ∫ |f₁| * |CE - Ef₂| dπ ≤ B * 2B(1-ε)^d
   calc |∫ x, f₁ x * (CE x - Ef₂) ∂π|
       ≤ ∫ x, |f₁ x * (CE x - Ef₂)| ∂π :=

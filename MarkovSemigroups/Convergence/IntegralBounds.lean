@@ -81,4 +81,28 @@ theorem tv_integral_bound {X : Type*} [MeasurableSpace X]
     _ = δ * C := by simp [Measure.real, Real.volume_Ioc, hC]
     _ = C * δ := mul_comm δ C
 
+/-- TV-integral bound for functions bounded by B (possibly negative).
+|∫f dμ - ∫f dπ| ≤ 2B·δ when |f| ≤ B. Reduces to `tv_integral_bound`
+via the shift f ↦ f+B ∈ [0, 2B]. -/
+theorem tv_integral_bound_abs {X : Type*} [MeasurableSpace X]
+    (μ π : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure π]
+    (f : X → ℝ) (hf : Measurable f) (B : ℝ) (hB : 0 ≤ B)
+    (hf_int_μ : Integrable f μ) (hf_int_π : Integrable f π)
+    (hBf : ∀ x, |f x| ≤ B)
+    (δ : ℝ) (hδ : 0 ≤ δ)
+    (hgap : ∀ A, MeasurableSet A → |(μ A).toReal - (π A).toReal| ≤ δ) :
+    |∫ x, f x ∂μ - ∫ x, f x ∂π| ≤ 2 * B * δ := by
+  have hshift : ∫ x, f x ∂μ - ∫ x, f x ∂π =
+      ∫ x, (f x + B) ∂μ - ∫ x, (f x + B) ∂π := by
+    simp [integral_add hf_int_μ (integrable_const B),
+          integral_add hf_int_π (integrable_const B),
+          integral_const, IsProbabilityMeasure.measure_univ]
+  rw [hshift]
+  exact tv_integral_bound μ π (fun x => f x + B) (hf.add measurable_const)
+    (2 * B) (by linarith)
+    (hf_int_μ.add (integrable_const B)) (hf_int_π.add (integrable_const B))
+    (fun x => by have := (abs_le.mp (hBf x)).1; linarith)
+    (fun x => by have := (abs_le.mp (hBf x)).2; linarith)
+    δ hδ hgap
+
 end
