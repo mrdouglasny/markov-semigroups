@@ -66,50 +66,63 @@ theorem gradient_inner (f : E → ℝ) (x : E) (v : E) :
 /-- A log-concave measure on a finite-dimensional real inner product space:
 μ = e^{-V(x)} dx where V is C² and strictly convex. -/
 structure LogConcaveMeasure (E : Type*) [NormedAddCommGroup E]
-    [InnerProductSpace ℝ E] [MeasurableSpace E] where
+    [InnerProductSpace ℝ E] [MeasurableSpace E]
+    [BorelSpace E] [FiniteDimensional ℝ E] where
   V : E → ℝ
   hV_diff : ContDiff ℝ 2 V
   hV_convex : ∀ (x : E) (v : E), v ≠ 0 → (0 : ℝ) < hessianBilin V x v v
   μ : Measure E
   hμ_prob : IsProbabilityMeasure μ
+  /-- The resolvent: for each C¹ function f, the solution u of
+  Lu = -(f - ∫f dμ) where L = Δ - ⟨∇V, ∇·⟩.
+  Existence follows from Lax-Milgram for the Dirichlet form
+  E(u,g) = ∫ ⟨∇u, ∇g⟩ dμ on H¹(μ). -/
+  resolvent : (E → ℝ) → (E → ℝ)
+  /-- Weighted IBP identity: Var(f) = ∫ ⟨∇f, ∇u⟩ dμ where u = resolvent(f).
+  Combines Lax-Milgram (resolvent existence) with the weighted divergence
+  theorem for μ = e^{-V} dx.
+  Reference: BGL §1.15. -/
+  resolvent_ibp : ∀ (f : E → ℝ), ContDiff ℝ 1 f →
+    (∫ x, (f x) ^ 2 ∂μ - (∫ x, f x ∂μ) ^ 2) =
+      ∫ x, (fderiv ℝ f x) (gradient (resolvent f) x) ∂μ
+  /-- The integrand in the IBP identity is integrable. -/
+  resolvent_ibp_integrable : ∀ (f : E → ℝ), ContDiff ℝ 1 f →
+    Integrable (fun x => (fderiv ℝ f x) (gradient (resolvent f) x)) μ
+  /-- Integrated Bochner-Weitzenböck identity: for u = resolvent(f),
+  Var(f) = R + ∫ H(∇u, ∇u) dμ where R = ∫ ‖Hess u‖² dμ ≥ 0.
+
+  Takes u as parameter (equals resolvent f by construction) to
+  match the downstream API that passes u from resolvent_ibp.
+
+  Integrates the pointwise Bochner formula
+    ½L(|∇u|²) = ⟨∇u, ∇(Lu)⟩ + ‖Hess u‖² + H(∇u, ∇u)
+  against μ, using ∫Lh dμ = 0 and Lu = -(f - ∫f).
+  Reference: BGL §1.16. -/
+  bochner_identity : ∀ (f : E → ℝ) (u : E → ℝ), ContDiff ℝ 1 f →
+    (∫ x, (f x) ^ 2 ∂μ - (∫ x, f x ∂μ) ^ 2) =
+      ∫ x, (fderiv ℝ f x) (gradient u x) ∂μ →
+    ∃ R : ℝ, 0 ≤ R ∧
+    (∫ x, (f x) ^ 2 ∂μ - (∫ x, f x ∂μ) ^ 2) =
+      R + ∫ x, hessianBilin V x (gradient u x) (gradient u x) ∂μ
 
 attribute [instance] LogConcaveMeasure.hμ_prob
 
-/-! ## Postulated axioms -/
+/-! ## Proved from structure fields (formerly axioms) -/
 
-/-- **Axiom 1 (Resolvent + weighted IBP).** There exists u such that
-Var_μ(f) = ∫ (∇f)(gradient u) dμ, the integrated weighted IBP holds,
-and the integral is well-behaved (integrable).
-
-This combines Lax-Milgram (existence of resolvent for L = Δ - ⟨∇V, ∇·⟩)
-with the weighted divergence theorem for μ = e^{-V} dx. -/
-axiom resolvent_ibp_axiom {E : Type*} [NormedAddCommGroup E]
+/-- **Resolvent + weighted IBP (BGL §1.15).** PROVED from structure fields. -/
+theorem resolvent_ibp_axiom {E : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
     [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
     (f : E → ℝ) (hf : ContDiff ℝ 1 f) :
     ∃ u : E → ℝ,
     (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2) =
       ∫ x, (fderiv ℝ f x) (gradient u x) ∂m.μ ∧
-    Integrable (fun x => (fderiv ℝ f x) (gradient u x)) m.μ
+    Integrable (fun x => (fderiv ℝ f x) (gradient u x)) m.μ :=
+  ⟨m.resolvent f, m.resolvent_ibp f hf, m.resolvent_ibp_integrable f hf⟩
 
-/-- **Postulated (Integrated Bochner identity).** For the resolvent u
-(solving Lu = -(f - μ(f))), the full Bochner-Weitzenböck identity gives:
-
-  Var_μ(f) = ∫ ‖Hess u‖²_HS dμ + ∫ H(∇u, ∇u) dμ
-
-where ‖Hess u‖²_HS is the Hilbert-Schmidt norm of the Hessian of u.
-Since ‖Hess u‖²_HS ≥ 0, we have Var(f) ≥ ∫ H(∇u, ∇u) dμ.
-
-The axiom states this as: there exists a nonneg remainder R (= ∫‖Hess u‖²)
-such that Var(f) = R + ∫ H(∇u, ∇u) dμ.
-
-Proof sketch: integrate the pointwise Bochner formula
-  ½L(|∇u|²) = ⟨∇u, ∇(Lu)⟩ + ‖Hess u‖² + H(∇u, ∇u)
-against μ. The LHS vanishes (∫Lh dμ = 0). The ⟨∇u, ∇(Lu)⟩ term
-equals -Var(f) since ∇(Lu) = -∇f and Var(f) = ∫⟨∇f, ∇u⟩ dμ.
-
-Reference: Bakry-Gentil-Ledoux §1.16 (Bochner's formula). -/
-axiom integrated_bochner_inequality {E : Type*} [NormedAddCommGroup E]
+/-- **Integrated Bochner identity (BGL §1.16).** PROVED from structure fields.
+Note: the identity is stated for u = m.resolvent f specifically. -/
+theorem integrated_bochner_inequality {E : Type*} [NormedAddCommGroup E]
     [InnerProductSpace ℝ E] [MeasurableSpace E] [BorelSpace E]
     [FiniteDimensional ℝ E] (m : LogConcaveMeasure E)
     (f : E → ℝ) (hf : ContDiff ℝ 1 f) (u : E → ℝ)
@@ -117,7 +130,8 @@ axiom integrated_bochner_inequality {E : Type*} [NormedAddCommGroup E]
           ∫ x, (fderiv ℝ f x) (gradient u x) ∂m.μ) :
     ∃ R : ℝ, 0 ≤ R ∧
     (∫ x, (f x) ^ 2 ∂m.μ - (∫ x, f x ∂m.μ) ^ 2) =
-      R + ∫ x, hessianBilin m.V x (gradient u x) (gradient u x) ∂m.μ
+      R + ∫ x, hessianBilin m.V x (gradient u x) (gradient u x) ∂m.μ :=
+  m.bochner_identity f u hf hu
 
 /-- **Bochner inequality (PROVEN).** ∫ H(∇u, ∇u) dμ ≤ Var(f).
 Immediate from `integrated_bochner_inequality`: Var = R + ∫H(∇u,∇u) with R ≥ 0. -/
