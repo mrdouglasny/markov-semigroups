@@ -23,6 +23,11 @@ import MarkovSemigroups.Matrix.LaplaceTransform
 import MarkovSemigroups.Matrix.Trotter
 import MarkovSemigroups.Matrix.Diamagnetic
 
+-- Dobrushin uniqueness for lattice spin systems
+import MarkovSemigroups.Dobrushin.Specification
+import MarkovSemigroups.Dobrushin.Uniqueness
+import MarkovSemigroups.Dobrushin.StrongCoupling
+
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
 import MarkovSemigroups.Convergence.RelativeEntropy
