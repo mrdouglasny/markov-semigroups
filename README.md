@@ -145,12 +145,12 @@ MarkovSemigroups/
 - **Hessian invertibility** — injectivity, surjectivity, continuity
   of inverse (via `contDiffAt_map_inverse`)
 - **Weighted Young's inequality** from Hessian symmetry
+- **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (8 axioms)
+### Postulated as textbook axioms (7 axioms)
 
 | Axiom | Reference |
 |-------|-----------|
-| `variance_nonneg'` | Cauchy-Schwarz: (∫f)² ≤ ∫f² |
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
 | `bakryEmery_poincare` | BGL Theorem 4.8.4 |

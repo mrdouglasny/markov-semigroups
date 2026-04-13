@@ -1,25 +1,15 @@
 # markov-semigroups — Status
 
-**Zero sorry's. 8 axioms. 30+ proved theorems.**
+**Zero sorry's. 7 axioms. 30+ proved theorems.**
 
 ## Axioms
 
 All 8 axioms are standard textbook results. None are project-specific.
 
-### 1. `variance_nonneg'` (DirichletForm.lean)
+### ~~1. `variance_nonneg'`~~ — PROVED
 
-**Says:** For a probability measure μ and square-integrable f,
-Var_μ(f) = ∫f² - (∫f)² ≥ 0.
-
-**Informally:** Variance is nonneg. This is (∫f)² ≤ ∫f² (Cauchy-Schwarz /
-Jensen for the convex function x²).
-
-**Difficulty:** Low. Mathlib has `ProbabilityTheory.variance_nonneg` but
-uses a different variance definition (via `evariance`). Bridging the two
-definitions is straightforward but requires imports we don't have.
-
-**Strategy:** Use `integral_mul_sq_le_sq_mul_sq` (Cauchy-Schwarz for
-integrals) with g = 1, or bridge to Mathlib's `ProbabilityTheory.variance`.
+**Proved** via Mathlib's `ProbabilityTheory.variance_nonneg` +
+`variance_eq_sub` + `memLp_two_iff_integrable_sq`.
 
 ### 2. `gross_lsi_implies_hypercontractive` (Hypercontractivity.lean)
 
@@ -129,7 +119,7 @@ against μ using ∫Lh dμ = 0.
 
 | Axiom | Difficulty | Key obstacle |
 |-------|-----------|-------------|
-| variance_nonneg' | Low | Bridge to Mathlib's variance |
+| ~~variance_nonneg'~~ | ~~Low~~ | **PROVED** |
 | bakryEmery_poincare | Medium | Integrate gradient decay |
 | bakryEmery_variance_decay | Medium | Energy-variance identity |
 | gross_hypercontractive_implies_lsi | Medium-High | Linearization |
@@ -137,6 +127,26 @@ against μ using ∫Lh dμ = 0.
 | bakryEmery_logSobolev | High | Semigroup interpolation + Grönwall |
 | resolvent_ibp_axiom | High | Weighted IBP + Lax-Milgram |
 | integrated_bochner_axiom | High | Bochner-Weitzenböck identity |
+
+## Infrastructure needed to prove remaining axioms
+
+The central missing piece is **semigroup generator theory** — the
+unbounded operator L = lim_{t→0} (P_t - I)/t on L²(μ). Mathlib has
+`Analysis.Operator.OneParameterSemigroup` but it's purely algebraic;
+connecting it to analysis (strong continuity, domain, d/dt P_t = LP_t)
+is the main project.
+
+| Axiom | Effort | Key infrastructure needed |
+|-------|--------|--------------------------|
+| #6 resolvent_ibp | Low-Med | Lax-Milgram (IN MATHLIB), abstract H¹(μ) |
+| #4 bakryEmery_poincare | High | Generator theory, ∫₀^∞ e^{-2ρt} dt |
+| #3 variance_decay | Medium | Generator theory + axiom #4 |
+| #2 bakryEmery_logSobolev | High | Generator theory + Grönwall (IN MATHLIB) |
+| #7 integrated_bochner | High | Generator theory + axiom #6, Γ₂ definition |
+| #5 gross_lsi→HC | Very High | Generator theory + L^p norm differentiation |
+| #5 gross_HC→LSI | Very High | Generator theory + linearization |
+
+**Recommended attack order:** #6 → generator theory → #4 → #3 → #2 → #7 → #5.
 
 ## Proved results (highlights)
 
