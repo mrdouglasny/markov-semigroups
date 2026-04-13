@@ -312,7 +312,12 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
   -- This uses tv_integral_bound on (f₂+B) ∈ [0,2B] shifted,
   -- or directly from doeblin_n_step_mixing.
   have h_pw : ∀ x, |CE x - Ef₂| ≤ 2 * B * (1 - hD.ε) ^ d := by
-    sorry -- tv_integral_bound applied to f₂+B with K^d(x,·) vs π
+    intro x
+    -- |∫ f₂ dK^d(x,·) - ∫ f₂ dπ| ≤ 2B(1-ε)^d
+    -- Shift: = |∫(f₂+B) dK^d - ∫(f₂+B) dπ| (constants cancel)
+    -- Apply tv_integral_bound with f₂+B ∈ [0,2B], C = 2B, δ = (1-ε)^d
+    -- where the TV gap comes from doeblin_n_step_mixing.
+    sorry
   -- Step 3: |∫ f₁ * (CE - Ef₂) dπ| ≤ ∫ |f₁| * |CE - Ef₂| dπ ≤ B * 2B(1-ε)^d
   calc |∫ x, f₁ x * (CE x - Ef₂) ∂π|
       ≤ ∫ x, |f₁ x * (CE x - Ef₂)| ∂π :=
