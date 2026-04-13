@@ -34,6 +34,7 @@ import Mathlib.Analysis.Normed.Algebra.MatrixExponential
 import Mathlib.Analysis.Matrix.Normed
 import Mathlib.Analysis.SpecialFunctions.Exponential
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
+import Mathlib.Topology.Algebra.InfiniteSum.Order
 
 noncomputable section
 
@@ -161,9 +162,20 @@ This requires extracting matrix entries from the tsum definition of
 `NormedSpace.exp`. The mathematical content is trivial (tsum of nonneg
 terms is nonneg) but the Lean API for entry extraction from matrix
 tsum needs careful instance management. -/
-axiom exp_entryNonneg_of_entryNonneg (A : Matrix n n ℝ)
+theorem exp_entryNonneg_of_entryNonneg (A : Matrix n n ℝ)
     (hA : IsEntryNonneg A) :
-    IsEntryNonneg (NormedSpace.exp A)
+    IsEntryNonneg (NormedSpace.exp A) := by
+  intro i j
+  -- exp(A) i j = ∑' k, ((k!)⁻¹ • A^k) i j, extracted via Pi.hasSum
+  have hentry : HasSum (fun k => ((↑k.factorial : ℝ)⁻¹ • A ^ k) i j)
+      (NormedSpace.exp A i j) :=
+    Pi.hasSum.mp (Pi.hasSum.mp
+      (NormedSpace.exp_series_hasSum_exp' (𝕂 := ℝ) A) i) j
+  rw [hentry.tsum_eq.symm]
+  -- Each term (k!)⁻¹ * (A^k i j) is nonneg: (k!)⁻¹ ≥ 0 and A^k ≥ 0 entrywise
+  exact tsum_nonneg fun k => by
+    simp only [Matrix.smul_apply, smul_eq_mul]
+    exact mul_nonneg (inv_nonneg.mpr (Nat.cast_nonneg _)) (isEntryNonneg_pow hA k i j)
 
 /-! ## Main theorem: heat kernel positivity -/
 
