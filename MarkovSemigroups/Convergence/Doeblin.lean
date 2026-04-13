@@ -328,7 +328,33 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
     rw [integral_sub
       (by -- Integrable (f₁ * CE) π: both bounded, product bounded by B²
           exact (integrable_const (B * B)).mono
-            (by sorry) -- AEStronglyMeasurable of f₁ * conditionalExpectation
+            (by
+              have h_iter_meas : Measurable (K.iteratePoint d) := by
+                have h_transfer_meas : Measurable (K.transferOp^[d]) := by
+                  induction d with
+                  | zero => simpa using measurable_id
+                  | succ d ih =>
+                      simpa [MarkovKernel.transferOp, Function.iterate_succ] using
+                        ih.comp (Measure.measurable_bind' K.measurable)
+                simpa [MarkovKernel.iteratePoint] using
+                  h_transfer_meas.comp Measure.measurable_dirac
+              have h_plus : Measurable fun x =>
+                  ENNReal.toReal (∫⁻ y, ENNReal.ofReal (f₂ y) ∂(K.iteratePoint d x)) :=
+                Measurable.ennreal_toReal <|
+                  (Measure.measurable_lintegral (ENNReal.measurable_ofReal.comp hf2)).comp
+                    h_iter_meas
+              have h_minus : Measurable fun x =>
+                  ENNReal.toReal (∫⁻ y, ENNReal.ofReal (-f₂ y) ∂(K.iteratePoint d x)) :=
+                Measurable.ennreal_toReal <|
+                  (Measure.measurable_lintegral (ENNReal.measurable_ofReal.comp hf2.neg)).comp
+                    h_iter_meas
+              have hCE_meas : Measurable fun x => ∫ y, f₂ y ∂(K.iteratePoint d x) := by
+                convert h_plus.sub h_minus using 1
+                funext x
+                letI := iteratePoint_isProbabilityMeasure K d x
+                rw [integral_eq_lintegral_pos_part_sub_lintegral_neg_part
+                  (integrable_of_bound hf2 hB2)]
+              exact (hf1.mul hCE_meas).stronglyMeasurable.aestronglyMeasurable) -- AEStronglyMeasurable of f₁ * conditionalExpectation
                        -- (measurability of parametric integral x ↦ ∫f₂ dK^d(x,·))
             (Filter.Eventually.of_forall fun x => by
               rw [Real.norm_eq_abs]; simp [abs_mul]
