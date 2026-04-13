@@ -153,14 +153,12 @@ MarkovSemigroups/
 - **Bakry-Émery log-Sobolev** — Ent(f²) ≤ (2/ρ) E(f,f) from
   entropy decay bound + entropy ergodicity
 
-### Postulated as textbook axioms (4 axioms)
+### Postulated as textbook axioms (2 axioms)
 
 | Axiom | Reference |
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
-| `resolvent_ibp_axiom` | Lax-Milgram + weighted IBP (BGL §1.15) |
-| `integrated_bochner_axiom` | Bochner-Weitzenböck identity (BGL §1.16) |
 
 ## Application to P(Phi)_2
 

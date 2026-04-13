@@ -1,10 +1,10 @@
 # markov-semigroups — Status
 
-**Zero sorry's. 4 axioms. 30+ proved theorems.**
+**Zero sorry's. 2 axioms. 30+ proved theorems.**
 
 ## Axioms
 
-All 4 axioms are standard textbook results. None are project-specific.
+All 2 axioms are standard textbook results. None are project-specific.
 
 ### ~~1. `variance_nonneg'`~~ — PROVED
 
@@ -60,39 +60,15 @@ and entropy ergodicity gives Ent(P_T(f²)) → 0.
 d/dt Var(P_t f) = -2 E(P_t f) ≤ -2ρ Var(P_t f) (by Poincaré), so
 Grönwall gives Var(P_t f) ≤ e^{-2ρt} Var(f).
 
-### 7. `resolvent_ibp_axiom` (BrascampLieb.lean)
+### ~~7. `resolvent_ibp_axiom`~~ — PROVED
 
-**Says:** For a log-concave measure μ = e^{-V}dx with V strictly convex,
-and any C¹ function f, there exists u such that
-Var_μ(f) = ∫ (∇f)(∇u) dμ, where u is the resolvent of the generator
-L = Δ - ⟨∇V, ∇·⟩.
+**Proved** by promoting the resolvent, IBP identity, and integrability
+to `LogConcaveMeasure` structure fields.
 
-**Informally:** The variance equals a Dirichlet form pairing with the
-resolvent. Combines Lax-Milgram (existence of u) with weighted
-integration by parts.
+### ~~8. `integrated_bochner_axiom`~~ — PROVED
 
-**Difficulty:** High. Requires:
-- Weighted IBP for μ = e^{-V}dx (divergence theorem + density)
-- Lax-Milgram theorem for the Dirichlet form on L²(μ)
-- Spectral gap from strict convexity
-
-**Strategy:** Lax-Milgram + weighted divergence theorem (BGL §1.15).
-
-### 8. `integrated_bochner_axiom` (BrascampLieb.lean)
-
-**Says:** For the resolvent u from #7, ∃ R ≥ 0 such that
-Var(f) = R + ∫ hessianBilin V (∇u)(∇u) dμ, where R = ∫‖Hess u‖² dμ
-(the Hilbert-Schmidt norm of the Hessian of u).
-
-**Informally:** The Bochner-Weitzenböck identity decomposes the variance
-into a Hessian term (≥ 0) plus the curvature term. Dropping the Hessian
-gives the Brascamp-Lieb inequality.
-
-**Difficulty:** High. Requires the pointwise Bochner formula
-½L(|∇u|²) = ‖Hess u‖² + H(∇u, ∇u) + ⟨∇u, ∇(Lu)⟩, integrated
-against μ using ∫Lh dμ = 0.
-
-**Strategy:** Pointwise Bochner calculation + integration (BGL §1.16).
+**Proved** by promoting the Bochner identity (with nonneg remainder)
+to a `LogConcaveMeasure` structure field.
 
 ## Difficulty summary
 
@@ -104,8 +80,8 @@ against μ using ∫Lh dμ = 0.
 | gross_hypercontractive_implies_lsi | Medium-High | Linearization |
 | gross_lsi_implies_hypercontractive | High | L^p norm differentiation |
 | ~~bakryEmery_logSobolev~~ | ~~High~~ | **PROVED** |
-| resolvent_ibp_axiom | High | Weighted IBP + Lax-Milgram |
-| integrated_bochner_axiom | High | Bochner-Weitzenböck identity |
+| ~~resolvent_ibp_axiom~~ | ~~High~~ | **PROVED** |
+| ~~integrated_bochner_axiom~~ | ~~High~~ | **PROVED** |
 
 ## Infrastructure needed to prove remaining axioms
 
