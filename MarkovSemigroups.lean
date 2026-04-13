@@ -19,6 +19,9 @@ import MarkovSemigroups.Instances.BrascampLieb
 
 -- Matrix semigroup theory (diamagnetic inequality)
 import MarkovSemigroups.Matrix.HeatKernel
+import MarkovSemigroups.Matrix.LaplaceTransform
+import MarkovSemigroups.Matrix.Trotter
+import MarkovSemigroups.Matrix.Diamagnetic
 
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
