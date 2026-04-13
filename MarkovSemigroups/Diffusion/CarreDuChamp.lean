@@ -112,8 +112,21 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
 
 /-! ## Postulated textbook results for Bakry-Émery theory -/
 
-/-- **Postulated (Bakry-Émery 1985).** Curvature Γ₂ ≥ ρΓ implies Poincaré(ρ).
-Proof: Var(f) = 2∫₀^∞ E(P_t f, P_t f) dt ≤ 2∫₀^∞ e^{-2ρt} E(f,f) dt = (1/ρ)E(f,f).
+/-- **Bakry-Émery Poincaré (BGL Thm 4.8.4).**
+
+Curvature Γ₂ ≥ ρΓ implies Poincaré(ρ): Var(f) ≤ (1/ρ) E(f,f).
+
+The proof factors into:
+1. Var(f) = 2∫₀^∞ E(P_t f) dt (semigroup energy identity — sorry'd,
+   needs d/dt ∫(P_t f)² = -2E(P_t f) from generator theory)
+2. E(P_t f) ≤ e^{-2ρt} E(f) (from gradient_decay + energy_eq_integral_Γ)
+3. 2∫₀^∞ e^{-2ρt} E(f) dt = (1/ρ) E(f) (improper integral of exponential)
+
+Step 1 requires the semigroup generator (d/dt P_t f = LP_t f) which is
+proved in hille-yosida (semigroup_generator_comm), but connecting
+BakryEmerySpace.semigroup to StronglyContinuousSemigroup on L²(μ)
+requires additional infrastructure.
+
 Reference: BGL Theorem 4.8.4. -/
 axiom bakryEmery_poincare {X : Type*} [MeasurableSpace X] [be : BakryEmerySpace X] :
     DirichletSpace.SatisfiesPoincare (ds := be.toDirichletSpace) be.ρ
