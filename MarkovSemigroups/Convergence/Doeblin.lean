@@ -45,6 +45,7 @@ theorem bind_toReal_eq_integral {X : Type*} [MeasurableSpace X]
 structure MarkovKernel (X : Type*) [MeasurableSpace X] where
   kernel : X → Measure X
   isProb : ∀ x, IsProbabilityMeasure (kernel x)
+  measurable : Measurable kernel
 
 attribute [instance] MarkovKernel.isProb
 
@@ -146,8 +147,8 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
   -- = ∫g dμ - ∫g dπ where g(x) = K(x,A) - ε·π(A) ∈ [0, 1-ε]
   -- By tv_integral_bound with C = 1-ε: |∫g dμ - ∫g dπ| ≤ (1-ε)·δ
   -- Step 1: Convert bind to integral
-  have hK_meas : AEMeasurable K.kernel μ := by sorry
-  have hK_meas_π : AEMeasurable K.kernel π := by sorry
+  have hK_meas : AEMeasurable K.kernel μ := K.measurable.aemeasurable
+  have hK_meas_π : AEMeasurable K.kernel π := K.measurable.aemeasurable
   have h1 : (K.transferOp μ A).toReal = ∫ x, (K.kernel x A).toReal ∂μ :=
     bind_toReal_eq_integral μ K.kernel hK_meas A hA
   have h2 : (π A).toReal = ∫ x, (K.kernel x A).toReal ∂π := by
@@ -161,11 +162,19 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
   -- Apply tv_integral_bound to g with C = 1-ε.
   set f : X → ℝ := fun x => (K.kernel x A).toReal
   set c : ℝ := hD.ε * (π A).toReal
-  -- ∫f dμ - ∫f dπ = ∫(f-c) dμ - ∫(f-c) dπ  (constant cancels)
+  have hf_asm : AEStronglyMeasurable f μ :=
+    ((Measure.measurable_coe hA).comp K.measurable).ennreal_toReal.aestronglyMeasurable
+  have hf_int : ∀ (ν : Measure X), IsProbabilityMeasure ν → Integrable f ν :=
+    fun ν _ => (integrable_const (1:ℝ)).mono
+      ((Measure.measurable_coe hA).comp K.measurable |>.ennreal_toReal.aestronglyMeasurable)
+      (Filter.Eventually.of_forall fun x => by
+        simp [f, Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+        exact ENNReal.toReal_le_of_le_ofReal zero_le_one (ENNReal.ofReal_one ▸ prob_le_one))
   have hcancel : ∫ x, f x ∂μ - ∫ x, f x ∂π =
       (∫ x, (f x - c) ∂μ) - (∫ x, (f x - c) ∂π) := by
-    simp [integral_sub (by sorry) (integrable_const c),
-          integral_const, IsProbabilityMeasure.measure_univ, c]
+    rw [integral_sub (hf_int μ ‹_›) (integrable_const c),
+        integral_sub (hf_int π ‹_›) (integrable_const c)]
+    simp [integral_const, IsProbabilityMeasure.measure_univ]
   rw [hcancel]
   -- g(x) = f(x) - c ∈ [0, 1-ε]
   have hg_nn : ∀ x, 0 ≤ f x - c := fun x => by
@@ -175,9 +184,30 @@ theorem doeblin_tv_contraction {X : Type*} [MeasurableSpace X]
     -- f(x) = K(x,A).toReal ≤ 1 - ε·(1-π(A).toReal) = 1-ε+ε·π(A).toReal
     -- i.e., f(x) - ε·π(A).toReal ≤ 1-ε
     -- From complement: K(x,Aᶜ) ≥ ε·π(Aᶜ), so K(x,A) ≤ 1-ε·π(Aᶜ) = 1-ε+ε·π(A)
-    sorry
-  exact tv_integral_bound μ π (fun x => f x - c) (by sorry) (1 - hD.ε) (by linarith [hD.hε_le])
-    (by sorry) (by sorry) hg_nn hg_le δ hδ_nn hδ
+    -- K(x,Aᶜ) ≥ ε·π(Aᶜ), so K(x,A) = 1 - K(x,Aᶜ) ≤ 1 - ε·π(Aᶜ) = 1 - ε + ε·π(A)
+    -- f(x) - c = K(x,A).toReal - ε·π(A).toReal ≤ 1-ε
+    -- K(x,Aᶜ) ≥ ε·π(Aᶜ) so K(x,A) ≤ 1-ε+ε·π(A), giving f(x)-c ≤ 1-ε
+    have hAc := hD.minorize x Aᶜ hA.compl
+    have hKA_le : (K.kernel x A).toReal ≤ 1 - hD.ε + hD.ε * (π A).toReal := by
+      have hK_one : (K.kernel x A).toReal + (K.kernel x Aᶜ).toReal = 1 := by
+        rw [← ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _),
+            ← measure_union (disjoint_compl_right) hA.compl,
+            Set.union_compl_self, measure_univ, ENNReal.toReal_one]
+      have hπ_one : (π A).toReal + (π Aᶜ).toReal = 1 := by
+        rw [← ENNReal.toReal_add (measure_ne_top _ _) (measure_ne_top _ _),
+            ← measure_union (disjoint_compl_right) hA.compl,
+            Set.union_compl_self, measure_univ, ENNReal.toReal_one]
+      -- K(x,Aᶜ) ≥ ε·π(Aᶜ) = ε·(1-π(A)), K(x,A) = 1-K(x,Aᶜ) ≤ 1-ε+ε·π(A)
+      have h1 : (K.kernel x Aᶜ).toReal ≥ hD.ε * (1 - (π A).toReal) := by
+        rw [← hπ_one]; linarith [hAc]
+      linarith [hK_one]
+    -- hKA_le : f x ≤ 1-ε+c, goal: f x - c ≤ 1-ε. Direct algebra.
+    linarith [hKA_le]
+  have hf_meas : Measurable f := (Measure.measurable_coe hA).comp K.measurable |>.ennreal_toReal
+  exact tv_integral_bound μ π (fun x => f x - c) (hf_meas.sub measurable_const)
+    (1 - hD.ε) (by linarith [hD.hε_le])
+    ((hf_int μ ‹_›).sub (integrable_const c)) ((hf_int π ‹_›).sub (integrable_const c))
+    hg_nn hg_le δ hδ_nn hδ
 
 /-! ## N-step mixing (PROVEN by induction from TV contraction) -/
 
@@ -199,7 +229,14 @@ theorem doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
   have h_prob : ∀ m, IsProbabilityMeasure (K.transferOp^[m] (Measure.dirac x)) := by
     intro m; induction m with
     | zero => simp; infer_instance
-    | succ k ih => rw [Function.iterate_succ']; exact ⟨by sorry⟩
+    | succ k ih =>
+        rw [Function.iterate_succ']
+        have := ih
+        constructor
+        show ((K.transferOp ∘ K.transferOp^[k]) (Measure.dirac x)) Set.univ = 1
+        simp only [Function.comp_apply, MarkovKernel.transferOp]
+        rw [Measure.bind_apply MeasurableSet.univ K.measurable.aemeasurable]
+        simp [measure_univ]
   induction n generalizing A with
   | zero =>
     simp only [MarkovKernel.iteratePoint, Function.iterate_zero, id, pow_zero]
