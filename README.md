@@ -109,27 +109,31 @@ ready for it.
 ```
 MarkovSemigroups/
   Abstract/                     -- Layer 1: measures + Dirichlet forms
-    DirichletForm.lean          -- Symmetric Dirichlet form, generator, semigroup
+    DirichletForm.lean          -- Symmetric Dirichlet form, variance, entropy
     Poincare.lean               -- Spectral gap <-> variance decay
     LogSobolev.lean             -- Gross LSI, entropy decay
     HolleyStroock.lean          -- Bounded density perturbation of LSI
     Hypercontractivity.lean     -- LSI <-> hypercontractivity (Gross)
   Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
-    CarreDuChamp.lean           -- Gamma and Gamma_2 for diffusion generators
-    BakryEmery.lean             -- Gamma_2 >= rho Gamma => LSI(rho)
-    OrnsteinUhlenbeck.lean      -- Abstract OU semigroup on Hilbert space
-    InvariantMeasure.lean       -- Invariant measures of diffusion semigroups
+    CarreDuChamp.lean           -- BakryEmerySpace: Gamma, semigroup, curvature
+    L2Semigroup.lean            -- Bridge to hille-yosida semigroup theory
   Instances/                    -- Layer 3: concrete spaces
-    Euclidean.lean              -- R^n: standard Gaussian, Mehler, LSI(1)
-    Torus.lean                  -- T^d: heat semigroup, Fourier modes, LSI(m^2+4pi^2/L^2)
-    GFFIdentification.lean      -- OU invariant measure on T^d = GFF
-    BrascampLieb.lean           -- Brascamp-Lieb for log-concave measures (0 sorry's)
+    Euclidean.lean              -- R: standard Gaussian, OU semigroup, rho=1
+    TwoPoint.lean               -- {0,1}: simplest instance (19/21 fields proved)
+    Torus.lean                  -- T^d: heat semigroup, Fourier modes (header)
+    GFFIdentification.lean      -- OU invariant on T^d = GFF (header)
+    BrascampLieb.lean           -- Brascamp-Lieb for log-concave measures
   Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
     RelativeEntropy.lean        -- Entropy decay under semigroup
     Ergodicity.lean             -- Uniqueness of invariant measure
-    IntegralBounds.lean         -- TV-integral bound (layer cake), integral lower bound
-    Doeblin.lean                -- Doeblin's condition, n-step mixing, correlation decay
+    IntegralBounds.lean         -- TV-integral bound (layer cake)
+    Doeblin.lean                -- Doeblin's condition, n-step mixing
+  Matrix/                       -- Finite matrix semigroup theory
+    HeatKernel.lean             -- exp(-tM) >= 0 for Z-matrices (proved)
+    LaplaceTransform.lean       -- M^{-1} = integral exp(-tM) dt
+    Trotter.lean                -- Lie-Trotter product formula
+    Diamagnetic.lean            -- |(M+iV)^{-1}| <= M^{-1} entrywise
 ```
 
 ## Formalization status
@@ -153,12 +157,32 @@ MarkovSemigroups/
 - **Bakry-Émery log-Sobolev** — Ent(f²) ≤ (2/ρ) E(f,f) from
   entropy decay bound + entropy ergodicity
 
-### Postulated as textbook axioms (2 axioms)
+### Postulated as textbook axioms (2 core + 4 matrix)
 
 | Axiom | Reference |
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
+| `exp_entryNonneg_of_entryNonneg` | Nonneg matrix exp (trivial, needs tsum API) |
+| `m_matrix_inverse_nonneg` | M-matrix theory (Berman-Plemmons Ch. 6) |
+| `trotter_product_formula` | Lie-Trotter (BCH remainder estimate) |
+| `diamagnetic_resolvent` | Diamagnetic inequality (assembles 5 steps) |
+
+### Concrete instances
+
+- **TwoPoint** ({0,1}, uniform measure): 19/21 BakryEmerySpace fields
+  proved. 2 sorry's are mathematically false (Γ_leibniz fails for jump
+  processes — validates that the diffusion axiom is a real constraint).
+- **Gaussian1D** (ℝ, N(0,1), OU semigroup): 9/23 fields proved.
+  All fields mathematically true; sorry's are Lean infrastructure gaps
+  (Fubini, differentiation under integral).
+
+### Matrix semigroup theory (Matrix/)
+
+- **Heat kernel positivity** for Z-matrices: exp(-tM) ≥ 0 entrywise —
+  proved via Metzler shift decomposition
+- **Euler factor nonnegativity**: I - (t/n)M ≥ 0 for large n — proved
+- **Entrywise-nonneg matrix algebra**: pow, mul, add, smul — proved
 
 ## Application to P(Phi)_2
 
@@ -203,6 +227,8 @@ lake build
 - Nelson, "The free Markoff field," *J. Funct. Anal.* 12 (1973), 211-227.
 - Fukushima, Oshima, and Takeda, *Dirichlet Forms and Symmetric Markov
   Processes*, de Gruyter, 2011.
+- Simon, *Functional Integration and Quantum Physics*, Academic Press,
+  1979 (Ch. 22: diamagnetic inequality).
 
 ## Author
 

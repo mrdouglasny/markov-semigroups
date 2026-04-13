@@ -1,132 +1,73 @@
 # markov-semigroups — Status
 
-**Zero sorry's. 2 axioms. 30+ proved theorems.**
+**Zero sorry's in core. 2 axioms (Gross equivalence). 4 matrix axioms. 30+ proved theorems.**
 
-## Axioms
+## Core axioms (Abstract/ + Diffusion/ + Instances/BrascampLieb)
 
-All 2 axioms are standard textbook results. None are project-specific.
+Only 2 remain, both requiring L^p norm differentiation not in Mathlib:
 
-### ~~1. `variance_nonneg'`~~ — PROVED
+### `gross_lsi_implies_hypercontractive` (Hypercontractivity.lean)
 
-**Proved** via Mathlib's `ProbabilityTheory.variance_nonneg` +
-`variance_eq_sub` + `memLp_two_iff_integrable_sq`.
+LSI(ρ) ⟹ hypercontractivity. Gross (1975), Theorem 1.
+Needs: differentiate ‖P_t f‖_{p(t)} along p(t) = 1+(p-1)e^{2ρt}.
 
-### 2. `gross_lsi_implies_hypercontractive` (Hypercontractivity.lean)
+### `gross_hypercontractive_implies_lsi` (Hypercontractivity.lean)
 
-**Says:** If the Dirichlet space (X, μ, E) satisfies the log-Sobolev
-inequality with constant ρ, then the associated semigroup P_t is
-hypercontractive: ‖P_t f‖_q ≤ ‖f‖_p when q ≤ 1 + (p-1)e^{2ρt}.
+Hypercontractivity ⟹ LSI(ρ). Gross (1975), Theorem 2.
+Needs: linearize hypercontractive bound at t=0, p=2, q=2+ε.
 
-**Informally:** LSI implies the semigroup improves integrability — it
-maps L^p to L^q for q > p after enough time. This is Gross's 1975
-Theorem 1.
+### Proved (formerly axioms)
 
-**Difficulty:** High. Requires differentiating ‖P_t f‖_{p(t)} along the
-path p(t) = 1 + (p-1)e^{2ρt} and showing the derivative is ≤ 0 using
-the LSI. Needs the chain rule for L^p norms and the semigroup generator.
+| Former axiom | How proved |
+|---|---|
+| `variance_nonneg'` | Mathlib's `ProbabilityTheory.variance_nonneg` |
+| `bakryEmery_poincare` | Semigroup L² decay bound + ergodicity |
+| `bakryEmery_variance_decay` | Poincaré + Grönwall (Mathlib) |
+| `bakryEmery_logSobolev` | Entropy decay bound + entropy ergodicity |
+| `resolvent_ibp_axiom` | Promoted to `LogConcaveMeasure` structure fields |
+| `integrated_bochner_axiom` | Promoted to `LogConcaveMeasure` structure fields |
 
-**Strategy:** Semigroup interpolation method (BGL Chapter 5).
+## Matrix semigroup module (Matrix/)
 
-### 3. `gross_hypercontractive_implies_lsi` (Hypercontractivity.lean)
+Diamagnetic inequality for finite matrices via 5-step semigroup proof
+(Simon, Functional Integration Ch. 22).
 
-**Says:** If the semigroup is hypercontractive with rate ρ, then the
-Dirichlet space satisfies LSI(ρ).
+| File | Proved | Axioms |
+|---|---|---|
+| `HeatKernel.lean` | `heat_kernel_entrywise_nonneg` (Metzler shift), `euler_factor_nonneg`, `isEntryNonneg_pow/mul/add` | 1: `exp_entryNonneg_of_entryNonneg` |
+| `LaplaceTransform.lean` | `IsPosDef` definition | 1: `m_matrix_inverse_nonneg` |
+| `Trotter.lean` | — | 1: `trotter_product_formula` |
+| `Diamagnetic.lean` | `complexShiftedMatrix` definition | 1: `diamagnetic_resolvent` |
 
-**Informally:** The converse of #2 — hypercontractivity implies LSI.
-Gross's 1975 Theorem 2.
+## Instances
 
-**Difficulty:** Medium-High. Differentiates the hypercontractive bound
-at t = 0 with p = 2, q = 2+ε and takes ε → 0.
-
-**Strategy:** Linearization at t = 0 (BGL Theorem 5.2.3).
-
-### ~~4. `bakryEmery_poincare`~~ — PROVED
-
-**Proved** from `semigroup_l2_decay_bound` (new BakryEmerySpace class
-field) + `bakryEmery_variance_decay` axiom. The proof uses t=1:
-Var(f) = (∫f² - ∫(P₁f)²) + Var(P₁f) ≤ (1-e^{-2ρ})/ρ·E(f) + e^{-2ρ}·Var(f).
-Dividing by (1-e^{-2ρ}) > 0 gives Var(f) ≤ (1/ρ)E(f,f).
-
-### ~~5. `bakryEmery_logSobolev`~~ — PROVED
-
-**Proved** from `semigroup_entropy_sq_decay_bound` + `semigroup_entropy_sq_ergodic`
-(new class fields). Same proof structure as Poincaré: Ent(f²) ≤ (2/ρ) E(f) + Ent(P_T(f²)),
-and entropy ergodicity gives Ent(P_T(f²)) → 0.
-
-### ~~6. `bakryEmery_variance_decay`~~ — PROVED
-
-**Proved** from `satisfiesPoincare` + `semigroup_l2_sq_hasDerivWithinAt`
-(new class field) via Grönwall's inequality. The derivative
-d/dt Var(P_t f) = -2 E(P_t f) ≤ -2ρ Var(P_t f) (by Poincaré), so
-Grönwall gives Var(P_t f) ≤ e^{-2ρt} Var(f).
-
-### ~~7. `resolvent_ibp_axiom`~~ — PROVED
-
-**Proved** by promoting the resolvent, IBP identity, and integrability
-to `LogConcaveMeasure` structure fields.
-
-### ~~8. `integrated_bochner_axiom`~~ — PROVED
-
-**Proved** by promoting the Bochner identity (with nonneg remainder)
-to a `LogConcaveMeasure` structure field.
-
-## Difficulty summary
-
-| Axiom | Difficulty | Key obstacle |
-|-------|-----------|-------------|
-| ~~variance_nonneg'~~ | ~~Low~~ | **PROVED** |
-| ~~bakryEmery_poincare~~ | ~~Medium~~ | **PROVED** |
-| ~~bakryEmery_variance_decay~~ | ~~Medium~~ | **PROVED** |
-| gross_hypercontractive_implies_lsi | Medium-High | Linearization |
-| gross_lsi_implies_hypercontractive | High | L^p norm differentiation |
-| ~~bakryEmery_logSobolev~~ | ~~High~~ | **PROVED** |
-| ~~resolvent_ibp_axiom~~ | ~~High~~ | **PROVED** |
-| ~~integrated_bochner_axiom~~ | ~~High~~ | **PROVED** |
-
-## Infrastructure needed to prove remaining axioms
-
-The central missing piece is **semigroup generator theory** — the
-unbounded operator L = lim_{t→0} (P_t - I)/t on L²(μ). Mathlib has
-`Analysis.Operator.OneParameterSemigroup` but it's purely algebraic;
-connecting it to analysis (strong continuity, domain, d/dt P_t = LP_t)
-is the main project.
-
-| Axiom | Effort | Key infrastructure needed |
-|-------|--------|--------------------------|
-| ~~#4 bakryEmery_poincare~~ | ~~High~~ | **PROVED** from ergodicity + L² decay |
-| ~~#3 variance_decay~~ | ~~Medium~~ | **PROVED** from Poincaré + Grönwall |
-| ~~#2 bakryEmery_logSobolev~~ | ~~High~~ | **PROVED** from entropy decay + ergodicity |
-| #6 resolvent_ibp | Low-Med | Lax-Milgram (IN MATHLIB), abstract H¹(μ) |
-| #2 bakryEmery_logSobolev | High | Generator theory + Grönwall (IN MATHLIB) |
-| #7 integrated_bochner | High | Generator theory + axiom #6, Γ₂ definition |
-| #5 gross_lsi→HC | Very High | Generator theory + L^p norm differentiation |
-| #5 gross_HC→LSI | Very High | Generator theory + linearization |
-
-**Recommended attack order:** #6 → generator theory → #4 → #3 → #2 → #7 → #5.
+| Instance | Fields proved | Sorry's | Notes |
+|---|---|---|---|
+| TwoPoint ({0,1}) | 19/21 | 2 (math false) | Γ_leibniz + entropy decay fail for jump processes |
+| Gaussian1D (ℝ, N(0,1)) | 9/23 | 14 (math true) | All fields valid; sorry's are Lean infrastructure gaps |
+| BrascampLieb (ℝⁿ, e^{-V}) | All downstream theorems proved | 0 | From structure fields |
 
 ## Proved results (highlights)
 
-### Bakry-Émery Poincaré and variance decay (Diffusion/CarreDuChamp.lean)
-- `satisfiesPoincare`: Var(f) ≤ (1/ρ) E(f,f) — **proved** from
-  `semigroup_l2_decay_bound` + `semigroup_ergodic` class fields
-- `variance_decay`: Var(P_t f) ≤ e^{-2ρt} Var(f) — **proved** from
-  `satisfiesPoincare` + `semigroup_l2_sq_hasDerivWithinAt` via Grönwall
-- `satisfiesLogSobolev`: Ent(f²) ≤ (2/ρ) E(f,f) — **proved** from
-  `semigroup_entropy_sq_decay_bound` + `semigroup_entropy_sq_ergodic`
+### Bakry-Émery theory (Diffusion/CarreDuChamp.lean)
+- `satisfiesPoincare`: Var(f) ≤ (1/ρ) E(f,f) — **proved**
+- `variance_decay`: Var(P_t f) ≤ e^{-2ρt} Var(f) — **proved** (Grönwall)
+- `satisfiesLogSobolev`: Ent(f²) ≤ (2/ρ) E(f,f) — **proved**
 
 ### Brascamp-Lieb inequality (Instances/BrascampLieb.lean)
-- `brascampLieb`: Var_μ(f) ≤ ∫(∇f)(g) dμ — **proved** from axioms 7-8
-  via weighted Young's inequality (Hessian symmetry + PSD)
+- `brascampLieb`: Var_μ(f) ≤ ∫⟨∇f, g⟩ dμ — **proved**
 - `brascampLieb_poincare`: Var ≤ (1/ρ)∫‖∇f‖² when Hess V ≥ ρI — **proved**
-- `hessian_injective`, `hessian_surjective`: **proved** (finite-dim linear algebra)
-- `continuous_hessianInverse_gradient`: **proved** (contDiffAt_map_inverse)
+- `hessian_injective`, `hessian_surjective`, `continuous_hessianInverse_gradient` — **proved**
 
 ### Doeblin's condition (Convergence/Doeblin.lean)
-- `doeblin_one_step_contraction`: |μ(A)-π(A)| ≤ 1-ε — **proved**
-- `doeblin_tv_contraction`: |(Tμ)(A)-π(A)| ≤ (1-ε)δ — **proved**
+- `doeblin_one_step_contraction`, `doeblin_tv_contraction` — **proved**
 - `doeblin_n_step_mixing`: |T^n(δ_x)(A)-π(A)| ≤ (1-ε)^n — **proved** (induction)
 - `doeblin_correlation_decay`: |cov| ≤ 2B²(1-ε)^d — **proved**
 
 ### TV-integral bounds (Convergence/IntegralBounds.lean)
-- `tv_integral_bound`: |∫f dμ - ∫f dπ| ≤ Cδ for f ∈ [0,C] — **proved** (layer cake)
+- `tv_integral_bound`: |∫f dμ - ∫f dπ| ≤ Cδ — **proved** (layer cake)
 - `tv_integral_bound_abs`: same for |f| ≤ B — **proved** (shift trick)
+
+### Heat kernel positivity (Matrix/HeatKernel.lean)
+- `heat_kernel_entrywise_nonneg`: exp(-tM) ≥ 0 for Z-matrices — **proved** (Metzler shift)
+- `euler_factor_nonneg`: I - (t/n)M ≥ 0 for large n — **proved**
