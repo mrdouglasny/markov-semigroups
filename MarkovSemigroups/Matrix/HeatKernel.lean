@@ -32,6 +32,7 @@ so (I - tM/n)^n ≥ 0, and the limit preserves nonnegativity.
 
 import Mathlib.Analysis.Normed.Algebra.MatrixExponential
 import Mathlib.Analysis.Matrix.Normed
+import Mathlib.Analysis.SpecialFunctions.Exponential
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 
 noncomputable section
@@ -149,6 +150,21 @@ theorem euler_factor_nonneg (M : Matrix n n ℝ) (hZ : IsZMatrix M)
     have : (0 : ℝ) ≤ t / n := div_nonneg ht (by positivity)
     linarith [mul_nonpos_of_nonneg_of_nonpos ‹0 ≤ t / ↑n› ‹M i j ≤ 0›]
 
+/-! ## Exp of entrywise-nonneg matrix -/
+
+/-- **exp of entrywise-nonneg matrix is entrywise-nonneg.**
+
+exp(A) = Σ_k A^k/k! where each term A^k/k! is entrywise-nonneg
+(from `isEntryNonneg_pow` and nonneg scalar 1/k!), so the sum is nonneg.
+
+This requires extracting matrix entries from the tsum definition of
+`NormedSpace.exp`. The mathematical content is trivial (tsum of nonneg
+terms is nonneg) but the Lean API for entry extraction from matrix
+tsum needs careful instance management. -/
+axiom exp_entryNonneg_of_entryNonneg (A : Matrix n n ℝ)
+    (hA : IsEntryNonneg A) :
+    IsEntryNonneg (NormedSpace.exp A)
+
 /-! ## Main theorem: heat kernel positivity -/
 
 /-- **Heat kernel positivity for Z-matrices.**
@@ -156,19 +172,60 @@ theorem euler_factor_nonneg (M : Matrix n n ℝ) (hZ : IsZMatrix M)
 For a Z-matrix M (nonpositive off-diagonal entries), the matrix
 exponential exp(-tM) has nonneg entries for all t ≥ 0.
 
-This is the finite-dimensional analogue of positivity-preserving
-semigroups. The proof uses the Euler approximation:
-exp(-tM) = lim (I - tM/n)^n, where each factor is entrywise-nonneg
-for large n (Step 4 of the semigroup proof, §11 of mass-gap-v3.tex). -/
-axiom heat_kernel_entrywise_nonneg (M : Matrix n n ℝ)
+Proof (Metzler shift): write -tM = (-tα)·1 + t·(α·1 - M) where
+α ≥ max_i M_{ii}. Then α·1 - M ≥ 0 entrywise (Z-matrix!), so
+t·(α·1 - M) ≥ 0. By commutativity of scalar matrices:
+  exp(-tM) = exp(-tα) · exp(t·(α·1 - M))
+The first factor is a positive scalar, and the second has nonneg entries
+by `exp_entryNonneg_of_entryNonneg`. -/
+theorem heat_kernel_entrywise_nonneg (M : Matrix n n ℝ)
     (hZ : IsZMatrix M) (t : ℝ) (ht : 0 ≤ t) :
-    IsEntryNonneg (NormedSpace.exp ((-t) • M))
-
--- The Euler factor result above proves the "pointwise" step.
--- The limit step (Euler approximation converges to exp) requires
--- Mathlib's NormedSpace.exp theory. We axiomatize for now and
--- will fill when the Euler convergence API is available.
--- See: NormedSpace.exp_eq_tsum, tendsto_exp_of_nhds
+    IsEntryNonneg (NormedSpace.exp ((-t) • M)) := by
+  -- Choose α = ‖M‖ + 1 as upper bound on diagonal entries
+  set α : ℝ := ‖M‖ + 1
+  -- Write -tM = -tα·1 + t·(α·1 - M)
+  have hsplit : (-t) • M = ((-t) * α) • (1 : Matrix n n ℝ) + t • (α • (1 : Matrix n n ℝ) - M) := by
+    ext i j; simp only [Matrix.smul_apply, Matrix.sub_apply, Matrix.one_apply, Matrix.add_apply, smul_eq_mul]; ring
+  rw [hsplit]
+  -- Split exp by commutativity (scalar matrix commutes with everything)
+  have hcomm : Commute (((-t) * α) • (1 : Matrix n n ℝ)) (t • (α • (1 : Matrix n n ℝ) - M)) :=
+    Commute.smul_left (Commute.smul_right (Commute.one_left _) _) _
+  rw [NormedSpace.exp_add_of_commute hcomm]
+  -- exp(-tα·1) = exp(-tα) • 1 (scalar matrix)
+  have hexp_scalar : NormedSpace.exp (((-t) * α) • (1 : Matrix n n ℝ)) =
+      NormedSpace.exp ((-t) * α) • (1 : Matrix n n ℝ) := by
+    rw [← Algebra.algebraMap_eq_smul_one, ← Algebra.algebraMap_eq_smul_one,
+        ← NormedSpace.algebraMap_exp_comm]
+  rw [hexp_scalar]
+  -- Product: (c • 1) * B = c • B
+  rw [Algebra.smul_mul_assoc]
+  -- exp(-tα) > 0 as a real number
+  have hpos : (0 : ℝ) < NormedSpace.exp ((-t) * α) := by
+    rw [← Real.exp_eq_exp_ℝ]; exact Real.exp_pos _
+  -- t • (α·1 - M) is entrywise nonneg
+  have hshift_nn : IsEntryNonneg (t • (α • (1 : Matrix n n ℝ) - M)) := by
+    apply isEntryNonneg_smul ht
+    exact euler_factor_shift_nonneg M hZ α (fun i => by
+      calc M i i ≤ |M i i| := le_abs_self _
+        _ = ‖M i i‖ := (Real.norm_eq_abs _).symm
+        _ ≤ ‖M‖ := matrix_entry_le_norm M i i
+        _ < α := lt_add_one _)
+  -- exp of nonneg matrix is nonneg
+  have hexp_nn := exp_entryNonneg_of_entryNonneg _ hshift_nn
+  -- Positive scalar times nonneg matrix is nonneg
+  rw [one_mul]
+  exact isEntryNonneg_smul hpos.le hexp_nn
+where
+  euler_factor_shift_nonneg (M : Matrix n n ℝ) (hZ : IsZMatrix M) (α : ℝ)
+      (hα : ∀ i, M i i < α) : IsEntryNonneg (α • (1 : Matrix n n ℝ) - M) := by
+    intro i j
+    simp only [Matrix.smul_apply, Matrix.one_apply, Matrix.sub_apply, smul_eq_mul]
+    by_cases hij : i = j
+    · subst hij; simp; linarith [hα i]
+    · simp [hij]; linarith [hZ i j hij]
+  isEntryNonneg_smul {A : Matrix n n ℝ} {c : ℝ} (hc : 0 ≤ c) (hA : IsEntryNonneg A) :
+      IsEntryNonneg (c • A) := by
+    intro i j; simp [Matrix.smul_apply]; exact mul_nonneg hc (hA i j)
 
 end MatrixSemigroup
 
