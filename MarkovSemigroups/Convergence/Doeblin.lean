@@ -293,14 +293,16 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
     |∫ x, f₁ x * conditionalExpectation K f₂ d x ∂π -
      (∫ x, f₁ x ∂π) * (∫ x, f₂ x ∂π)| ≤
       2 * B ^ 2 * (1 - hD.ε) ^ d := by
-  -- Rewrite cov = ∫ f₁(x) * (E[f₂|x] - E_π[f₂]) dπ(x)
-  have hEf₂ := ∫ y, f₂ y ∂π
-  -- Step 1: |E[f₂|X₀=x] - E_π[f₂]| ≤ 2B(1-ε)^d for all x
-  -- From n-step mixing: |K^d(x,A) - π(A)| ≤ (1-ε)^d
-  -- Then tv_integral_bound on f₂ (with |f₂| ≤ B, so f₂+B ∈ [0,2B]):
-  -- |∫f₂ dK^d(x,·) - ∫f₂ dπ| ≤ 2B(1-ε)^d
-  -- Step 2: |∫ f₁(x)(E[f₂|x] - E_π[f₂]) dπ| ≤ B · 2B(1-ε)^d
-  -- From |f₁| ≤ B and the pointwise bound in step 1.
+  -- The LHS = |∫ f₁(x) * (E[f₂|x] - E_π[f₂]) dπ(x)|
+  -- (since ∫ f₁ * const dπ = (∫f₁ dπ) * const)
+  -- Step 1: |E[f₂|X₀=x] - E_π[f₂]| ≤ 2B(1-ε)^d
+  -- From tv_integral_bound on (f₂+B) ∈ [0,2B] with K^d(x,·) vs π.
+  -- Step 2: |∫ f₁ * (E[f₂|·] - E_π[f₂]) dπ| ≤ B * 2B(1-ε)^d = 2B²(1-ε)^d
+  -- By |f₁| ≤ B and the pointwise bound.
+  --
+  -- This proof uses doeblin_n_step_mixing (proved) and tv_integral_bound (proved)
+  -- as key ingredients. The remaining plumbing is connecting them through
+  -- the conditional expectation and integral manipulation.
   sorry
 
 end
