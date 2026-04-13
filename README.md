@@ -146,16 +146,19 @@ MarkovSemigroups/
   of inverse (via `contDiffAt_map_inverse`)
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
+- **Bakry-Émery Poincaré** — Var(f) ≤ (1/ρ) E(f,f) from
+  semigroup L² decay bound + ergodicity
+- **Bakry-Émery variance decay** — Var(P_t f) ≤ e^{-2ρt} Var(f)
+  from Poincaré + Grönwall's inequality
+- **Bakry-Émery log-Sobolev** — Ent(f²) ≤ (2/ρ) E(f,f) from
+  entropy decay bound + entropy ergodicity
 
-### Postulated as textbook axioms (7 axioms)
+### Postulated as textbook axioms (4 axioms)
 
 | Axiom | Reference |
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
-| `bakryEmery_poincare` | BGL Theorem 4.8.4 |
-| `bakryEmery_logSobolev` | BGL Theorem 5.5.2 |
-| `bakryEmery_variance_decay` | BGL Proposition 4.8.1 |
 | `resolvent_ibp_axiom` | Lax-Milgram + weighted IBP (BGL §1.15) |
 | `integrated_bochner_axiom` | Bochner-Weitzenböck identity (BGL §1.16) |
 

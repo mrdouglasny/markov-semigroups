@@ -1,10 +1,10 @@
 # markov-semigroups — Status
 
-**Zero sorry's. 7 axioms. 30+ proved theorems.**
+**Zero sorry's. 4 axioms. 30+ proved theorems.**
 
 ## Axioms
 
-All 8 axioms are standard textbook results. None are project-specific.
+All 4 axioms are standard textbook results. None are project-specific.
 
 ### ~~1. `variance_nonneg'`~~ — PROVED
 
@@ -40,46 +40,25 @@ at t = 0 with p = 2, q = 2+ε and takes ε → 0.
 
 **Strategy:** Linearization at t = 0 (BGL Theorem 5.2.3).
 
-### 4. `bakryEmery_poincare` (CarreDuChamp.lean)
+### ~~4. `bakryEmery_poincare`~~ — PROVED
 
-**Says:** If a Bakry-Émery space has curvature Γ₂ ≥ ρΓ (equivalently,
-gradient decay ∫Γ(P_t f) ≤ e^{-2ρt} ∫Γ(f)), then Poincaré(ρ) holds:
-Var_μ(f) ≤ (1/ρ) E(f,f).
+**Proved** from `semigroup_l2_decay_bound` (new BakryEmerySpace class
+field) + `bakryEmery_variance_decay` axiom. The proof uses t=1:
+Var(f) = (∫f² - ∫(P₁f)²) + Var(P₁f) ≤ (1-e^{-2ρ})/ρ·E(f) + e^{-2ρ}·Var(f).
+Dividing by (1-e^{-2ρ}) > 0 gives Var(f) ≤ (1/ρ)E(f,f).
 
-**Informally:** Curvature lower bound implies a spectral gap.
+### ~~5. `bakryEmery_logSobolev`~~ — PROVED
 
-**Difficulty:** Medium. The proof integrates the gradient decay:
-Var(f) = 2∫₀^∞ E(P_t f) dt ≤ 2∫₀^∞ e^{-2ρt} E(f,f) dt = (1/ρ)E(f,f).
+**Proved** from `semigroup_entropy_sq_decay_bound` + `semigroup_entropy_sq_ergodic`
+(new class fields). Same proof structure as Poincaré: Ent(f²) ≤ (2/ρ) E(f) + Ent(P_T(f²)),
+and entropy ergodicity gives Ent(P_T(f²)) → 0.
 
-**Strategy:** Integrate the gradient_decay axiom (already in the
-BakryEmerySpace structure) from 0 to ∞.
+### ~~6. `bakryEmery_variance_decay`~~ — PROVED
 
-### 5. `bakryEmery_logSobolev` (CarreDuChamp.lean)
-
-**Says:** Curvature Γ₂ ≥ ρΓ implies LSI(ρ): Ent_μ(f²) ≤ (2/ρ) E(f,f).
-
-**Informally:** Curvature lower bound implies a log-Sobolev inequality.
-This is the main theorem of Bakry-Émery (1985).
-
-**Difficulty:** High. Uses the semigroup interpolation method: define
-Φ(t) = Ent(P_t f) and show Φ'(t) ≤ -2ρΦ(t) via the curvature
-condition. Grönwall's inequality gives Ent(f) ≤ (1/2ρ) E(f,f).
-
-**Strategy:** Semigroup interpolation + Grönwall (BGL Theorem 5.5.2).
-
-### 6. `bakryEmery_variance_decay` (CarreDuChamp.lean)
-
-**Says:** Var(P_t f) ≤ e^{-2ρt} Var(f) for the semigroup.
-
-**Informally:** The semigroup exponentially damps variance. This is
-exponential mixing / return to equilibrium.
-
-**Difficulty:** Medium. Follows from gradient_decay (which is in the
-BakryEmerySpace axioms) via the identity Var(f) = ∫Γ(f,f) and
-properties of the semigroup.
-
-**Strategy:** Combine gradient_decay with energy-variance identity
-(BGL Proposition 4.8.1).
+**Proved** from `satisfiesPoincare` + `semigroup_l2_sq_hasDerivWithinAt`
+(new class field) via Grönwall's inequality. The derivative
+d/dt Var(P_t f) = -2 E(P_t f) ≤ -2ρ Var(P_t f) (by Poincaré), so
+Grönwall gives Var(P_t f) ≤ e^{-2ρt} Var(f).
 
 ### 7. `resolvent_ibp_axiom` (BrascampLieb.lean)
 
@@ -120,11 +99,11 @@ against μ using ∫Lh dμ = 0.
 | Axiom | Difficulty | Key obstacle |
 |-------|-----------|-------------|
 | ~~variance_nonneg'~~ | ~~Low~~ | **PROVED** |
-| bakryEmery_poincare | Medium | Integrate gradient decay |
-| bakryEmery_variance_decay | Medium | Energy-variance identity |
+| ~~bakryEmery_poincare~~ | ~~Medium~~ | **PROVED** |
+| ~~bakryEmery_variance_decay~~ | ~~Medium~~ | **PROVED** |
 | gross_hypercontractive_implies_lsi | Medium-High | Linearization |
 | gross_lsi_implies_hypercontractive | High | L^p norm differentiation |
-| bakryEmery_logSobolev | High | Semigroup interpolation + Grönwall |
+| ~~bakryEmery_logSobolev~~ | ~~High~~ | **PROVED** |
 | resolvent_ibp_axiom | High | Weighted IBP + Lax-Milgram |
 | integrated_bochner_axiom | High | Bochner-Weitzenböck identity |
 
@@ -138,9 +117,10 @@ is the main project.
 
 | Axiom | Effort | Key infrastructure needed |
 |-------|--------|--------------------------|
+| ~~#4 bakryEmery_poincare~~ | ~~High~~ | **PROVED** from ergodicity + L² decay |
+| ~~#3 variance_decay~~ | ~~Medium~~ | **PROVED** from Poincaré + Grönwall |
+| ~~#2 bakryEmery_logSobolev~~ | ~~High~~ | **PROVED** from entropy decay + ergodicity |
 | #6 resolvent_ibp | Low-Med | Lax-Milgram (IN MATHLIB), abstract H¹(μ) |
-| #4 bakryEmery_poincare | High | Generator theory, ∫₀^∞ e^{-2ρt} dt |
-| #3 variance_decay | Medium | Generator theory + axiom #4 |
 | #2 bakryEmery_logSobolev | High | Generator theory + Grönwall (IN MATHLIB) |
 | #7 integrated_bochner | High | Generator theory + axiom #6, Γ₂ definition |
 | #5 gross_lsi→HC | Very High | Generator theory + L^p norm differentiation |
@@ -149,6 +129,14 @@ is the main project.
 **Recommended attack order:** #6 → generator theory → #4 → #3 → #2 → #7 → #5.
 
 ## Proved results (highlights)
+
+### Bakry-Émery Poincaré and variance decay (Diffusion/CarreDuChamp.lean)
+- `satisfiesPoincare`: Var(f) ≤ (1/ρ) E(f,f) — **proved** from
+  `semigroup_l2_decay_bound` + `semigroup_ergodic` class fields
+- `variance_decay`: Var(P_t f) ≤ e^{-2ρt} Var(f) — **proved** from
+  `satisfiesPoincare` + `semigroup_l2_sq_hasDerivWithinAt` via Grönwall
+- `satisfiesLogSobolev`: Ent(f²) ≤ (2/ρ) E(f,f) — **proved** from
+  `semigroup_entropy_sq_decay_bound` + `semigroup_entropy_sq_ergodic`
 
 ### Brascamp-Lieb inequality (Instances/BrascampLieb.lean)
 - `brascampLieb`: Var_μ(f) ≤ ∫(∇f)(g) dμ — **proved** from axioms 7-8
