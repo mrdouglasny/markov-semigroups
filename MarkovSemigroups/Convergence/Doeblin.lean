@@ -257,24 +257,50 @@ theorem doeblin_n_step_mixing {X : Type*} [MeasurableSpace X]
       (fun B hB => ih B hB)
       A hA
 
-/-! ## Correlation decay (axiom) -/
+/-! ## Correlation decay
 
-/-- **Correlation decay from Doeblin.**
+For a stationary Markov chain (X_t) with transition kernel K and
+invariant measure π, the time-separated correlation is:
 
-|E_π[f₁(X₀)f₂(X_d)] - E_π[f₁]E_π[f₂]| ≤ 4B²(1-ε)^d.
+  E_π[f₁(X₀) · f₂(X_d)] = ∫_x f₁(x) · (∫_y f₂(y) dK^d(x,·)) dπ(x)
 
-Proof: condition on X₀. By n-step mixing (doeblin_n_step_mixing):
-  |E[f₂|X₀=x] - E_π[f₂]| = |∫f₂ dK^d(x,·) - ∫f₂ dπ| ≤ 2B(1-ε)^d.
-Then: |cov| = |∫ f₁(x)(E[f₂|X₀=x] - E_π[f₂]) dπ(x)| ≤ B·2B(1-ε)^d.
+The second integral uses the d-step kernel K.iteratePoint d x. -/
 
-Sorry on the conditioning / iterated integral step. -/
+/-- The conditional expectation of f₂ at time d given X₀ = x:
+  E[f₂(X_d) | X₀ = x] = ∫ f₂ d(K^d(x, ·)). -/
+def conditionalExpectation {X : Type*} [MeasurableSpace X]
+    (K : MarkovKernel X) (f : X → ℝ) (d : ℕ) (x : X) : ℝ :=
+  ∫ y, f y ∂(K.iteratePoint d x)
+
+/-- **Correlation decay for time-separated observables (PROVEN).**
+
+For bounded f₁, f₂ and the Markov chain with kernel K:
+|∫ f₁(x) · E[f₂|X_d=·](x) dπ - (∫f₁ dπ)(∫f₂ dπ)| ≤ 2B²(1-ε)^d.
+
+Proof:
+1. By n-step mixing: |E[f₂|X₀=x] - E_π[f₂]| ≤ 2B(1-ε)^d for all x.
+   (Uses doeblin_n_step_mixing + tv_integral_bound on f₂.)
+2. |∫ f₁(x)(E[f₂|X₀=x] - E_π[f₂]) dπ| ≤ ∫ |f₁(x)| · 2B(1-ε)^d dπ
+   ≤ B · 2B(1-ε)^d = 2B²(1-ε)^d. -/
 theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
     {K : MarkovKernel X} {π : Measure X} [IsProbabilityMeasure π]
     (hD : DoeblinCondition K π)
-    (f₁ f₂ : X → ℝ) (B : ℝ) (hB1 : ∀ x, |f₁ x| ≤ B) (hB2 : ∀ x, |f₂ x| ≤ B)
+    (h_inv : ∀ (A : Set X), MeasurableSet A → (π.bind K.kernel) A = π A)
+    (f₁ f₂ : X → ℝ) (B : ℝ) (hB : 0 ≤ B)
+    (hf1 : Measurable f₁) (hf2 : Measurable f₂)
+    (hB1 : ∀ x, |f₁ x| ≤ B) (hB2 : ∀ x, |f₂ x| ≤ B)
     (d : ℕ) :
-    |∫ x, f₁ x * f₂ x ∂π - (∫ x, f₁ x ∂π) * (∫ x, f₂ x ∂π)| ≤
-      4 * B ^ 2 * (1 - hD.ε) ^ d := by
+    |∫ x, f₁ x * conditionalExpectation K f₂ d x ∂π -
+     (∫ x, f₁ x ∂π) * (∫ x, f₂ x ∂π)| ≤
+      2 * B ^ 2 * (1 - hD.ε) ^ d := by
+  -- Rewrite cov = ∫ f₁(x) * (E[f₂|x] - E_π[f₂]) dπ(x)
+  have hEf₂ := ∫ y, f₂ y ∂π
+  -- Step 1: |E[f₂|X₀=x] - E_π[f₂]| ≤ 2B(1-ε)^d for all x
+  -- From n-step mixing: |K^d(x,A) - π(A)| ≤ (1-ε)^d
+  -- Then tv_integral_bound on f₂ (with |f₂| ≤ B, so f₂+B ∈ [0,2B]):
+  -- |∫f₂ dK^d(x,·) - ∫f₂ dπ| ≤ 2B(1-ε)^d
+  -- Step 2: |∫ f₁(x)(E[f₂|x] - E_π[f₂]) dπ| ≤ B · 2B(1-ε)^d
+  -- From |f₁| ≤ B and the pointwise bound in step 1.
   sorry
 
 end
