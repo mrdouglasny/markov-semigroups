@@ -17,6 +17,9 @@ import MarkovSemigroups.Instances.Torus
 import MarkovSemigroups.Instances.GFFIdentification
 import MarkovSemigroups.Instances.BrascampLieb
 
+-- Matrix semigroup theory (diamagnetic inequality)
+import MarkovSemigroups.Matrix.HeatKernel
+
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
 import MarkovSemigroups.Convergence.RelativeEntropy
