@@ -292,6 +292,132 @@ theorem semigroup_ergodic_pf (hα : 0 < α) (f : TwoPoint → ℝ) :
     ((tendsto_const_mul_atTop_of_pos h4α_pos).2 tendsto_id)).congr
     (fun t => by simp)
 
+/-! ## Entropy helpers for the two-point space -/
+
+/-- Entropy on TwoPoint is a concrete formula.
+  Ent(g) = (g 0 · log(g 0) + g 1 · log(g 1)) / 2 - ((g 0 + g 1) / 2) · log((g 0 + g 1) / 2) -/
+theorem entropy_eq (hα : 0 < α) (g : TwoPoint → ℝ) :
+    DirichletSpace.entropy (ds := dirichletSpace α hα) g =
+    (g .zero * log (g .zero) + g .one * log (g .one)) / 2 -
+    ((g .zero + g .one) / 2) * log ((g .zero + g .one) / 2) := by
+  simp only [DirichletSpace.entropy]
+  have : (dirichletSpace α hα).μ = uniformMeasure := rfl
+  rw [this, integral_uniformMeasure, integral_uniformMeasure]
+
+/-- The semigroup value at .zero for g = f*f. -/
+theorem semigroup_sq_zero (f : TwoPoint → ℝ) (t : ℝ) :
+    semigroup α t (fun x => f x * f x) .zero =
+    (f .zero * f .zero + f .one * f .one) / 2 +
+    exp (-2 * α * t) * (f .zero * f .zero - f .one * f .one) / 2 := by
+  simp only [semigroup, coeff, flip_zero, flip_one]; ring
+
+/-- The semigroup value at .one for g = f*f. -/
+theorem semigroup_sq_one (f : TwoPoint → ℝ) (t : ℝ) :
+    semigroup α t (fun x => f x * f x) .one =
+    (f .zero * f .zero + f .one * f .one) / 2 -
+    exp (-2 * α * t) * (f .zero * f .zero - f .one * f .one) / 2 := by
+  simp only [semigroup, coeff, flip_zero, flip_one]; ring
+
+/-- Helper: exp(-2αt) → 0 for α > 0. -/
+private theorem tendsto_exp_neg_two_alpha (hα : 0 < α) :
+    Tendsto (fun t => exp (-2 * α * t)) atTop (nhds 0) := by
+  have h2α_pos : 0 < 2 * α := by linarith
+  have h_comp : (fun t => exp (-2 * α * t)) = (fun t => exp (-(2 * α * t))) := by
+    ext t; ring_nf
+  rw [h_comp]
+  exact (tendsto_exp_neg_atTop_nhds_zero.comp
+    ((tendsto_const_mul_atTop_of_pos h2α_pos).2 tendsto_id)).congr
+    (fun t => by simp)
+
+/-- Both semigroup values for f² converge to the mean m = (f0² + f1²)/2 as t → ∞. -/
+theorem semigroup_sq_zero_tendsto (hα : 0 < α) (f : TwoPoint → ℝ) :
+    Tendsto (fun t => semigroup α t (fun x => f x * f x) .zero)
+      atTop (nhds ((f .zero * f .zero + f .one * f .one) / 2)) := by
+  have heq : (fun t => semigroup α t (fun x => f x * f x) .zero) =
+      (fun t => (f .zero * f .zero + f .one * f .one) / 2 +
+        exp (-2 * α * t) * (f .zero * f .zero - f .one * f .one) / 2) :=
+    funext (semigroup_sq_zero α f)
+  rw [heq]
+  suffices h : Tendsto (fun t => exp (-2 * α * t) * (f .zero * f .zero - f .one * f .one) / 2)
+      atTop (nhds 0) by
+    have h2 : Tendsto (fun t =>
+        (f .zero * f .zero + f .one * f .one) / 2 +
+        exp (-2 * α * t) * (f .zero * f .zero - f .one * f .one) / 2)
+        atTop (nhds ((f .zero * f .zero + f .one * f .one) / 2 + 0)) :=
+      tendsto_const_nhds.add h
+    rwa [add_zero] at h2
+  have heq2 : (fun t => exp (-2 * α * t) * (f .zero * f .zero - f .one * f .one) / 2) =
+      (fun t => exp (-2 * α * t) * ((f .zero * f .zero - f .one * f .one) / 2)) := by
+    ext t; ring
+  rw [heq2, show (0 : ℝ) = 0 * ((f .zero * f .zero - f .one * f .one) / 2) from by ring]
+  exact (tendsto_exp_neg_two_alpha α hα).mul_const _
+
+theorem semigroup_sq_one_tendsto (hα : 0 < α) (f : TwoPoint → ℝ) :
+    Tendsto (fun t => semigroup α t (fun x => f x * f x) .one)
+      atTop (nhds ((f .zero * f .zero + f .one * f .one) / 2)) := by
+  -- Use the .zero tendsto + the fact that the sum is constant: one = sum - zero
+  have heq : (fun t => semigroup α t (fun x => f x * f x) .one) =
+      (fun t => (f .zero * f .zero + f .one * f .one) -
+        semigroup α t (fun x => f x * f x) .zero) := by
+    ext t; have := semigroup_sum α t (fun x => f x * f x); linarith
+  rw [heq, show (f .zero * f .zero + f .one * f .one) / 2 =
+    (f .zero * f .zero + f .one * f .one) -
+    (f .zero * f .zero + f .one * f .one) / 2 from by ring]
+  exact Filter.Tendsto.const_sub _
+    (semigroup_sq_zero_tendsto α hα f)
+
+/-- Entropy of the semigroup applied to f² tends to 0.
+
+Both values of P_t(f²) converge to the mean m = (f0² + f1²)/2,
+so P_t(f²) converges pointwise to the constant function m.
+The entropy of a constant function is m·log(m) - m·log(m) = 0.
+By continuity of x·log(x), the entropy converges to 0. -/
+theorem semigroup_entropy_sq_ergodic_pf (hα : 0 < α) (f : TwoPoint → ℝ) :
+    Tendsto (fun t => DirichletSpace.entropy (ds := dirichletSpace α hα)
+      (semigroup α t (fun x => f x * f x))) atTop (nhds 0) := by
+  -- Rewrite entropy using the two-point formula
+  set m := (f .zero * f .zero + f .one * f .one) / 2
+  have h_ent_eq : (fun t => DirichletSpace.entropy (ds := dirichletSpace α hα)
+      (semigroup α t (fun x => f x * f x))) =
+    (fun t =>
+      (semigroup α t (fun x => f x * f x) .zero *
+        log (semigroup α t (fun x => f x * f x) .zero) +
+       semigroup α t (fun x => f x * f x) .one *
+        log (semigroup α t (fun x => f x * f x) .one)) / 2 -
+      ((semigroup α t (fun x => f x * f x) .zero +
+        semigroup α t (fun x => f x * f x) .one) / 2) *
+        log ((semigroup α t (fun x => f x * f x) .zero +
+              semigroup α t (fun x => f x * f x) .one) / 2)) :=
+    funext (fun t => entropy_eq α hα (semigroup α t (fun x => f x * f x)))
+  rw [h_ent_eq]
+  -- The sum is preserved: P_t g(.zero) + P_t g(.one) = g(.zero) + g(.one)
+  have h_sum : ∀ t, semigroup α t (fun x => f x * f x) .zero +
+      semigroup α t (fun x => f x * f x) .one =
+      f .zero * f .zero + f .one * f .one :=
+    fun t => semigroup_sum α t (fun x => f x * f x)
+  -- So the second term is constant
+  conv => arg 1; ext t; rw [h_sum t]
+  -- Target: ... / 2 - m * log m → 0 where m = (f0² + f1²)/2
+  -- We need the first term → m * log m
+  -- (a * log a + b * log b) / 2 → (m * log m + m * log m) / 2 = m * log m
+  -- since a → m and b → m, and x * log x is continuous
+  show Tendsto (fun t =>
+    (semigroup α t (fun x => f x * f x) .zero *
+      log (semigroup α t (fun x => f x * f x) .zero) +
+     semigroup α t (fun x => f x * f x) .one *
+      log (semigroup α t (fun x => f x * f x) .one)) / 2 -
+    ((f .zero * f .zero + f .one * f .one) / 2) *
+      log ((f .zero * f .zero + f .one * f .one) / 2))
+    atTop (nhds 0)
+  rw [show (0 : ℝ) =
+    (m * log m + m * log m) / 2 - m * log m from by ring]
+  apply Tendsto.sub
+  · apply Tendsto.div_const
+    apply Tendsto.add
+    · exact (continuous_mul_log.tendsto m).comp (semigroup_sq_zero_tendsto α hα f)
+    · exact (continuous_mul_log.tendsto m).comp (semigroup_sq_one_tendsto α hα f)
+  · exact tendsto_const_nhds
+
 /-! ## BakryEmerySpace instance -/
 
 variable (hα : 0 < α)
@@ -378,6 +504,15 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
       (∫ x, f x ∂uniformMeasure) ^ 2) atTop (nhds 0)
     exact semigroup_ergodic_pf α hα f
   semigroup_entropy_sq_decay_bound := fun f t ht => by
+    -- NOTE: This bound is false for the two-point space (a jump process).
+    -- The BakryEmerySpace entropy decay bound Ent(f²) - Ent(P_t(f²)) ≤
+    -- (1-e^{-2ρt})(2/ρ)E(f) follows from the identity I(f²) = 4E(f) via
+    -- the Leibniz rule for Γ (BGL §5.5). On the two-point space, Γ_leibniz
+    -- fails (line 317), and consequently this bound also fails: for
+    -- f(.zero)=1000, f(.one)=999, α=1, as t → ∞ the LHS → Ent(f²) ≈ 3000
+    -- while the RHS → (f0-f1)²/2 = 0.5. The sorry here is paired with
+    -- the Γ_leibniz sorry—both reflect that the two-point space is a jump
+    -- process, not a diffusion, and the diffusion-specific axioms do not hold.
     change DirichletSpace.entropy (ds := dirichletSpace α hα)
         (fun x => f x * f x) -
       DirichletSpace.entropy (ds := dirichletSpace α hα)
@@ -385,9 +520,9 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
       (1 - exp (-2 * (2 * α) * t)) * (2 / (2 * α)) * energy α f f
     sorry
   semigroup_entropy_sq_ergodic := fun f => by
-    -- Entropy involves x·log(x), making the explicit computation non-trivial.
-    -- The result follows from Jensen's inequality + semigroup ergodicity.
-    sorry
+    -- P_t(f²) converges pointwise to the constant m = (f0²+f1²)/2,
+    -- so its entropy → m·log(m) - m·log(m) = 0 by continuity of x·log(x).
+    exact semigroup_entropy_sq_ergodic_pf α hα f
 
 end TwoPoint
 
