@@ -37,6 +37,7 @@ exponentially in distance.
 
 import MarkovSemigroups.Dobrushin.Specification
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
 
 open MeasureTheory Finset
 
@@ -86,6 +87,237 @@ structure DobrushinCondition (γ : GibbsSpec d S) where
   column_bound : ∀ (y : LatticeSite d),
     ∑' x, influenceCoeff γ x y ≤ α
 
+/-! ## Total variation distance properties -/
+
+/-- tvDist is nonneg: every element of the defining set is nonneg. -/
+lemma tvDist_set_nonneg {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
+    {c : ℝ} (hc : c ∈ {c : ℝ | ∃ A : Set X, MeasurableSet A ∧
+      c = |(μ A).toReal - (ν A).toReal|}) : 0 ≤ c := by
+  obtain ⟨A, _, hcA⟩ := hc
+  rw [hcA]; exact abs_nonneg _
+
+/-- The defining set of tvDist is nonempty. -/
+lemma tvDist_set_nonempty {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    (({c : ℝ | ∃ A : Set X, MeasurableSet A ∧
+      c = |(μ A).toReal - (ν A).toReal|} : Set ℝ)).Nonempty :=
+  ⟨|(μ Set.univ).toReal - (ν Set.univ).toReal|,
+    Set.univ, MeasurableSet.univ, rfl⟩
+
+/-- The defining set of tvDist is bounded above by 1. -/
+lemma tvDist_set_bddAbove {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    BddAbove {c : ℝ | ∃ A : Set X, MeasurableSet A ∧
+      c = |(μ A).toReal - (ν A).toReal|} := by
+  refine ⟨1, fun c hc => ?_⟩
+  obtain ⟨A, _, hcA⟩ := hc
+  rw [hcA]
+  have h1 : (μ A).toReal ≤ 1 :=
+    ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+  have h2 : (ν A).toReal ≤ 1 :=
+    ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+  have h3 : 0 ≤ (μ A).toReal := ENNReal.toReal_nonneg
+  have h4 : 0 ≤ (ν A).toReal := ENNReal.toReal_nonneg
+  rw [abs_le]; constructor <;> linarith
+
+/-- tvDist is nonneg. -/
+lemma tvDist_nonneg {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    0 ≤ tvDist μ ν :=
+  le_csSup_of_le (tvDist_set_bddAbove μ ν)
+    (tvDist_set_nonempty μ ν).some_mem
+    (tvDist_set_nonneg μ ν (tvDist_set_nonempty μ ν).some_mem)
+
+/-- tvDist is at most 1 for probability measures. -/
+lemma tvDist_le_one {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    tvDist μ ν ≤ 1 :=
+  csSup_le (tvDist_set_nonempty μ ν) (fun c hc => by
+    obtain ⟨A, _, hcA⟩ := hc
+    rw [hcA]
+    have h1 : (μ A).toReal ≤ 1 :=
+      ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+    have h2 : (ν A).toReal ≤ 1 :=
+      ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+    have h3 : 0 ≤ (μ A).toReal := ENNReal.toReal_nonneg
+    have h4 : 0 ≤ (ν A).toReal := ENNReal.toReal_nonneg
+    rw [abs_le]; constructor <;> linarith)
+
+/-- Each measurable set difference is bounded by tvDist. -/
+lemma abs_toReal_sub_le_tvDist {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
+    (A : Set X) (hA : MeasurableSet A) :
+    |(μ A).toReal - (ν A).toReal| ≤ tvDist μ ν :=
+  le_csSup (tvDist_set_bddAbove μ ν) ⟨A, hA, rfl⟩
+
+/-- If tvDist μ ν = 0, then μ and ν agree on all measurable sets. -/
+lemma eq_of_tvDist_eq_zero {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
+    (h : tvDist μ ν = 0) : μ = ν := by
+  ext A hA
+  have habsle := abs_toReal_sub_le_tvDist μ ν A hA
+  rw [h] at habsle
+  have heq : (μ A).toReal = (ν A).toReal := by
+    have h1 := abs_nonneg ((μ A).toReal - (ν A).toReal)
+    have h2 : |(μ A).toReal - (ν A).toReal| = 0 := le_antisymm habsle h1
+    linarith [abs_eq_zero.mp h2]
+  exact (ENNReal.toReal_eq_toReal_iff' (measure_ne_top μ A) (measure_ne_top ν A)).mp heq
+
+/-- The conditional distribution integrand takes values in [0, 1]. -/
+lemma condDist_toReal_nonneg (γ : GibbsSpec d S)
+    (x : LatticeSite d) (σ : SpinConfig d S)
+    (A : Set (SpinConfig d S)) :
+    0 ≤ (γ.condDist {x} σ A).toReal :=
+  ENNReal.toReal_nonneg
+
+lemma condDist_toReal_le_one (γ : GibbsSpec d S)
+    (x : LatticeSite d) (σ : SpinConfig d S)
+    (A : Set (SpinConfig d S)) :
+    (γ.condDist {x} σ A).toReal ≤ 1 :=
+  ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+
+/-- The conditional distribution integrand changes by at most
+influenceCoeff(γ, x, y) when the boundary condition is modified
+at a single site y.
+
+This is essentially the definition of influenceCoeff: it is the
+supremum of tvDist(γ({x}, σ), γ({x}, τ)) over pairs (σ, τ)
+differing only at y. Since tvDist bounds the difference on each
+measurable set, we get this pointwise bound. -/
+lemma condDist_lipschitz_at_site (γ : GibbsSpec d S)
+    (x y : LatticeSite d)
+    (σ τ : SpinConfig d S) (hdiff : ∀ z, z ≠ y → σ z = τ z)
+    (A : Set (SpinConfig d S)) (hA : MeasurableSet A) :
+    |(γ.condDist {x} σ A).toReal - (γ.condDist {x} τ A).toReal| ≤
+      influenceCoeff γ x y := by
+  -- influenceCoeff is the sup of tvDist over pairs differing at y.
+  -- tvDist bounds each |μ(A) - ν(A)|.
+  -- So we need: |γ({x},σ)(A) - γ({x},τ)(A)| ≤ tvDist(γ({x},σ), γ({x},τ))
+  --            ≤ influenceCoeff(γ, x, y)
+  -- Step 1: bound by tvDist
+  have htvA : |(γ.condDist {x} σ A).toReal - (γ.condDist {x} τ A).toReal| ≤
+      tvDist (γ.condDist {x} σ) (γ.condDist {x} τ) :=
+    abs_toReal_sub_le_tvDist _ _ A hA
+  -- Step 2: bound tvDist by influenceCoeff
+  have htv_le : tvDist (γ.condDist {x} σ) (γ.condDist {x} τ) ≤
+      influenceCoeff γ x y := by
+    apply le_csSup
+    · -- bddAbove: influenceCoeff is a sSup of a bounded set
+      refine ⟨1, fun c hc => ?_⟩
+      obtain ⟨σ', τ', _, hc_eq⟩ := hc
+      rw [hc_eq]
+      exact tvDist_le_one _ _
+    · exact ⟨σ, τ, hdiff, rfl⟩
+  linarith
+
+/-- **Dobrushin single-site contraction.**
+
+For each site x, the single-site "marginal disagreement" between
+two Gibbs measures is bounded by a weighted sum of the marginal
+disagreements at other sites, with weights given by the influence
+coefficients.
+
+More precisely, for any measurable set B ⊆ S (a single-site event),
+define the cylinder set Cyl(x, B) = {σ | σ(x) ∈ B}. Then:
+
+|(μ₁ Cyl(x,B)) - (μ₂ Cyl(x,B))| ≤ Σ_y C(x,y) · δ(y)
+
+where δ(y) = sup_B |(μ₁ Cyl(y,B)) - (μ₂ Cyl(y,B))| is the
+marginal TV distance at site y.
+
+Proof sketch:
+- By DLR with Λ = {x}: μᵢ(Cyl(x,B)) = ∫ γ({x},σ)(Cyl(x,B)) dμᵢ(σ)
+- The integrand h(σ) = γ({x},σ)(Cyl(x,B)) depends on σ at sites y ≠ x
+- For σ, τ agreeing except at y: |h(σ)-h(τ)| ≤ C(x,y)
+- Telescoping: |∫h dμ₁ - ∫h dμ₂| ≤ Σ_y C(x,y) · δ(y)
+
+The telescoping step uses: for any [0,1]-valued function g on
+SpinConfig that changes by at most c(y) when σ changes at y,
+|∫g dμ₁ - ∫g dμ₂| ≤ Σ_y c(y) · δ(y). This is proved by
+writing g as a telescoping sum over sites y, replacing σ(y)
+one coordinate at a time, and bounding each term.
+
+This is the key analytical step of Dobrushin's theorem. -/
+lemma dobrushin_single_site_contraction (γ : GibbsSpec d S)
+    (μ₁ μ₂ : Measure (SpinConfig d S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
+    (x : LatticeSite d)
+    (A : Set (SpinConfig d S)) (hA : MeasurableSet A)
+    -- δ(y) bounds the single-site marginal disagreement at site y
+    (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
+    (hδ_bound : ∀ (y : LatticeSite d) (B : Set (SpinConfig d S)),
+      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y) :
+    |(μ₁ A).toReal - (μ₂ A).toReal| ≤
+      ∑' y, influenceCoeff γ x y * δ y := by
+  -- Step 1: Rewrite using DLR
+  rw [h₁.dlr {x} A hA, h₂.dlr {x} A hA]
+  -- Now need: |∫ γ({x},σ)(A) dμ₁ - ∫ γ({x},σ)(A) dμ₂|
+  --         ≤ Σ_y C(x,y) · δ(y)
+  -- The integrand h(σ) = γ({x},σ)(A).toReal is [0,1]-valued
+  -- and changes by ≤ C(x,y) at each site y (by condDist_lipschitz).
+  --
+  -- The telescoping argument:
+  -- Fix an enumeration y₁, y₂, ... of all sites except x.
+  -- Define σⁿ by: σⁿ agrees with τ at sites y₁,...,yₙ and with σ
+  -- at all other sites. Then:
+  -- h(σ) - h(τ) = Σₙ [h(σⁿ) - h(σⁿ⁻¹)]
+  -- |h(σⁿ) - h(σⁿ⁻¹)| ≤ C(x, yₙ) since σⁿ and σⁿ⁻¹ differ at yₙ.
+  --
+  -- Then: |∫h dμ₁ - ∫h dμ₂|
+  --     = |∫∫ [h(σ) - h(τ)] dμ₁(σ) dμ₂(τ)|
+  --     ≤ Σₙ ∫∫ |h(σⁿ) - h(σⁿ⁻¹)| dμ₁(σ) dμ₂(τ)
+  --     ≤ Σₙ C(x, yₙ) · ...
+  -- The precise bound requires marginal-level coupling.
+  sorry
+
+/-- **L¹ contraction on marginal disagreements.**
+
+Using the column sum bound and single-site contraction, the total
+marginal disagreement Σ_x δ(x) satisfies:
+
+  Σ_x δ(x) ≤ α · Σ_x δ(x)
+
+Proof: Sum the single-site contraction over x, then exchange the
+order of summation and apply the column bound Σ_x C(x,y) ≤ α. -/
+lemma l1_contraction (γ : GibbsSpec d S)
+    (hD : DobrushinCondition γ)
+    (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
+    (hδ_sum : Summable δ)
+    -- The single-site contraction: δ(x) ≤ Σ_y C(x,y) · δ(y)
+    (hcontract : ∀ x, δ x ≤ ∑' y, influenceCoeff γ x y * δ y) :
+    ∑' x, δ x ≤ hD.α * ∑' x, δ x := by
+  -- Proof sketch:
+  -- Σ_x δ(x) ≤ Σ_x Σ_y C(x,y) · δ(y)           (by hcontract)
+  --           = Σ_y Σ_x C(x,y) · δ(y)             (Fubini / tsum_comm)
+  --           = Σ_y [Σ_x C(x,y)] · δ(y)           (factor out δ(y))
+  --           ≤ Σ_y α · δ(y)                       (column_bound)
+  --           = α · Σ_y δ(y)                        (factor out α)
+  -- Each step requires summability hypotheses (the double sum
+  -- Σ_x Σ_y C(x,y)·δ(y) must be absolutely convergent for Fubini).
+  sorry
+
+/-- **Key contraction lemma**: Under Dobrushin's condition, the total
+variation distance between any two Gibbs measures contracts.
+
+This follows from the single-site contraction and L¹ contraction:
+1. Define δ(x) = tvDist(μ₁, μ₂) for all x (crude but sufficient).
+2. By `dobrushin_single_site_contraction`: for any A,
+   |(μ₁ A) - (μ₂ A)| ≤ Σ_y C(x,y) · δ(y) = tvDist · Σ_y C(x,y).
+3. Taking sup over A: tvDist ≤ tvDist · Σ_y C(x,y).
+
+For the column-sum Dobrushin condition, the direct contraction
+tvDist ≤ α · tvDist requires the more refined L¹ approach via
+marginal disagreements. See `l1_contraction` above. -/
+lemma tvDist_contraction (γ : GibbsSpec d S)
+    (hD : DobrushinCondition γ)
+    (μ₁ μ₂ : Measure (SpinConfig d S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂) :
+    tvDist μ₁ μ₂ ≤ hD.α * tvDist μ₁ μ₂ := by
+  sorry
+
 /-! ## Main theorems -/
 
 /-- **Dobrushin's uniqueness theorem.**
@@ -93,13 +325,10 @@ structure DobrushinCondition (γ : GibbsSpec d S) where
 Under Dobrushin's condition, the Gibbs specification has at most
 one Gibbs measure.
 
-Proof strategy (Chatterjee Ch 16, Thm 16.2.1):
-1. Take two Gibbs measures μ₁, μ₂.
-2. For any local observable f depending on site x,
-   |E_{μ₁}[f] - E_{μ₂}[f]| ≤ C · Σ_y influence(x,y) · |E_{μ₁}[g_y] - E_{μ₂}[g_y]|
-   by the DLR equation + TV bound on single-site conditionals.
-3. Iterate: the operator norm of the influence matrix is ≤ α < 1,
-   so the fixed point is unique.
+Proof outline:
+1. By `tvDist_contraction`, tvDist(μ₁, μ₂) ≤ α · tvDist(μ₁, μ₂).
+2. Since α < 1 and tvDist ≥ 0, this forces tvDist(μ₁, μ₂) = 0.
+3. By `eq_of_tvDist_eq_zero`, μ₁ = μ₂.
 -/
 theorem dobrushin_uniqueness (γ : GibbsSpec d S)
     (hD : DobrushinCondition γ)
@@ -107,7 +336,15 @@ theorem dobrushin_uniqueness (γ : GibbsSpec d S)
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂) :
     μ₁ = μ₂ := by
-  sorry
+  apply eq_of_tvDist_eq_zero
+  -- We have tvDist ≤ α * tvDist with α < 1.
+  -- This means (1 - α) * tvDist ≤ 0.
+  -- Since 1 - α > 0 and tvDist ≥ 0, we get tvDist = 0.
+  have hcontract := tvDist_contraction γ hD μ₁ μ₂ h₁ h₂
+  have hα_lt := hD.hα_lt
+  have hα_pos := hD.hα_pos
+  have hnn := tvDist_nonneg μ₁ μ₂
+  nlinarith
 
 /-- **Dobrushin's correlation decay.**
 
