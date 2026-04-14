@@ -37,6 +37,10 @@ exponentially in distance.
 
 import MarkovSemigroups.Dobrushin.Specification
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
+import Mathlib.Topology.Algebra.InfiniteSum.Order
+import Mathlib.Topology.Algebra.InfiniteSum.Ring
+import Mathlib.Topology.Algebra.InfiniteSum.Constructions
+import Mathlib.Topology.Algebra.InfiniteSum.Real
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 
 open MeasureTheory Finset
@@ -68,24 +72,34 @@ def influenceCoeff (γ : GibbsSpec d S) (x y : LatticeSite d) : ℝ :=
     (∀ z, z ≠ y → σ z = τ z) ∧
     c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}
 
-/-- Dobrushin's condition: the influence matrix has column sums < 1.
+/-- Dobrushin's condition: both row and column sums of the
+influence matrix are strictly less than 1.
 
-Formally: there exists α < 1 such that for all y,
-  Σ_x C(x, y) ≤ α.
+Column sums Σ_x C(x,y) ≤ α: "changing site y affects all others by < 1 total"
+Row sums Σ_y C(x,y) ≤ α: "site x is affected by all others by < 1 total"
 
-In practice we work with a finite box and take limits, but the
-condition is stated for the full lattice specification. -/
+For symmetric C (which holds for all nearest-neighbor models with
+symmetric interactions), row sums = column sums automatically.
+
+Dobrushin's original condition uses column sums only, but row sums
+simplify the uniqueness proof (contraction on sup instead of L¹). -/
 structure DobrushinCondition (γ : GibbsSpec d S) where
   /-- The contraction constant α < 1. -/
   α : ℝ
   hα_pos : 0 ≤ α
   hα_lt : α < 1
-  /-- The influence coefficients are summable in x for each y. -/
-  summable : ∀ (y : LatticeSite d),
+  /-- The influence coefficients are summable in x for each y (column). -/
+  col_summable : ∀ (y : LatticeSite d),
     Summable (fun x => influenceCoeff γ x y)
   /-- Column sum bound: for all y, Σ_x C(x,y) ≤ α < 1. -/
   column_bound : ∀ (y : LatticeSite d),
     ∑' x, influenceCoeff γ x y ≤ α
+  /-- The influence coefficients are summable in y for each x (row). -/
+  row_summable : ∀ (x : LatticeSite d),
+    Summable (fun y => influenceCoeff γ x y)
+  /-- Row sum bound: for all x, Σ_y C(x,y) ≤ α < 1. -/
+  row_bound : ∀ (x : LatticeSite d),
+    ∑' y, influenceCoeff γ x y ≤ α
 
 /-! ## Total variation distance properties -/
 
@@ -211,6 +225,93 @@ lemma condDist_lipschitz_at_site (γ : GibbsSpec d S)
     · exact ⟨σ, τ, hdiff, rfl⟩
   linarith
 
+/-! ## Influence coefficient bounds -/
+
+/-- The influence coefficient is nonneg (it is a supremum of absolute
+values, or 0 if the defining set is empty). -/
+lemma influenceCoeff_nonneg (γ : GibbsSpec d S) (x y : LatticeSite d) :
+    0 ≤ influenceCoeff γ x y := by
+  unfold influenceCoeff
+  by_cases h : {c : ℝ | ∃ σ τ : SpinConfig d S,
+    (∀ z, z ≠ y → σ z = τ z) ∧ c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}.Nonempty
+  · obtain ⟨c, σ, τ, hdiff, hc_eq⟩ := h
+    calc 0 ≤ tvDist (γ.condDist {x} σ) (γ.condDist {x} τ) := tvDist_nonneg _ _
+    _ ≤ sSup {c : ℝ | ∃ σ τ : SpinConfig d S,
+          (∀ z, z ≠ y → σ z = τ z) ∧
+          c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)} := by
+        apply le_csSup
+        · exact ⟨1, fun c hc => by
+            obtain ⟨σ', τ', _, hc'⟩ := hc; rw [hc']; exact tvDist_le_one _ _⟩
+        · exact ⟨σ, τ, hdiff, rfl⟩
+  · simp only [Set.not_nonempty_iff_eq_empty] at h; rw [h, Real.sSup_empty]
+
+/-- The influence coefficient is at most 1 (since it is a supremum
+of total variation distances between probability measures). -/
+lemma influenceCoeff_le_one (γ : GibbsSpec d S) (x y : LatticeSite d) :
+    influenceCoeff γ x y ≤ 1 := by
+  unfold influenceCoeff
+  by_cases h : {c : ℝ | ∃ σ τ : SpinConfig d S,
+    (∀ z, z ≠ y → σ z = τ z) ∧ c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}.Nonempty
+  · exact csSup_le h (fun c hc => by
+      obtain ⟨σ, τ, _, hc_eq⟩ := hc; rw [hc_eq]; exact tvDist_le_one _ _)
+  · simp only [Set.not_nonempty_iff_eq_empty] at h; rw [h]; simp [sSup, SupSet.sSup]
+
+/-! ## Summability lemmas for the influence matrix -/
+
+/-- For each site x, the product `C(x,y) * δ(y)` is summable in y,
+since each term is bounded by `δ(y)` (using `C(x,y) ≤ 1`). -/
+lemma summable_influenceCoeff_mul_row (γ : GibbsSpec d S) (x : LatticeSite d)
+    (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y) (hδ_sum : Summable δ) :
+    Summable (fun y => influenceCoeff γ x y * δ y) := by
+  refine Summable.of_nonneg_of_le
+    (fun y => mul_nonneg (influenceCoeff_nonneg γ x y) (hδ_nn y))
+    (fun y => ?_) hδ_sum
+  calc influenceCoeff γ x y * δ y ≤ 1 * δ y :=
+    mul_le_mul_of_nonneg_right (influenceCoeff_le_one γ x y) (hδ_nn y)
+  _ = δ y := one_mul _
+
+/-- For each site y, the product `C(x,y) * δ(y)` is summable in x,
+since it equals `(Σ_x C(x,y)) * δ(y)` with the column summable. -/
+lemma summable_influenceCoeff_mul_col (γ : GibbsSpec d S)
+    (hD : DobrushinCondition γ) (y : LatticeSite d) (δ : LatticeSite d → ℝ) :
+    Summable (fun x => influenceCoeff γ x y * δ y) :=
+  (hD.col_summable y).mul_right (δ y)
+
+/-- The column-first iterated sum `Σ_y (Σ_x C(x,y) * δ(y))` is
+summable, since each inner sum `(Σ_x C(x,y)) * δ(y) ≤ α * δ(y)`. -/
+lemma summable_col_tsum_influenceCoeff (γ : GibbsSpec d S)
+    (hD : DobrushinCondition γ)
+    (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y) (hδ_sum : Summable δ) :
+    Summable (fun y => ∑' x, influenceCoeff γ x y * δ y) := by
+  refine Summable.of_nonneg_of_le
+    (fun y => tsum_nonneg
+      (fun x => mul_nonneg (influenceCoeff_nonneg γ x y) (hδ_nn y)))
+    (fun y => ?_) (hδ_sum.mul_left hD.α)
+  rw [tsum_mul_right]
+  exact mul_le_mul_of_nonneg_right (hD.column_bound y) (hδ_nn y)
+
+/-- The product `C(x,y) * δ(y)` is summable over the product space
+`LatticeSite d × LatticeSite d`. This is proved by first showing
+summability of the transposed function via column summability,
+then converting via `Equiv.prodComm`. -/
+lemma summable_uncurry_influenceCoeff (γ : GibbsSpec d S)
+    (hD : DobrushinCondition γ)
+    (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y) (hδ_sum : Summable δ) :
+    Summable (Function.uncurry (fun x y => influenceCoeff γ x y * δ y)) := by
+  -- Prove summability of the transposed function g(y,x) = C(x,y)*δ(y)
+  have hswap : Summable (fun p : LatticeSite d × LatticeSite d =>
+      influenceCoeff γ p.2 p.1 * δ p.1) := by
+    rw [summable_prod_of_nonneg
+      (fun p => mul_nonneg (influenceCoeff_nonneg γ p.2 p.1) (hδ_nn p.1))]
+    exact ⟨fun y => summable_influenceCoeff_mul_col γ hD y δ,
+           summable_col_tsum_influenceCoeff γ hD δ hδ_nn hδ_sum⟩
+  -- Convert via Equiv.prodComm
+  rw [show (Function.uncurry fun x y => influenceCoeff γ x y * δ y) =
+    (fun p : LatticeSite d × LatticeSite d =>
+      influenceCoeff γ p.2 p.1 * δ p.1) ∘
+    (Equiv.prodComm _ _) from by ext ⟨x, y⟩; simp [Function.uncurry]]
+  exact (Equiv.prodComm _ _).summable_iff.mpr hswap
+
 /-- **Dobrushin single-site contraction.**
 
 For each site x, the single-site "marginal disagreement" between
@@ -288,15 +389,34 @@ lemma l1_contraction (γ : GibbsSpec d S)
     -- The single-site contraction: δ(x) ≤ Σ_y C(x,y) · δ(y)
     (hcontract : ∀ x, δ x ≤ ∑' y, influenceCoeff γ x y * δ y) :
     ∑' x, δ x ≤ hD.α * ∑' x, δ x := by
-  -- Proof sketch:
-  -- Σ_x δ(x) ≤ Σ_x Σ_y C(x,y) · δ(y)           (by hcontract)
-  --           = Σ_y Σ_x C(x,y) · δ(y)             (Fubini / tsum_comm)
-  --           = Σ_y [Σ_x C(x,y)] · δ(y)           (factor out δ(y))
-  --           ≤ Σ_y α · δ(y)                       (column_bound)
-  --           = α · Σ_y δ(y)                        (factor out α)
-  -- Each step requires summability hypotheses (the double sum
-  -- Σ_x Σ_y C(x,y)·δ(y) must be absolutely convergent for Fubini).
-  sorry
+  -- The proof exchanges the order of summation (Fubini for nonneg series)
+  -- and uses the column sum bound Σ_x C(x,y) ≤ α.
+  have huncurry := summable_uncurry_influenceCoeff γ hD δ hδ_nn hδ_sum
+  -- Row-first outer sum is summable (from product summability)
+  have hsum_outer : Summable (fun x => ∑' y, influenceCoeff γ x y * δ y) :=
+    ((summable_prod_of_nonneg (fun p => mul_nonneg
+      (influenceCoeff_nonneg γ p.1 p.2) (hδ_nn p.2))).mp huncurry).2
+  calc ∑' x, δ x
+      -- Step 1: Apply pointwise contraction
+      ≤ ∑' x, ∑' y, influenceCoeff γ x y * δ y :=
+        hδ_sum.tsum_le_tsum hcontract hsum_outer
+      -- Step 2: Exchange order of summation (Fubini)
+    _ = ∑' y, ∑' x, influenceCoeff γ x y * δ y :=
+        (huncurry.tsum_comm'
+          (fun x => summable_influenceCoeff_mul_row γ x δ hδ_nn hδ_sum)
+          (fun y => summable_influenceCoeff_mul_col γ hD y δ)).symm
+      -- Step 3: Factor out δ(y) from the inner sum
+    _ = ∑' y, (∑' x, influenceCoeff γ x y) * δ y := by
+        congr 1; ext y; exact tsum_mul_right
+      -- Step 4: Apply column sum bound Σ_x C(x,y) ≤ α
+    _ ≤ ∑' y, hD.α * δ y := by
+        refine Summable.tsum_le_tsum
+          (fun y => mul_le_mul_of_nonneg_right (hD.column_bound y) (hδ_nn y))
+          ?_ (hδ_sum.mul_left hD.α)
+        convert summable_col_tsum_influenceCoeff γ hD δ hδ_nn hδ_sum using 1
+        ext y; exact tsum_mul_right.symm
+      -- Step 5: Factor out α
+    _ = hD.α * ∑' y, δ y := tsum_mul_left
 
 /-- **Key contraction lemma**: Under Dobrushin's condition, the total
 variation distance between any two Gibbs measures contracts.

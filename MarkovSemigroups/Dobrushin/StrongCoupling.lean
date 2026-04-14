@@ -243,14 +243,18 @@ def strong_coupling_dobrushin (γ : GibbsSpec d S)
       · exact Nat.cast_nonneg d
     · exact hIB.hβ_pos
   hα_lt := by exact hβ_small
-  summable := by
+  col_summable := by
     -- For nearest-neighbor, C(x,y) = 0 for all but ≤ 2d sites x,
     -- so the function has finite support and is trivially summable.
-    intro y
-    sorry
+    intro y; sorry
   column_bound := by
     -- ∑' x, C(x,y) = finite sum over neighbors ≤ 2d · β
-    intro y
-    sorry
+    intro y; sorry
+  row_summable := by
+    -- Symmetric: C(x,y) = 0 unless neighbor, same bound
+    intro x; sorry
+  row_bound := by
+    -- Same as column_bound by symmetry of nearest-neighbor
+    intro x; sorry
 
 end
