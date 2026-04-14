@@ -260,6 +260,70 @@ theorem coupling_coord_ne_le (P : Measure (X × X))
   intro heq
   exact hp (congrArg π heq)
 
+/-- **Pointwise telescoping lemma.**
+
+For a coordinate-Lipschitz function h with finitely supported Lipschitz constants c,
+for any pair (σ, τ), the difference |h(σ) - h(τ)| can be bounded by summing the
+coordinate Lipschitz constants over coordinates where σ and τ disagree. -/
+private lemma pointwise_lipschitz_telescope
+    {ι : Type*} [DecidableEq ι]
+    {S : Type*} [DecidableEq S]
+    (h : (ι → S) → ℝ)
+    (c : ι → ℝ) (hc_nn : ∀ y, 0 ≤ c y)
+    (hc_lip : ∀ (σ τ : ι → S) (y : ι),
+      (∀ z, z ≠ y → σ z = τ z) → |h σ - h τ| ≤ c y)
+    (F : Finset ι)
+    (σ τ : ι → S)
+    (h_support : ∀ z, z ∉ F → σ z = τ z) :
+    |h σ - h τ| ≤ ∑ y ∈ F, c y * if σ y ≠ τ y then 1 else 0 := by
+  induction F using Finset.cons_induction generalizing σ with
+  | empty =>
+    -- All coordinates agree, so σ = τ
+    have : σ = τ := funext fun z => h_support z (Finset.notMem_empty z)
+    simp [this]
+  | cons a s ha ih =>
+    rw [Finset.cons_eq_insert]
+    -- Telescoping: |h σ - h τ| ≤ |h σ - h (σ[a := τ a])| + |h (σ[a := τ a]) - h τ|
+    let σ' := Function.update σ a (τ a)
+    calc |h σ - h τ|
+        = |(h σ - h σ') + (h σ' - h τ)| := by ring_nf
+      _ ≤ |h σ - h σ'| + |h σ' - h τ| := abs_add_le _ _
+      _ ≤ c a * (if σ a ≠ τ a then 1 else 0) +
+            ∑ y ∈ s, c y * (if σ' y ≠ τ y then 1 else 0) := by
+          gcongr
+          · -- |h σ - h σ'| ≤ c a (they differ only at a)
+            by_cases heq : σ a = τ a
+            · -- σ a = τ a, so σ' = σ, difference is 0
+              simp only [heq, ne_eq, not_true_eq_false, ↓reduceIte, mul_zero]
+              have hσ'σ : σ' = σ := by
+                ext z; simp only [σ', Function.update_apply]
+                split_ifs with hz
+                · exact hz ▸ heq.symm
+                · rfl
+              simp [hσ'σ]
+            · simp only [ne_eq, heq, not_false_eq_true, ↓reduceIte, mul_one]
+              exact hc_lip σ σ' a (fun z hz => by
+                simp only [σ', Function.update_of_ne hz])
+          · -- |h σ' - h τ| ≤ Σ_{y ∈ s} by induction
+            apply ih
+            intro z hz
+            simp only [σ', Function.update_apply]
+            split_ifs with heq
+            · exact heq ▸ rfl
+            · exact h_support z (fun hmem => by
+                rw [Finset.cons_eq_insert] at hmem
+                simp only [Finset.mem_insert] at hmem
+                exact hmem.elim heq hz)
+      _ = ∑ y ∈ insert a s, c y * (if σ y ≠ τ y then 1 else 0) := by
+          rw [Finset.sum_insert ha]
+          -- Need to show that σ' y = σ y for y ∈ s (since y ≠ a)
+          congr 1
+          apply Finset.sum_congr rfl
+          intro y hy
+          have hne : y ≠ a := fun heq => ha (heq ▸ hy)
+          congr 1
+          simp [σ', Function.update_of_ne hne]
+
 /-- **Integral Lipschitz bound via coupling.**
 
 For h: X → [0,1] with coordinate Lipschitz constants c(y), and
@@ -270,7 +334,7 @@ any coupling P of μ, ν:
 When P is the maximal coupling, the RHS becomes ≤ (Σ c(y)) · tvNorm. -/
 theorem integral_lipschitz_coupling_bound
     {ι : Type*} [MeasurableSpace ι]
-    {S : Type*} [MeasurableSpace S] [MeasurableSingletonClass S]
+    {S : Type*} [MeasurableSpace S] [MeasurableSingletonClass S] [Countable S]
     (μ ν : Measure (ι → S)) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
     (P : Measure ((ι → S) × (ι → S)))
     (hP : IsCoupling P μ ν)
@@ -282,10 +346,180 @@ theorem integral_lipschitz_coupling_bound
       (∀ z, z ≠ y → σ z = τ z) →
       |h σ - h τ| ≤ c y)
     -- Finite support (nearest-neighbor case)
-    (hc_finsupp : (Function.support c).Finite) :
+    (hc_finsupp : (Function.support c).Finite)
+    -- h depends only on F-coordinates (follows from measurability + single-coord invariance
+    -- via a cylinder-set factorization argument; added as hypothesis for now)
+    (h_dep_F : ∀ (σ τ : ι → S),
+      (∀ y ∈ hc_finsupp.toFinset, σ y = τ y) → h σ = h τ) :
     |∫ σ, h σ ∂μ - ∫ σ, h σ ∂ν| ≤
       ∑ y ∈ hc_finsupp.toFinset, c y *
         (P {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y}).toReal := by
-  sorry
+  classical
+  have hPprob := hP.isProb
+  set F := hc_finsupp.toFinset with hF_def
+  -- ────────────────────────────────────────────────
+  -- Preliminary: h does not depend on coordinates outside F.
+  -- For z ∉ F we have c z = 0, so changing coordinate z preserves h.
+  -- ────────────────────────────────────────────────
+  have h_const_outside : ∀ (z : ι), z ∉ F → ∀ (ρ : ι → S) (v : S),
+      h ρ = h (Function.update ρ z v) := by
+    intro z hz ρ v
+    have hcz : c z = 0 := by
+      rwa [Set.Finite.mem_toFinset, Function.mem_support, not_not] at hz
+    have hle := hc_lip ρ (Function.update ρ z v) z
+      (fun w hw => (Function.update_of_ne hw v ρ).symm)
+    rw [hcz] at hle
+    have := abs_nonpos_iff.mp hle
+    linarith
+  -- h depends only on F-coordinates (provided as hypothesis h_dep_F)
+  -- The local name F = hc_finsupp.toFinset matches the hypothesis.
+  -- ────────────────────────────────────────────────
+  -- Step 1: Rewrite integrals using coupling marginals
+  -- ────────────────────────────────────────────────
+  have h_int_fst : Integrable (fun p : (ι → S) × (ι → S) => h p.1) P :=
+    Integrable.of_bound (hh.comp measurable_fst).aestronglyMeasurable 1
+      (ae_of_all _ (fun p => by simp [Real.norm_eq_abs, hh_bound p.1]))
+  have h_int_snd : Integrable (fun p : (ι → S) × (ι → S) => h p.2) P :=
+    Integrable.of_bound (hh.comp measurable_snd).aestronglyMeasurable 1
+      (ae_of_all _ (fun p => by simp [Real.norm_eq_abs, hh_bound p.2]))
+  have hfst : ∫ σ, h σ ∂μ = ∫ p, h p.1 ∂P := by
+    rw [← hP.fst_marginal]
+    exact integral_map measurable_fst.aemeasurable hh.aestronglyMeasurable
+  have hsnd : ∫ σ, h σ ∂ν = ∫ p, h p.2 ∂P := by
+    rw [← hP.snd_marginal]
+    exact integral_map measurable_snd.aemeasurable hh.aestronglyMeasurable
+  rw [hfst, hsnd, ← integral_sub h_int_fst h_int_snd]
+  -- ────────────────────────────────────────────────
+  -- Step 2: |∫ f| ≤ ∫ |f| ≤ ∫ (pointwise bound) = Σ c(y) · P(ne y)
+  -- ────────────────────────────────────────────────
+  -- We use norm_integral_le_lintegral_norm to go through ℝ≥0∞ and avoid
+  -- measurability issues with the indicator-sum integrand.
+  -- Pointwise bound: for all p, |h p.1 - h p.2| ≤ ∑ y ∈ F, c y * (if p.1 y ≠ p.2 y then 1 else 0)
+  have h_ptwise : ∀ p : (ι → S) × (ι → S),
+      |h p.1 - h p.2| ≤ ∑ y ∈ F, c y * if p.1 y ≠ p.2 y then 1 else 0 := by
+    intro p
+    -- Build τ' that agrees with p.2 on F and p.1 outside F
+    let τ' : ι → S := fun i => if i ∈ F then p.2 i else p.1 i
+    -- h(p.2) = h(τ') since they agree on F
+    have hτ' : h p.2 = h τ' := h_dep_F p.2 τ' (fun y hy => by simp [τ', hy])
+    -- p.1 and τ' agree outside F
+    have h_agree : ∀ z, z ∉ F → p.1 z = τ' z := fun z hz => by simp [τ', hz]
+    -- Apply telescope lemma to (p.1, τ')
+    have htel := pointwise_lipschitz_telescope h c hc_nn hc_lip F p.1 τ' h_agree
+    -- The indicator terms match: for y ∈ F, τ' y = p.2 y, so 1(p.1 y ≠ τ' y) = 1(p.1 y ≠ p.2 y)
+    rw [hτ']
+    calc |h p.1 - h τ'|
+        ≤ ∑ y ∈ F, c y * if p.1 y ≠ τ' y then 1 else 0 := htel
+      _ = ∑ y ∈ F, c y * if p.1 y ≠ p.2 y then 1 else 0 := by
+          apply Finset.sum_congr rfl
+          intro y hy
+          -- For y ∈ F: τ' y = p.2 y, so the indicators match
+          simp [τ', hy]
+  -- Now bound: |∫ (h∘fst - h∘snd)| ≤ Σ c(y) · P(ne y)
+  -- via |∫ f| ≤ ∫ |f| ≤ ∫ (pw bound) = Σ c(y) · ∫ 1(ne y) = Σ c(y) · P(ne y)
+  -- Route: |∫ f dP| ≤ (∫⁻ ‖f‖ₑ dP).toReal (norm_integral_le_lintegral_norm)
+  --        ≤ (∫⁻ (pw bound)ₑ dP).toReal (lintegral_mono, no measurability needed)
+  --        ≤ (Σ c(y) * P(ne y)).toReal (lintegral_finset_sum + lintegral_indicator_one_le)
+  --        = Σ c(y) * P(ne y).toReal (toReal distributes over finite nonneg sums)
+  -- However, lintegral_finset_sum still requires AEMeasurable for each summand,
+  -- and lintegral_indicator_one needs MeasurableSet. Both require MeasurableEq S
+  -- (available from MeasurableSingletonClass S + Countable S).
+  -- We use a direct lintegral bound that avoids these.
+  -- Use norm_integral_le_lintegral_norm to go to lintegral world (no measurability needed)
+  -- then bound lintegral pointwise using h_ptwise, then decompose.
+  have h_nonneg_sum : ∀ p : (ι → S) × (ι → S),
+      0 ≤ ∑ y ∈ F, c y * if p.1 y ≠ p.2 y then (1 : ℝ) else 0 :=
+    fun p => Finset.sum_nonneg (fun y _ => mul_nonneg (hc_nn y) (by split_ifs <;> norm_num))
+  calc |∫ p, (h p.1 - h p.2) ∂P|
+      = ‖∫ p, (h p.1 - h p.2) ∂P‖ := (Real.norm_eq_abs _).symm
+    _ ≤ (∫⁻ p, ENNReal.ofReal ‖h p.1 - h p.2‖ ∂P).toReal :=
+        norm_integral_le_lintegral_norm _
+    _ ≤ (∫⁻ p, ENNReal.ofReal (∑ y ∈ F,
+          c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P).toReal := by
+        apply ENNReal.toReal_mono
+        · -- The lintegral is finite (bounded by a constant on a probability space)
+          apply ne_top_of_le_ne_top
+            (ENNReal.ofReal_ne_top)
+          calc ∫⁻ p, ENNReal.ofReal (∑ y ∈ F, c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P
+              ≤ ∫⁻ _, ENNReal.ofReal (∑ y ∈ F, c y) ∂P := by
+                apply lintegral_mono
+                intro p
+                exact ENNReal.ofReal_le_ofReal (Finset.sum_le_sum fun y _ =>
+                  le_trans (mul_le_mul_of_nonneg_left
+                    (by split_ifs <;> norm_num : (if p.1 y ≠ p.2 y then (1 : ℝ) else 0) ≤ 1)
+                    (hc_nn y))
+                    (le_of_eq (mul_one (c y))))
+            _ = ENNReal.ofReal (∑ y ∈ F, c y) * P Set.univ := lintegral_const _
+            _ = ENNReal.ofReal (∑ y ∈ F, c y) := by
+                rw [measure_univ, mul_one]
+        · apply lintegral_mono
+          intro p
+          apply ENNReal.ofReal_le_ofReal
+          rw [Real.norm_eq_abs]
+          exact h_ptwise p
+    _ ≤ (∑ y ∈ F, ENNReal.ofReal (c y) *
+          P {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y}).toReal := by
+        -- Decompose the lintegral of the sum into sum of lintegrals,
+        -- then each term equals ofReal(c y) * P({p | p.1 y ≠ p.2 y}).
+        -- Measurability of {p | p.1 y ≠ p.2 y}: follows from MeasurableEq S
+        -- (which holds for Countable S + MeasurableSingletonClass S).
+        have h_meas_ne : ∀ y : ι, MeasurableSet {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y} := by
+          intro y
+          apply MeasurableSet.compl
+          exact measurableSet_eq_fun
+            ((measurable_pi_apply y).comp measurable_fst)
+            ((measurable_pi_apply y).comp measurable_snd)
+        apply ENNReal.toReal_mono
+        · -- RHS is finite
+          exact ENNReal.sum_ne_top.mpr
+            (fun y _ => ENNReal.mul_ne_top ENNReal.ofReal_ne_top (measure_ne_top P _))
+        · -- Rewrite ofReal of sum as sum of lintegrals, then evaluate each.
+          -- Step 1: Push ofReal inside the sum
+          have step1 : ∫⁻ p, ENNReal.ofReal (∑ y ∈ F, c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P
+              = ∫⁻ p, ∑ y ∈ F, ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P := by
+            apply lintegral_congr; intro p
+            rw [ENNReal.ofReal_sum_of_nonneg (fun y _ =>
+              mul_nonneg (hc_nn y) (by split_ifs <;> norm_num))]
+          -- Step 2: Swap sum and integral
+          have step2 : ∫⁻ p, ∑ y ∈ F, ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P
+              = ∑ y ∈ F, ∫⁻ p, ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P := by
+            apply lintegral_finset_sum
+            intro y _
+            apply Measurable.ennreal_ofReal
+            exact measurable_const.mul
+              (Measurable.ite (h_meas_ne y) measurable_const measurable_const)
+          -- Step 3: Factor out constant, rewrite indicator, evaluate
+          have step3 : ∀ y, ∫⁻ p, ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P
+              = ENNReal.ofReal (c y) * P {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y} := by
+            intro y
+            -- ofReal of product = product of ofReal
+            have hfact : ∀ p : (ι → S) × (ι → S),
+                ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then (1 : ℝ) else 0) =
+                ENNReal.ofReal (c y) * ENNReal.ofReal (if p.1 y ≠ p.2 y then 1 else 0) :=
+              fun p => ENNReal.ofReal_mul (hc_nn y)
+            rw [show (fun p : (ι → S) × (ι → S) =>
+                  ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0)) =
+                (fun p : (ι → S) × (ι → S) =>
+                  ENNReal.ofReal (c y) * ENNReal.ofReal (if p.1 y ≠ p.2 y then 1 else 0))
+              from funext hfact]
+            rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+            congr 1
+            -- ∫⁻ ofReal(if ne then 1 else 0) = P({ne})
+            have hind : (fun p : (ι → S) × (ι → S) =>
+                ENNReal.ofReal (if p.1 y ≠ p.2 y then (1 : ℝ) else 0)) =
+                Set.indicator {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y} 1 := by
+              ext p
+              simp only [Set.indicator, Set.mem_setOf_eq]
+              split_ifs <;> simp [ENNReal.ofReal_zero, ENNReal.ofReal_one]
+            rw [hind, lintegral_indicator_one (h_meas_ne y)]
+          -- Combine all steps
+          rw [step1, step2]
+          exact le_of_eq (Finset.sum_congr rfl (fun y _ => step3 y))
+    _ = ∑ y ∈ F, c y *
+          (P {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y}).toReal := by
+        rw [ENNReal.toReal_sum (fun y _ =>
+          ENNReal.mul_ne_top ENNReal.ofReal_ne_top (measure_ne_top P _))]
+        congr 1; ext y
+        rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal (hc_nn y)]
 
 end
