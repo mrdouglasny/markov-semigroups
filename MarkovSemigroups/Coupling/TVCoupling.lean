@@ -185,7 +185,7 @@ In terms of densities: if μ = f·λ and ν = g·λ, then γ = min(f,g)·λ.
 
 The total mass γ(X) = 1 - tvNorm(μ, ν) is the "overlap" between μ and ν. -/
 def overlapMeasure (μ ν : Measure X) : Measure X :=
-  sorry
+  μ ⊓ ν
 
 /-- The overlap measure has total mass 1 - tvNorm(μ, ν). -/
 theorem overlapMeasure_mass (μ ν : Measure X)
