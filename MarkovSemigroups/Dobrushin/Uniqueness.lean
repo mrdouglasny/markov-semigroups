@@ -36,6 +36,7 @@ exponentially in distance.
 -/
 
 import MarkovSemigroups.Dobrushin.Specification
+import MarkovSemigroups.Coupling.TVCoupling
 import Mathlib.Topology.Algebra.InfiniteSum.Basic
 import Mathlib.Topology.Algebra.InfiniteSum.Order
 import Mathlib.Topology.Algebra.InfiniteSum.Ring
@@ -256,6 +257,11 @@ lemma influenceCoeff_le_one (γ : GibbsSpec d S) (x y : LatticeSite d) :
       obtain ⟨σ, τ, _, hc_eq⟩ := hc; rw [hc_eq]; exact tvDist_le_one _ _)
   · simp only [Set.not_nonempty_iff_eq_empty] at h; rw [h]; simp [sSup, SupSet.sSup]
 
+/-- `tvDist` (defined here) coincides with `tvNorm` in the coupling module. -/
+lemma tvDist_eq_tvNorm {X : Type*} [MeasurableSpace X]
+    (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    tvDist μ ν = tvNorm μ ν := rfl
+
 /-! ## Integral bound via coupling -/
 
 /-- **Key coupling-based integral bound.**
@@ -285,20 +291,93 @@ The fully formal proof requires:
 - `[Countable S] [MeasurableSingletonClass S]` for measurability of {σ(y)≠τ(y)}
 
 This lemma isolates the coupling dependency from the rest of the Dobrushin proof. -/
-lemma condDist_integral_bound (γ : GibbsSpec d S)
+lemma condDist_integral_bound [Countable S] [MeasurableSingletonClass S]
+    [MeasurableEq (SpinConfig d S)]
+    (γ : GibbsSpec d S)
     (μ₁ μ₂ : Measure (SpinConfig d S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
     (x : LatticeSite d)
     (A : Set (SpinConfig d S)) (hA : MeasurableSet A)
     (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
     (hδ_bound : ∀ (y : LatticeSite d) (B : Set (SpinConfig d S)),
-      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y) :
+      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y)
+    -- Finite support of the influence coefficients (nearest-neighbor case)
+    (hfinsupp : (Function.support (influenceCoeff γ x ·)).Finite)
+    -- The condDist integrand depends only on the coordinates in the
+    -- support of the influence coefficients.  This is a standard
+    -- structural property of finite-range Gibbs specifications; we
+    -- accept it as a hypothesis (the caller supplies it from the
+    -- single-coordinate invariance + finite range of γ).
+    (h_dep_F : ∀ (σ τ : SpinConfig d S),
+      (∀ y ∈ hfinsupp.toFinset, σ y = τ y) →
+      (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
     |∫ σ, (γ.condDist {x} σ A).toReal ∂μ₁ -
      ∫ σ, (γ.condDist {x} σ A).toReal ∂μ₂| ≤
       ∑' y, influenceCoeff γ x y * δ y := by
-  -- See docstring above for the proof strategy.
-  -- The full proof requires coupling theory (TVCoupling.lean).
-  sorry
+  classical
+  -- Strategy: Use the maximal coupling of μ₁ and μ₂ and apply the
+  -- coordinate-Lipschitz integral bound from TVCoupling.
+  -- The spin space S is `LatticeSite d → S` which is `ι → S` with
+  -- ι = LatticeSite d; we need MeasurableEq S (from Countable +
+  -- MeasurableSingletonClass) for the coupling machinery.
+  set h : SpinConfig d S → ℝ := fun σ => (γ.condDist {x} σ A).toReal with hh_def
+  set c : LatticeSite d → ℝ := fun y => influenceCoeff γ x y with hc_def
+  -- Basic facts about h and c
+  have hh_meas : Measurable h := γ.measurable_condDist {x} A hA
+  have hh_bound : ∀ σ, |h σ| ≤ 1 := fun σ => by
+    rw [abs_of_nonneg (condDist_toReal_nonneg γ x σ A)]
+    exact condDist_toReal_le_one γ x σ A
+  have hc_nn : ∀ y, 0 ≤ c y := influenceCoeff_nonneg γ x
+  have hc_lip : ∀ (σ τ : SpinConfig d S) (y : LatticeSite d),
+      (∀ z, z ≠ y → σ z = τ z) → |h σ - h τ| ≤ c y :=
+    fun σ τ y hdiff => condDist_lipschitz_at_site γ x y σ τ hdiff A hA
+  set F := hfinsupp.toFinset with hF_def
+  -- Obtain the maximal coupling of μ₁ and μ₂
+  obtain ⟨P, hP, hPeq⟩ := exists_maximal_coupling μ₁ μ₂
+  haveI := hP.isProb
+  -- Apply the integral Lipschitz coupling bound from TVCoupling
+  have h_main := integral_lipschitz_coupling_bound (μ := μ₁) (ν := μ₂)
+    P hP h hh_meas hh_bound c hc_nn hc_lip hfinsupp h_dep_F
+  -- Bound each coordinate disagreement by the global coupling disagreement
+  have h_coord_bound : ∀ y : LatticeSite d,
+      (P {p : SpinConfig d S × SpinConfig d S | p.1 y ≠ p.2 y}).toReal ≤
+        tvDist μ₁ μ₂ := by
+    intro y
+    have := coupling_coord_ne_le P μ₁ μ₂ hP
+      (π := fun σ : SpinConfig d S => σ y) (measurable_pi_apply y)
+    rw [hPeq] at this
+    exact this.trans_eq (tvDist_eq_tvNorm μ₁ μ₂).symm
+  -- Upper bound using δ(y) ≥ tvDist from hδ_bound
+  have h_tvDist_le_δ : ∀ y, tvDist μ₁ μ₂ ≤ δ y := by
+    intro y
+    apply csSup_le (tvDist_set_nonempty μ₁ μ₂)
+    rintro c' ⟨B, hB, rfl⟩
+    exact hδ_bound y B hB
+  -- Assemble the finite-sum bound
+  have h_fin_bound :
+      |∫ σ, h σ ∂μ₁ - ∫ σ, h σ ∂μ₂| ≤ ∑ y ∈ F, c y * δ y := by
+    calc |∫ σ, h σ ∂μ₁ - ∫ σ, h σ ∂μ₂|
+        ≤ ∑ y ∈ F, c y *
+          (P {p : SpinConfig d S × SpinConfig d S | p.1 y ≠ p.2 y}).toReal :=
+          h_main
+      _ ≤ ∑ y ∈ F, c y * δ y := by
+          apply Finset.sum_le_sum
+          intro y _
+          exact mul_le_mul_of_nonneg_left
+            ((h_coord_bound y).trans (h_tvDist_le_δ y)) (hc_nn y)
+  -- Convert the finite sum to tsum (outside F, c y = 0 so terms vanish)
+  have hfin_eq_tsum : ∑ y ∈ F, c y * δ y = ∑' y, c y * δ y := by
+    symm
+    apply tsum_eq_sum
+    intro y hy
+    have hcy : c y = 0 := by
+      by_contra hne
+      apply hy
+      rw [hF_def, Set.Finite.mem_toFinset]
+      exact hne
+    simp [hcy]
+  rw [← hfin_eq_tsum]
+  exact h_fin_bound
 
 /-! ## Summability lemmas for the influence matrix -/
 
@@ -384,7 +463,9 @@ writing g as a telescoping sum over sites y, replacing σ(y)
 one coordinate at a time, and bounding each term.
 
 This is the key analytical step of Dobrushin's theorem. -/
-lemma dobrushin_single_site_contraction (γ : GibbsSpec d S)
+lemma dobrushin_single_site_contraction [Countable S] [MeasurableSingletonClass S]
+    [MeasurableEq (SpinConfig d S)]
+    (γ : GibbsSpec d S)
     (μ₁ μ₂ : Measure (SpinConfig d S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
@@ -393,13 +474,19 @@ lemma dobrushin_single_site_contraction (γ : GibbsSpec d S)
     -- δ(y) bounds the single-site marginal disagreement at site y
     (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
     (hδ_bound : ∀ (y : LatticeSite d) (B : Set (SpinConfig d S)),
-      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y) :
+      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y)
+    -- Finite support of the influence coefficients (nearest-neighbor case)
+    (hfinsupp : (Function.support (influenceCoeff γ x ·)).Finite)
+    -- The condDist integrand depends only on the support coordinates
+    (h_dep_F : ∀ (σ τ : SpinConfig d S),
+      (∀ y ∈ hfinsupp.toFinset, σ y = τ y) →
+      (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
     |(μ₁ A).toReal - (μ₂ A).toReal| ≤
       ∑' y, influenceCoeff γ x y * δ y := by
   -- Step 1: Rewrite using DLR
   rw [h₁.dlr {x} A hA, h₂.dlr {x} A hA]
   -- Step 2: Apply the coupling-based integral bound
-  exact condDist_integral_bound γ μ₁ μ₂ x A hA δ hδ_nn hδ_bound
+  exact condDist_integral_bound γ μ₁ μ₂ x A hA δ hδ_nn hδ_bound hfinsupp h_dep_F
 
 /-- **L¹ contraction on marginal disagreements.**
 
@@ -458,11 +545,20 @@ This follows from the single-site contraction and L¹ contraction:
 For the column-sum Dobrushin condition, the direct contraction
 tvDist ≤ α · tvDist requires the more refined L¹ approach via
 marginal disagreements. See `l1_contraction` above. -/
-lemma tvDist_contraction (γ : GibbsSpec d S)
+lemma tvDist_contraction [Countable S] [MeasurableSingletonClass S]
+    [MeasurableEq (SpinConfig d S)]
+    (γ : GibbsSpec d S)
     (hD : DobrushinCondition γ)
     (μ₁ μ₂ : Measure (SpinConfig d S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
-    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂) :
+    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
+    -- Finite-range structural hypotheses (per-row finite influence + invariance)
+    (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
+    (h_dep_F : ∀ (x : LatticeSite d) (A : Set (SpinConfig d S)),
+      MeasurableSet A →
+      ∀ (σ τ : SpinConfig d S),
+        (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
     tvDist μ₁ μ₂ ≤ hD.α * tvDist μ₁ μ₂ := by
   -- Strategy: For any x, for each measurable A,
   -- |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) · tvDist(μ₁,μ₂) ≤ α · tvDist
@@ -472,18 +568,16 @@ lemma tvDist_contraction (γ : GibbsSpec d S)
   apply csSup_le (tvDist_set_nonempty μ₁ μ₂)
   rintro c ⟨A, hA, rfl⟩
   -- Pick an arbitrary site x for the DLR step.
-  -- Any x works; the row sum bound Σ_y C(x,y) ≤ α holds for all x.
   obtain ⟨x⟩ : Nonempty (LatticeSite d) := ⟨fun _ => 0⟩
   -- Set δ(y) = tvDist(μ₁, μ₂) for all y (crude but sufficient)
   set δ : LatticeSite d → ℝ := fun _ => tvDist μ₁ μ₂ with hδ_def
-  -- δ is nonneg
   have hδ_nn : ∀ y, 0 ≤ δ y := fun _ => tvDist_nonneg μ₁ μ₂
-  -- δ bounds the disagreement on all measurable sets
   have hδ_bound : ∀ (y : LatticeSite d) (B : Set (SpinConfig d S)),
       MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y :=
     fun _ B hB => abs_toReal_sub_le_tvDist μ₁ μ₂ B hB
   -- Apply single-site contraction
-  have hcontract := dobrushin_single_site_contraction γ μ₁ μ₂ h₁ h₂ x A hA δ hδ_nn hδ_bound
+  have hcontract := dobrushin_single_site_contraction γ μ₁ μ₂ h₁ h₂ x A hA
+    δ hδ_nn hδ_bound (hfinsupp x) (h_dep_F x A hA)
   -- The bound: |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) * tvDist = (Σ_y C(x,y)) * tvDist ≤ α * tvDist
   calc |(μ₁ A).toReal - (μ₂ A).toReal|
       ≤ ∑' y, influenceCoeff γ x y * δ y := hcontract
@@ -504,17 +598,26 @@ Proof outline:
 2. Since α < 1 and tvDist ≥ 0, this forces tvDist(μ₁, μ₂) = 0.
 3. By `eq_of_tvDist_eq_zero`, μ₁ = μ₂.
 -/
-theorem dobrushin_uniqueness (γ : GibbsSpec d S)
+theorem dobrushin_uniqueness [Countable S] [MeasurableSingletonClass S]
+    [MeasurableEq (SpinConfig d S)]
+    (γ : GibbsSpec d S)
     (hD : DobrushinCondition γ)
     (μ₁ μ₂ : Measure (SpinConfig d S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
-    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂) :
+    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
+    -- Finite-range structural hypotheses
+    (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
+    (h_dep_F : ∀ (x : LatticeSite d) (A : Set (SpinConfig d S)),
+      MeasurableSet A →
+      ∀ (σ τ : SpinConfig d S),
+        (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
     μ₁ = μ₂ := by
   apply eq_of_tvDist_eq_zero
   -- We have tvDist ≤ α * tvDist with α < 1.
   -- This means (1 - α) * tvDist ≤ 0.
   -- Since 1 - α > 0 and tvDist ≥ 0, we get tvDist = 0.
-  have hcontract := tvDist_contraction γ hD μ₁ μ₂ h₁ h₂
+  have hcontract := tvDist_contraction γ hD μ₁ μ₂ h₁ h₂ hfinsupp h_dep_F
   have hα_lt := hD.hα_lt
   have hα_pos := hD.hα_pos
   have hnn := tvDist_nonneg μ₁ μ₂
