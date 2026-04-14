@@ -23,6 +23,9 @@ import MarkovSemigroups.Matrix.LaplaceTransform
 import MarkovSemigroups.Matrix.Trotter
 import MarkovSemigroups.Matrix.Diamagnetic
 
+-- Coupling theory
+import MarkovSemigroups.Coupling.TVCoupling
+
 -- Dobrushin uniqueness for lattice spin systems
 import MarkovSemigroups.Dobrushin.Specification
 import MarkovSemigroups.Dobrushin.Uniqueness
