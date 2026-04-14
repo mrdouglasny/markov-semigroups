@@ -208,6 +208,23 @@ private lemma card_filter_isNeighbor_le (y : LatticeSite d) (Λ : Finset (Lattic
         exact mem_neighborFinset_of_isNeighbor hx.2
     _ ≤ 2 * d := neighborFinset_card_le y
 
+/-- isNeighbor is symmetric: latticeDist is symmetric since |a-b| = |b-a|. -/
+private lemma isNeighbor_comm (x y : LatticeSite d) :
+    isNeighbor x y = isNeighbor y x := by
+  simp only [isNeighbor]
+  unfold latticeDist
+  congr 1
+  apply Finset.sum_congr rfl
+  intro i _
+  show (x i - y i).natAbs = (y i - x i).natAbs
+  omega
+
+/-- If isNeighbor x y, then y ∈ neighborFinset x. -/
+private lemma mem_neighborFinset_of_isNeighbor' {x y : LatticeSite d}
+    (h : isNeighbor x y = true) : y ∈ neighborFinset x := by
+  rw [isNeighbor_comm] at h
+  exact mem_neighborFinset_of_isNeighbor h
+
 /-! ## Strong-coupling regime -/
 
 /-- A specification has interaction strength bounded by β if each
@@ -221,6 +238,28 @@ structure InteractionBound (γ : GibbsSpec d S) (β : ℝ) : Prop where
   /-- TV bound on influence of a single neighbor. -/
   tv_bound : ∀ (x y : LatticeSite d), influenceCoeff γ x y ≤
     if isNeighbor x y = true then β else 0
+
+/-- InteractionBound gives influenceCoeff = 0 for non-neighbors. -/
+private lemma InteractionBound.influenceCoeff_eq_zero_of_not_isNeighbor
+    {γ : GibbsSpec d S} {β : ℝ} (hIB : InteractionBound γ β)
+    (x y : LatticeSite d) (h : isNeighbor x y = false) :
+    influenceCoeff γ x y = 0 := by
+  have hle := hIB.tv_bound x y
+  have hne : ¬(isNeighbor x y = true) := by rw [h]; decide
+  rw [if_neg hne] at hle
+  linarith [influenceCoeff_nonneg γ x y]
+
+/-- InteractionBound gives influenceCoeff ≤ β for neighbors. -/
+private lemma InteractionBound.influenceCoeff_le_beta
+    {γ : GibbsSpec d S} {β : ℝ} (hIB : InteractionBound γ β)
+    (x y : LatticeSite d) :
+    influenceCoeff γ x y ≤ β := by
+  have hle := hIB.tv_bound x y
+  by_cases h : isNeighbor x y = true
+  · rw [if_pos h] at hle; exact hle
+  · simp only [Bool.not_eq_true] at h
+    rw [hIB.influenceCoeff_eq_zero_of_not_isNeighbor x y h]
+    exact hIB.hβ_pos
 
 /-- **Strong-coupling Dobrushin condition.**
 
@@ -246,15 +285,63 @@ def strong_coupling_dobrushin (γ : GibbsSpec d S)
   col_summable := by
     -- For nearest-neighbor, C(x,y) = 0 for all but ≤ 2d sites x,
     -- so the function has finite support and is trivially summable.
-    intro y; sorry
+    intro y
+    apply summable_of_ne_finset_zero (s := neighborFinset y)
+    intro x hx
+    have hnn : isNeighbor x y = false := by
+      by_contra h; simp only [Bool.not_eq_false] at h
+      exact hx (mem_neighborFinset_of_isNeighbor h)
+    exact hIB.influenceCoeff_eq_zero_of_not_isNeighbor x y hnn
   column_bound := by
     -- ∑' x, C(x,y) = finite sum over neighbors ≤ 2d · β
-    intro y; sorry
+    intro y
+    have hzero : ∀ x ∉ neighborFinset y, influenceCoeff γ x y = 0 := by
+      intro x hx
+      have hnn : isNeighbor x y = false := by
+        by_contra h; simp only [Bool.not_eq_false] at h
+        exact hx (mem_neighborFinset_of_isNeighbor h)
+      exact hIB.influenceCoeff_eq_zero_of_not_isNeighbor x y hnn
+    rw [tsum_eq_sum hzero]
+    calc ∑ x ∈ neighborFinset y, influenceCoeff γ x y
+        ≤ ∑ _x ∈ neighborFinset y, β := by
+          gcongr with x _
+          exact hIB.influenceCoeff_le_beta x y
+      _ = (neighborFinset y).card * β := by
+          rw [Finset.sum_const, nsmul_eq_mul]
+      _ ≤ (2 * d) * β := by
+          gcongr
+          · exact hIB.hβ_pos
+          · exact_mod_cast neighborFinset_card_le y
+      _ = 2 * ↑d * β := by ring
   row_summable := by
     -- Symmetric: C(x,y) = 0 unless neighbor, same bound
-    intro x; sorry
+    intro x
+    apply summable_of_ne_finset_zero (s := neighborFinset x)
+    intro y hy
+    have hnn : isNeighbor x y = false := by
+      by_contra h; simp only [Bool.not_eq_false] at h
+      exact hy (mem_neighborFinset_of_isNeighbor' h)
+    exact hIB.influenceCoeff_eq_zero_of_not_isNeighbor x y hnn
   row_bound := by
     -- Same as column_bound by symmetry of nearest-neighbor
-    intro x; sorry
+    intro x
+    have hzero : ∀ y ∉ neighborFinset x, influenceCoeff γ x y = 0 := by
+      intro y hy
+      have hnn : isNeighbor x y = false := by
+        by_contra h; simp only [Bool.not_eq_false] at h
+        exact hy (mem_neighborFinset_of_isNeighbor' h)
+      exact hIB.influenceCoeff_eq_zero_of_not_isNeighbor x y hnn
+    rw [tsum_eq_sum hzero]
+    calc ∑ y ∈ neighborFinset x, influenceCoeff γ x y
+        ≤ ∑ _y ∈ neighborFinset x, β := by
+          gcongr with y _
+          exact hIB.influenceCoeff_le_beta x y
+      _ = (neighborFinset x).card * β := by
+          rw [Finset.sum_const, nsmul_eq_mul]
+      _ ≤ (2 * d) * β := by
+          gcongr
+          · exact hIB.hβ_pos
+          · exact_mod_cast neighborFinset_card_le x
+      _ = 2 * ↑d * β := by ring
 
 end
