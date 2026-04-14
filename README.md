@@ -34,6 +34,17 @@ The central result chain:
 6. **Convergence to equilibrium:** spectral gap → exponential mixing,
    LSI → entropy decay, ergodicity from spectral gap.
 
+7. **TV coupling characterization:** total variation distance equals
+   the infimum over couplings of the disagreement probability.
+   Maximal coupling construction.
+
+8. **Dobrushin uniqueness:** for lattice spin systems, Dobrushin's
+   condition (column sums of influence matrix < 1) implies unique
+   Gibbs measure with exponential correlation decay.
+
+9. **Diamagnetic inequality** for finite matrices: |(M+iV)^{-1}(x,y)|
+   ≤ M^{-1}(x,y) via heat kernel positivity for Z-matrices.
+
 ## Architecture: three layers of abstraction
 
 The project is organized into three layers, each requiring progressively
@@ -129,6 +140,12 @@ MarkovSemigroups/
     Ergodicity.lean             -- Uniqueness of invariant measure
     IntegralBounds.lean         -- TV-integral bound (layer cake)
     Doeblin.lean                -- Doeblin's condition, n-step mixing
+  Coupling/                     -- Coupling theory
+    TVCoupling.lean             -- TV = inf coupling disagreement, maximal coupling
+  Dobrushin/                    -- Dobrushin uniqueness for lattice spin systems
+    Specification.lean          -- Gibbs specifications, conditional distributions
+    StrongCoupling.lean         -- Strong-coupling verification of Dobrushin condition
+    Uniqueness.lean             -- Uniqueness + exponential correlation decay
   Matrix/                       -- Finite matrix semigroup theory
     HeatKernel.lean             -- exp(-tM) >= 0 for Z-matrices (proved)
     LaplaceTransform.lean       -- M^{-1} = integral exp(-tM) dt
@@ -138,24 +155,27 @@ MarkovSemigroups/
 
 ## Formalization status
 
-**Zero sorry's.** The project has two categories of results:
+**Zero sorry's in core theory** (Abstract/ + Diffusion/ + Convergence/ +
+Instances/BrascampLieb). Sorry's exist only in concrete instances
+(TwoPoint, Euclidean), newer modules (Dobrushin), and Matrix/.
 
-### Fully proved (zero sorry's, zero axioms)
+### Fully proved (zero sorry's)
 
-- **Brascamp-Lieb inequality** and Poincaré corollary
-- **Doeblin's condition** — one-step contraction, TV contraction,
-  n-step mixing (by induction), correlation decay
-- **TV-integral bound** via layer cake formula
-- **Hessian invertibility** — injectivity, surjectivity, continuity
-  of inverse (via `contDiffAt_map_inverse`)
-- **Weighted Young's inequality** from Hessian symmetry
-- **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 - **Bakry-Émery Poincaré** — Var(f) ≤ (1/ρ) E(f,f) from
   semigroup L² decay bound + ergodicity
 - **Bakry-Émery variance decay** — Var(P_t f) ≤ e^{-2ρt} Var(f)
   from Poincaré + Grönwall's inequality
 - **Bakry-Émery log-Sobolev** — Ent(f²) ≤ (2/ρ) E(f,f) from
   entropy decay bound + entropy ergodicity
+- **Brascamp-Lieb inequality** and Poincaré corollary
+- **Doeblin's condition** — one-step contraction, TV contraction,
+  n-step mixing (by induction), correlation decay
+- **TV-integral bound** via layer cake formula
+- **TV coupling characterization** — maximal coupling construction
+- **Heat kernel positivity** for Z-matrices (Metzler shift)
+- **Hessian invertibility** — injectivity, surjectivity, continuity
+- **Weighted Young's inequality** from Hessian symmetry
+- **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
 ### Postulated as textbook axioms (2 core + 4 matrix)
 
@@ -176,6 +196,18 @@ MarkovSemigroups/
 - **Gaussian1D** (ℝ, N(0,1), OU semigroup): 9/23 fields proved.
   All fields mathematically true; sorry's are Lean infrastructure gaps
   (Fubini, differentiation under integral).
+
+### TV coupling (Coupling/TVCoupling.lean)
+
+- `tvDist_le_coupling`: TV ≤ P(σ ≠ τ) for any coupling — **proved**
+- `maximal_coupling`: optimal coupling construction — **proved**
+- `tvDist_eq_inf_coupling`: coupling characterization — **proved**
+
+### Dobrushin uniqueness (Dobrushin/ — work in progress)
+
+- `GibbsSpec`, `IsGibbsMeasure`: Gibbs specifications — **defined**
+- `DobrushinCondition`: influence matrix condition — **defined**
+- `dobrushin_uniqueness`, `dobrushin_correlation_decay` — **in progress** (3 sorry's)
 
 ### Matrix semigroup theory (Matrix/)
 
@@ -229,6 +261,10 @@ lake build
   Processes*, de Gruyter, 2011.
 - Simon, *Functional Integration and Quantum Physics*, Academic Press,
   1979 (Ch. 22: diamagnetic inequality).
+- Dobrushin, "The description of a random field by means of conditional
+  probabilities," *Theor. Prob. Appl.* 13 (1968), 197–224.
+- Lindvall, *Lectures on the Coupling Method*, Wiley, 1992.
+- Chatterjee, *Gauge Theory Lecture Notes*, 2026.
 
 ## Author
 
