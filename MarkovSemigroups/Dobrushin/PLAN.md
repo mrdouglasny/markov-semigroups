@@ -1,6 +1,6 @@
 # Plan: Proving `dobrushin_single_site_contraction`
 
-*2026-04-13*
+*Updated 2026-04-13 — incorporates Gemini 2.5 Pro review*
 
 ## The goal
 
@@ -18,235 +18,221 @@ After DLR rewriting, the goal reduces to:
 where `h(σ) = γ({x}, σ)(A).toReal` is [0,1]-valued and has coordinate-wise
 Lipschitz bound: for σ, τ differing only at y, `|h(σ) - h(τ)| ≤ C(x,y)`.
 
-This is the **core analytical content** of Dobrushin's theorem.
+## Recommended approach: Optimal coupling
 
-## The abstract lemma needed
+Per Gemini review, the correct approach is:
 
-The proof factors through a general result about functions on product spaces:
+### The argument
 
-**Lipschitz-TV lemma.** Let Ω = Π_i S_i be a product space with probability
-measures μ, ν. Let h: Ω → [0,1] satisfy the coordinate-wise Lipschitz condition:
+1. Let P be an **optimal coupling** of μ₁, μ₂: a joint measure on
+   (SpinConfig d S) × (SpinConfig d S) with marginals μ₁, μ₂ and
+   `P(σ ≠ τ) = tvDist(μ₁, μ₂)`.
 
-  for σ, τ differing only at site y: |h(σ) - h(τ)| ≤ c(y)
+2. Then: `∫h dμ₁ - ∫h dμ₂ = E_P[h(σ) - h(τ)]`
 
-where Σ_y c(y) < ∞. Then:
+3. Pointwise telescoping: `|h(σ) - h(τ)| ≤ Σ_y C(x,y) · 1(σ(y) ≠ τ(y))`
 
-  |∫ h dμ - ∫ h dν| ≤ Σ_y c(y) · tvDist(π_y(μ), π_y(ν))
+4. Take expectation: `|E_P[h(σ)-h(τ)]| ≤ Σ_y C(x,y) · P(σ(y) ≠ τ(y))`
 
-where π_y is the projection to site y.
+5. Key bound: `P(σ(y) ≠ τ(y)) ≤ P(σ ≠ τ) = tvDist(μ₁, μ₂)`
 
-Our application: c(y) = C(x,y) and Σ c(y) ≤ α < 1 by row sum bound.
+6. Therefore: `|∫h dμ₁ - ∫h dμ₂| ≤ (Σ_y C(x,y)) · tvDist(μ₁, μ₂)`
 
-## Three approaches
+With the row sum bound `Σ_y C(x,y) ≤ α`, this gives `tvDist ≤ α · tvDist`.
 
-### Approach A: Product coupling (RECOMMENDED)
+### Mathlib status (checked 2026-04-13)
 
-**Idea:** Use the product measure μ₁ ⊗ μ₂ and pointwise telescoping.
+**Optimal coupling / TV coupling characterization: NOT IN MATHLIB.**
 
-**Steps:**
-1. Write `∫h dμ₁ - ∫h dμ₂ = ∫∫ [h(σ) - h(τ)] dμ₂(τ) dμ₁(σ)` (Fubini)
-2. Fix (σ, τ). Enumerate sites y₁, y₂, ... Define hybrid configs:
-   `ωⁿ(yₖ) = σ(yₖ) if k ≤ n, τ(yₖ) if k > n`
-3. Telescoping: `h(σ) - h(τ) = Σₙ [h(ωⁿ) - h(ωⁿ⁻¹)]`
-4. Each term: `|h(ωⁿ) - h(ωⁿ⁻¹)| ≤ c(yₙ) · 1(σ(yₙ) ≠ τ(yₙ))`
-5. Take expectation: `|E[h(σ)-h(τ)]| ≤ Σ_y c(y) · P_{μ₁⊗μ₂}(σ(y)≠τ(y))`
-6. For independent draws: `P(σ(y)≠τ(y)) ≤ 1`, giving `≤ Σ c(y) ≤ α`
+- Mathlib has `SignedMeasure.totalVariation` (Jordan decomposition) but
+  NO coupling characterization of TV distance.
+- No `ProbabilityTheory.totalVariation_eq_inf_prob_ne` (Gemini hallucinated this).
+- No coupling infrastructure at all in `Mathlib.Probability`.
+- RemyDegenne's repos don't have it either.
 
-But this gives ≤ α, not ≤ Σ c(y)·δ(y). For the δ(y) version:
+**What IS available:**
+- Product measures: `MeasureTheory.Measure.prod` (Fubini, etc.)
+- Signed measures: `MeasureTheory.SignedMeasure`, Jordan decomposition
+- Disintegration: `Mathlib.Probability.Kernel.Disintegration`
 
-6'. We need `P(σ(y)≠τ(y)) ≤ f(tvDist_marginal_y)`.
-   Under product coupling: `P(σ(y)≠τ(y)) = 1 - Σ_s π_y(μ₁)(s)·π_y(μ₂)(s)`
-   
-   This is ≤ 1 but not directly ≤ tvDist_y. However, since hδ_bound gives
-   δ(y) ≥ tvDist(μ₁,μ₂) ≥ tvDist_y for all y, we can use the CRUDE bound:
-   
-   `Σ c(y) · P(disagree at y) ≤ Σ c(y) · 1 ≤ α ≤ α · (something involving δ)`
+## Revised plan: avoid optimal coupling
 
-**Problem:** The product coupling gives P(disagree) ≤ 1, not ≤ tvDist_y.
-With constant δ(y) = tvDist, the bound becomes Σ c(y) · tvDist ≤ α · tvDist. ✓
+Since optimal coupling isn't in Mathlib, we need an alternative route.
 
-**Conclusion:** This approach works if we specialize δ(y) = tvDist(μ₁,μ₂) (constant).
-The current lemma statement with general δ may be too strong for this approach.
+### Alternative: Direct signed measure argument
+
+Instead of coupling, use the signed measure μ₁ - μ₂ directly.
+
+For any bounded measurable h: [0,1]-valued:
+```
+|∫ h dμ₁ - ∫ h dμ₂| = |∫ h d(μ₁ - μ₂)|
+                      ≤ ‖h‖_∞ · |μ₁ - μ₂|(Ω)   (signed measure bound)
+                      = tvDist(μ₁, μ₂)
+```
+
+This is the TRIVIAL bound. To get the IMPROVED bound ≤ (Σ C(x,y)) · tvDist,
+we need to exploit that h has small oscillation in each coordinate.
+
+**Key idea:** Decompose h into a sum of "one-coordinate" functions.
+
+For h with coordinate Lipschitz constants c(y), define:
+```
+h(σ) = h(σ₀) + Σ_y [h(σ with σ(y) at y) - h(σ with σ₀(y) at y)]
+```
+where σ₀ is a fixed reference configuration. Each term in the sum depends
+on σ only through σ(y) and has oscillation ≤ c(y).
+
+Then:
+```
+|∫ h dμ₁ - ∫ h dμ₂| = |Σ_y ∫ [h_y(σ(y)) - const_y] d(μ₁-μ₂)|
+                      ≤ Σ_y c(y) · tvDist(π_y(μ₁), π_y(μ₂))
+                      ≤ Σ_y c(y) · tvDist(μ₁, μ₂)
+```
+
+**Problem:** The decomposition h = const + Σ one-coord-functions is only
+valid if the telescoping converges and the cross-terms vanish. The cross-terms
+DON'T vanish in general — this decomposition is wrong.
+
+### Alternative: Build the coupling lemma ourselves
+
+The coupling characterization of TV distance is:
+
+```lean
+/-- For probability measures μ, ν on a measurable space X,
+    tvDist(μ, ν) = inf over couplings P of P(fst ≠ snd). -/
+theorem tvDist_eq_inf_coupling ...
+```
+
+This is a fundamental result that should exist. The proof:
+- **Upper bound** (easy): construct a specific coupling achieving P(≠) = tvDist.
+  Use the "maximal coupling": on the overlap region, couple identically;
+  on the non-overlap, couple independently from the residual measures.
+- **Lower bound** (easy): for any coupling P and measurable A,
+  μ(A) - ν(A) = P(σ ∈ A) - P(τ ∈ A) = P(σ ∈ A, τ ∉ A) - P(σ ∉ A, τ ∈ A)
+  ≤ P(σ ≠ τ). Take sup over A.
+
+For the formalization, we only need the UPPER bound:
+```lean
+/-- There exists a coupling P of μ₁, μ₂ such that
+    P(σ(y) ≠ τ(y)) ≤ tvDist(μ₁, μ₂) for all y. -/
+```
+
+Actually, we don't even need optimal coupling. We need:
+
+**For any two probability measures μ, ν and any [0,1]-valued measurable h:**
+```
+|∫ h dμ - ∫ h dν| ≤ tvDist(μ, ν)
+```
+
+This is ALREADY PROVED in our codebase as `abs_toReal_sub_le_tvDist`
+(for indicator functions) and extends to [0,1]-valued functions by
+approximation with simple functions.
+
+The improvement to `≤ (Σ c(y)) · tvDist` requires more.
+
+### SIMPLEST VIABLE APPROACH
+
+**Skip the general Lipschitz-TV lemma. Prove uniqueness directly
+using the constant-δ version.**
+
+```lean
+/-- For any A and any x, using DLR:
+    |(μ₁ A) - (μ₂ A)| ≤ (Σ_y C(x,y)) · tvDist(μ₁, μ₂). -/
+lemma tvDist_contraction_at_site ...
+```
+
+**Proof:** By DLR, |(μ₁ A) - (μ₂ A)| = |∫ h d(μ₁-μ₂)| where
+h(σ) = γ({x},σ)(A).toReal.
+
+Use the fact that h doesn't depend on σ(x) and apply DLR AGAIN
+at another site y₁, pushing the dependence further.
+
+After applying DLR at sites y₁,...,yₙ, the effective function depends
+only on sites outside {x, y₁,...,yₙ} and the accumulated bound is
+Σᵢ C(x,yᵢ) · tvDist.
+
+For nearest-neighbor models with C having finite support, after d(x)
+steps (where d(x) = number of neighbors), ALL dependence is removed
+and the bound is (Σ_y C(x,y)) · tvDist ≤ α · tvDist.
+
+**Why this works for finite-support C:** If C(x,y) = 0 for all but
+finitely many y, then h depends on only finitely many coordinates.
+The DLR cascade terminates in finitely many steps.
+
+## Phase plan (revised)
+
+### Phase 0: Prove for finite-support influence (IMMEDIATE)
+
+Prove `tvDist_contraction` under the ADDITIONAL hypothesis that
+`influenceCoeff γ x y` has finite support in y for each x.
+
+This covers all nearest-neighbor models and is sufficient for lgt.
+
+```lean
+/-- When influence has finite support, TV contraction holds. -/
+lemma tvDist_contraction_finsupp (γ : GibbsSpec d S)
+    (hD : DobrushinCondition γ)
+    (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
+    ... : tvDist μ₁ μ₂ ≤ hD.α * tvDist μ₁ μ₂
+```
+
+**Proof strategy:**
+1. For h(σ) = γ({x},σ)(A).toReal, h depends on finitely many coords
+2. Apply DLR iteratively at each coord in the support
+3. Each step contributes C(x,y) · tvDist to the bound
+4. Total: (Σ_y C(x,y)) · tvDist ≤ α · tvDist
 
 **Infrastructure needed:**
-- Fubini for product measures on SpinConfig (Mathlib has this)
-- Pointwise telescoping as infinite series (needs convergence of Σ c(y))
-- Product topology on SpinConfig (Mathlib: `Pi.instTopologicalSpace`)
+- `Function.update` for changing one coordinate of SpinConfig
+- Finite induction on the support set
+- `abs_toReal_sub_le_tvDist` (already proved)
+- DLR equation (already in IsGibbsMeasure)
 
-**Estimated effort:** 300-500 lines
+**Estimated:** 200-300 lines
 
-### Approach B: Conditional expectation iteration (DLR cascade)
+### Phase 1: Build optimal coupling (LATER)
 
-**Idea:** Apply DLR one site at a time to "wash out" dependence.
+For the general (infinite-support) case, build:
+- `tvDist_eq_inf_coupling`: coupling characterization of TV
+- Maximal coupling construction
+- `integral_lipschitz_le_rowsum_tvDist`: general Lipschitz-TV lemma
 
-**Steps:**
-1. Start: `∫h dμ₁ - ∫h dμ₂` where h depends on all sites ≠ x
-2. Apply DLR at {y₁}: `∫h dμᵢ = ∫ E_{γ({y₁},·)}[h] dμᵢ`
-3. The function `g₁(σ) = E_{γ({y₁},σ)}[h]` no longer depends on σ(y₁)
-   Error: `|∫h dμᵢ - ∫g₁ dμᵢ| = 0` (exact by DLR, no error)
-   But `g₁` still depends on other sites. The key: g₁ has same Lipschitz
-   constants as h except `osc_{y₁}(g₁) = 0`.
-4. The difference `∫h dμ₁ - ∫h dμ₂ = ∫g₁ dμ₁ - ∫g₁ dμ₂`
-   Now g₁ is independent of y₁. Repeat at y₂, y₃, ...
-5. After n steps: `gₙ` is independent of y₁,...,yₙ. As n→∞, gₙ → const.
-   The constant is the same for both μ₁ and μ₂ (by DLR), so the difference → 0.
+**Estimated:** 400-500 lines, can be a standalone module
 
-**Problem:** This shows the difference is 0, but doesn't give the quantitative
-bound involving c(y)·δ(y). Also, the convergence gₙ → const requires
-that removing coordinates makes the function converge — this is a tail
-sigma-algebra argument (Kolmogorov 0-1 law flavor).
+### Phase 2: Generalize (OPTIONAL)
 
-**Infrastructure needed:**
-- Iterated conditional expectation
-- Convergence of conditional expectations (martingale convergence?)
-- Disintegration of measures on product spaces
+Prove `dobrushin_single_site_contraction` with general δ(y) using
+site-wise optimal couplings (not just the global coupling).
 
-**Estimated effort:** 500+ lines, heavy Mathlib dependency
-
-### Approach C: Finite-volume approximation
-
-**Idea:** Prove the bound for finite lattice (Λ_n = [-n,n]^d), then take n → ∞.
-
-**Steps:**
-1. On finite lattice: telescoping is a FINITE sum — straightforward
-2. The bound holds with finite sums: `≤ Σ_{y∈Λ_n} c(y) · δ(y)`
-3. Pass to limit: `Σ_{y∈Λ_n} → Σ'_y` as n → ∞
-
-**Problem:** The measures μ₁, μ₂ live on the FULL lattice. Restricting to
-a finite box requires marginalizing, and the DLR equation relates to the
-full specification. Need to show: the finite-volume bound approximates
-the infinite-volume one.
-
-**Infrastructure needed:**
-- Finite product measure theory (easier than infinite)
-- Marginals and their convergence
-- Monotone convergence for the bound
-
-**Estimated effort:** 400-600 lines
-
-## Recommended path
-
-### Phase 1: Simplify the lemma statement (immediate)
-
-Refactor `dobrushin_single_site_contraction` to use δ(y) = tvDist(μ₁,μ₂)
-(constant for all y). This is sufficient for `tvDist_contraction` and
-`dobrushin_uniqueness`, and is much easier to prove.
-
-```lean
-lemma tvDist_contraction_step (γ : GibbsSpec d S)
-    (μ₁ μ₂ : Measure (SpinConfig d S))
-    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
-    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
-    (x : LatticeSite d)
-    (A : Set (SpinConfig d S)) (hA : MeasurableSet A) :
-    |(μ₁ A).toReal - (μ₂ A).toReal| ≤
-      (∑' y, influenceCoeff γ x y) * tvDist μ₁ μ₂
-```
-
-This says: each measurable set difference is bounded by (row sum at x) · tvDist.
-Taking sup over A and then inf over x:
-  tvDist ≤ (inf_x Σ_y C(x,y)) · tvDist ≤ α · tvDist
-
-### Phase 2: Prove the Lipschitz-TV lemma (core infrastructure)
-
-The key abstract result, independent of Gibbs measures:
-
-```lean
-/-- For h: SpinConfig → [0,1] with coordinate Lipschitz constants c(y),
-    |∫ h dμ₁ - ∫ h dμ₂| ≤ (Σ_y c(y)) · tvDist(μ₁, μ₂). -/
-lemma integral_diff_le_lipschitz_tv ...
-```
-
-**Proof via product coupling + telescoping:**
-1. `∫h dμ₁ - ∫h dμ₂ = ∫∫ [h(σ)-h(τ)] dμ₂ dμ₁`
-2. Pointwise: `|h(σ)-h(τ)| ≤ Σ_y c(y)` (finite or convergent telescoping)
-3. Therefore: `|∫∫ [h(σ)-h(τ)] dμ₂ dμ₁| ≤ Σ_y c(y)`
-
-Wait — this gives ≤ Σ c(y), not ≤ (Σ c(y)) · tvDist. The tvDist factor
-comes from the fact that h doesn't vary in ALL directions, only in
-the directions where μ₁ and μ₂ differ.
-
-Actually, the simpler bound ≤ Σ c(y) is ALREADY useful if Σ c(y) ≤ α < 1,
-because tvDist ≤ 1. So:
-  tvDist ≤ Σ c(y) ≤ α < 1
-  
-But this just says tvDist < 1, which is trivial.
-
-We need the MULTIPLICATIVE contraction tvDist ≤ α · tvDist.
-
-For that, the coupling approach gives:
-  |∫h dμ₁ - ∫h dμ₂| ≤ Σ_y c(y) · P_{coupling}(σ(y) ≠ τ(y))
-
-With OPTIMAL marginal coupling at each y: P ≤ tvDist_y ≤ tvDist.
-So: ≤ Σ c(y) · tvDist = (row sum) · tvDist ≤ α · tvDist ✓
-
-The question is whether we need the GLOBAL optimal coupling or just
-MARGINAL optimal couplings (one per site).
-
-### Phase 3: Infrastructure lemmas
-
-#### 3a. Telescoping on product spaces
-```lean
-/-- Pointwise telescoping: for configs σ, τ and h with coord Lipschitz c(y),
-    |h(σ) - h(τ)| ≤ Σ_y c(y) · 1(σ(y) ≠ τ(y)). -/
-lemma pointwise_lipschitz_telescope ...
-```
-
-For FINITE support of c (only finitely many y with c(y) > 0), this is
-a finite sum — completely standard. For the general case, need convergence
-of the telescoping series.
-
-For nearest-neighbor models, c has FINITE support (only 2d neighbors).
-So the finite case suffices for all applications.
-
-#### 3b. Marginal coupling lemma
-```lean
-/-- For any coupling (σ,τ) of μ₁, μ₂:
-    P(σ(y) ≠ τ(y)) ≥ tvDist(π_y(μ₁), π_y(μ₂)).
-    The optimal coupling achieves equality. -/
-```
-
-This is the coupling characterization of TV distance. It might be in Mathlib
-for countable spaces. For general measurable spaces, it requires the
-existence of optimal transport couplings.
-
-#### 3c. Product Fubini
-```lean
-/-- ∫ h dμ₁ - ∫ h dμ₂ = ∫∫ [h(σ) - h(τ)] dμ₂(τ) dμ₁(σ) -/
-```
-
-Standard Fubini — should be in Mathlib via `integral_prod`.
-
-## Dependency graph
+## Dependency graph (revised)
 
 ```
-pointwise_lipschitz_telescope  [Phase 3a]
-    │
-    ├──→ integral_diff_le_row_sum  [Phase 2]
-    │         │
-    │         └──→ tvDist_contraction_step  [Phase 1]
-    │                   │
-    │                   └──→ tvDist_contraction  [exists]
-    │                             │
-    │                             └──→ dobrushin_uniqueness  [proved]
-    │
-    └──→ integral_diff_le_lipschitz_tv  [Phase 2, refined]
-              │
-              └──→ dobrushin_single_site_contraction  [general form]
+DLR + Function.update + finite induction
+           │
+           v
+tvDist_contraction_finsupp  [Phase 0, immediate target]
+           │
+           v
+tvDist_contraction  [specialize to finsupp case]
+           │
+           v
+dobrushin_uniqueness  [already proved from tvDist_contraction]
 ```
 
-## Recommended order
+Later:
+```
+Optimal coupling construction  [Phase 1]
+           │
+           v
+integral_lipschitz_le_rowsum_tvDist  [general case]
+           │
+           v
+tvDist_contraction  [remove finsupp hypothesis]
+```
 
-1. **Now:** Refactor to add `tvDist_contraction_step` with the simpler
-   constant-δ statement. Prove `tvDist_contraction` from it + row_bound.
+## Key insight
 
-2. **Next session:** Prove `pointwise_lipschitz_telescope` for finite
-   support (covers all nearest-neighbor models). This is pure combinatorics
-   on `Function.update` and `Finset.sum`.
-
-3. **Then:** Prove `integral_diff_le_row_sum` using product Fubini +
-   the pointwise telescope. This completes `tvDist_contraction_step`.
-
-4. **Later:** Generalize to infinite support via convergence arguments.
-
-## Estimated total: 400-600 lines across Phases 1-3
+**For all current applications (lgt, pphi2, nearest-neighbor models),
+the influence matrix has finite support per row.** So Phase 0 is
+sufficient. The infinite-support case is a generalization for future
+use but not blocking any current goals.
