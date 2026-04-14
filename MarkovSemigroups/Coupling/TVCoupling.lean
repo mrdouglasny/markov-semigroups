@@ -191,7 +191,134 @@ def overlapMeasure (μ ν : Measure X) : Measure X :=
 theorem overlapMeasure_mass (μ ν : Measure X)
     [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
     (overlapMeasure μ ν Set.univ).toReal = 1 - tvNorm μ ν := by
-  sorry
+  -- Get Hahn decomposition: on s, μ ≤ ν; on sᶜ, ν ≤ μ
+  obtain ⟨s, hs, h_le_on_s, h_le_on_sc⟩ := hahn_decomposition ν μ
+  -- Unfold overlapMeasure to inf_apply
+  unfold overlapMeasure
+  rw [Measure.inf_apply MeasurableSet.univ]
+  simp_rw [inter_univ]
+  -- Show the sInf equals μ(s) + ν(sᶜ) (attained at the Hahn set)
+  have h_inf_eq : sInf {m | ∃ t, m = μ t + ν tᶜ} = μ s + ν sᶜ := by
+    apply le_antisymm
+    · exact csInf_le ⟨0, fun m ⟨t, ht⟩ => ht ▸ zero_le _⟩ ⟨s, rfl⟩
+    · apply le_csInf
+      · exact ⟨μ s + ν sᶜ, s, rfl⟩
+      rintro m ⟨t, rfl⟩
+      -- For any t, find measurable A ⊇ t with μ A = μ t and ν A = ν t.
+      obtain ⟨A, htA, hAm, hμA, hνA⟩ := exists_measurable_superset₂ μ ν t
+      -- Step 1: μ(s) + ν(sᶜ) ≤ μ(A) + ν(Aᶜ) using Hahn on measurable sets
+      have h_hahn_bound : μ s + ν sᶜ ≤ μ A + ν Aᶜ := by
+        -- Hahn bounds:
+        have h1 : μ (s \ A) ≤ ν (s \ A) := h_le_on_s _ (hs.diff hAm) diff_subset
+        have h2 : ν (sᶜ ∩ A) ≤ μ (sᶜ ∩ A) :=
+          h_le_on_sc _ (hs.compl.inter hAm) inter_subset_left
+        -- Decompose: μ(s) = μ(s∩A) + μ(s\A), ν(sᶜ) = ν(sᶜ∩A) + ν(sᶜ\A)
+        -- μ(A) = μ(A∩s) + μ(A\s), ν(Aᶜ) = ν(Aᶜ∩s) + ν(Aᶜ\s)
+        -- s∩A = A∩s, s\A = Aᶜ∩s rewritten, A\s = sᶜ∩A, sᶜ\A = Aᶜ∩sᶜ = Aᶜ\s
+        -- So μ(s) + ν(sᶜ) = μ(s∩A) + μ(s\A) + ν(sᶜ∩A) + ν(sᶜ\A)
+        -- and μ(A) + ν(Aᶜ) = μ(s∩A) + μ(sᶜ∩A) + ν(s\A) + ν(sᶜ\A)
+        -- (using set identities and s∩A = A∩s, sᶜ\A = Aᶜ\s)
+        -- Diff: μ(s\A) + ν(sᶜ∩A) vs ν(s\A) + μ(sᶜ∩A) by key
+        calc μ s + ν sᶜ
+            = (μ (s ∩ A) + μ (s \ A)) + (ν (sᶜ ∩ A) + ν (sᶜ \ A)) := by
+              rw [measure_inter_add_diff s hAm, measure_inter_add_diff sᶜ hAm]
+          _ = μ (s ∩ A) + ν (sᶜ \ A) + (μ (s \ A) + ν (sᶜ ∩ A)) := by
+              abel
+          _ ≤ μ (s ∩ A) + ν (sᶜ \ A) + (ν (s \ A) + μ (sᶜ ∩ A)) := by
+              gcongr
+          _ = (μ (s ∩ A) + μ (sᶜ ∩ A)) + (ν (s \ A) + ν (sᶜ \ A)) := by
+              abel
+          _ = (μ (A ∩ s) + μ (A \ s)) + (ν (Aᶜ ∩ s) + ν (Aᶜ \ s)) := by
+              -- s∩A = A∩s, sᶜ∩A = A∩sᶜ = A\s
+              rw [inter_comm s A, show sᶜ ∩ A = A \ s from by ext; simp [mem_diff]; tauto,
+                  show s \ A = Aᶜ ∩ s from by ext; simp [mem_diff]; tauto,
+                  show sᶜ \ A = Aᶜ \ s from by ext; simp [mem_diff]; tauto]
+          _ = μ A + ν Aᶜ := by
+              rw [measure_inter_add_diff A hs, measure_inter_add_diff Aᶜ hs]
+      -- Step 2: μ(A) + ν(Aᶜ) ≤ μ(t) + ν(tᶜ)
+      calc μ s + ν sᶜ
+          ≤ μ A + ν Aᶜ := h_hahn_bound
+        _ ≤ μ t + ν tᶜ := add_le_add (hμA ▸ le_refl _)
+            (measure_mono (Set.compl_subset_compl.mpr htA))
+  -- Now convert from ENNReal to ℝ
+  rw [h_inf_eq]
+  rw [ENNReal.toReal_add (measure_ne_top μ s) (measure_ne_top ν sᶜ)]
+  have hνsc : (ν sᶜ).toReal = 1 - (ν s).toReal := by
+    rw [prob_compl_eq_one_sub hs]
+    exact ENNReal.toReal_sub_of_le (prob_le_one (s := s)) (by simp)
+  rw [hνsc]
+  -- Goal: μ(s).toReal + (1 - ν(s).toReal) = 1 - tvNorm μ ν
+  suffices h_tv : tvNorm μ ν = (ν s).toReal - (μ s).toReal by linarith
+  -- Show tvNorm = ν(s) - μ(s) (the Hahn set achieves the supremum)
+  unfold tvNorm
+  -- Helper: decompose measures of sets using measurable s and measurable A
+  have decompose_real (m : Measure X) [IsFiniteMeasure m] (A : Set X) (_hA : MeasurableSet A) :
+      (m A).toReal = (m (A ∩ s)).toReal + (m (A ∩ sᶜ)).toReal := by
+    rw [← ENNReal.toReal_add (measure_ne_top m _) (measure_ne_top m _)]
+    congr 1; rw [← diff_eq]; exact (measure_inter_add_diff A hs).symm
+  have decompose_s (m : Measure X) [IsFiniteMeasure m] (A : Set X) (hA : MeasurableSet A) :
+      (m s).toReal = (m (A ∩ s)).toReal + (m (Aᶜ ∩ s)).toReal := by
+    rw [← ENNReal.toReal_add (measure_ne_top m _) (measure_ne_top m _)]
+    congr 1
+    rw [inter_comm A s, inter_comm Aᶜ s, ← diff_eq]
+    exact (measure_inter_add_diff s hA).symm
+  have decompose_sc (m : Measure X) [IsFiniteMeasure m] (A : Set X) (hA : MeasurableSet A) :
+      (m sᶜ).toReal = (m (A ∩ sᶜ)).toReal + (m (Aᶜ ∩ sᶜ)).toReal := by
+    rw [← ENNReal.toReal_add (measure_ne_top m _) (measure_ne_top m _)]
+    congr 1
+    rw [inter_comm A sᶜ, inter_comm Aᶜ sᶜ, ← diff_eq]
+    exact (measure_inter_add_diff sᶜ hA).symm
+  apply le_antisymm
+  · -- sSup ≤ ν(s) - μ(s): every |μ(A) - ν(A)| ≤ ν(s) - μ(s)
+    apply csSup_le
+    · exact ⟨0, ∅, MeasurableSet.empty, by simp⟩
+    rintro c ⟨A, hA, rfl⟩
+    -- Hahn bounds on A's pieces:
+    have hAs : (μ (A ∩ s)).toReal ≤ (ν (A ∩ s)).toReal :=
+      (ENNReal.toReal_le_toReal (measure_ne_top μ _) (measure_ne_top ν _)).mpr
+        (h_le_on_s _ (hA.inter hs) inter_subset_right)
+    have hAsc : (ν (A ∩ sᶜ)).toReal ≤ (μ (A ∩ sᶜ)).toReal :=
+      (ENNReal.toReal_le_toReal (measure_ne_top ν _) (measure_ne_top μ _)).mpr
+        (h_le_on_sc _ (hA.inter hs.compl) inter_subset_right)
+    have hAcs : (μ (Aᶜ ∩ s)).toReal ≤ (ν (Aᶜ ∩ s)).toReal :=
+      (ENNReal.toReal_le_toReal (measure_ne_top μ _) (measure_ne_top ν _)).mpr
+        (h_le_on_s _ (hA.compl.inter hs) inter_subset_right)
+    have hAcsc : (ν (Aᶜ ∩ sᶜ)).toReal ≤ (μ (Aᶜ ∩ sᶜ)).toReal :=
+      (ENNReal.toReal_le_toReal (measure_ne_top ν _) (measure_ne_top μ _)).mpr
+        (h_le_on_sc _ (hA.compl.inter hs.compl) inter_subset_right)
+    have hμA := decompose_real μ A hA
+    have hνA := decompose_real ν A hA
+    have hμs := decompose_s μ A hA
+    have hνs := decompose_s ν A hA
+    have hμsc := decompose_sc μ A hA
+    have hνsc' := decompose_sc ν A hA
+    -- Total mass = 1 for probability measures
+    have hμ1 : (μ s).toReal + (μ sᶜ).toReal = 1 := by
+      rw [← ENNReal.toReal_add (measure_ne_top μ _) (measure_ne_top μ _),
+          measure_add_measure_compl hs]; simp
+    have hν1 : (ν s).toReal + (ν sᶜ).toReal = 1 := by
+      rw [← ENNReal.toReal_add (measure_ne_top ν _) (measure_ne_top ν _),
+          measure_add_measure_compl hs]; simp
+    rw [abs_le]
+    constructor <;> linarith
+  · -- ν(s) - μ(s) ≤ sSup: it's achieved by A = s
+    apply le_csSup
+    · -- bdd_above
+      refine ⟨1, fun c ⟨A, _, hc⟩ => ?_⟩
+      subst hc
+      have h1 : (μ A).toReal ≤ 1 :=
+        ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+      have h2 : (ν A).toReal ≤ 1 :=
+        ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+      have h3 : 0 ≤ (μ A).toReal := ENNReal.toReal_nonneg
+      have h4 : 0 ≤ (ν A).toReal := ENNReal.toReal_nonneg
+      rw [abs_le]; constructor <;> linarith
+    · refine ⟨s, hs, ?_⟩
+      have hle : (μ s).toReal ≤ (ν s).toReal :=
+        (ENNReal.toReal_le_toReal (measure_ne_top μ s) (measure_ne_top ν s)).mpr
+          (h_le_on_s s hs Subset.rfl)
+      rw [abs_of_nonpos (by linarith)]
+      linarith
 
 /-- The residual measure of μ after removing the overlap. -/
 def residualMeasure (μ ν : Measure X) : Measure X :=
@@ -216,6 +343,39 @@ theorem exists_maximal_coupling (μ ν : Measure X)
     ∃ P : Measure (X × X),
       IsCoupling P μ ν ∧
       (P {p : X × X | p.1 ≠ p.2}).toReal = tvNorm μ ν := by
+  /-
+  **Proof sketch for the maximal coupling.**
+
+  Let s be the Hahn set from `hahn_decomposition ν μ`:
+  - On s: μ(A) ≤ ν(A) for measurable A ⊆ s
+  - On sᶜ: ν(A) ≤ μ(A) for measurable A ⊆ sᶜ
+
+  Define:
+  - β = ν.restrict s - μ.restrict s (excess of ν on s, mass d = tvNorm)
+  - γ = μ.restrict sᶜ - ν.restrict sᶜ (excess of μ on sᶜ, mass d)
+  - P = (μ.restrict s).map diag + (ν.restrict sᶜ).map diag + d⁻¹ • (γ.prod β)
+
+  where diag x = (x, x).
+
+  Marginal verification:
+  - P.map fst = μ.restrict s + ν.restrict sᶜ + d⁻¹ · (β.univ • γ)
+             = μ.restrict s + ν.restrict sᶜ + γ
+             = μ.restrict s + μ.restrict sᶜ = μ
+  - P.map snd = μ.restrict s + ν.restrict sᶜ + d⁻¹ · (γ.univ • β)
+             = μ.restrict s + ν.restrict sᶜ + β
+             = ν.restrict s + ν.restrict sᶜ = ν
+
+  Disagreement: γ lives on sᶜ, β lives on s, so (γ.prod β) lives on
+  sᶜ × s ⊆ {(x,y) | x ≠ y}. Thus:
+    P({≠}) = d⁻¹ · (γ.prod β)({≠}) = d⁻¹ · d² = d = tvNorm.
+
+  The formalization requires:
+  1. Measure restriction/subtraction calculus (Measure.sub_apply, sub_add_cancel_of_le)
+  2. Product measure marginals (map_fst_prod, map_snd_prod)
+  3. Diagonal map properties (measurability, preimage of {≠})
+  4. SFinite instances for restricted/subtracted measures
+  5. Showing μ.restrict s + μ.restrict sᶜ = μ (Measure.restrict_add_restrict_compl)
+  -/
   sorry
 
 /-! ## Main theorem: coupling characterization -/
@@ -232,9 +392,20 @@ theorem tvNorm_eq_inf_coupling (μ ν : Measure X)
     [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
     tvNorm μ ν = sInf {c : ℝ | ∃ P : Measure (X × X),
       IsCoupling P μ ν ∧ c = (P {p : X × X | p.1 ≠ p.2}).toReal} := by
-  -- Follows from tvNorm_le_coupling (lower bound) and
-  -- exists_maximal_coupling (upper bound / attainment).
-  sorry
+  apply le_antisymm
+  · -- tvNorm ≤ sInf: for every coupling P, tvNorm ≤ P({≠})
+    apply le_csInf
+    · -- Nonemptiness: product coupling exists
+      obtain ⟨P, hP, _⟩ := exists_maximal_coupling μ ν
+      exact ⟨(P {p | p.1 ≠ p.2}).toReal, P, hP, rfl⟩
+    · rintro c ⟨P, hP, rfl⟩
+      exact tvNorm_le_coupling P μ ν hP
+  · -- sInf ≤ tvNorm: the maximal coupling achieves tvNorm
+    obtain ⟨P, hP, hPeq⟩ := exists_maximal_coupling μ ν
+    apply csInf_le
+    · -- Bounded below by 0
+      exact ⟨0, fun c ⟨Q, _, hc⟩ => hc ▸ ENNReal.toReal_nonneg⟩
+    · exact ⟨P, hP, hPeq.symm⟩
 
 /-! ## Corollaries for Dobrushin theory -/
 
