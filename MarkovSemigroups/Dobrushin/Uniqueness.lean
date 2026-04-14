@@ -256,6 +256,50 @@ lemma influenceCoeff_le_one (γ : GibbsSpec d S) (x y : LatticeSite d) :
       obtain ⟨σ, τ, _, hc_eq⟩ := hc; rw [hc_eq]; exact tvDist_le_one _ _)
   · simp only [Set.not_nonempty_iff_eq_empty] at h; rw [h]; simp [sSup, SupSet.sSup]
 
+/-! ## Integral bound via coupling -/
+
+/-- **Key coupling-based integral bound.**
+
+For a [0,1]-valued measurable function h on SpinConfig d S that is
+c(y)-Lipschitz in each coordinate y, the integral difference against
+two probability measures is bounded by the weighted sum of the
+marginal disagreement bounds δ(y):
+
+  |∫ h dμ₁ - ∫ h dμ₂| ≤ Σ_y c(y) · δ(y)
+
+where δ(y) ≥ tvDist(μ₁, μ₂) bounds the disagreement on all events.
+
+Proof sketch (coupling argument):
+1. Take a coupling P of μ₁ and μ₂ (e.g. the maximal coupling from
+   TVCoupling.exists_maximal_coupling).
+2. Rewrite: |∫h dμ₁ - ∫h dμ₂| = |∫[h(σ) - h(τ)] dP(σ,τ)|
+                                 ≤ ∫|h(σ) - h(τ)| dP
+3. Apply the pointwise telescope: |h(σ) - h(τ)| ≤ Σ_y c(y)·1[σ(y)≠τ(y)]
+4. Integrate: ≤ Σ_y c(y) · P(σ(y) ≠ τ(y))
+5. Bound: P(σ(y) ≠ τ(y)) ≤ P(σ ≠ τ) ≤ tvDist(μ₁, μ₂) ≤ δ(y)
+
+The fully formal proof requires:
+- `TVCoupling.exists_maximal_coupling` (currently sorry in TVCoupling.lean)
+- `TVCoupling.integral_lipschitz_coupling_bound` (proved, but needs finite support)
+- An extension of the pointwise telescope to infinite (summable) Lipschitz constants
+- `[Countable S] [MeasurableSingletonClass S]` for measurability of {σ(y)≠τ(y)}
+
+This lemma isolates the coupling dependency from the rest of the Dobrushin proof. -/
+lemma condDist_integral_bound (γ : GibbsSpec d S)
+    (μ₁ μ₂ : Measure (SpinConfig d S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (x : LatticeSite d)
+    (A : Set (SpinConfig d S)) (hA : MeasurableSet A)
+    (δ : LatticeSite d → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
+    (hδ_bound : ∀ (y : LatticeSite d) (B : Set (SpinConfig d S)),
+      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y) :
+    |∫ σ, (γ.condDist {x} σ A).toReal ∂μ₁ -
+     ∫ σ, (γ.condDist {x} σ A).toReal ∂μ₂| ≤
+      ∑' y, influenceCoeff γ x y * δ y := by
+  -- See docstring above for the proof strategy.
+  -- The full proof requires coupling theory (TVCoupling.lean).
+  sorry
+
 /-! ## Summability lemmas for the influence matrix -/
 
 /-- For each site x, the product `C(x,y) * δ(y)` is summable in y,
@@ -354,24 +398,8 @@ lemma dobrushin_single_site_contraction (γ : GibbsSpec d S)
       ∑' y, influenceCoeff γ x y * δ y := by
   -- Step 1: Rewrite using DLR
   rw [h₁.dlr {x} A hA, h₂.dlr {x} A hA]
-  -- Now need: |∫ γ({x},σ)(A) dμ₁ - ∫ γ({x},σ)(A) dμ₂|
-  --         ≤ Σ_y C(x,y) · δ(y)
-  -- The integrand h(σ) = γ({x},σ)(A).toReal is [0,1]-valued
-  -- and changes by ≤ C(x,y) at each site y (by condDist_lipschitz).
-  --
-  -- The telescoping argument:
-  -- Fix an enumeration y₁, y₂, ... of all sites except x.
-  -- Define σⁿ by: σⁿ agrees with τ at sites y₁,...,yₙ and with σ
-  -- at all other sites. Then:
-  -- h(σ) - h(τ) = Σₙ [h(σⁿ) - h(σⁿ⁻¹)]
-  -- |h(σⁿ) - h(σⁿ⁻¹)| ≤ C(x, yₙ) since σⁿ and σⁿ⁻¹ differ at yₙ.
-  --
-  -- Then: |∫h dμ₁ - ∫h dμ₂|
-  --     = |∫∫ [h(σ) - h(τ)] dμ₁(σ) dμ₂(τ)|
-  --     ≤ Σₙ ∫∫ |h(σⁿ) - h(σⁿ⁻¹)| dμ₁(σ) dμ₂(τ)
-  --     ≤ Σₙ C(x, yₙ) · ...
-  -- The precise bound requires marginal-level coupling.
-  sorry
+  -- Step 2: Apply the coupling-based integral bound
+  exact condDist_integral_bound γ μ₁ μ₂ x A hA δ hδ_nn hδ_bound
 
 /-- **L¹ contraction on marginal disagreements.**
 
@@ -436,7 +464,33 @@ lemma tvDist_contraction (γ : GibbsSpec d S)
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂) :
     tvDist μ₁ μ₂ ≤ hD.α * tvDist μ₁ μ₂ := by
-  sorry
+  -- Strategy: For any x, for each measurable A,
+  -- |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) · tvDist(μ₁,μ₂) ≤ α · tvDist
+  -- via `dobrushin_single_site_contraction` with δ(y) = tvDist.
+  -- Taking sup over A gives tvDist ≤ α · tvDist.
+  unfold tvDist
+  apply csSup_le (tvDist_set_nonempty μ₁ μ₂)
+  rintro c ⟨A, hA, rfl⟩
+  -- Pick an arbitrary site x for the DLR step.
+  -- Any x works; the row sum bound Σ_y C(x,y) ≤ α holds for all x.
+  obtain ⟨x⟩ : Nonempty (LatticeSite d) := ⟨fun _ => 0⟩
+  -- Set δ(y) = tvDist(μ₁, μ₂) for all y (crude but sufficient)
+  set δ : LatticeSite d → ℝ := fun _ => tvDist μ₁ μ₂ with hδ_def
+  -- δ is nonneg
+  have hδ_nn : ∀ y, 0 ≤ δ y := fun _ => tvDist_nonneg μ₁ μ₂
+  -- δ bounds the disagreement on all measurable sets
+  have hδ_bound : ∀ (y : LatticeSite d) (B : Set (SpinConfig d S)),
+      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y :=
+    fun _ B hB => abs_toReal_sub_le_tvDist μ₁ μ₂ B hB
+  -- Apply single-site contraction
+  have hcontract := dobrushin_single_site_contraction γ μ₁ μ₂ h₁ h₂ x A hA δ hδ_nn hδ_bound
+  -- The bound: |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) * tvDist = (Σ_y C(x,y)) * tvDist ≤ α * tvDist
+  calc |(μ₁ A).toReal - (μ₂ A).toReal|
+      ≤ ∑' y, influenceCoeff γ x y * δ y := hcontract
+    _ = ∑' y, influenceCoeff γ x y * tvDist μ₁ μ₂ := by rfl
+    _ = (∑' y, influenceCoeff γ x y) * tvDist μ₁ μ₂ := tsum_mul_right
+    _ ≤ hD.α * tvDist μ₁ μ₂ :=
+        mul_le_mul_of_nonneg_right (hD.row_bound x) (tvDist_nonneg μ₁ μ₂)
 
 /-! ## Main theorems -/
 
