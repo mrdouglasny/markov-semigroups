@@ -59,10 +59,22 @@ class DirichletSpace (X : Type*) [MeasurableSpace X] where
   energy_symm : ∀ f g, energy f g = energy g f
   /-- Energy is nonneg on the diagonal. -/
   energy_nonneg : ∀ f, 0 ≤ energy f f
+  /-- Admissible "core" functions — the algebra A₀ in BGL §1.4.2 on which
+  the Dirichlet form's axioms hold. On ℝⁿ with OU: smooth compactly
+  supported. On a finite space: all functions. -/
+  IsCore : (X → ℝ) → Prop
+  /-- Constants are core. -/
+  IsCore_const : ∀ c : ℝ, IsCore (fun _ => c)
+  /-- Core is closed under addition. -/
+  IsCore_add : ∀ {f g}, IsCore f → IsCore g → IsCore (f + g)
+  /-- Core is closed under scalar multiplication. -/
+  IsCore_smul : ∀ (c : ℝ) {f}, IsCore f → IsCore (c • f)
   /-- Energy is bilinear (left). -/
-  energy_add_left : ∀ f₁ f₂ g, energy (f₁ + f₂) g = energy f₁ g + energy f₂ g
+  energy_add_left : ∀ f₁ f₂ g, IsCore f₁ → IsCore f₂ → IsCore g →
+    energy (f₁ + f₂) g = energy f₁ g + energy f₂ g
   /-- Energy is bilinear (scalar left). -/
-  energy_smul_left : ∀ (c : ℝ) f g, energy (c • f) g = c * energy f g
+  energy_smul_left : ∀ (c : ℝ) f g, IsCore f → IsCore g →
+    energy (c • f) g = c * energy f g
   /-- Constants have zero energy (Markov property consequence). -/
   energy_const : ∀ c : ℝ, energy (fun _ => c) (fun _ => c) = 0
 
@@ -96,14 +108,15 @@ def entropy (f : X → ℝ) : ℝ :=
   (∫ x, f x ∂ds.μ) * Real.log (∫ x, f x ∂ds.μ)
 
 /-- Poincaré inequality with constant ρ:
-  Var_μ(f) ≤ (1/ρ) E(f, f) -/
+  Var_μ(f) ≤ (1/ρ) E(f, f)  (for all core `f`) -/
 def SatisfiesPoincare (ρ : ℝ) : Prop :=
-  0 < ρ ∧ ∀ f : X → ℝ, variance f ≤ (1 / ρ) * ds.energy f f
+  0 < ρ ∧ ∀ f : X → ℝ, ds.IsCore f → variance f ≤ (1 / ρ) * ds.energy f f
 
 /-- Log-Sobolev inequality with constant ρ:
-  Ent_μ(f²) ≤ (2/ρ) E(f, f) -/
+  Ent_μ(f²) ≤ (2/ρ) E(f, f)  (for all core `f`) -/
 def SatisfiesLogSobolev (ρ : ℝ) : Prop :=
-  0 < ρ ∧ ∀ f : X → ℝ, entropy (fun x => f x * f x) ≤ (2 / ρ) * ds.energy f f
+  0 < ρ ∧ ∀ f : X → ℝ, ds.IsCore f →
+    entropy (fun x => f x * f x) ≤ (2 / ρ) * ds.energy f f
 
 /-! ### Helper lemmas for the energy form -/
 
@@ -111,14 +124,15 @@ def SatisfiesLogSobolev (ρ : ℝ) : Prop :=
 Proof: E(1,1) = 0 and E(f,f) >= 0 imply E(1,f) = 0 by the Cauchy-Schwarz
 argument (the quadratic t -> E(1 + t*f, 1 + t*f) = 2t*E(1,f) + t^2*E(f,f)
 must be nonneg for all t). Then E(c, f) = c * E(1, f) = 0. -/
-theorem energy_const_left (c : ℝ) (f : X → ℝ) :
+theorem energy_const_left (c : ℝ) (f : X → ℝ) (hf : ds.IsCore f) :
     ds.energy (fun _ => c) f = 0 := by
+  have h_one_core : ds.IsCore (fun (_ : X) => (1 : ℝ)) := ds.IsCore_const 1
   -- First show E(1, f) = 0 where 1 is the constant-1 function
   suffices h1 : ds.energy (fun _ => (1 : ℝ)) f = 0 by
     have : ds.energy (fun _ => c) f = c * ds.energy (fun _ => (1 : ℝ)) f := by
-      have : (fun (_ : X) => c) = c • (fun (_ : X) => (1 : ℝ)) := by
+      have heq : (fun (_ : X) => c) = c • (fun (_ : X) => (1 : ℝ)) := by
         ext x; simp
-      rw [this, ds.energy_smul_left]
+      rw [heq, ds.energy_smul_left c _ f h_one_core hf]
     rw [this, h1, mul_zero]
   -- Prove E(1, f) = 0 by Cauchy-Schwarz style argument
   -- For all t : ℝ, E(1 + t*f, 1 + t*f) >= 0
@@ -140,33 +154,39 @@ theorem energy_const_left (c : ℝ) (f : X → ℝ) :
     -- Rewrite as E(1,1) + 2t*E(1,f) + t^2*E(f,f) = 0 + 2t*e + t^2*a
     set one : X → ℝ := fun _ => (1 : ℝ) with hone_def
     set tf : X → ℝ := t • f with htf_def
+    have hone_core : ds.IsCore one := ds.IsCore_const 1
+    have htf_core : ds.IsCore tf := ds.IsCore_smul t hf
+    have hsum_core : ds.IsCore (one + tf) := ds.IsCore_add hone_core htf_core
     -- E(one + tf, one + tf) = E(one, one + tf) + E(tf, one + tf)
     have expand1 : ds.energy (one + tf) (one + tf) =
         ds.energy one (one + tf) + ds.energy tf (one + tf) :=
-      ds.energy_add_left one tf (one + tf)
+      ds.energy_add_left one tf (one + tf) hone_core htf_core hsum_core
     -- E(one, one + tf) = E(one, one) + E(one, tf) = 0 + E(one, tf) = E(one, tf)
     have expand2 : ds.energy one (one + tf) =
         ds.energy one one + ds.energy one tf := by
-      rw [ds.energy_symm one (one + tf), ds.energy_add_left, ds.energy_symm one one,
-          ds.energy_symm tf one]
+      rw [ds.energy_symm one (one + tf),
+          ds.energy_add_left one tf one hone_core htf_core hone_core,
+          ds.energy_symm one one, ds.energy_symm tf one]
     -- E(tf, one + tf) = E(tf, one) + E(tf, tf)
     have expand3 : ds.energy tf (one + tf) =
         ds.energy tf one + ds.energy tf tf := by
-      rw [ds.energy_symm tf (one + tf), ds.energy_add_left, ds.energy_symm one tf,
-          ds.energy_symm tf tf]
+      rw [ds.energy_symm tf (one + tf),
+          ds.energy_add_left one tf tf hone_core htf_core htf_core,
+          ds.energy_symm one tf, ds.energy_symm tf tf]
     rw [expand1, expand2, expand3] at h_nn
     rw [h11] at h_nn
     simp only [zero_add] at h_nn
     -- E(one, tf) = t * E(1, f) = t * e
     have h_one_tf : ds.energy one tf = t * e := by
-      rw [htf_def, ds.energy_symm, ds.energy_smul_left, ds.energy_symm]
+      rw [htf_def, ds.energy_symm, ds.energy_smul_left t f one hf hone_core,
+          ds.energy_symm]
     -- E(tf, one) = E(one, tf) = t * e
     have h_tf_one : ds.energy tf one = t * e := by
       rw [ds.energy_symm]; exact h_one_tf
     -- E(tf, tf) = t^2 * E(f,f) = t^2 * a
     have h_tf_tf : ds.energy tf tf = t ^ 2 * a := by
-      rw [htf_def, ds.energy_smul_left, ds.energy_symm, ds.energy_smul_left,
-          ds.energy_symm]; ring
+      rw [htf_def, ds.energy_smul_left t f tf hf htf_core, ds.energy_symm,
+          ds.energy_smul_left t f f hf hf, ds.energy_symm]; ring
     rw [h_one_tf, h_tf_one, h_tf_tf] at h_nn
     linarith
   -- Now from key, setting t = -e/a or using sign analysis
@@ -197,31 +217,37 @@ theorem energy_const_left (c : ℝ) (f : X → ℝ) :
       linarith [div_pos h_esq ha_pos]
 
 /-- Energy of a constant on the right is zero. -/
-theorem energy_const_right (f : X → ℝ) (c : ℝ) :
+theorem energy_const_right (f : X → ℝ) (c : ℝ) (hf : ds.IsCore f) :
     ds.energy f (fun _ => c) = 0 := by
-  rw [ds.energy_symm]; exact energy_const_left c f
+  rw [ds.energy_symm]; exact energy_const_left c f hf
 
 /-- Energy is invariant under additive constants: E(f + c, f + c) = E(f, f).
 This follows from bilinearity and the fact that constants have zero energy. -/
-theorem energy_add_const (f : X → ℝ) (c : ℝ) :
+theorem energy_add_const (f : X → ℝ) (c : ℝ) (hf : ds.IsCore f) :
     ds.energy (fun x => f x + c) (fun x => f x + c) = ds.energy f f := by
   have h1 : (fun x => f x + c) = f + (fun _ => c) := by ext x; simp [Pi.add_apply]
   set k : X → ℝ := fun _ => c with hk_def
+  have hk_core : ds.IsCore k := ds.IsCore_const c
+  have hsum_core : ds.IsCore (f + k) := ds.IsCore_add hf hk_core
   rw [h1]
   -- E(f+k, f+k) = E(f, f+k) + E(k, f+k)  [add_left]
-  rw [ds.energy_add_left f k (f + k)]
+  rw [ds.energy_add_left f k (f + k) hf hk_core hsum_core]
   -- E(f, f+k) via symmetry then add_left: E(f, f+k) = E(f+k, f) = E(f,f) + E(k,f)
-  conv_lhs => rw [ds.energy_symm f (f + k), ds.energy_add_left f k f, ds.energy_symm f f]
+  conv_lhs => rw [ds.energy_symm f (f + k),
+    ds.energy_add_left f k f hf hk_core hf, ds.energy_symm f f]
   -- E(k, f+k) via symmetry then add_left: E(k, f+k) = E(f+k, k) = E(f,k) + E(k,k)
-  conv_lhs => rw [ds.energy_symm k (f + k), ds.energy_add_left f k k]
+  conv_lhs => rw [ds.energy_symm k (f + k),
+    ds.energy_add_left f k k hf hk_core hk_core]
   -- Now substitute all the zero terms
-  rw [energy_const_left c f, energy_const_right f c, ds.energy_const c]
+  rw [energy_const_left c f hf, energy_const_right f c hf, ds.energy_const c]
   ring
 
 /-- Energy of a scalar multiple: E(t • f, t • f) = t² · E(f, f). -/
-theorem energy_smul (t : ℝ) (f : X → ℝ) :
+theorem energy_smul (t : ℝ) (f : X → ℝ) (hf : ds.IsCore f) :
     ds.energy (t • f) (t • f) = t ^ 2 * ds.energy f f := by
-  rw [ds.energy_smul_left, ds.energy_symm, ds.energy_smul_left, ds.energy_symm]
+  have htf_core : ds.IsCore (t • f) := ds.IsCore_smul t hf
+  rw [ds.energy_smul_left t f (t • f) hf htf_core, ds.energy_symm,
+      ds.energy_smul_left t f f hf hf, ds.energy_symm]
   ring
 
 /-! ### Rothaus linearization: LSI implies Poincaré
@@ -921,12 +947,13 @@ theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
 /-- **Energy of the Rothaus perturbation.**
 E(1 + t·g, 1 + t·g) = t² · E(g, g) for any g and t.
 Follows from `energy_add_const` and `energy_smul`. -/
-theorem energy_rothaus (g : X → ℝ) (t : ℝ) :
+theorem energy_rothaus (g : X → ℝ) (t : ℝ) (hg : ds.IsCore g) :
     ds.energy (fun x => 1 + t * g x) (fun x => 1 + t * g x) =
       t ^ 2 * ds.energy g g := by
   have h1 : (fun x => 1 + t * g x) = (fun x => (t • g) x + 1) := by
     ext x; simp [Pi.smul_apply]; ring
-  rw [h1, energy_add_const, energy_smul]
+  have htg_core : ds.IsCore (t • g) := ds.IsCore_smul t hg
+  rw [h1, energy_add_const _ _ htg_core, energy_smul _ _ hg]
 
 /-- **LSI implies Poincaré** (Rothaus, 1985; BGL Prop 5.1.3).
 
@@ -940,7 +967,8 @@ order in t, and take t → 0.
 The analytic core (Taylor expansion of entropy) is isolated in
 `rothaus_entropy_expansion`; all algebraic reasoning is fully proved. -/
 theorem logSobolev_implies_poincare_bounded {ρ : ℝ} (h : SatisfiesLogSobolev (ds := ds) ρ)
-    (f : X → ℝ) (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
+    (f : X → ℝ) (hf : ds.IsCore f)
+    (hf_int : Integrable f ds.μ) (hf2_int : Integrable (fun x => f x ^ 2) ds.μ)
     (B : ℝ) (hB : 0 < B) (hf_bdd : ∀ x, |f x - ∫ y, f y ∂ds.μ| ≤ B) :
     variance f ≤ (1 / ρ) * ds.energy f f := by
   by_contra h_neg
@@ -961,12 +989,22 @@ theorem logSobolev_implies_poincare_bounded {ρ : ℝ} (h : SatisfiesLogSobolev 
     have ht_lt : t < δ := by rw [ht_def]; linarith
     have h_ent_lb := hδ t ht_pos ht_lt
     set g := fun x => f x - ∫ y, f y ∂ds.μ with hg_def
-    have h_lsi := h.2 (fun x => 1 + t * g x)
-    rw [energy_rothaus g t] at h_lsi
+    have hg_core : ds.IsCore g := by
+      have heq : g = f + (fun _ => -(∫ y, f y ∂ds.μ)) := by
+        ext x; simp [hg_def, sub_eq_add_neg]
+      rw [heq]
+      exact ds.IsCore_add hf (ds.IsCore_const _)
+    have h_1tg_core : ds.IsCore (fun x => 1 + t * g x) := by
+      have heq : (fun x => 1 + t * g x) = (fun _ => (1 : ℝ)) + t • g := by
+        ext x; simp [Pi.add_apply, Pi.smul_apply]
+      rw [heq]
+      exact ds.IsCore_add (ds.IsCore_const 1) (ds.IsCore_smul t hg_core)
+    have h_lsi := h.2 (fun x => 1 + t * g x) h_1tg_core
+    rw [energy_rothaus g t hg_core] at h_lsi
     have henergy_g : ds.energy g g = E := by
       show ds.energy g g = ds.energy f f
       have : g = fun x => f x + (-(∫ y, f y ∂ds.μ)) := by ext x; simp [hg_def, sub_eq_add_neg]
-      rw [this, energy_add_const]
+      rw [this, energy_add_const _ _ hf]
     rw [henergy_g] at h_lsi
     rw [show (fun x => (1 + t * g x) * (1 + t * g x)) =
         (fun x => (1 + t * (f x - ∫ y, f y ∂ds.μ)) *

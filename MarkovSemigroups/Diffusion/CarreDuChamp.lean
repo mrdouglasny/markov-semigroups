@@ -69,20 +69,24 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
   Γ_nonneg : ∀ f x, 0 ≤ Γ f f x
   /-- Energy is the integral of Γ. -/
   energy_eq_integral_Γ : ∀ f g, energy f g = ∫ x, Γ f g x ∂μ
+  /-- Core is closed under products. -/
+  IsCore_mul : ∀ {f g}, IsCore f → IsCore g → IsCore (f * g)
   /-- Leibniz rule (diffusion property):
     Γ(fg, h) = f · Γ(g, h) + g · Γ(f, h) -/
-  Γ_leibniz : ∀ f g h x,
+  Γ_leibniz : ∀ f g h, IsCore f → IsCore g → IsCore h → ∀ x,
     Γ (f * g) h x = f x * Γ g h x + g x * Γ f h x
   /-- Γ of a constant is zero. -/
   Γ_const : ∀ (c : ℝ) f, Γ (fun _ => c) f = 0
   /-- The associated Markov semigroup P_t. -/
   semigroup : ℝ → (X → ℝ) → (X → ℝ)
+  /-- Core is preserved by the semigroup. -/
+  IsCore_semigroup : ∀ (t : ℝ), 0 ≤ t → ∀ {f}, IsCore f → IsCore (semigroup t f)
   /-- Curvature lower bound ρ > 0. -/
   ρ : ℝ
   hρ : 0 < ρ
   /-- The Bakry-Émery curvature condition (semigroup form):
     ∫ Γ(P_t f, P_t f) dμ ≤ e^{-2ρt} ∫ Γ(f, f) dμ -/
-  gradient_decay : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
+  gradient_decay : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →
     ∫ x, Γ (semigroup t f) (semigroup t f) x ∂μ ≤
     Real.exp (-2 * ρ * t) * ∫ x, Γ f f x ∂μ
   /-- P_0 = id. -/
@@ -91,29 +95,29 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
   semigroup_add : ∀ s t f, 0 ≤ s → 0 ≤ t →
     semigroup (s + t) f = semigroup s (semigroup t f)
   /-- P_t is a contraction on L²(μ). -/
-  semigroup_contraction : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
+  semigroup_contraction : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →
     ∫ x, (semigroup t f x) ^ 2 ∂μ ≤ ∫ x, (f x) ^ 2 ∂μ
   /-- P_t preserves the mean. -/
-  semigroup_mean : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
+  semigroup_mean : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →
     ∫ x, semigroup t f x ∂μ = ∫ x, f x ∂μ
   /-- P_t is self-adjoint on L²(μ). -/
-  semigroup_selfAdjoint : ∀ (f g : X → ℝ) (t : ℝ), 0 ≤ t →
+  semigroup_selfAdjoint : ∀ (f g : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f → IsCore g →
     ∫ x, semigroup t f x * g x ∂μ = ∫ x, f x * semigroup t g x ∂μ
   /-- Integrated gradient decay on L² norms:
     ∫f² - ∫(P_t f)² ≤ (1-e^{-2ρt})/ρ · E(f).
   Reference: BGL §4.7, integrated Proposition 4.7.1. -/
-  semigroup_l2_decay_bound : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
+  semigroup_l2_decay_bound : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →
     ∫ x, (f x) ^ 2 ∂μ - ∫ x, (semigroup t f x) ^ 2 ∂μ ≤
     (1 - Real.exp (-2 * ρ * t)) / ρ * energy f f
   /-- d/dt ∫(P_t f)² = -2 E(P_t f) (generator theory).
   Reference: BGL Proposition 4.7.1. -/
-  semigroup_l2_sq_hasDerivWithinAt : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
+  semigroup_l2_sq_hasDerivWithinAt : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →
     HasDerivWithinAt (fun s => ∫ x, (semigroup s f x) ^ 2 ∂μ)
                      (-2 * ∫ x, Γ (semigroup t f) (semigroup t f) x ∂μ)
                      (Ici 0) t
   /-- Ergodicity: Var(P_t f) → 0 as t → ∞.
   Reference: BGL Proposition 4.2.1. -/
-  semigroup_ergodic : ∀ (f : X → ℝ),
+  semigroup_ergodic : ∀ (f : X → ℝ), IsCore f →
     Tendsto (fun t => ∫ x, (semigroup t f x) ^ 2 ∂μ - (∫ x, f x ∂μ) ^ 2)
             atTop (nhds 0)
   /-- Integrated entropy decay for f²: the entropy decrease of P_t(f²)
@@ -125,7 +129,7 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
   rule for Γ, giving the factor 2/ρ.
 
   Reference: BGL §5.5, proof of Theorem 5.5.2. -/
-  semigroup_entropy_sq_decay_bound : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t →
+  semigroup_entropy_sq_decay_bound : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →
     DirichletSpace.entropy (ds := toDirichletSpace) (fun x => f x * f x) -
     DirichletSpace.entropy (ds := toDirichletSpace)
       (semigroup t (fun x => f x * f x)) ≤
@@ -133,7 +137,7 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
   /-- Entropy ergodicity: Ent(P_t(f²)) → 0 as t → ∞.
   Equivalently, P_t(f²) → ∫f² dμ in entropy.
   Reference: BGL Proposition 5.2.1. -/
-  semigroup_entropy_sq_ergodic : ∀ (f : X → ℝ),
+  semigroup_entropy_sq_ergodic : ∀ (f : X → ℝ), IsCore f →
     Tendsto (fun t => DirichletSpace.entropy (ds := toDirichletSpace)
       (semigroup t (fun x => f x * f x))) atTop (nhds 0)
 
@@ -144,21 +148,23 @@ namespace BakryEmerySpace
 variable {X : Type*} [MeasurableSpace X] [be : BakryEmerySpace X]
 
 /-- Var(P_t f) = ∫(P_t f)² - (∫ f)² (mean preservation). -/
-private theorem variance_semigroup_eq (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+private theorem variance_semigroup_eq (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t)
+    (hf : be.IsCore f) :
     DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup t f) =
     ∫ x, (be.semigroup t f x) ^ 2 ∂be.μ - (∫ x, f x ∂be.μ) ^ 2 := by
-  unfold DirichletSpace.variance; rw [be.semigroup_mean f t ht]
+  unfold DirichletSpace.variance; rw [be.semigroup_mean f t ht hf]
 
 /-- Var(f) ≤ (1/ρ) E(f) + Var(P_T f) for any T ≥ 0. -/
-private theorem variance_le_energy_plus_tail (f : X → ℝ) (T : ℝ) (hT : 0 ≤ T) :
+private theorem variance_le_energy_plus_tail (f : X → ℝ) (T : ℝ) (hT : 0 ≤ T)
+    (hf : be.IsCore f) :
     DirichletSpace.variance (ds := be.toDirichletSpace) f ≤
     1 / be.ρ * be.energy f f +
     DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup T f) := by
   have hvar_split : DirichletSpace.variance (ds := be.toDirichletSpace) f =
       (∫ x, (f x) ^ 2 ∂be.μ - ∫ x, (be.semigroup T f x) ^ 2 ∂be.μ) +
       DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup T f) := by
-    unfold DirichletSpace.variance; rw [be.semigroup_mean f T hT]; ring
-  have hbound := be.semigroup_l2_decay_bound f T hT
+    unfold DirichletSpace.variance; rw [be.semigroup_mean f T hT hf]; ring
+  have hbound := be.semigroup_l2_decay_bound f T hT hf
   have h_factor_le : (1 - Real.exp (-2 * be.ρ * T)) / be.ρ ≤ 1 / be.ρ := by
     apply div_le_div_of_nonneg_right _ (le_of_lt be.hρ)
     linarith [Real.exp_nonneg (-2 * be.ρ * T)]
@@ -170,7 +176,7 @@ Var(f) ≤ (1/ρ) E(f): for all T, Var(f) ≤ (1/ρ) E(f) + Var(P_T f),
 and ergodicity gives Var(P_T f) → 0. -/
 theorem satisfiesPoincare :
     DirichletSpace.SatisfiesPoincare (ds := be.toDirichletSpace) be.ρ := by
-  refine ⟨be.hρ, fun f => ?_⟩
+  refine ⟨be.hρ, fun f hf => ?_⟩
   -- Proof by contradiction: if Var(f) > (1/ρ)E(f), then ε > 0 but
   -- Var(f) ≤ (1/ρ)E(f) + Var(P_T f) < (1/ρ)E(f) + ε = Var(f). Contradiction.
   by_contra h
@@ -179,7 +185,7 @@ theorem satisfiesPoincare :
             1 / be.ρ * be.energy f f
   have hε_pos : 0 < ε := by linarith
   -- Ergodicity: Var(P_T f) → 0, so ∃ T with |Var(P_T f)| < ε
-  have hergodic := be.semigroup_ergodic f
+  have hergodic := be.semigroup_ergodic f hf
   rw [Metric.tendsto_atTop] at hergodic
   obtain ⟨T, hT_spec⟩ := hergodic ε hε_pos
   set T' := max T 0
@@ -188,18 +194,19 @@ theorem satisfiesPoincare :
   rw [Real.dist_eq] at h_dist
   have hvar_small : DirichletSpace.variance (ds := be.toDirichletSpace)
       (be.semigroup T' f) < ε := by
-    rw [variance_semigroup_eq f T' hT'_nn]
+    rw [variance_semigroup_eq f T' hT'_nn hf]
     have := (abs_lt.mp h_dist).2
     linarith
-  linarith [variance_le_energy_plus_tail f T' hT'_nn]
+  linarith [variance_le_energy_plus_tail f T' hT'_nn hf]
 
 /-- Ent(f²) ≤ (2/ρ) E(f) + Ent(P_T(f²)) for any T ≥ 0. -/
-private theorem entropy_le_energy_plus_tail (f : X → ℝ) (T : ℝ) (hT : 0 ≤ T) :
+private theorem entropy_le_energy_plus_tail (f : X → ℝ) (T : ℝ) (hT : 0 ≤ T)
+    (hf : be.IsCore f) :
     DirichletSpace.entropy (ds := be.toDirichletSpace) (fun x => f x * f x) ≤
     2 / be.ρ * be.energy f f +
     DirichletSpace.entropy (ds := be.toDirichletSpace)
       (be.semigroup T (fun x => f x * f x)) := by
-  have hbound := be.semigroup_entropy_sq_decay_bound f T hT
+  have hbound := be.semigroup_entropy_sq_decay_bound f T hT hf
   have h_factor_le : (1 - Real.exp (-2 * be.ρ * T)) ≤ 1 :=
     sub_le_self _ (Real.exp_nonneg _)
   have h_energy_nn := be.energy_nonneg f
@@ -213,13 +220,17 @@ Ent(f²) ≤ (2/ρ) E(f): for all T, Ent(f²) ≤ (2/ρ) E(f) + Ent(P_T(f²)),
 and entropy ergodicity gives Ent(P_T(f²)) → 0. -/
 theorem satisfiesLogSobolev :
     DirichletSpace.SatisfiesLogSobolev (ds := be.toDirichletSpace) be.ρ := by
-  refine ⟨be.hρ, fun f => ?_⟩
+  refine ⟨be.hρ, fun f hf => ?_⟩
   by_contra h
   push Not at h
   set ε := DirichletSpace.entropy (ds := be.toDirichletSpace) (fun x => f x * f x) -
             2 / be.ρ * be.energy f f
   have hε_pos : 0 < ε := by linarith
-  have hergodic := be.semigroup_entropy_sq_ergodic f
+  have hff_core : be.IsCore (fun x => f x * f x) := by
+    have : (fun x => f x * f x) = f * f := by ext x; rfl
+    rw [this]
+    exact be.IsCore_mul hf hf
+  have hergodic := be.semigroup_entropy_sq_ergodic f hf
   rw [Metric.tendsto_atTop] at hergodic
   obtain ⟨T, hT_spec⟩ := hergodic ε hε_pos
   set T' := max T 0
@@ -229,10 +240,11 @@ theorem satisfiesLogSobolev :
   have hent_small : DirichletSpace.entropy (ds := be.toDirichletSpace)
       (be.semigroup T' (fun x => f x * f x)) < ε := by
     have := (abs_lt.mp h_dist).2; linarith
-  linarith [entropy_le_energy_plus_tail f T' hT'_nn]
+  linarith [entropy_le_energy_plus_tail f T' hT'_nn hf]
 
 /-- HasDerivWithinAt for the variance function on Ici 0. -/
-private theorem variance_hasDerivWithinAt (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+private theorem variance_hasDerivWithinAt (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t)
+    (hf : be.IsCore f) :
     HasDerivWithinAt
       (fun s => DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup s f))
       (-2 * ∫ x, be.Γ (be.semigroup t f) (be.semigroup t f) x ∂be.μ)
@@ -240,16 +252,16 @@ private theorem variance_hasDerivWithinAt (f : X → ℝ) (t : ℝ) (ht : 0 ≤ 
   have heq : EqOn (fun s => DirichletSpace.variance (ds := be.toDirichletSpace)
       (be.semigroup s f))
       (fun s => ∫ x, (be.semigroup s f x) ^ 2 ∂be.μ - (∫ x, f x ∂be.μ) ^ 2) (Ici 0) :=
-    fun s hs => variance_semigroup_eq f s hs
+    fun s hs => variance_semigroup_eq f s hs hf
   exact HasDerivWithinAt.congr
-    ((be.semigroup_l2_sq_hasDerivWithinAt f t ht).sub_const _)
-    heq (variance_semigroup_eq f t ht)
+    ((be.semigroup_l2_sq_hasDerivWithinAt f t ht hf).sub_const _)
+    heq (variance_semigroup_eq f t ht hf)
 
 /-- **Bakry-Émery variance decay (BGL Prop 4.8.1).** PROVED.
 
 Var(P_t f) ≤ e^{-2ρt} Var(f) via Grönwall:
   d/dt Var(P_t f) = -2 E(P_t f) ≤ -2ρ Var(P_t f) (by Poincaré). -/
-theorem variance_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+theorem variance_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : be.IsCore f) :
     DirichletSpace.variance (ds := be.toDirichletSpace) (be.semigroup t f) ≤
     Real.exp (-2 * be.ρ * t) *
     DirichletSpace.variance (ds := be.toDirichletSpace) f := by
@@ -264,12 +276,12 @@ theorem variance_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
   apply le_gronwallBound_of_liminf_deriv_right_le (a := 0) (b := t) (f' := φ')
   -- 1. ContinuousOn φ (Icc 0 t)
   · intro s hs
-    exact ((variance_hasDerivWithinAt f s (Icc_subset_Ici_self hs)).mono
+    exact ((variance_hasDerivWithinAt f s (Icc_subset_Ici_self hs) hf).mono
       Icc_subset_Ici_self).continuousWithinAt
   -- 2. Liminf right derivative condition from HasDerivWithinAt
   · intro s hs r hr
     -- HasDerivWithinAt on Ici 0, restrict to Ici s (since s ≥ 0)
-    have hd := (variance_hasDerivWithinAt f s hs.1).mono (Ici_subset_Ici.mpr hs.1)
+    have hd := (variance_hasDerivWithinAt f s hs.1 hf).mono (Ici_subset_Ici.mpr hs.1)
     -- liminf_right_slope_le gives: slope φ s z < r frequently
     have hslope := hd.liminf_right_slope_le hr
     -- slope for ℝ → ℝ is (f z - f x) / (z - x) = (z - x)⁻¹ * (f z - f x)
@@ -279,7 +291,8 @@ theorem variance_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
   · exact le_refl _
   -- 4. Bound: φ'(s) ≤ -2ρ φ(s) + 0 (by Poincaré)
   · intro s hs; rw [add_zero]; simp only [φ, φ']
-    have hP := satisfiesPoincare.2 (be.semigroup s f)
+    have hs_core : be.IsCore (be.semigroup s f) := be.IsCore_semigroup s hs.1 hf
+    have hP := satisfiesPoincare.2 (be.semigroup s f) hs_core
     rw [be.energy_eq_integral_Γ] at hP
     -- hP: variance ≤ (1/ρ) * ∫Γ, so ρ * variance ≤ ∫Γ
     have hρ_pos := be.hρ

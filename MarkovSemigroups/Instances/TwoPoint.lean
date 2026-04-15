@@ -152,9 +152,13 @@ def dirichletSpace (hα : 0 < α) : DirichletSpace TwoPoint where
     have h1 : 0 ≤ α := le_of_lt hα
     have h2 : 0 ≤ (f .zero - f .one) * (f .zero - f .one) := mul_self_nonneg _
     nlinarith [mul_nonneg h1 h2]
-  energy_add_left := fun f₁ f₂ g => by
+  IsCore := fun _ => True
+  IsCore_const := fun _ => trivial
+  IsCore_add := by intros; trivial
+  IsCore_smul := by intros; trivial
+  energy_add_left := fun f₁ f₂ g _ _ _ => by
     simp only [energy, Pi.add_apply]; ring
-  energy_smul_left := fun c f g => by
+  energy_smul_left := fun c f g _ _ => by
     simp only [energy, Pi.smul_apply, smul_eq_mul]; ring
   energy_const := fun c => by
     simp [energy, sub_self, mul_zero]
@@ -436,7 +440,9 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
     change energy α f g = ∫ x, Gamma α f g x ∂uniformMeasure
     rw [integral_uniformMeasure]
     simp only [Gamma, energy]; ring
-  Γ_leibniz := fun f g h x => by
+  IsCore_mul := by intros; trivial
+  IsCore_semigroup := by intros; trivial
+  Γ_leibniz := fun f g h _ _ _ x => by
     -- The Leibniz/diffusion property fails for discrete spaces.
     -- The two-point Markov chain is a jump process, not a diffusion.
     -- This field is mathematically false; sorry is unavoidable here.
@@ -446,7 +452,7 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
   semigroup := semigroup α
   ρ := 2 * α
   hρ := by linarith
-  gradient_decay := fun f t ht => by
+  gradient_decay := fun f t ht _ => by
     change ∫ x, Gamma α (semigroup α t f) (semigroup α t f) x ∂uniformMeasure ≤
       exp (-2 * (2 * α) * t) * ∫ x, Gamma α f f x ∂uniformMeasure
     rw [integral_Gamma_semigroup, integral_uniformMeasure]
@@ -460,18 +466,18 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
       rw [show -2 * α * (s + t) = (-2 * α * s) + (-2 * α * t) from by ring, exp_add]
       ring
     }
-  semigroup_contraction := fun f t ht => by
+  semigroup_contraction := fun f t ht _ => by
     change ∫ x, (semigroup α t f x) ^ 2 ∂uniformMeasure ≤
       ∫ x, (f x) ^ 2 ∂uniformMeasure
     exact semigroup_contraction_eq α hα f t ht
-  semigroup_mean := fun f t _ => by
+  semigroup_mean := fun f t _ _ => by
     change ∫ x, semigroup α t f x ∂uniformMeasure = ∫ x, f x ∂uniformMeasure
     exact semigroup_mean_pres α f t
-  semigroup_selfAdjoint := fun f g t _ => by
+  semigroup_selfAdjoint := fun f g t _ _ _ => by
     change ∫ x, semigroup α t f x * g x ∂uniformMeasure =
       ∫ x, f x * semigroup α t g x ∂uniformMeasure
     exact semigroup_selfAdj α f g t
-  semigroup_l2_decay_bound := fun f t ht => by
+  semigroup_l2_decay_bound := fun f t ht _ => by
     -- Need: ∫f² - ∫(P_t f)² ≤ (1 - e^{-2(2α)t})/(2α) * E(f)
     change ∫ x, (f x) ^ 2 ∂uniformMeasure - ∫ x, (semigroup α t f x) ^ 2 ∂uniformMeasure ≤
       (1 - exp (-2 * (2 * α) * t)) / (2 * α) * energy α f f
@@ -493,17 +499,17 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
     have h_2α_ne : (2 * α) ≠ 0 := by linarith
     field_simp
     nlinarith
-  semigroup_l2_sq_hasDerivWithinAt := fun f t ht => by
+  semigroup_l2_sq_hasDerivWithinAt := fun f t ht _ => by
     change HasDerivWithinAt (fun s => ∫ x, (semigroup α s f x) ^ 2 ∂uniformMeasure)
       (-2 * ∫ x, Gamma α (semigroup α t f) (semigroup α t f) x ∂uniformMeasure)
       (Ici 0) t
     rw [integral_Gamma_semigroup]
     exact semigroup_l2_sq_deriv α f t
-  semigroup_ergodic := fun f => by
+  semigroup_ergodic := fun f _ => by
     change Tendsto (fun t => ∫ x, (semigroup α t f x) ^ 2 ∂uniformMeasure -
       (∫ x, f x ∂uniformMeasure) ^ 2) atTop (nhds 0)
     exact semigroup_ergodic_pf α hα f
-  semigroup_entropy_sq_decay_bound := fun f t ht => by
+  semigroup_entropy_sq_decay_bound := fun f t ht _ => by
     -- NOTE: This bound is false for the two-point space (a jump process).
     -- The BakryEmerySpace entropy decay bound Ent(f²) - Ent(P_t(f²)) ≤
     -- (1-e^{-2ρt})(2/ρ)E(f) follows from the identity I(f²) = 4E(f) via
@@ -519,7 +525,7 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
         (semigroup α t (fun x => f x * f x)) ≤
       (1 - exp (-2 * (2 * α) * t)) * (2 / (2 * α)) * energy α f f
     sorry
-  semigroup_entropy_sq_ergodic := fun f => by
+  semigroup_entropy_sq_ergodic := fun f _ => by
     -- P_t(f²) converges pointwise to the constant m = (f0²+f1²)/2,
     -- so its entropy → m·log(m) - m·log(m) = 0 by continuity of x·log(x).
     exact semigroup_entropy_sq_ergodic_pf α hα f

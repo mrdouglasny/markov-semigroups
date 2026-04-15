@@ -64,11 +64,11 @@ theorem semigroupEnergy_eq (f : X → ℝ) (t : ℝ) :
 
 /-- The gradient decay bound in terms of semigroupEnergy:
 semigroupEnergy(f, t) ≤ e^{-2ρt} · semigroupEnergy(f, 0). -/
-theorem semigroupEnergy_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+theorem semigroupEnergy_decay (f : X → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : be.IsCore f) :
     semigroupEnergy f t ≤ Real.exp (-2 * be.ρ * t) * semigroupEnergy f 0 := by
   unfold semigroupEnergy
   rw [be.semigroup_zero]
-  exact be.gradient_decay f t ht
+  exact be.gradient_decay f t ht hf
 
 /-- semigroupEnergy at t=0 is just E(f,f). -/
 theorem semigroupEnergy_zero (f : X → ℝ) :

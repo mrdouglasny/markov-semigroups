@@ -112,6 +112,15 @@ theorem ou_kernel_map (t : ℝ) (ht : 0 ≤ t) :
 
 /-! ## DirichletSpace instance -/
 
+/-- The core algebra for OU on ℝ: smooth functions with bounded first and
+second derivatives. Closed under constants, addition, scalar multiplication;
+closure under products and the semigroup is stated with `sorry` — these
+are standard but tedious (bounded derivatives remain bounded under these
+operations). -/
+def IsCore (f : ℝ → ℝ) : Prop :=
+  ContDiff ℝ ⊤ f ∧ ∃ M : ℝ,
+    ∀ x, ‖f x‖ ≤ M ∧ ‖deriv f x‖ ≤ M ∧ ‖deriv (deriv f) x‖ ≤ M
+
 def dirichletSpace : DirichletSpace ℝ where
   μ := γ
   hμ := inferInstance
@@ -121,14 +130,29 @@ def dirichletSpace : DirichletSpace ℝ where
   energy_nonneg := fun f => by
     simp only [ouEnergy]
     exact integral_nonneg (fun x => mul_self_nonneg (deriv f x))
-  energy_add_left := fun f₁ f₂ g => by
+  IsCore := IsCore
+  IsCore_const := fun c => by
+    refine ⟨contDiff_const, ⟨‖c‖, fun x => ?_⟩⟩
+    refine ⟨le_refl _, ?_, ?_⟩
+    · simp [deriv_const]
+    · simp [deriv_const]
+  IsCore_add := by
+    rintro f g ⟨hf_smooth, Mf, hfM⟩ ⟨hg_smooth, Mg, hgM⟩
+    refine ⟨hf_smooth.add hg_smooth, ⟨Mf + Mg, fun x => ?_⟩⟩
+    -- standard: bounded + bounded is bounded; same for derivatives
+    sorry
+  IsCore_smul := by
+    rintro c f ⟨hf_smooth, Mf, hfM⟩
+    refine ⟨hf_smooth.const_smul c, ⟨‖c‖ * Mf, fun x => ?_⟩⟩
+    sorry
+  energy_add_left := fun f₁ f₂ g _ _ _ => by
     -- PROVABLE when f₁, f₂ differentiable: deriv(f₁+f₂) = deriv f₁ + deriv f₂.
     -- For general functions, deriv returns 0 at non-differentiable points.
     -- The identity holds when both are differentiable (deriv_add) or when
     -- both are non-differentiable (all terms 0). The mixed case needs care.
     simp only [ouEnergy]
     sorry
-  energy_smul_left := fun c f g => by
+  energy_smul_left := fun c f g _ _ => by
     simp only [ouEnergy]
     have h : ∀ x, deriv (c • f) x = c * deriv f x := fun x => by
       have := deriv_const_smul_field c f (x := x)
@@ -149,7 +173,14 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
   Γ_nonneg := fun f x => by simp only [ouGamma]; exact mul_self_nonneg _
   energy_eq_integral_Γ := fun f g => by
     simp only [ouGamma]; rfl
-  Γ_leibniz := fun f g h x => by
+  IsCore_mul := by
+    rintro f g ⟨hf_smooth, Mf, hfM⟩ ⟨hg_smooth, Mg, hgM⟩
+    refine ⟨hf_smooth.mul hg_smooth, ⟨Mf * Mg + 2 * Mf * Mg + Mf * Mg, fun x => ?_⟩⟩
+    sorry
+  IsCore_semigroup := fun t ht f hf => by
+    -- P_t preserves smoothness and bounded derivatives. Standard but tedious.
+    sorry
+  Γ_leibniz := fun f g h _ _ _ x => by
     -- THIS IS THE KEY FIELD that fails for TwoPoint but holds here.
     -- Γ(fg, h)(x) = deriv(fg)(x) · deriv h(x)
     --             = (f(x)·deriv g(x) + g(x)·deriv f(x)) · deriv h(x)  [product rule]
@@ -163,7 +194,7 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
   semigroup := ouSemigroup
   ρ := 1
   hρ := one_pos
-  gradient_decay := fun f t ht => by
+  gradient_decay := fun f t ht _ => by
     -- ∫ (P_t f')² dγ ≤ e^{-2t} ∫ (f')² dγ
     -- Proof: by Mehler, (P_t f)'(x) = e^{-t} ∫ f'(e^{-t}x + √(1-e^{-2t})y) dγ(y)
     -- so (P_t f)'(x)² = e^{-2t} (∫ f'(...) dγ(y))² ≤ e^{-2t} ∫ (f'(...))² dγ(y)
@@ -180,11 +211,11 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
     -- gives a Mehler kernel with parameter (s+t), using
     -- e^{-(s+t)} = e^{-s}·e^{-t} and the Gaussian convolution formula.
     sorry
-  semigroup_contraction := fun f t ht => by
+  semigroup_contraction := fun f t ht _ => by
     -- Jensen: ∫(P_t f)² dγ ≤ ∫ f² dγ since (·)² is convex and P_t is a
     -- Markov operator (positive, mass-preserving).
     sorry
-  semigroup_mean := fun f t ht => by
+  semigroup_mean := fun f t ht _ => by
     -- Unfold to get γ explicitly
     show ∫ x, ouSemigroup t f x ∂γ = ∫ x, f x ∂γ
     simp only [ouSemigroup]
@@ -221,26 +252,26 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
       rw [integral_non_aestronglyMeasurable hf]
       -- The iterated integral is 0 because f is not measurable
       sorry
-  semigroup_selfAdjoint := fun f g t ht => by
+  semigroup_selfAdjoint := fun f g t ht _ _ => by
     -- Self-adjointness: the Mehler kernel K(t,x,y) is symmetric in (x,y)
     -- after accounting for the Gaussian weight.
     sorry
-  semigroup_l2_decay_bound := fun f t ht => by
+  semigroup_l2_decay_bound := fun f t ht _ => by
     -- Integrated gradient decay. Follows from gradient_decay + FTC.
     sorry
-  semigroup_l2_sq_hasDerivWithinAt := fun f t ht => by
+  semigroup_l2_sq_hasDerivWithinAt := fun f t ht _ => by
     -- d/dt ∫(P_t f)² dγ = -2 ∫ (P_t f')² dγ = -2 E(P_t f).
     -- Requires differentiation under the integral for the Mehler kernel.
     sorry
-  semigroup_ergodic := fun f => by
+  semigroup_ergodic := fun f _ => by
     -- Var(P_t f) → 0: as t → ∞, P_t f → E[f] in L²(γ) since
     -- e^{-t} → 0 and √(1-e^{-2t}) → 1, so P_t f(x) → ∫ f dγ.
     sorry
-  semigroup_entropy_sq_decay_bound := fun f t ht => by
+  semigroup_entropy_sq_decay_bound := fun f t ht _ => by
     -- Entropy decay bound. Follows from Γ_leibniz (giving I(f²) = 4E(f))
     -- and gradient_decay for Fisher information.
     sorry
-  semigroup_entropy_sq_ergodic := fun f => by
+  semigroup_entropy_sq_ergodic := fun f _ => by
     -- Ent(P_t(f²)) → 0 by ergodicity + continuity of x·log(x).
     sorry
 
