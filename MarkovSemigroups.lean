@@ -30,6 +30,7 @@ import MarkovSemigroups.Coupling.TVCoupling
 import MarkovSemigroups.Dobrushin.Specification
 import MarkovSemigroups.Dobrushin.Uniqueness
 import MarkovSemigroups.Dobrushin.StrongCoupling
+import MarkovSemigroups.Dobrushin.FiniteLattice
 
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
