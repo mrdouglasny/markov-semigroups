@@ -298,4 +298,236 @@ lemma iterateInfluence_dist_zero (γ : GibbsSpec I S)
     simp_rw [hterm]
     exact tsum_zero
 
+/-! ## Pointwise bounds and the Neumann-series coefficient
+
+Everything above works with row-sums. For the covariance/correlation
+decay argument we need the entry-wise bound `(C^n)_{xy} ≤ α^n`, and
+its sum `∑_n (C^n)_{xy}` — the `(x,y)` entry of `(I-C)⁻¹`. -/
+
+/-- **Pointwise (entry-wise) bound:** `(C^n)_{xy} ≤ α^n`. Follows
+from the row-sum bound, nonneg summands, and `Summable.le_tsum`. -/
+lemma iterateInfluence_pointwise_bound (γ : GibbsSpec I S)
+    (hD : DobrushinCondition γ) (n : ℕ) (x y : I) :
+    iterateInfluence γ n x y ≤ hD.α ^ n := by
+  have h_summ := iterateInfluence_row_summable γ hD n x
+  have h_bd := iterateInfluence_row_sum_bound γ hD n x
+  have h_le : iterateInfluence γ n x y ≤ ∑' z, iterateInfluence γ n x z := by
+    have := h_summ.sum_le_tsum ({y} : Finset I)
+      (fun z _ => iterateInfluence_nonneg γ n x z)
+    simpa using this
+  linarith
+
+/-- The `(x,y)` entry of the resolvent `(I - C)⁻¹ = Σ_n C^n`. -/
+def neumannSeriesCoeff (γ : GibbsSpec I S) (x y : I) : ℝ :=
+  ∑' n, iterateInfluence γ n x y
+
+lemma neumannSeriesCoeff_summable (γ : GibbsSpec I S)
+    (hD : DobrushinCondition γ) (x y : I) :
+    Summable (fun n => iterateInfluence γ n x y) :=
+  Summable.of_nonneg_of_le
+    (fun n => iterateInfluence_nonneg γ n x y)
+    (fun n => iterateInfluence_pointwise_bound γ hD n x y)
+    (summable_geometric_of_lt_one hD.hα_pos hD.hα_lt)
+
+lemma neumannSeriesCoeff_nonneg (γ : GibbsSpec I S) (x y : I) :
+    0 ≤ neumannSeriesCoeff γ x y :=
+  tsum_nonneg (fun n => iterateInfluence_nonneg γ n x y)
+
+/-- Crude bound: `((I-C)⁻¹)_{xy} ≤ 1/(1-α)`. -/
+lemma neumannSeriesCoeff_le (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (x y : I) :
+    neumannSeriesCoeff γ x y ≤ (1 - hD.α)⁻¹ := by
+  unfold neumannSeriesCoeff
+  have h_summ := neumannSeriesCoeff_summable γ hD x y
+  have h_geom_sum := summable_geometric_of_lt_one hD.hα_pos hD.hα_lt
+  calc ∑' n, iterateInfluence γ n x y
+      ≤ ∑' n, hD.α ^ n :=
+        Summable.tsum_le_tsum
+          (fun n => iterateInfluence_pointwise_bound γ hD n x y)
+          h_summ h_geom_sum
+    _ = (1 - hD.α)⁻¹ := tsum_geometric_of_lt_one hD.hα_pos hD.hα_lt
+
+/-- **Nearest-neighbor Neumann bound.** If the influence matrix has
+range 1 (nearest-neighbor influence: `C(u,v) = 0` whenever `d(u,v) > 1`),
+then `((I-C)⁻¹)_{xy} ≤ α^{d(x,y)} / (1 - α)`.
+
+Proof: `(C^n)_{xy} = 0` for `n < d(x,y)` by `iterateInfluence_dist_zero`,
+so the sum collapses to a shifted geometric series. -/
+lemma neumannSeriesCoeff_nn_dist_bound (γ : GibbsSpec I S)
+    (hD : DobrushinCondition γ)
+    (d : I → I → ℕ)
+    (h_refl : ∀ x, d x x = 0)
+    (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
+    (h_support : ∀ x y, d x y > 1 → influenceCoeff γ x y = 0)
+    (x y : I) :
+    neumannSeriesCoeff γ x y ≤ hD.α ^ d x y / (1 - hD.α) := by
+  set k := d x y with hk
+  -- Zero for n < k (from dist-zero with R = 1).
+  have h_zero : ∀ n, n < k → iterateInfluence γ n x y = 0 := by
+    intro n hn
+    exact iterateInfluence_dist_zero γ d 1 Nat.one_pos h_refl h_triangle
+      h_support n x y (by simpa [mul_one] using hn)
+  -- Bounding function: b n := if n < k then 0 else α^n.
+  let b : ℕ → ℝ := fun n => if n < k then 0 else hD.α ^ n
+  have h_b_nn : ∀ n, 0 ≤ b n := fun n => by
+    by_cases hn : n < k
+    · simp [b, hn]
+    · simp [b, hn]; exact pow_nonneg hD.hα_pos n
+  have h_b_le_pow : ∀ n, b n ≤ hD.α ^ n := fun n => by
+    by_cases hn : n < k
+    · simp [b, hn]; exact pow_nonneg hD.hα_pos n
+    · simp [b, hn]
+  have h_b_summ : Summable b :=
+    Summable.of_nonneg_of_le h_b_nn h_b_le_pow
+      (summable_geometric_of_lt_one hD.hα_pos hD.hα_lt)
+  have h_bd : ∀ n, iterateInfluence γ n x y ≤ b n := by
+    intro n
+    by_cases hn : n < k
+    · simp [b, hn, h_zero n hn]
+    · simp [b, hn]; exact iterateInfluence_pointwise_bound γ hD n x y
+  -- Shift identity: ∑' n, b n = α^k * ∑' m, α^m.
+  have h_shift : ∑' n, b n = hD.α ^ k * (1 - hD.α)⁻¹ := by
+    -- Use the injection m ↦ m + k : ℕ → ℕ; b is 0 outside its range.
+    have hinj : Function.Injective (fun m : ℕ => m + k) := by
+      intro a a' h; simpa using h
+    have h_supp : Function.support b ⊆ Set.range (fun m : ℕ => m + k) := by
+      intro n hn
+      -- b n ≠ 0, so (by definition of b) n ≥ k.
+      have h_n_ge : ¬ n < k := by
+        intro hlt
+        exact hn (by simp [b, hlt])
+      have h_le' : k ≤ n := Nat.not_lt.mp h_n_ge
+      refine ⟨n - k, ?_⟩
+      show n - k + k = n
+      omega
+    have hreindex : ∑' m, b (m + k) = ∑' n, b n :=
+      hinj.tsum_eq (f := b) h_supp
+    have h_pow_eq : ∀ m, b (m + k) = hD.α ^ (m + k) := fun m => by
+      have : ¬ m + k < k := by omega
+      simp [b, this]
+    calc ∑' n, b n = ∑' m, b (m + k) := hreindex.symm
+      _ = ∑' m, hD.α ^ (m + k) := by simp_rw [h_pow_eq]
+      _ = ∑' m, hD.α ^ k * hD.α ^ m := by
+          congr 1; ext m; rw [pow_add]; ring
+      _ = hD.α ^ k * ∑' m, hD.α ^ m := tsum_mul_left
+      _ = hD.α ^ k * (1 - hD.α)⁻¹ := by
+          rw [tsum_geometric_of_lt_one hD.hα_pos hD.hα_lt]
+  -- Combine.
+  have h_summ := neumannSeriesCoeff_summable γ hD x y
+  have h_1mα_pos : 0 < 1 - hD.α := by linarith [hD.hα_lt]
+  calc neumannSeriesCoeff γ x y
+      = ∑' n, iterateInfluence γ n x y := rfl
+    _ ≤ ∑' n, b n := Summable.tsum_le_tsum h_bd h_summ h_b_summ
+    _ = hD.α ^ k * (1 - hD.α)⁻¹ := h_shift
+    _ = hD.α ^ d x y / (1 - hD.α) := by rw [← hk]; field_simp
+
+/-! ## B3: Exponential correlation decay from the covariance bound
+
+Given the abstract covariance bound `|Cov(f,g)| ≤ 2 ‖f‖∞ ‖g‖∞ · ((I-C)⁻¹)_{xy}`
+coming from iterated DLR (the B2 content), the nearest-neighbor Neumann
+bound `((I-C)⁻¹)_{xy} ≤ α^{d(x,y)} / (1-α)` yields exponential decay.
+
+The B2 bound itself — deriving `|Cov| ≤ 2BfBg · neumannSeriesCoeff` from
+a Gibbs measure via iterated DLR — requires conditional-measure theory
+not yet formalized in the project, and remains a bridge hypothesis
+(`hCov`). The mathematical content isolated in that bridge is the
+Dobrushin coupling / iterated-DLR expansion, which is orthogonal to
+the geometric-series argument proved here. -/
+
+/-- **B3: Exponential correlation decay on the lattice.**
+
+Given the abstract covariance–Neumann bound (B2 bridge `hCov`),
+and nearest-neighbor influence on `ℤ^d`, derive the exponential
+decay `|Cov(f,g)| ≤ 2BfBg · α^{d(x,y)} / (1-α)`.
+
+The decay rate is `-log α > 0`. The only bridge hypothesis is `hCov`;
+the geometric-series argument is fully proved. -/
+theorem dobrushin_correlation_decay_nn {d_lat : ℕ}
+    (γ : GibbsSpec (LatticeSite d_lat) S)
+    (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig (LatticeSite d_lat) S))
+    [IsProbabilityMeasure μ]
+    (f g : SpinConfig (LatticeSite d_lat) S → ℝ)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (x y : LatticeSite d_lat)
+    /- B2 bridge: covariance is controlled by the Neumann-series entry
+       `((I-C)⁻¹)_{xy}`. Derivable from iterated DLR + single-site coupling. -/
+    (hCov : |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * neumannSeriesCoeff γ x y)
+    /- Nearest-neighbor influence: `C(u,v) = 0` for `d(u,v) > 1`. -/
+    (h_nn : ∀ u v : LatticeSite d_lat,
+      latticeDist u v > 1 → influenceCoeff γ u v = 0) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * hD.α ^ latticeDist x y / (1 - hD.α) := by
+  -- Neumann distance bound: ((I-C)⁻¹)_{xy} ≤ α^{d(x,y)} / (1-α).
+  have hNeumann : neumannSeriesCoeff γ x y ≤
+      hD.α ^ latticeDist x y / (1 - hD.α) :=
+    neumannSeriesCoeff_nn_dist_bound γ hD latticeDist
+      latticeDist_self latticeDist_triangle h_nn x y
+  have hBfBg_nn : 0 ≤ 2 * Bf * Bg := by positivity
+  have h_1mα_pos : 0 < 1 - hD.α := by linarith [hD.hα_lt]
+  have h_pow_nn : 0 ≤ hD.α ^ latticeDist x y := pow_nonneg hD.hα_pos _
+  calc |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)|
+      ≤ 2 * Bf * Bg * neumannSeriesCoeff γ x y := hCov
+    _ ≤ 2 * Bf * Bg * (hD.α ^ latticeDist x y / (1 - hD.α)) :=
+        mul_le_mul_of_nonneg_left hNeumann hBfBg_nn
+    _ = 2 * Bf * Bg * hD.α ^ latticeDist x y / (1 - hD.α) := by ring
+
+/-! ## B3 direct variant: `α^{dist}` without the `1/(1-α)` factor
+
+The Neumann-series route summed `∑_n (C^n)_{xy} = ((I-C)⁻¹)_{xy}`,
+which gives the bound `α^{d(x,y)}/(1-α)`. An alternative coupling
+argument iterates `marginalTvDist_contraction` along a path of length
+`d(x,y)` from `y` to `x`, giving a bound directly in terms of a
+*single* `n`-step influence entry `(C^n)_{xy}` — and by the pointwise
+bound `(C^n)_{xy} ≤ α^n`, the final estimate is `C·α^{d(x,y)}` with
+no geometric-series factor.
+
+This matches the form consumed by the lgt mass-gap proof
+(`dobrushin_correlation_bound` in lgt/LGT/MassGap/GaugeFixing.lean). -/
+
+/-- **Direct correlation decay.** Given a covariance bound in terms of
+the n-step influence entry `(C^n)_{xy}` — the form produced by
+iterating single-site coupling along an n-step path — derive the
+exponential decay `|Cov| ≤ C·α^n`. No `1/(1-α)` factor. -/
+theorem dobrushin_correlation_decay_direct (γ : GibbsSpec I S)
+    (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (f g : SpinConfig I S → ℝ)
+    (C : ℝ) (hC_nn : 0 ≤ C)
+    (x y : I) (n : ℕ)
+    (hCov : |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      C * iterateInfluence γ n x y) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      C * hD.α ^ n :=
+  hCov.trans (mul_le_mul_of_nonneg_left
+    (iterateInfluence_pointwise_bound γ hD n x y) hC_nn)
+
+/-- **B3 NN direct variant: exponential correlation decay in lattice
+distance, no `1/(1-α)` factor.**
+
+Specializes `dobrushin_correlation_decay_direct` to `n = latticeDist x y`.
+The output form `|Cov| ≤ C·α^{d(x,y)}` matches the bridge hypothesis
+consumed by `dobrushin_correlation_bound` in the lgt mass-gap proof. -/
+theorem dobrushin_correlation_decay_nn_direct {d_lat : ℕ}
+    (γ : GibbsSpec (LatticeSite d_lat) S)
+    (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig (LatticeSite d_lat) S))
+    [IsProbabilityMeasure μ]
+    (f g : SpinConfig (LatticeSite d_lat) S → ℝ)
+    (C : ℝ) (hC_nn : 0 ≤ C)
+    (x y : LatticeSite d_lat)
+    /- B2 bridge (direct form): covariance is controlled by the
+       `d(x,y)`-step influence matrix entry. This is what an iterated
+       single-site coupling along a path of length `d(x,y)` from `y`
+       to `x` produces, via `marginalTvDist_contraction` at each step.
+       The caller packages `4·B²` or `2·Bf·Bg` (their preferred
+       constant) into `C`. -/
+    (hCov : |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      C * iterateInfluence γ (latticeDist x y) x y) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      C * hD.α ^ latticeDist x y :=
+  dobrushin_correlation_decay_direct γ hD μ f g C hC_nn x y
+    (latticeDist x y) hCov
+
 end

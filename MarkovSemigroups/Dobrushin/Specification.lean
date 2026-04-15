@@ -51,6 +51,22 @@ abbrev LatticeSite (d : ℕ) := Fin d → ℤ
 def latticeDist {d : ℕ} (x y : LatticeSite d) : ℕ :=
   ∑ i, (x i - y i).natAbs
 
+/-- `latticeDist` is reflexive: `d(x, x) = 0`. -/
+lemma latticeDist_self {d : ℕ} (x : LatticeSite d) : latticeDist x x = 0 := by
+  simp [latticeDist]
+
+/-- `latticeDist` satisfies the triangle inequality. -/
+lemma latticeDist_triangle {d : ℕ} (x y z : LatticeSite d) :
+    latticeDist x y ≤ latticeDist x z + latticeDist z y := by
+  unfold latticeDist
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_le_sum
+  intro i _
+  -- (x i - y i).natAbs ≤ (x i - z i).natAbs + (z i - y i).natAbs
+  have : x i - y i = (x i - z i) + (z i - y i) := by ring
+  rw [this]
+  exact Int.natAbs_add_le _ _
+
 /-! ## Gibbs specification -/
 
 /-- A Gibbs specification on a generic site set `I` with spin space `S`.
