@@ -289,6 +289,7 @@ The fully formal proof requires:
 - `TVCoupling.integral_lipschitz_coupling_bound` (proved, but needs finite support)
 - An extension of the pointwise telescope to infinite (summable) Lipschitz constants
 - `[Countable S] [MeasurableSingletonClass S]` for measurability of {σ(y)≠τ(y)}
+  (synthesizes `MeasurableEq S` required by integral_lipschitz_coupling_bound)
 
 This lemma isolates the coupling dependency from the rest of the Dobrushin proof. -/
 lemma condDist_integral_bound [Countable S] [MeasurableSingletonClass S]
@@ -318,8 +319,8 @@ lemma condDist_integral_bound [Countable S] [MeasurableSingletonClass S]
   -- Strategy: Use the maximal coupling of μ₁ and μ₂ and apply the
   -- coordinate-Lipschitz integral bound from TVCoupling.
   -- The spin space S is `I → S` which is `ι → S` with
-  -- ι = I; we need MeasurableEq S (from Countable +
-  -- MeasurableSingletonClass) for the coupling machinery.
+  -- ι = I; we have MeasurableEq S from [Countable S] [MeasurableSingletonClass S]
+  -- which is required by integral_lipschitz_coupling_bound.
   set h : SpinConfig I S → ℝ := fun σ => (γ.condDist {x} σ A).toReal with hh_def
   set c : I → ℝ := fun y => influenceCoeff γ x y with hc_def
   -- Basic facts about h and c

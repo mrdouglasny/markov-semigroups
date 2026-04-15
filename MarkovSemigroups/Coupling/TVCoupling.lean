@@ -679,7 +679,7 @@ any coupling P of μ, ν:
 When P is the maximal coupling, the RHS becomes ≤ (Σ c(y)) · tvNorm. -/
 theorem integral_lipschitz_coupling_bound
     {ι : Type*} [MeasurableSpace ι]
-    {S : Type*} [MeasurableSpace S] [MeasurableSingletonClass S] [Countable S]
+    {S : Type*} [MeasurableSpace S] [MeasurableEq S]
     (μ ν : Measure (ι → S)) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
     (P : Measure ((ι → S) × (ι → S)))
     (hP : IsCoupling P μ ν)
@@ -767,8 +767,7 @@ theorem integral_lipschitz_coupling_bound
   --        ≤ (Σ c(y) * P(ne y)).toReal (lintegral_finset_sum + lintegral_indicator_one_le)
   --        = Σ c(y) * P(ne y).toReal (toReal distributes over finite nonneg sums)
   -- However, lintegral_finset_sum still requires AEMeasurable for each summand,
-  -- and lintegral_indicator_one needs MeasurableSet. Both require MeasurableEq S
-  -- (available from MeasurableSingletonClass S + Countable S).
+  -- and lintegral_indicator_one needs MeasurableSet. Both require MeasurableEq S.
   -- We use a direct lintegral bound that avoids these.
   -- Use norm_integral_le_lintegral_norm to go to lintegral world (no measurability needed)
   -- then bound lintegral pointwise using h_ptwise, then decompose.
@@ -806,8 +805,7 @@ theorem integral_lipschitz_coupling_bound
           P {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y}).toReal := by
         -- Decompose the lintegral of the sum into sum of lintegrals,
         -- then each term equals ofReal(c y) * P({p | p.1 y ≠ p.2 y}).
-        -- Measurability of {p | p.1 y ≠ p.2 y}: follows from MeasurableEq S
-        -- (which holds for Countable S + MeasurableSingletonClass S).
+        -- Measurability of {p | p.1 y ≠ p.2 y}: follows from MeasurableEq S.
         have h_meas_ne : ∀ y : ι, MeasurableSet {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y} := by
           intro y
           apply MeasurableSet.compl
