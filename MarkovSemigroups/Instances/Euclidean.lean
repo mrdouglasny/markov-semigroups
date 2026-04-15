@@ -35,6 +35,8 @@ import MarkovSemigroups.Diffusion.CarreDuChamp
 import Mathlib.Probability.Distributions.Gaussian.Real
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Probability.Independence.Basic
+import Mathlib.Analysis.Convex.Integral
+import Mathlib.Analysis.Convex.Mul
 
 open MeasureTheory Filter Set Real ProbabilityTheory
 
@@ -121,6 +123,49 @@ def IsCore (f : ℝ → ℝ) : Prop :=
   ContDiff ℝ ⊤ f ∧ ∃ M : ℝ,
     ∀ x, ‖f x‖ ≤ M ∧ ‖deriv f x‖ ≤ M ∧ ‖deriv (deriv f) x‖ ≤ M
 
+/-! ## IsCore helpers -/
+
+theorem IsCore.contDiff {f : ℝ → ℝ} (hf : IsCore f) : ContDiff ℝ ⊤ f := hf.1
+
+theorem IsCore.differentiable {f : ℝ → ℝ} (hf : IsCore f) : Differentiable ℝ f :=
+  hf.1.differentiable (by simp)
+
+theorem IsCore.contDiff_deriv {f : ℝ → ℝ} (hf : IsCore f) :
+    ContDiff ℝ ⊤ (deriv f) := by
+  -- From ContDiff ℝ ω f, deriv f is also ContDiff ℝ ω.
+  have hω : ContDiff ℝ (⊤ : WithTop ℕ∞) f := hf.1
+  -- Using ContDiff.deriv' we only get down by 1, but ⊤ + 1 = ⊤ here (ω-analytic).
+  -- Simpler: derive from ContDiff at order 2 which suffices for our use.
+  have h2 : ContDiff ℝ 2 f := hf.1.of_le (by
+    exact_mod_cast (OrderTop.le_top (2 : WithTop ℕ∞)))
+  -- but we want to return top-level deriv ContDiff. Use fun_prop:
+  exact hf.1.deriv'.of_le (by
+    exact_mod_cast (OrderTop.le_top _))
+
+theorem IsCore.differentiable_deriv {f : ℝ → ℝ} (hf : IsCore f) :
+    Differentiable ℝ (deriv f) :=
+  hf.contDiff_deriv.differentiable (by simp)
+
+theorem IsCore.continuous {f : ℝ → ℝ} (hf : IsCore f) : Continuous f :=
+  hf.1.continuous
+
+theorem IsCore.measurable {f : ℝ → ℝ} (hf : IsCore f) : Measurable f :=
+  hf.continuous.measurable
+
+theorem IsCore.stronglyMeasurable {f : ℝ → ℝ} (hf : IsCore f) :
+    StronglyMeasurable f :=
+  hf.continuous.stronglyMeasurable
+
+theorem IsCore.bounded {f : ℝ → ℝ} (hf : IsCore f) :
+    ∃ M, ∀ x, ‖f x‖ ≤ M := by
+  obtain ⟨_, M, hM⟩ := hf
+  exact ⟨M, fun x => (hM x).1⟩
+
+theorem IsCore.integrable {f : ℝ → ℝ} (hf : IsCore f) : Integrable f γ := by
+  obtain ⟨M, hM⟩ := hf.bounded
+  refine Integrable.mono' (integrable_const M) hf.stronglyMeasurable.aestronglyMeasurable ?_
+  exact Filter.Eventually.of_forall (fun x => hM x)
+
 def dirichletSpace : DirichletSpace ℝ where
   μ := γ
   hμ := inferInstance
@@ -137,21 +182,113 @@ def dirichletSpace : DirichletSpace ℝ where
     · simp [deriv_const]
     · simp [deriv_const]
   IsCore_add := by
-    rintro f g ⟨hf_smooth, Mf, hfM⟩ ⟨hg_smooth, Mg, hgM⟩
+    rintro f g hf hg
+    obtain ⟨hf_smooth, Mf, hfM⟩ := hf
+    obtain ⟨hg_smooth, Mg, hgM⟩ := hg
     refine ⟨hf_smooth.add hg_smooth, ⟨Mf + Mg, fun x => ?_⟩⟩
-    -- standard: bounded + bounded is bounded; same for derivatives
-    sorry
+    have hdf : DifferentiableAt ℝ f x :=
+      (hf_smooth.differentiable (by simp)).differentiableAt
+    have hdg : DifferentiableAt ℝ g x :=
+      (hg_smooth.differentiable (by simp)).differentiableAt
+    have hdf' : DifferentiableAt ℝ (deriv f) x :=
+      (IsCore.contDiff_deriv ⟨hf_smooth, Mf, hfM⟩).differentiable (by simp) |>.differentiableAt
+    have hdg' : DifferentiableAt ℝ (deriv g) x :=
+      (IsCore.contDiff_deriv ⟨hg_smooth, Mg, hgM⟩).differentiable (by simp) |>.differentiableAt
+    have hderiv_sum : deriv (f + g) x = deriv f x + deriv g x := deriv_add hdf hdg
+    -- deriv (deriv (f+g)) = deriv (deriv f + deriv g) = deriv (deriv f) + deriv (deriv g)
+    have hderiv2_sum : deriv (deriv (f + g)) x = deriv (deriv f) x + deriv (deriv g) x := by
+      have heq : deriv (f + g) = (fun y => deriv f y + deriv g y) := by
+        ext y
+        have hdfy : DifferentiableAt ℝ f y :=
+          (hf_smooth.differentiable (by simp)).differentiableAt
+        have hdgy : DifferentiableAt ℝ g y :=
+          (hg_smooth.differentiable (by simp)).differentiableAt
+        exact deriv_add hdfy hdgy
+      rw [heq]
+      exact deriv_add hdf' hdg'
+    refine ⟨?_, ?_, ?_⟩
+    · show ‖(f + g) x‖ ≤ Mf + Mg
+      calc ‖(f + g) x‖ = ‖f x + g x‖ := rfl
+        _ ≤ ‖f x‖ + ‖g x‖ := norm_add_le _ _
+        _ ≤ Mf + Mg := add_le_add (hfM x).1 (hgM x).1
+    · rw [hderiv_sum]
+      calc ‖deriv f x + deriv g x‖ ≤ ‖deriv f x‖ + ‖deriv g x‖ := norm_add_le _ _
+        _ ≤ Mf + Mg := add_le_add (hfM x).2.1 (hgM x).2.1
+    · rw [hderiv2_sum]
+      calc ‖deriv (deriv f) x + deriv (deriv g) x‖
+          ≤ ‖deriv (deriv f) x‖ + ‖deriv (deriv g) x‖ := norm_add_le _ _
+        _ ≤ Mf + Mg := add_le_add (hfM x).2.2 (hgM x).2.2
   IsCore_smul := by
-    rintro c f ⟨hf_smooth, Mf, hfM⟩
+    rintro c f hf
+    obtain ⟨hf_smooth, Mf, hfM⟩ := hf
     refine ⟨hf_smooth.const_smul c, ⟨‖c‖ * Mf, fun x => ?_⟩⟩
-    sorry
-  energy_add_left := fun f₁ f₂ g _ _ _ => by
-    -- PROVABLE when f₁, f₂ differentiable: deriv(f₁+f₂) = deriv f₁ + deriv f₂.
-    -- For general functions, deriv returns 0 at non-differentiable points.
-    -- The identity holds when both are differentiable (deriv_add) or when
-    -- both are non-differentiable (all terms 0). The mixed case needs care.
+    -- (c • f) x = c * f x
+    have h1 : (c • f) x = c * f x := rfl
+    have h_deriv : deriv (c • f) x = c * deriv f x := by
+      have := deriv_const_smul_field c f (x := x)
+      simpa [smul_eq_mul] using this
+    have h_deriv_fun : deriv (c • f) = fun y => c * deriv f y := by
+      ext y
+      have := deriv_const_smul_field c f (x := y)
+      simpa [smul_eq_mul] using this
+    have h_deriv2 : deriv (deriv (c • f)) x = c * deriv (deriv f) x := by
+      rw [h_deriv_fun]
+      have : deriv (fun y => c * deriv f y) x = c * deriv (deriv f) x := by
+        have := deriv_const_smul_field c (deriv f) (x := x)
+        simpa [smul_eq_mul] using this
+      exact this
+    refine ⟨?_, ?_, ?_⟩
+    · rw [h1]
+      rw [norm_mul]
+      exact mul_le_mul_of_nonneg_left (hfM x).1 (norm_nonneg c)
+    · rw [h_deriv, norm_mul]
+      exact mul_le_mul_of_nonneg_left (hfM x).2.1 (norm_nonneg c)
+    · rw [h_deriv2, norm_mul]
+      exact mul_le_mul_of_nonneg_left (hfM x).2.2 (norm_nonneg c)
+  energy_add_left := fun f₁ f₂ g hf₁ hf₂ hg => by
     simp only [ouEnergy]
-    sorry
+    -- deriv (f₁ + f₂) = deriv f₁ + deriv f₂ pointwise, since both are differentiable.
+    have hderiv : ∀ x, deriv (f₁ + f₂) x * deriv g x =
+        deriv f₁ x * deriv g x + deriv f₂ x * deriv g x := fun x => by
+      rw [deriv_add (hf₁.differentiable.differentiableAt)
+                    (hf₂.differentiable.differentiableAt)]
+      ring
+    simp_rw [hderiv]
+    -- integrability of products
+    have hdf₁_bound : ∃ M, ∀ x, ‖deriv f₁ x‖ ≤ M := ⟨hf₁.2.choose, fun x => (hf₁.2.choose_spec x).2.1⟩
+    have hdf₂_bound : ∃ M, ∀ x, ‖deriv f₂ x‖ ≤ M := ⟨hf₂.2.choose, fun x => (hf₂.2.choose_spec x).2.1⟩
+    have hdg_bound  : ∃ M, ∀ x, ‖deriv g  x‖ ≤ M := ⟨hg.2.choose, fun x => (hg.2.choose_spec x).2.1⟩
+    have hdf₁_meas : Measurable (deriv f₁) :=
+      (hf₁.1.continuous_deriv (by simp)).measurable
+    have hdf₂_meas : Measurable (deriv f₂) :=
+      (hf₂.1.continuous_deriv (by simp)).measurable
+    have hdg_meas  : Measurable (deriv g) :=
+      (hg.1.continuous_deriv (by simp)).measurable
+    -- integrability of deriv f₁ * deriv g and deriv f₂ * deriv g
+    obtain ⟨M₁, hM₁⟩ := hdf₁_bound
+    obtain ⟨M₂, hM₂⟩ := hdf₂_bound
+    obtain ⟨Mg, hMg⟩ := hdg_bound
+    have hint₁ : Integrable (fun x => deriv f₁ x * deriv g x) γ := by
+      refine Integrable.mono' (integrable_const (M₁ * Mg))
+        ((hdf₁_meas.mul hdg_meas).aemeasurable.aestronglyMeasurable) ?_
+      refine Filter.Eventually.of_forall (fun x => ?_)
+      rw [Real.norm_eq_abs, abs_mul]
+      have h1 : |deriv f₁ x| ≤ M₁ := by rw [← Real.norm_eq_abs]; exact hM₁ x
+      have h2 : |deriv g x| ≤ Mg := by rw [← Real.norm_eq_abs]; exact hMg x
+      have hM₁_nn : 0 ≤ M₁ := (norm_nonneg _).trans (hM₁ 0)
+      have hMg_nn : 0 ≤ Mg := (norm_nonneg _).trans (hMg 0)
+      exact mul_le_mul h1 h2 (abs_nonneg _) hM₁_nn
+    have hint₂ : Integrable (fun x => deriv f₂ x * deriv g x) γ := by
+      refine Integrable.mono' (integrable_const (M₂ * Mg))
+        ((hdf₂_meas.mul hdg_meas).aemeasurable.aestronglyMeasurable) ?_
+      refine Filter.Eventually.of_forall (fun x => ?_)
+      rw [Real.norm_eq_abs, abs_mul]
+      have h1 : |deriv f₂ x| ≤ M₂ := by rw [← Real.norm_eq_abs]; exact hM₂ x
+      have h2 : |deriv g x| ≤ Mg := by rw [← Real.norm_eq_abs]; exact hMg x
+      have hM₂_nn : 0 ≤ M₂ := (norm_nonneg _).trans (hM₂ 0)
+      have hMg_nn : 0 ≤ Mg := (norm_nonneg _).trans (hMg 0)
+      exact mul_le_mul h1 h2 (abs_nonneg _) hM₂_nn
+    rw [integral_add hint₁ hint₂]
   energy_smul_left := fun c f g _ _ => by
     simp only [ouEnergy]
     have h : ∀ x, deriv (c • f) x = c * deriv f x := fun x => by
@@ -174,21 +311,88 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
   energy_eq_integral_Γ := fun f g => by
     simp only [ouGamma]; rfl
   IsCore_mul := by
-    rintro f g ⟨hf_smooth, Mf, hfM⟩ ⟨hg_smooth, Mg, hgM⟩
-    refine ⟨hf_smooth.mul hg_smooth, ⟨Mf * Mg + 2 * Mf * Mg + Mf * Mg, fun x => ?_⟩⟩
-    sorry
+    rintro f g hf hg
+    obtain ⟨hf_smooth, Mf, hfM⟩ := hf
+    obtain ⟨hg_smooth, Mg, hgM⟩ := hg
+    refine ⟨hf_smooth.mul hg_smooth, ⟨Mf * Mg + 2 * (Mf * Mg) + Mf * Mg, fun x => ?_⟩⟩
+    -- derivatives:
+    have hf_core : IsCore f := ⟨hf_smooth, Mf, hfM⟩
+    have hg_core : IsCore g := ⟨hg_smooth, Mg, hgM⟩
+    have hdf := hf_core.differentiable
+    have hdg := hg_core.differentiable
+    have hdf' := hf_core.differentiable_deriv
+    have hdg' := hg_core.differentiable_deriv
+    -- (fg)' = f'g + fg'
+    have h1 : ∀ y, deriv (f * g) y = deriv f y * g y + f y * deriv g y := fun y =>
+      deriv_mul (hdf y) (hdg y)
+    have h2 : deriv (f * g) = fun y => deriv f y * g y + f y * deriv g y := by
+      ext y; exact h1 y
+    -- (fg)'' = f''g + 2 f'g' + fg''
+    have h3 : deriv (deriv (f * g)) x =
+        deriv (deriv f) x * g x + deriv f x * deriv g x +
+        (deriv f x * deriv g x + f x * deriv (deriv g) x) := by
+      rw [h2]
+      have hA : DifferentiableAt ℝ (fun y => deriv f y * g y) x :=
+        (hdf' x).mul (hdg x)
+      have hB : DifferentiableAt ℝ (fun y => f y * deriv g y) x :=
+        (hdf x).mul (hdg' x)
+      rw [deriv_fun_add hA hB]
+      congr 1
+      · exact deriv_fun_mul (hdf' x) (hdg x)
+      · exact deriv_fun_mul (hdf x) (hdg' x)
+    -- norm bounds
+    have hMf_nn : 0 ≤ Mf := (norm_nonneg _).trans (hfM 0).1
+    have hMg_nn : 0 ≤ Mg := (norm_nonneg _).trans (hgM 0).1
+    refine ⟨?_, ?_, ?_⟩
+    · -- ‖(f*g) x‖ ≤ Mf*Mg + 2(Mf*Mg) + Mf*Mg
+      show ‖f x * g x‖ ≤ Mf * Mg + 2 * (Mf * Mg) + Mf * Mg
+      have : ‖f x * g x‖ ≤ Mf * Mg := by
+        rw [norm_mul]
+        exact mul_le_mul (hfM x).1 (hgM x).1 (norm_nonneg _) hMf_nn
+      nlinarith
+    · -- ‖(fg)' x‖ ≤ total
+      rw [h1]
+      have h_le : ‖deriv f x * g x + f x * deriv g x‖ ≤ Mf * Mg + Mf * Mg := by
+        calc ‖deriv f x * g x + f x * deriv g x‖
+            ≤ ‖deriv f x * g x‖ + ‖f x * deriv g x‖ := norm_add_le _ _
+          _ = ‖deriv f x‖ * ‖g x‖ + ‖f x‖ * ‖deriv g x‖ := by rw [norm_mul, norm_mul]
+          _ ≤ Mf * Mg + Mf * Mg := by
+              gcongr
+              · exact (hfM x).2.1
+              · exact (hgM x).1
+              · exact (hfM x).1
+              · exact (hgM x).2.1
+      nlinarith
+    · -- ‖(fg)'' x‖ ≤ total
+      rw [h3]
+      have h_le : ‖deriv (deriv f) x * g x + deriv f x * deriv g x +
+            (deriv f x * deriv g x + f x * deriv (deriv g) x)‖
+          ≤ Mf * Mg + 2 * (Mf * Mg) + Mf * Mg := by
+        have e1 : ‖deriv (deriv f) x * g x‖ ≤ Mf * Mg := by
+          rw [norm_mul]; exact mul_le_mul (hfM x).2.2 (hgM x).1 (norm_nonneg _) hMf_nn
+        have e2 : ‖deriv f x * deriv g x‖ ≤ Mf * Mg := by
+          rw [norm_mul]; exact mul_le_mul (hfM x).2.1 (hgM x).2.1 (norm_nonneg _) hMf_nn
+        have e3 : ‖f x * deriv (deriv g) x‖ ≤ Mf * Mg := by
+          rw [norm_mul]; exact mul_le_mul (hfM x).1 (hgM x).2.2 (norm_nonneg _) hMf_nn
+        calc ‖deriv (deriv f) x * g x + deriv f x * deriv g x +
+                (deriv f x * deriv g x + f x * deriv (deriv g) x)‖
+            ≤ ‖deriv (deriv f) x * g x‖ + ‖deriv f x * deriv g x‖ +
+                (‖deriv f x * deriv g x‖ + ‖f x * deriv (deriv g) x‖) := by
+              exact (norm_add_le _ _).trans (add_le_add (norm_add_le _ _) (norm_add_le _ _))
+          _ ≤ Mf * Mg + Mf * Mg + (Mf * Mg + Mf * Mg) := by
+              gcongr
+          _ = Mf * Mg + 2 * (Mf * Mg) + Mf * Mg := by ring
+      exact h_le
   IsCore_semigroup := fun t ht f hf => by
     -- P_t preserves smoothness and bounded derivatives. Standard but tedious.
     sorry
-  Γ_leibniz := fun f g h _ _ _ x => by
-    -- THIS IS THE KEY FIELD that fails for TwoPoint but holds here.
-    -- Γ(fg, h)(x) = deriv(fg)(x) · deriv h(x)
-    --             = (f(x)·deriv g(x) + g(x)·deriv f(x)) · deriv h(x)  [product rule]
-    --             = f(x)·Γ(g,h)(x) + g(x)·Γ(f,h)(x)
-    -- Needs DifferentiableAt for deriv_mul. Sorry for general functions;
-    -- holds for all smooth/differentiable functions (the intended domain).
+  Γ_leibniz := fun f g h hf hg _ x => by
     simp only [ouGamma]
-    sorry
+    -- deriv(fg) = deriv f * g + f * deriv g
+    have hdf : DifferentiableAt ℝ f x := hf.differentiable.differentiableAt
+    have hdg : DifferentiableAt ℝ g x := hg.differentiable.differentiableAt
+    have : deriv (f * g) x = deriv f x * g x + f x * deriv g x := deriv_mul hdf hdg
+    rw [this]; ring
   Γ_const := fun c f => by
     ext x; simp only [ouGamma, deriv_const, Pi.zero_apply]; ring
   semigroup := ouSemigroup
@@ -211,11 +415,93 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
     -- gives a Mehler kernel with parameter (s+t), using
     -- e^{-(s+t)} = e^{-s}·e^{-t} and the Gaussian convolution formula.
     sorry
-  semigroup_contraction := fun f t ht _ => by
-    -- Jensen: ∫(P_t f)² dγ ≤ ∫ f² dγ since (·)² is convex and P_t is a
-    -- Markov operator (positive, mass-preserving).
-    sorry
-  semigroup_mean := fun f t ht _ => by
+  semigroup_contraction := fun f t ht hf_core => by
+    -- Jensen + kernel change of variables. Let φ(x,y) = ax+by where
+    -- a = e^{-t}, b = √(1-e^{-2t}). Then:
+    --   (P_t f x)² = (∫_y f(ax+by) dγ)² ≤ ∫_y f(ax+by)² dγ   (Jensen for x²)
+    -- integrate in x, use ou_kernel_map with f²:
+    --   ∫_x ∫_y f(ax+by)² dγ dγ = ∫_p f(φ p)² d(γ⊗γ) = ∫ f² dγ
+    set a := exp (-t)
+    set b := sqrt (1 - exp (-2 * t))
+    set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+    have hφ : Measurable φ := Measurable.add
+      (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+    have hmap := ou_kernel_map t ht
+    have hf_meas : Measurable f := hf_core.measurable
+    have hf_cont : Continuous f := hf_core.continuous
+    obtain ⟨M, hM⟩ := hf_core.bounded
+    -- integrability of f² under γ
+    have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+    have hf2_int : Integrable (fun x => f x ^ 2) γ := by
+      refine Integrable.mono' (integrable_const (M^2))
+        ((hf_meas.pow_const 2).aemeasurable.aestronglyMeasurable) ?_
+      refine Filter.Eventually.of_forall (fun x => ?_)
+      have h1 : |f x| ≤ M := by rw [← Real.norm_eq_abs]; exact hM x
+      have h2 : (f x)^2 ≤ M^2 := by
+        have : |f x|^2 ≤ M^2 := by nlinarith [abs_nonneg (f x)]
+        rwa [sq_abs] at this
+      rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+      have : ‖M^2‖ = M^2 := by rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+      linarith
+    -- f² composed with φ is integrable on γ⊗γ
+    have hf2_φ_int : Integrable (fun p => (f (φ p))^2) (γ.prod γ) := by
+      have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
+      have hf2_aesm : AEStronglyMeasurable (fun x => f x ^ 2) ((γ.prod γ).map φ) := by
+        rw [hmap]; exact (hf_meas.pow_const 2).aestronglyMeasurable
+      have hf2_int' : Integrable (fun x => f x ^ 2) ((γ.prod γ).map φ) := by
+        rw [hmap]; exact hf2_int
+      exact (integrable_map_measure hf2_aesm hφ.aemeasurable).mp hf2_int'
+    -- φ_x : y ↦ f(ax+by). For each x, integrable on γ; its square too.
+    have hfφ_int : ∀ x, Integrable (fun y => f (a * x + b * y)) γ := by
+      intro x
+      -- bounded by M, measurable
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hf_meas.comp (measurable_const.add (measurable_const.mul measurable_id')))
+          |>.aestronglyMeasurable
+      · exact Filter.Eventually.of_forall (fun y => (hM (a*x + b*y)))
+    -- Jensen: for convex g = (·)², probability measure γ, integrable f:
+    -- g(∫ f dγ) ≤ ∫ g∘f dγ
+    have h_convex : ConvexOn ℝ Set.univ (fun x : ℝ => x^2) :=
+      Even.convexOn_pow (Nat.even_iff.mpr rfl)
+    have h_cont : ContinuousOn (fun x : ℝ => x^2) Set.univ :=
+      (continuous_pow 2).continuousOn
+    have h_closed : IsClosed (Set.univ : Set ℝ) := isClosed_univ
+    -- For each x, apply Jensen to y ↦ f(ax+by).
+    have hJensen : ∀ x, (∫ y, f (a*x + b*y) ∂γ)^2 ≤ ∫ y, (f (a*x + b*y))^2 ∂γ := by
+      intro x
+      have hfφ_aesm : ∀ᵐ y ∂γ, f (a*x + b*y) ∈ (Set.univ : Set ℝ) :=
+        Filter.Eventually.of_forall (fun y => Set.mem_univ _)
+      have hfφ2_int : Integrable (fun y => (f (a*x + b*y))^2) γ := by
+        refine Integrable.mono' (integrable_const (M^2)) ?_ ?_
+        · exact ((hf_meas.comp (measurable_const.add (measurable_const.mul measurable_id')))
+            |>.pow_const 2).aestronglyMeasurable
+        · refine Filter.Eventually.of_forall (fun y => ?_)
+          have hnn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+          rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+          have h1 : |f (a*x + b*y)| ≤ M := by
+            rw [← Real.norm_eq_abs]; exact hM (a*x + b*y)
+          have h2 : (f (a*x + b*y))^2 ≤ M^2 := by
+            have : |f (a*x + b*y)|^2 ≤ M^2 := by nlinarith [abs_nonneg (f (a*x + b*y))]
+            rwa [sq_abs] at this
+          have : ‖M^2‖ = M^2 := by rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+          linarith
+      exact ConvexOn.map_integral_le h_convex h_cont h_closed hfφ_aesm (hfφ_int x) hfφ2_int
+    -- now integrate
+    show ∫ x, (ouSemigroup t f x) ^ 2 ∂γ ≤ ∫ x, (f x) ^ 2 ∂γ
+    simp only [ouSemigroup]
+    calc ∫ x, (∫ y, f (a * x + b * y) ∂γ) ^ 2 ∂γ
+        ≤ ∫ x, ∫ y, (f (a*x + b*y))^2 ∂γ ∂γ := by
+          apply integral_mono_of_nonneg
+          · exact Filter.Eventually.of_forall (fun x => sq_nonneg _)
+          · -- integrability of the RHS: x ↦ ∫ y, (f(ax+by))² dγ
+            exact hf2_φ_int.integral_prod_left
+          · exact Filter.Eventually.of_forall hJensen
+      _ = ∫ p, (f (φ p))^2 ∂(γ.prod γ) := (integral_prod _ hf2_φ_int).symm
+      _ = ∫ x, (f x)^2 ∂γ := by
+          -- ∫ f² d((γ⊗γ).map φ) = ∫ f² dγ by ou_kernel_map
+          have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
+          exact hlaw.integral_comp (hf_meas.pow_const 2).aestronglyMeasurable
+  semigroup_mean := fun f t ht hf_core => by
     -- Unfold to get γ explicitly
     show ∫ x, ouSemigroup t f x ∂γ = ∫ x, f x ∂γ
     simp only [ouSemigroup]
@@ -227,31 +513,19 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
       (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
     have hmap := ou_kernel_map t ht
     have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
-    by_cases hf : AEStronglyMeasurable f γ
-    · -- ∫ f dγ = ∫ f ∘ φ d(γ×γ) by HasLaw.integral_comp
-      have hcomp : ∫ p, f (φ p) ∂(γ.prod γ) = ∫ x, f x ∂γ :=
-        hlaw.integral_comp hf
-      rw [← hcomp]
-      by_cases hint : Integrable f γ
-      · -- Integrable: use Fubini
-        have hasm' : AEStronglyMeasurable f ((γ.prod γ).map φ) := by rwa [hmap]
-        have hint' : Integrable f ((γ.prod γ).map φ) := by rwa [hmap]
-        have hfφ : Integrable (f ∘ φ) (γ.prod γ) :=
-          (integrable_map_measure hasm' hφ.aemeasurable).mp hint'
-        -- Goal: ∫ x, (∫ y, f(φ(x,y)) dγ) dγ = ∫ p, f(φ p) d(γ.prod γ)
-        -- This is Fubini backward: integral_prod gives ∫ prod = ∫∫ iterated
-        exact (integral_prod (f ∘ φ) hfφ).symm
-      · -- AEStronglyMeasurable but not integrable: the iterated integral
-        -- equals the product integral (both are 0).
-        -- RHS = ∫ f dγ = 0 since f is not integrable
-        rw [hcomp, integral_undef hint]
-        -- LHS = 0: requires showing the iterated integral vanishes
-        -- when the product integral is not integrable.
-        sorry
-    · -- f is not AEStronglyMeasurable w.r.t. γ: both sides = 0
-      rw [integral_non_aestronglyMeasurable hf]
-      -- The iterated integral is 0 because f is not measurable
-      sorry
+    -- Under IsCore, f is AEStronglyMeasurable and Integrable.
+    have hf : AEStronglyMeasurable f γ :=
+      hf_core.stronglyMeasurable.aestronglyMeasurable
+    have hint : Integrable f γ := hf_core.integrable
+    have hcomp : ∫ p, f (φ p) ∂(γ.prod γ) = ∫ x, f x ∂γ :=
+      hlaw.integral_comp hf
+    rw [← hcomp]
+    have hasm' : AEStronglyMeasurable f ((γ.prod γ).map φ) := by rwa [hmap]
+    have hint' : Integrable f ((γ.prod γ).map φ) := by rwa [hmap]
+    have hfφ : Integrable (f ∘ φ) (γ.prod γ) :=
+      (integrable_map_measure hasm' hφ.aemeasurable).mp hint'
+    -- Goal: ∫ x, (∫ y, f(φ(x,y)) dγ) dγ = ∫ p, f(φ p) d(γ.prod γ)
+    exact (integral_prod (f ∘ φ) hfφ).symm
   semigroup_selfAdjoint := fun f g t ht _ _ => by
     -- Self-adjointness: the Mehler kernel K(t,x,y) is symmetric in (x,y)
     -- after accounting for the Gaussian weight.
