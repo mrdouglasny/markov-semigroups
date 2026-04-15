@@ -84,10 +84,12 @@ theorem influenceCoeff_zero_of_not_neighbor (γ : GibbsSpec (LatticeSite d) S)
     influenceCoeff γ x y = 0 := by
   unfold influenceCoeff
   -- The set defining influenceCoeff consists entirely of zeros,
-  -- because non-neighbor modifications don't affect the conditional.
+  -- because non-neighbor modifications don't affect the conditional,
+  -- and hence don't affect its site-x marginal either.
   set T := {c : ℝ | ∃ (σ τ : SpinConfig (LatticeSite d) S),
       (∀ z, z ≠ y → σ z = τ z) ∧
-      c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}
+      c = tvDist (marginalAtSite (γ.condDist {x} σ) x)
+                 (marginalAtSite (γ.condDist {x} τ) x)}
   -- Every element of T is 0
   have hall : ∀ c ∈ T, c = 0 := by
     rintro c ⟨σ, τ, hagree, hc⟩
@@ -98,6 +100,8 @@ theorem influenceCoeff_zero_of_not_neighbor (γ : GibbsSpec (LatticeSite d) S)
       apply hagree
       intro hzy; subst hzy; simp [hz] at hxy
     rw [hc, tvDist_eq]
+    -- Marginals of equal measures are equal
+    congr 1
     exact hNN.local_dep x σ τ hneighbors
   -- T ⊆ {0}
   have hsub : T ⊆ {0} := by

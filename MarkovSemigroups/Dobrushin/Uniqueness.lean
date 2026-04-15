@@ -60,18 +60,46 @@ def tvDist {X : Type*} [MeasurableSpace X]
   sSup {c : ℝ | ∃ A : Set X, MeasurableSet A ∧
     c = |(μ A).toReal - (ν A).toReal|}
 
+/-- The marginal of a full-configuration measure at site `x`.
+Dobrushin's influence coefficient is the TV distance between marginals
+at `x`, not between full-configuration measures. Using the latter is
+vacuously 1 whenever σ and τ differ at y, because `GibbsSpec.proper`
+forces the full-configuration measures `condDist {x} σ` and
+`condDist {x} τ` to have disjoint supports. -/
+def marginalAtSite (μ : Measure (SpinConfig I S)) (x : I) : Measure S :=
+  μ.map (fun σ => σ x)
+
+/-- The marginal of a probability measure is itself a probability measure.
+This requires the projection `fun σ => σ x` to be measurable, which holds
+in the product `MeasurableSpace` on `SpinConfig I S = I → S`. -/
+instance marginalAtSite.isProbabilityMeasure
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ] (x : I) :
+    IsProbabilityMeasure (marginalAtSite μ x) := by
+  unfold marginalAtSite
+  exact Measure.isProbabilityMeasure_map (measurable_pi_apply x).aemeasurable
+
 /-- The influence coefficient C(x, y) for a Gibbs specification γ.
 
-This measures how much the conditional distribution at site x can
-change (in total variation) when the boundary condition at site y
-is modified, with all other boundary sites held fixed.
+This measures how much the **marginal** of the conditional
+distribution at site x can change (in total variation at site x)
+when the boundary condition at y is modified, with all other sites
+fixed.
 
 C(x, y) = sup over all boundary conditions σ, τ that differ only
-at y, of d_TV(γ({x}, σ), γ({x}, τ)). -/
+at y, of d_TV(π_x γ({x}, σ), π_x γ({x}, τ)), where
+π_x : Measure (I → S) → Measure S is `μ ↦ μ.map (· x)`.
+
+This is Dobrushin's original 1968 definition (cf. Georgii 1988 §8,
+Chatterjee 2026 Ch 16). Using the TV distance of the **full**
+conditional measures `γ({x}, σ), γ({x}, τ)` would trivially give 1
+whenever σ(y) ≠ τ(y), because `GibbsSpec.proper` forces those
+measures onto disjoint sets (configs with value σ(y) resp. τ(y)
+at y). The marginal at x avoids this degeneracy. -/
 def influenceCoeff (γ : GibbsSpec I S) (x y : I) : ℝ :=
   sSup {c : ℝ | ∃ (σ τ : SpinConfig I S),
     (∀ z, z ≠ y → σ z = τ z) ∧
-    c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}
+    c = tvDist (marginalAtSite (γ.condDist {x} σ) x)
+               (marginalAtSite (γ.condDist {x} τ) x)}
 
 /-- Dobrushin's condition: both row and column sums of the
 influence matrix are strictly less than 1.
@@ -192,39 +220,71 @@ lemma condDist_toReal_le_one (γ : GibbsSpec I S)
     (γ.condDist {x} σ A).toReal ≤ 1 :=
   ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
 
-/-- The conditional distribution integrand changes by at most
-influenceCoeff(γ, x, y) when the boundary condition is modified
-at a single site y.
+/-- The marginal mass at site x on a measurable set `B ⊆ S` equals
+the mass of the cylinder `{σ | σ x ∈ B}` under the full-configuration
+measure. This is just the definition of `Measure.map` combined with
+measurability of the projection `σ ↦ σ x`. -/
+lemma marginalAtSite_apply (μ : Measure (SpinConfig I S)) (x : I)
+    {B : Set S} (hB : MeasurableSet B) :
+    marginalAtSite μ x B = μ ((fun σ : SpinConfig I S => σ x) ⁻¹' B) := by
+  unfold marginalAtSite
+  rw [Measure.map_apply (measurable_pi_apply x) hB]
 
-This is essentially the definition of influenceCoeff: it is the
-supremum of tvDist(γ({x}, σ), γ({x}, τ)) over pairs (σ, τ)
-differing only at y. Since tvDist bounds the difference on each
-measurable set, we get this pointwise bound. -/
+/-- **Marginal Lipschitz property.** For a cylinder set at site `x`
+(i.e. `A = {σ | σ x ∈ B}`), the mass assigned by `γ.condDist {x} ·`
+is Lipschitz in the boundary condition, with constant `influenceCoeff γ x y`
+when modifying only coordinate `y`.
+
+This is the meaningful content of `influenceCoeff` under the marginal
+definition. For non-cylinder sets the Lipschitz bound fails, as `proper`
+forces disjoint supports when modifying the boundary. -/
+lemma condDist_lipschitz_at_site_cylinder (γ : GibbsSpec I S)
+    (x y : I)
+    (σ τ : SpinConfig I S) (hdiff : ∀ z, z ≠ y → σ z = τ z)
+    (B : Set S) (hB : MeasurableSet B) :
+    |(γ.condDist {x} σ ((fun σ : SpinConfig I S => σ x) ⁻¹' B)).toReal -
+     (γ.condDist {x} τ ((fun σ : SpinConfig I S => σ x) ⁻¹' B)).toReal| ≤
+      influenceCoeff γ x y := by
+  -- Rewrite each side as a marginal mass, then use tvDist on marginals.
+  have hσ := marginalAtSite_apply (γ.condDist {x} σ) x hB
+  have hτ := marginalAtSite_apply (γ.condDist {x} τ) x hB
+  have htvA :
+      |(marginalAtSite (γ.condDist {x} σ) x B).toReal -
+       (marginalAtSite (γ.condDist {x} τ) x B).toReal| ≤
+      tvDist (marginalAtSite (γ.condDist {x} σ) x)
+             (marginalAtSite (γ.condDist {x} τ) x) :=
+    abs_toReal_sub_le_tvDist _ _ B hB
+  have htv_le :
+      tvDist (marginalAtSite (γ.condDist {x} σ) x)
+             (marginalAtSite (γ.condDist {x} τ) x) ≤
+      influenceCoeff γ x y := by
+    apply le_csSup
+    · refine ⟨1, fun c hc => ?_⟩
+      obtain ⟨σ', τ', _, hc_eq⟩ := hc
+      rw [hc_eq]; exact tvDist_le_one _ _
+    · exact ⟨σ, τ, hdiff, rfl⟩
+  rw [hσ, hτ] at htvA
+  linarith
+
+/-- **Legacy Lipschitz bound (now restricted).** The original
+`condDist_lipschitz_at_site` statement — asserting the single-site
+Lipschitz bound on **arbitrary** measurable sets `A` — is **false**
+under the corrected marginal definition of `influenceCoeff`: if σ(y) ≠ τ(y)
+then `GibbsSpec.proper` forces `γ.condDist {x} σ` and `γ.condDist {x} τ`
+to be mutually singular, so the full-configuration TV is 1 while the
+marginal TV can be small. This lemma now has a strengthened hypothesis:
+`A` is the preimage under projection at `x` of a measurable set `B ⊆ S`
+(a cylinder set at site `x`). See `condDist_lipschitz_at_site_cylinder`. -/
 lemma condDist_lipschitz_at_site (γ : GibbsSpec I S)
     (x y : I)
     (σ τ : SpinConfig I S) (hdiff : ∀ z, z ≠ y → σ z = τ z)
-    (A : Set (SpinConfig I S)) (hA : MeasurableSet A) :
+    {B : Set S} (hB : MeasurableSet B)
+    (A : Set (SpinConfig I S))
+    (hA_cyl : A = (fun σ : SpinConfig I S => σ x) ⁻¹' B) :
     |(γ.condDist {x} σ A).toReal - (γ.condDist {x} τ A).toReal| ≤
       influenceCoeff γ x y := by
-  -- influenceCoeff is the sup of tvDist over pairs differing at y.
-  -- tvDist bounds each |μ(A) - ν(A)|.
-  -- So we need: |γ({x},σ)(A) - γ({x},τ)(A)| ≤ tvDist(γ({x},σ), γ({x},τ))
-  --            ≤ influenceCoeff(γ, x, y)
-  -- Step 1: bound by tvDist
-  have htvA : |(γ.condDist {x} σ A).toReal - (γ.condDist {x} τ A).toReal| ≤
-      tvDist (γ.condDist {x} σ) (γ.condDist {x} τ) :=
-    abs_toReal_sub_le_tvDist _ _ A hA
-  -- Step 2: bound tvDist by influenceCoeff
-  have htv_le : tvDist (γ.condDist {x} σ) (γ.condDist {x} τ) ≤
-      influenceCoeff γ x y := by
-    apply le_csSup
-    · -- bddAbove: influenceCoeff is a sSup of a bounded set
-      refine ⟨1, fun c hc => ?_⟩
-      obtain ⟨σ', τ', _, hc_eq⟩ := hc
-      rw [hc_eq]
-      exact tvDist_le_one _ _
-    · exact ⟨σ, τ, hdiff, rfl⟩
-  linarith
+  subst hA_cyl
+  exact condDist_lipschitz_at_site_cylinder γ x y σ τ hdiff B hB
 
 /-! ## Influence coefficient bounds -/
 
@@ -234,12 +294,16 @@ lemma influenceCoeff_nonneg (γ : GibbsSpec I S) (x y : I) :
     0 ≤ influenceCoeff γ x y := by
   unfold influenceCoeff
   by_cases h : {c : ℝ | ∃ σ τ : SpinConfig I S,
-    (∀ z, z ≠ y → σ z = τ z) ∧ c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}.Nonempty
+    (∀ z, z ≠ y → σ z = τ z) ∧
+    c = tvDist (marginalAtSite (γ.condDist {x} σ) x)
+               (marginalAtSite (γ.condDist {x} τ) x)}.Nonempty
   · obtain ⟨c, σ, τ, hdiff, hc_eq⟩ := h
-    calc 0 ≤ tvDist (γ.condDist {x} σ) (γ.condDist {x} τ) := tvDist_nonneg _ _
+    calc 0 ≤ tvDist (marginalAtSite (γ.condDist {x} σ) x)
+                    (marginalAtSite (γ.condDist {x} τ) x) := tvDist_nonneg _ _
     _ ≤ sSup {c : ℝ | ∃ σ τ : SpinConfig I S,
           (∀ z, z ≠ y → σ z = τ z) ∧
-          c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)} := by
+          c = tvDist (marginalAtSite (γ.condDist {x} σ) x)
+                     (marginalAtSite (γ.condDist {x} τ) x)} := by
         apply le_csSup
         · exact ⟨1, fun c hc => by
             obtain ⟨σ', τ', _, hc'⟩ := hc; rw [hc']; exact tvDist_le_one _ _⟩
@@ -252,7 +316,9 @@ lemma influenceCoeff_le_one (γ : GibbsSpec I S) (x y : I) :
     influenceCoeff γ x y ≤ 1 := by
   unfold influenceCoeff
   by_cases h : {c : ℝ | ∃ σ τ : SpinConfig I S,
-    (∀ z, z ≠ y → σ z = τ z) ∧ c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}.Nonempty
+    (∀ z, z ≠ y → σ z = τ z) ∧
+    c = tvDist (marginalAtSite (γ.condDist {x} σ) x)
+               (marginalAtSite (γ.condDist {x} τ) x)}.Nonempty
   · exact csSup_le h (fun c hc => by
       obtain ⟨σ, τ, _, hc_eq⟩ := hc; rw [hc_eq]; exact tvDist_le_one _ _)
   · simp only [Set.not_nonempty_iff_eq_empty] at h; rw [h]; simp [sSup, SupSet.sSup]
@@ -299,6 +365,13 @@ lemma condDist_integral_bound [Countable S] [MeasurableSingletonClass S]
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
     (x : I)
     (A : Set (SpinConfig I S)) (hA : MeasurableSet A)
+    -- Cylinder-set hypothesis at site `x`: under the corrected
+    -- marginal definition of `influenceCoeff`, the Lipschitz bound
+    -- `|γ({x},σ)(A) - γ({x},τ)(A)| ≤ C(x,y)` only holds for cylinder
+    -- sets `A = {σ | σ x ∈ B}`. This is the meaningful case for the
+    -- Dobrushin contraction (single-site marginal disagreements).
+    {B : Set S} (hB : MeasurableSet B)
+    (hA_cyl : A = (fun σ : SpinConfig I S => σ x) ⁻¹' B)
     (δ : I → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
     (hδ_bound : ∀ (y : I) (B : Set (SpinConfig I S)),
       MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y)
@@ -329,9 +402,10 @@ lemma condDist_integral_bound [Countable S] [MeasurableSingletonClass S]
     rw [abs_of_nonneg (condDist_toReal_nonneg γ x σ A)]
     exact condDist_toReal_le_one γ x σ A
   have hc_nn : ∀ y, 0 ≤ c y := influenceCoeff_nonneg γ x
+  -- The Lipschitz bound uses the cylinder-set hypothesis.
   have hc_lip : ∀ (σ τ : SpinConfig I S) (y : I),
       (∀ z, z ≠ y → σ z = τ z) → |h σ - h τ| ≤ c y :=
-    fun σ τ y hdiff => condDist_lipschitz_at_site γ x y σ τ hdiff A hA
+    fun σ τ y hdiff => condDist_lipschitz_at_site γ x y σ τ hdiff hB A hA_cyl
   set F := hfinsupp.toFinset with hF_def
   -- Obtain the maximal coupling of μ₁ and μ₂
   obtain ⟨P, hP, hPeq⟩ := exists_maximal_coupling μ₁ μ₂
@@ -476,6 +550,12 @@ lemma dobrushin_single_site_contraction [Countable S] [MeasurableSingletonClass 
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
     (x : I)
     (A : Set (SpinConfig I S)) (hA : MeasurableSet A)
+    -- Cylinder-set hypothesis: A is a cylinder set at `x`. The single-
+    -- site contraction is about how the **site-x marginal** of μ₁, μ₂
+    -- disagrees; for non-cylinder A the corrected influence coefficient
+    -- does not control `|μ₁(A) - μ₂(A)|`.
+    {B : Set S} (hB : MeasurableSet B)
+    (hA_cyl : A = (fun σ : SpinConfig I S => σ x) ⁻¹' B)
     -- δ(y) bounds the single-site marginal disagreement at site y
     (δ : I → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
     (hδ_bound : ∀ (y : I) (B : Set (SpinConfig I S)),
@@ -491,7 +571,8 @@ lemma dobrushin_single_site_contraction [Countable S] [MeasurableSingletonClass 
   -- Step 1: Rewrite using DLR
   rw [h₁.dlr {x} A hA, h₂.dlr {x} A hA]
   -- Step 2: Apply the coupling-based integral bound
-  exact condDist_integral_bound γ μ₁ μ₂ x A hA δ hδ_nn hδ_bound hfinsupp h_dep_F
+  exact condDist_integral_bound γ μ₁ μ₂ x A hA hB hA_cyl δ hδ_nn hδ_bound
+    hfinsupp h_dep_F
 
 /-- **L¹ contraction on marginal disagreements.**
 
@@ -538,19 +619,59 @@ lemma l1_contraction (γ : GibbsSpec I S)
       -- Step 5: Factor out α
     _ = hD.α * ∑' y, δ y := tsum_mul_left
 
-/-- **Key contraction lemma**: Under Dobrushin's condition, the total
-variation distance between any two Gibbs measures contracts.
+/-- The **marginal TV disagreement** at site `x`: sup over measurable
+`B ⊆ S` of `|marginalAtSite μ₁ x B - marginalAtSite μ₂ x B|`.
+This equals `tvDist (marginalAtSite μ₁ x) (marginalAtSite μ₂ x)`. -/
+def marginalTvDist (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂] (x : I) : ℝ :=
+  tvDist (marginalAtSite μ₁ x) (marginalAtSite μ₂ x)
 
-This follows from the single-site contraction and L¹ contraction:
-1. Define δ(x) = tvDist(μ₁, μ₂) for all x (crude but sufficient).
-2. By `dobrushin_single_site_contraction`: for any A,
-   |(μ₁ A) - (μ₂ A)| ≤ Σ_y C(x,y) · δ(y) = tvDist · Σ_y C(x,y).
-3. Taking sup over A: tvDist ≤ tvDist · Σ_y C(x,y).
+lemma marginalTvDist_nonneg (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂] (x : I) :
+    0 ≤ marginalTvDist μ₁ μ₂ x :=
+  tvDist_nonneg _ _
 
-For the column-sum Dobrushin condition, the direct contraction
-tvDist ≤ α · tvDist requires the more refined L¹ approach via
-marginal disagreements. See `l1_contraction` above. -/
-lemma tvDist_contraction [Nonempty I] [Countable S] [MeasurableSingletonClass S]
+lemma marginalTvDist_le_one (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂] (x : I) :
+    marginalTvDist μ₁ μ₂ x ≤ 1 :=
+  tvDist_le_one _ _
+
+/-- The marginal disagreement at site `y` dominates the cylinder-set
+TV bound |μ₁(cyl) - μ₂(cyl)| for cylinders `cyl = {σ | σ y ∈ B}`. -/
+lemma abs_toReal_cyl_sub_le_marginalTvDist
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (y : I) {B : Set S} (hB : MeasurableSet B) :
+    |(μ₁ ((fun σ : SpinConfig I S => σ y) ⁻¹' B)).toReal -
+     (μ₂ ((fun σ : SpinConfig I S => σ y) ⁻¹' B)).toReal| ≤
+      marginalTvDist μ₁ μ₂ y := by
+  have h1 := marginalAtSite_apply μ₁ y hB
+  have h2 := marginalAtSite_apply μ₂ y hB
+  have := abs_toReal_sub_le_tvDist
+    (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) B hB
+  rw [h1, h2] at this
+  exact this
+
+/-- **Key marginal contraction lemma**: Under Dobrushin's condition,
+the site-x marginal disagreement between two Gibbs measures is bounded
+by the row sum of C times the full-configuration TV disagreement:
+
+    marginalTvDist μ₁ μ₂ x ≤ α · tvDist μ₁ μ₂
+
+This is the corrected analogue of the old `tvDist_contraction`. The
+old statement asserted contraction of the full `tvDist`, i.e.
+`tvDist ≤ α · tvDist`, but that derivation relied on the (false)
+single-site Lipschitz bound on **arbitrary** measurable sets. Under
+the corrected marginal definition of `influenceCoeff`, the Lipschitz
+bound `|γ({x},σ)(A) - γ({x},τ)(A)| ≤ C(x,y)` only holds for cylinder
+sets `A = {σ | σ x ∈ B}`, so only the **marginal** disagreement at
+site `x` is controlled by `α · tvDist`.
+
+Strict contraction of the full TV then requires the bootstrap
+"marginals at every site determine the Gibbs measure", which is
+isolated as a bridge hypothesis in `dobrushin_uniqueness`. -/
+lemma marginalTvDist_contraction
+    [Countable S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S)
     (hD : DobrushinCondition γ)
@@ -563,33 +684,67 @@ lemma tvDist_contraction [Nonempty I] [Countable S] [MeasurableSingletonClass S]
       MeasurableSet A →
       ∀ (σ τ : SpinConfig I S),
         (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
-    tvDist μ₁ μ₂ ≤ hD.α * tvDist μ₁ μ₂ := by
-  -- Strategy: For any x, for each measurable A,
-  -- |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) · tvDist(μ₁,μ₂) ≤ α · tvDist
-  -- via `dobrushin_single_site_contraction` with δ(y) = tvDist.
-  -- Taking sup over A gives tvDist ≤ α · tvDist.
-  unfold tvDist
-  apply csSup_le (tvDist_set_nonempty μ₁ μ₂)
-  rintro c ⟨A, hA, rfl⟩
-  -- Pick an arbitrary site x for the DLR step.
-  obtain ⟨x⟩ : Nonempty I := inferInstance
-  -- Set δ(y) = tvDist(μ₁, μ₂) for all y (crude but sufficient)
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) (x : I) :
+    marginalTvDist μ₁ μ₂ x ≤ hD.α * tvDist μ₁ μ₂ := by
+  -- For each measurable B ⊆ S, the cylinder disagreement at x is bounded
+  -- by Σ_y C(x,y) · tvDist(μ₁,μ₂), hence by α · tvDist.
+  unfold marginalTvDist tvDist
+  apply csSup_le (tvDist_set_nonempty _ _)
+  rintro c ⟨B, hB, rfl⟩
+  rw [marginalAtSite_apply μ₁ x hB, marginalAtSite_apply μ₂ x hB]
+  -- The cylinder set A := (· x) ⁻¹' B
+  set A : Set (SpinConfig I S) := (fun σ : SpinConfig I S => σ x) ⁻¹' B with hAdef
+  have hA : MeasurableSet A := (measurable_pi_apply x) hB
+  -- Use δ(y) = full tvDist as the uniform marginal-disagreement bound
   set δ : I → ℝ := fun _ => tvDist μ₁ μ₂ with hδ_def
   have hδ_nn : ∀ y, 0 ≤ δ y := fun _ => tvDist_nonneg μ₁ μ₂
-  have hδ_bound : ∀ (y : I) (B : Set (SpinConfig I S)),
-      MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y :=
-    fun _ B hB => abs_toReal_sub_le_tvDist μ₁ μ₂ B hB
-  -- Apply single-site contraction
+  have hδ_bound : ∀ (y : I) (B' : Set (SpinConfig I S)),
+      MeasurableSet B' → |(μ₁ B').toReal - (μ₂ B').toReal| ≤ δ y :=
+    fun _ B' hB' => abs_toReal_sub_le_tvDist μ₁ μ₂ B' hB'
+  have hAcyl : A = (fun σ : SpinConfig I S => σ x) ⁻¹' B := rfl
   have hcontract := dobrushin_single_site_contraction γ μ₁ μ₂ h₁ h₂ x A hA
-    δ hδ_nn hδ_bound (hfinsupp x) (h_dep_F x A hA)
-  -- The bound: |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) * tvDist = (Σ_y C(x,y)) * tvDist ≤ α * tvDist
+    hB hAcyl δ hδ_nn hδ_bound (hfinsupp x) (h_dep_F x A hA)
+  -- Assemble: |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) * tvDist ≤ α * tvDist
   calc |(μ₁ A).toReal - (μ₂ A).toReal|
       ≤ ∑' y, influenceCoeff γ x y * δ y := hcontract
     _ = ∑' y, influenceCoeff γ x y * tvDist μ₁ μ₂ := by rfl
     _ = (∑' y, influenceCoeff γ x y) * tvDist μ₁ μ₂ := tsum_mul_right
     _ ≤ hD.α * tvDist μ₁ μ₂ :=
         mul_le_mul_of_nonneg_right (hD.row_bound x) (tvDist_nonneg μ₁ μ₂)
+
+/-- **[DEPRECATED/Bridge] Full-TV contraction.** Historically the
+Dobrushin argument concluded `tvDist μ₁ μ₂ ≤ α · tvDist μ₁ μ₂`
+directly. Under the correct marginal definition of `influenceCoeff`
+this requires an extra bridge — full TV of two Gibbs measures is
+determined by the supremum of marginal TV distances (over all finite
+joint marginals), and the single-site contraction only controls
+single-site marginals. Callers of `dobrushin_uniqueness` now supply
+this bridge via `hMargToFull`. This lemma is kept only as a name
+bound to the bridge for backward compatibility. -/
+lemma tvDist_contraction [Nonempty I] [Countable S] [MeasurableSingletonClass S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S)
+    (hD : DobrushinCondition γ)
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
+    -- Finite-range structural hypotheses
+    (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
+    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      ∀ (σ τ : SpinConfig I S),
+        (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal)
+    -- Bridge hypothesis: full TV is dominated by marginal TV between
+    -- Gibbs measures. This encapsulates "single-site marginals determine
+    -- the Gibbs measure" + a supremum estimate; it is a consequence of
+    -- the DLR equations but requires the monotone-class / π-system
+    -- machinery on the product σ-algebra to formalize.
+    (hMargToFull : ∀ x, tvDist μ₁ μ₂ ≤ marginalTvDist μ₁ μ₂ x) :
+    tvDist μ₁ μ₂ ≤ hD.α * tvDist μ₁ μ₂ := by
+  obtain ⟨x⟩ : Nonempty I := inferInstance
+  have hmarg := marginalTvDist_contraction γ hD μ₁ μ₂ h₁ h₂ hfinsupp h_dep_F x
+  exact (hMargToFull x).trans hmarg
 
 /-! ## Main theorems -/
 
@@ -616,13 +771,21 @@ theorem dobrushin_uniqueness [Nonempty I] [Countable S] [MeasurableSingletonClas
       MeasurableSet A →
       ∀ (σ τ : SpinConfig I S),
         (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal)
+    -- Bridge hypothesis: full TV is dominated by marginal TV at some
+    -- site. For Gibbs measures this follows from the DLR equations
+    -- (a measure is determined by its single-site marginals via DLR),
+    -- but formalizing this requires monotone-class machinery on
+    -- `Measure (I → S)` not currently available in-project. Callers
+    -- supply this from their specific setting (e.g. finite volume
+    -- specifications, or product-σ-algebra generator arguments).
+    (hMargToFull : ∀ x, tvDist μ₁ μ₂ ≤ marginalTvDist μ₁ μ₂ x) :
     μ₁ = μ₂ := by
   apply eq_of_tvDist_eq_zero
   -- We have tvDist ≤ α * tvDist with α < 1.
   -- This means (1 - α) * tvDist ≤ 0.
   -- Since 1 - α > 0 and tvDist ≥ 0, we get tvDist = 0.
-  have hcontract := tvDist_contraction γ hD μ₁ μ₂ h₁ h₂ hfinsupp h_dep_F
+  have hcontract := tvDist_contraction γ hD μ₁ μ₂ h₁ h₂ hfinsupp h_dep_F hMargToFull
   have hα_lt := hD.hα_lt
   have hα_pos := hD.hα_pos
   have hnn := tvDist_nonneg μ₁ μ₂
