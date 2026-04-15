@@ -35,43 +35,55 @@ noncomputable section
 
 /-! ## Lattice sites and spin configurations -/
 
-/-- A lattice in Z^d. We work with `Fin d → ℤ` as sites. -/
+/-- A spin configuration assigns a spin value to each site `I`.
+The site type `I` is left abstract; the canonical example for lattice
+spin systems is `I = LatticeSite d := Fin d → ℤ`. -/
+abbrev SpinConfig (I : Type*) (S : Type*) := I → S
+
+/-- A lattice in Z^d. We work with `Fin d → ℤ` as sites.
+Kept as an alias for backward compatibility and as the canonical
+example of a site type; the abstract `GibbsSpec` and `IsGibbsMeasure`
+no longer hardcode this choice. -/
 abbrev LatticeSite (d : ℕ) := Fin d → ℤ
 
-/-- Lattice distance (ℓ¹ norm). -/
+/-- Lattice distance (ℓ¹ norm) on `Z^d`. Specific to the canonical
+ℤ^d site type; not used by the abstract Gibbs specification API. -/
 def latticeDist {d : ℕ} (x y : LatticeSite d) : ℕ :=
   ∑ i, (x i - y i).natAbs
 
-/-- A spin configuration assigns a spin value to each site in a region. -/
-abbrev SpinConfig (d : ℕ) (S : Type*) := LatticeSite d → S
-
 /-! ## Gibbs specification -/
 
-/-- A Gibbs specification on Z^d with spin space S.
+/-- A Gibbs specification on a generic site set `I` with spin space `S`.
 
-For each finite region Λ (given as `Finset (LatticeSite d)`) and
-boundary condition (configuration on Λᶜ), it gives a probability
-measure on configurations restricted to Λ. -/
-structure GibbsSpec (d : ℕ) (S : Type*) [MeasurableSpace S] where
+For each finite region `Λ : Finset I` and boundary condition (a
+configuration on `Λᶜ`), it gives a probability measure on
+configurations restricted to `Λ`.
+
+The site type `I` is fully generic; canonical examples include
+`LatticeSite d = Fin d → ℤ` (infinite lattice) or any finite index
+type for finite-volume specifications. The `[DecidableEq I]`
+instance is needed for `Finset I` operations. -/
+structure GibbsSpec (I : Type*) [DecidableEq I] (S : Type*)
+    [MeasurableSpace S] where
   /-- The conditional distribution on Λ given boundary σ. -/
-  condDist : (Λ : Finset (LatticeSite d)) →
-    SpinConfig d S → Measure (SpinConfig d S)
+  condDist : (Λ : Finset I) →
+    SpinConfig I S → Measure (SpinConfig I S)
   /-- Each conditional distribution is a probability measure. -/
   isProb : ∀ Λ σ, IsProbabilityMeasure (condDist Λ σ)
   /-- Consistency: the specification only depends on σ outside Λ.
       If σ and τ agree on Λᶜ, the conditional distributions agree. -/
-  consistent : ∀ (Λ : Finset (LatticeSite d)) (σ τ : SpinConfig d S),
+  consistent : ∀ (Λ : Finset I) (σ τ : SpinConfig I S),
     (∀ x, x ∉ Λ → σ x = τ x) → condDist Λ σ = condDist Λ τ
   /-- Properness: condDist(Λ, σ) is concentrated on configurations
       that agree with σ outside Λ. Without this, the specification
       could assign mass to configs violating the boundary condition. -/
-  proper : ∀ (Λ : Finset (LatticeSite d)) (σ : SpinConfig d S),
+  proper : ∀ (Λ : Finset I) (σ : SpinConfig I S),
     condDist Λ σ {τ | ∀ x, x ∉ Λ → τ x = σ x} = 1
   /-- Measurability: σ ↦ condDist(Λ, σ)(A) is measurable.
       Required for the DLR integral to be well-defined. -/
-  measurable_condDist : ∀ (Λ : Finset (LatticeSite d))
-    (A : Set (SpinConfig d S)) (hA : MeasurableSet A),
-    Measurable (fun σ : SpinConfig d S => (condDist Λ σ A).toReal)
+  measurable_condDist : ∀ (Λ : Finset I)
+    (A : Set (SpinConfig I S)) (hA : MeasurableSet A),
+    Measurable (fun σ : SpinConfig I S => (condDist Λ σ A).toReal)
 
 attribute [instance] GibbsSpec.isProb
 
@@ -79,12 +91,13 @@ attribute [instance] GibbsSpec.isProb
 for specification γ if it is consistent with all conditional distributions:
 for every finite Λ, the conditional distribution of μ given the
 configuration outside Λ equals γ(Λ, ·) μ-a.s. -/
-structure IsGibbsMeasure {d : ℕ} {S : Type*} [MeasurableSpace S]
-    (γ : GibbsSpec d S) (μ : Measure (SpinConfig d S))
+structure IsGibbsMeasure {I : Type*} [DecidableEq I] {S : Type*}
+    [MeasurableSpace S]
+    (γ : GibbsSpec I S) (μ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ] : Prop where
   /-- DLR consistency condition. -/
-  dlr : ∀ (Λ : Finset (LatticeSite d))
-    (A : Set (SpinConfig d S)) (hA : MeasurableSet A),
+  dlr : ∀ (Λ : Finset I)
+    (A : Set (SpinConfig I S)) (hA : MeasurableSet A),
     (μ A).toReal = ∫ σ, (γ.condDist Λ σ A).toReal ∂μ
 
 end

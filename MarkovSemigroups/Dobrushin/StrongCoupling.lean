@@ -69,23 +69,23 @@ def isNeighbor {d : ℕ} (x y : LatticeSite d) : Bool :=
 
 /-- A nearest-neighbor specification: the conditional at site x
 depends only on the boundary values at neighbors of x. -/
-structure IsNearestNeighbor (γ : GibbsSpec d S) : Prop where
+structure IsNearestNeighbor (γ : GibbsSpec (LatticeSite d) S) : Prop where
   /-- If σ and τ agree on all neighbors of x, then the single-site
       conditional at x is the same. -/
-  local_dep : ∀ (x : LatticeSite d) (σ τ : SpinConfig d S),
+  local_dep : ∀ (x : LatticeSite d) (σ τ : SpinConfig (LatticeSite d) S),
     (∀ y, isNeighbor x y = true → σ y = τ y) →
     γ.condDist {x} σ = γ.condDist {x} τ
 
 /-- For nearest-neighbor specifications, C(x,y) = 0 when x and y
 are not neighbors. -/
-theorem influenceCoeff_zero_of_not_neighbor (γ : GibbsSpec d S)
+theorem influenceCoeff_zero_of_not_neighbor (γ : GibbsSpec (LatticeSite d) S)
     (hNN : IsNearestNeighbor γ) (x y : LatticeSite d)
     (hxy : isNeighbor x y = false) (hne : x ≠ y) :
     influenceCoeff γ x y = 0 := by
   unfold influenceCoeff
   -- The set defining influenceCoeff consists entirely of zeros,
   -- because non-neighbor modifications don't affect the conditional.
-  set T := {c : ℝ | ∃ (σ τ : SpinConfig d S),
+  set T := {c : ℝ | ∃ (σ τ : SpinConfig (LatticeSite d) S),
       (∀ z, z ≠ y → σ z = τ z) ∧
       c = tvDist (γ.condDist {x} σ) (γ.condDist {x} τ)}
   -- Every element of T is 0
@@ -233,7 +233,7 @@ changing one neighbor's spin changes the conditional by at most β
 in total variation.
 
 This is the key quantitative input for Dobrushin. -/
-structure InteractionBound (γ : GibbsSpec d S) (β : ℝ) : Prop where
+structure InteractionBound (γ : GibbsSpec (LatticeSite d) S) (β : ℝ) : Prop where
   hβ_pos : 0 ≤ β
   /-- TV bound on influence of a single neighbor. -/
   tv_bound : ∀ (x y : LatticeSite d), influenceCoeff γ x y ≤
@@ -241,7 +241,7 @@ structure InteractionBound (γ : GibbsSpec d S) (β : ℝ) : Prop where
 
 /-- InteractionBound gives influenceCoeff = 0 for non-neighbors. -/
 private lemma InteractionBound.influenceCoeff_eq_zero_of_not_isNeighbor
-    {γ : GibbsSpec d S} {β : ℝ} (hIB : InteractionBound γ β)
+    {γ : GibbsSpec (LatticeSite d) S} {β : ℝ} (hIB : InteractionBound γ β)
     (x y : LatticeSite d) (h : isNeighbor x y = false) :
     influenceCoeff γ x y = 0 := by
   have hle := hIB.tv_bound x y
@@ -251,7 +251,7 @@ private lemma InteractionBound.influenceCoeff_eq_zero_of_not_isNeighbor
 
 /-- InteractionBound gives influenceCoeff ≤ β for neighbors. -/
 private lemma InteractionBound.influenceCoeff_le_beta
-    {γ : GibbsSpec d S} {β : ℝ} (hIB : InteractionBound γ β)
+    {γ : GibbsSpec (LatticeSite d) S} {β : ℝ} (hIB : InteractionBound γ β)
     (x y : LatticeSite d) :
     influenceCoeff γ x y ≤ β := by
   have hle := hIB.tv_bound x y
@@ -269,7 +269,7 @@ Dobrushin's condition holds with α = 2d · β.
 
 This gives a mass gap for all lattice models at sufficiently
 high temperature / weak coupling. -/
-def strong_coupling_dobrushin (γ : GibbsSpec d S)
+def strong_coupling_dobrushin (γ : GibbsSpec (LatticeSite d) S)
     (hNN : IsNearestNeighbor γ)
     (β : ℝ) (hIB : InteractionBound γ β)
     (hβ_small : 2 * d * β < 1) :
