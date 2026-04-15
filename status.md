@@ -1,6 +1,6 @@
 # markov-semigroups — Status
 
-**0 sorry's in core theory. 4 axioms. 20 sorry's in instances/new modules.**
+**0 sorry's in core theory. 4 axioms. 11 sorry's in instances.**
 
 ## Project structure
 
@@ -11,10 +11,10 @@
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
-| Instances/Euclidean | 1 | 13 | 0 | Standard Gaussian (sorry's = Lean infra gaps) |
-| Matrix/ | 4 | 2 | 2 | Heat kernel, Trotter, diamagnetic inequality |
+| Instances/Euclidean | 1 | 9 | 0 | Standard Gaussian (sorry's = Lean infra gaps) |
+| Matrix/ | 4 | 0 | 2 | Heat kernel, Trotter, diamagnetic inequality |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
-| Dobrushin/ | 3 | 3 | 0 | Gibbs specifications, Dobrushin uniqueness |
+| Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
 
 ## Axioms
 
@@ -49,24 +49,20 @@
 - `Γ_leibniz` — Leibniz/diffusion property fails for jump processes
 - `semigroup_entropy_sq_decay_bound` — consequence of Leibniz failure
 
-### Instances/Euclidean.lean (13 sorry's — mathematically true)
-- `energy_add_left` — `deriv(f+g) ≠ deriv f + deriv g` for non-differentiable f
-- `Γ_leibniz` — needs `DifferentiableAt` for `deriv_mul`
-- `semigroup_mean` (2 edge cases) — non-integrable/non-measurable f
+### Instances/Euclidean.lean (9 sorry's — hard analytic, IsCore tractable ones filled)
+Tractable sorries using the `IsCore` hypothesis (smooth + bounded test
+functions) were resolved in 113cb3c. Remaining:
+- `IsCore_semigroup` — smoothness of `P_t f` via differentiation under integral
+- `semigroup_add` — Mehler composition (Gaussian convolution via Fubini)
+- `semigroup_selfAdjoint` — 2D Gaussian rotation-invariance
 - `gradient_decay` — differentiation under integral + Jensen
-- `semigroup_add` — Gaussian convolution (Fubini)
-- `semigroup_contraction` — Jensen for convex x²
-- `semigroup_selfAdjoint` — Fubini + Mehler kernel symmetry
 - `semigroup_l2_decay_bound`, `semigroup_l2_sq_hasDerivWithinAt` — FTC + differentiation under integral
 - `semigroup_ergodic` — L² convergence of OU semigroup
 - `semigroup_entropy_sq_decay_bound`, `semigroup_entropy_sq_ergodic` — entropy analysis
 
-### Matrix/Trotter.lean (2 sorry's)
-- BCH remainder estimates for Lie-Trotter convergence
-
-### Dobrushin/ (3 sorry's — work in progress)
-- `StrongCoupling.lean` — measurability of influence coefficients
-- `Uniqueness.lean` — contraction mapping + exponential decay
+### Dobrushin/ (0 sorry's)
+Complete: Specification, Uniqueness (with bridge hypothesis for hMargToFull),
+StrongCoupling, FiniteLattice, NeumannSeries.
 
 ## Proved results (highlights)
 
@@ -95,6 +91,19 @@
 ### Heat kernel positivity (Matrix/HeatKernel.lean)
 - `heat_kernel_entrywise_nonneg`: exp(-tM) ≥ 0 for Z-matrices — **proved** (Metzler shift)
 - `euler_factor_nonneg`, `isEntryNonneg_pow/mul/add` — **proved**
+
+### Dobrushin correlation decay (Dobrushin/NeumannSeries.lean)
+Infrastructure for lgt mass-gap proof. All 0 sorry, 0 axiom.
+- `iterateInfluence`: n-step influence matrix `(C^n)_{xy}` — defined
+- `iterateInfluence_pointwise_bound`: `(C^n)_{xy} ≤ α^n` — **proved**
+- `iterateInfluence_dist_zero`: `(C^n)_{xy} = 0` for `n < d(x,y)/R` under finite-range influence — **proved**
+- `iterateInfluence_row_sum_bound`: `Σ_y (C^n)_{xy} ≤ α^n` — **proved**
+- `neumannSeriesCoeff γ x y := Σ_n (C^n)_{xy}` — the `(x,y)` entry of `(I-C)⁻¹` — defined
+- `neumannSeriesCoeff_le`: `≤ 1/(1-α)` — **proved**
+- `neumannSeriesCoeff_nn_dist_bound`: NN refinement `≤ α^{d(x,y)}/(1-α)` — **proved**
+- `dobrushin_correlation_decay_nn`: B3 Neumann route, `|Cov| ≤ 2BfBg·α^d/(1-α)` from B2 bridge
+- `dobrushin_correlation_decay_direct`: direct route, `|Cov| ≤ C·α^n` from iterated-coupling bridge
+- `dobrushin_correlation_decay_nn_direct`: lattice specialization, `|Cov| ≤ C·α^{d(x,y)}` (no `1/(1-α)` factor) — matches the form consumed by lgt's `dobrushin_correlation_bound`
 
 ### Gaussian instance (Instances/Euclidean.lean)
 - `ouSemigroup` (Mehler formula), `ouGamma`, `ouEnergy` — defined
