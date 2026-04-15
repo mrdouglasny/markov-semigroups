@@ -31,6 +31,7 @@ import MarkovSemigroups.Dobrushin.Specification
 import MarkovSemigroups.Dobrushin.Uniqueness
 import MarkovSemigroups.Dobrushin.StrongCoupling
 import MarkovSemigroups.Dobrushin.FiniteLattice
+import MarkovSemigroups.Dobrushin.NeumannSeries
 
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
