@@ -526,10 +526,107 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
       (integrable_map_measure hasm' hφ.aemeasurable).mp hint'
     -- Goal: ∫ x, (∫ y, f(φ(x,y)) dγ) dγ = ∫ p, f(φ p) d(γ.prod γ)
     exact (integral_prod (f ∘ φ) hfφ).symm
-  semigroup_selfAdjoint := fun f g t ht _ _ => by
-    -- Self-adjointness: the Mehler kernel K(t,x,y) is symmetric in (x,y)
-    -- after accounting for the Gaussian weight.
-    sorry
+  semigroup_selfAdjoint := fun f g t ht hf hg => by
+    -- Goal: ∫ (P_t f)(x) · g(x) dγ(x) = ∫ f(x) · (P_t g)(x) dγ(x)
+    -- Strategy: Fubini + reflection T(x,y) = (ax+by, bx-ay) preserves γ⊗γ
+    show ∫ x, ouSemigroup t f x * g x ∂γ = ∫ x, f x * ouSemigroup t g x ∂γ
+    simp only [ouSemigroup]
+    set a := exp (-t)
+    set b := sqrt (1 - exp (-2 * t))
+    set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+    have hφ : Measurable φ := Measurable.add
+      (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+    have hmap := ou_kernel_map t ht
+    have hab : a ^ 2 + b ^ 2 = 1 := by
+      simp only [a, b]; rw [sq_sqrt (one_sub_exp_nonneg t ht), sq, ← exp_add]; ring
+    -- Both sides by Fubini become product integrals:
+    -- LHS = ∫ f(φ p) · g(p.1) d(γ⊗γ)
+    -- RHS = ∫ f(p.1) · g(φ p) d(γ⊗γ)
+    -- Integrability
+    obtain ⟨Mf, hMf⟩ := hf.bounded
+    obtain ⟨Mg, hMg⟩ := hg.bounded
+    -- All our functions are bounded and measurable on γ⊗γ (probability measure)
+    -- so integrability follows from Integrable.mono' (integrable_const _) ...
+    have hfφ_int : Integrable (fun p => f (φ p)) (γ.prod γ) :=
+      Integrable.mono' (integrable_const Mf)
+        ((hf.measurable.comp hφ).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => hMf (φ p))
+    have hgφ_int : Integrable (fun p => g (φ p)) (γ.prod γ) :=
+      Integrable.mono' (integrable_const Mg)
+        ((hg.measurable.comp hφ).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => hMg (φ p))
+    have hf_fst_int : Integrable (fun p : ℝ × ℝ => f p.1) (γ.prod γ) :=
+      Integrable.mono' (integrable_const Mf)
+        ((hf.measurable.comp measurable_fst).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => hMf p.1)
+    have hMf_nn : 0 ≤ Mf := le_trans (norm_nonneg _) (hMf 0)
+    have hMg_nn : 0 ≤ Mg := le_trans (norm_nonneg _) (hMg 0)
+    -- f(φ p) · g(p.1) is integrable (bounded by Mf * Mg)
+    have hfg1_int : Integrable (fun p : ℝ × ℝ => f (φ p) * g p.1) (γ.prod γ) :=
+      Integrable.mono' (integrable_const (Mf * Mg))
+        (((hf.measurable.comp hφ).mul (hg.measurable.comp measurable_fst)).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => by
+          rw [norm_mul]; exact mul_le_mul (hMf _) (hMg _) (norm_nonneg _) hMf_nn)
+    -- f(p.1) · g(φ p) is integrable (bounded by Mf * Mg)
+    have hfg2_int : Integrable (fun p : ℝ × ℝ => f p.1 * g (φ p)) (γ.prod γ) :=
+      Integrable.mono' (integrable_const (Mf * Mg))
+        (((hf.measurable.comp measurable_fst).mul (hg.measurable.comp hφ)).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => by
+          rw [norm_mul]; exact mul_le_mul (hMf _) (hMg _) (norm_nonneg _) hMf_nn)
+    -- Fubini: convert iterated → product
+    -- LHS = ∫ x, (∫ y, f(ax+by) dγ) * g x dγ = ∫ p, f(φ p) * g(p.1) d(γ⊗γ)
+    have hLHS : ∫ x, (∫ y, f (a*x + b*y) ∂γ) * g x ∂γ =
+        ∫ p, f (φ p) * g p.1 ∂(γ.prod γ) := by
+      -- integral_prod gives: ∫ p, h p d(γ⊗γ) = ∫ x, ∫ y, h(x,y) dγ dγ
+      -- The RHS of integral_prod for our function is:
+      --   ∫ x, (∫ y, f(a*x + b*y) * g x dγ) dγ
+      -- We need to pull g x out of the inner integral to get:
+      --   ∫ x, (∫ y, f(a*x + b*y) dγ) * g x dγ
+      have h1 : ∫ p, f (φ p) * g p.1 ∂(γ.prod γ) =
+          ∫ x, (∫ y, f (a * x + b * y) * g x ∂γ) ∂γ :=
+        integral_prod _ hfg1_int
+      rw [h1]; congr 1; ext x
+      rw [integral_mul_const]
+    -- RHS = ∫ x, f x * (∫ y, g(ax+by) dγ) dγ = ∫ p, f(p.1) * g(φ p) d(γ⊗γ)
+    have hRHS : ∫ x, f x * (∫ y, g (a*x + b*y) ∂γ) ∂γ =
+        ∫ p, f p.1 * g (φ p) ∂(γ.prod γ) := by
+      have h1 : ∫ p, f p.1 * g (φ p) ∂(γ.prod γ) =
+          ∫ x, (∫ y, f x * g (a * x + b * y) ∂γ) ∂γ :=
+        integral_prod _ hfg2_int
+      rw [h1]; congr 1; ext x
+      rw [integral_const_mul]
+    rw [hLHS, hRHS]
+    -- Now apply the reflection T(x,y) = (ax+by, bx-ay) to the LHS
+    -- T preserves γ⊗γ (orthogonal with a²+b² = 1)
+    -- and sends f(φ p)·g(p.1) to f(p.1)·g(φ p)
+    set T : ℝ × ℝ → ℝ × ℝ := fun p => (a * p.1 + b * p.2, b * p.1 - a * p.2)
+    -- T sends fst to φ: (T p).1 = a*p.1 + b*p.2 = φ p
+    -- T sends φ to fst: φ(T p) = a(a*p.1+b*p.2) + b(b*p.1-a*p.2) = (a²+b²)p.1 = p.1
+    have hT_φ_to_fst : ∀ p : ℝ × ℝ, φ (T p) = p.1 := by
+      intro p; simp only [φ, T]
+      have : a * (a * p.1 + b * p.2) + b * (b * p.1 - a * p.2) =
+          (a ^ 2 + b ^ 2) * p.1 := by ring
+      rw [this, hab, one_mul]
+    have hT_fst_to_φ : ∀ p : ℝ × ℝ, (T p).1 = φ p := fun p => rfl
+    -- T preserves γ⊗γ
+    have hT_preserves : (γ.prod γ).map T = γ.prod γ := by
+      sorry -- orthogonal invariance of 2D Gaussian
+    -- Change variables: ∫ h d(γ⊗γ) = ∫ h∘T d(γ⊗γ)
+    have hT_meas : Measurable T := by
+      apply Measurable.prod
+      · exact (measurable_const.mul measurable_fst).add (measurable_const.mul measurable_snd)
+      · exact (measurable_const.mul measurable_fst).sub (measurable_const.mul measurable_snd)
+    -- ∫ h ∘ T d(γ⊗γ) = ∫ h d((γ⊗γ).map T) = ∫ h d(γ⊗γ)
+    -- So we rewrite the LHS: ∫ f(φ p) * g(p.1) d(γ⊗γ) = ∫ f(φ(T p)) * g((T p).1) d(γ⊗γ)
+    -- Then use hT_φ_to_fst and hT_fst_to_φ to get the RHS
+    have hfg1_aesm_map : AEStronglyMeasurable (fun p => f (φ p) * g p.1)
+        ((γ.prod γ).map T) := by rw [hT_preserves]; exact hfg1_int.aestronglyMeasurable
+    calc ∫ p, f (φ p) * g p.1 ∂(γ.prod γ)
+        = ∫ p, f (φ (T p)) * g (T p).1 ∂(γ.prod γ) := by
+          conv_lhs => rw [← hT_preserves]
+          exact integral_map hT_meas.aemeasurable hfg1_aesm_map
+      _ = ∫ p, f p.1 * g (φ p) ∂(γ.prod γ) := by
+          congr 1; ext p; rw [hT_φ_to_fst, hT_fst_to_φ]
   semigroup_l2_decay_bound := fun f t ht _ => by
     -- Integrated gradient decay. Follows from gradient_decay + FTC.
     sorry
