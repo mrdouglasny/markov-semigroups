@@ -187,6 +187,74 @@ context to hold at once.
 3. **M2 after M1** — uses M1's API. Induction along a path.
 4. **M4 last** — the assembly is short once M1–M3 are in place.
 
+## 2026-04-16 update: Gemini-vetted diagnosis of the last gap
+
+After M1, M2, M3/M4 scaffolding landed, the final remaining sorry
+turned out to be more subtle than the plan anticipated. A first
+attempt to axiomatize it at the **marginal-TV** level (i.e.,
+`marginalTvDist μ₁ μ₂ z ≤ ∑ C(z,w) · marginalTvDist μ₁ μ₂ w`) was
+shown **false by Gemini Deep Think** via an explicit counterexample:
+
+> `I = {1,2,3}`, `S = {0,1}`, `γ({1},σ)(1) = ½ + ε(σ₂⊕σ₃−½)`.
+> Two Gibbs measures with perfectly correlated vs perfectly
+> anticorrelated `(σ₂, σ₃)` have identical single-site marginals at
+> 2, 3 but differ by 1/4 at site 1, giving `1/4 ≤ 0 + 0`.
+
+### Correct axiom (now in CondTVBridge.lean)
+
+The correct Dobrushin contraction holds at the **joint-coupling** level:
+
+```lean
+axiom dobrushin_iterated_coupling_exists ... :
+    ∃ (P : Measure (SpinConfig I S × SpinConfig I S))
+      (_ : IsCoupling P μ₁ μ₂),
+      ∀ z ∈ T,
+        P{p.1 z ≠ p.2 z}.toReal ≤
+          ∑' w, C(z,w) · P{p.1 w ≠ p.2 w}.toReal
+```
+
+The coupling `P` is the **site-wise iterated greedy coupling** of
+Dobrushin 1968. The quantities `P{σ_w ≠ η_w}` strictly dominate
+marginal TV and satisfy the self-consistency inequality (whereas
+marginal TV does not, per the counterexample). Critically, this
+property holds for the *specific* Dobrushin-constructed coupling, not
+for maximal couplings at the full-TV level — the existing
+`exists_maximal_coupling` in `Coupling/TVCoupling.lean` is the wrong
+tool.
+
+### The remaining formalization obligation
+
+Replacing the axiom with a proof requires a new file
+`MarkovSemigroups/Coupling/DobrushinCoupling.lean` (~500 lines):
+
+1. Construct the iterated site-wise greedy coupling `P` of `(μ₁, μ₂)`:
+   sequentially over sites, condition on the boundary so far and
+   extend the coupling to maximize site-wise agreement.
+2. Prove by construction that `P` satisfies the self-consistency
+   inequality `P{σ_z ≠ η_z} ≤ ∑ C(z,w) · P{σ_w ≠ η_w}` for `z ∈ T`.
+
+Both steps are standard in the Dobrushin-Shlosman / Georgii literature
+but require non-trivial measure-theoretic infrastructure on
+infinite-product spaces.
+
+### Downstream wiring (also follow-on)
+
+Closing the existing `condSingleSiteMeasure_marginalTvDist_contraction_at_nonX`
+sorry using this axiom requires a refactor of the Neumann iteration
+chain to propagate coupling disagreement `P{σ_w ≠ η_w}` instead of
+`marginalTvDist μ₁ μ₂ w`. The final step uses `tvNorm_le_coupling`
+(proved in `TVCoupling.lean`) to bound marginal TV by coupling
+disagreement at site `y`, recovering the downstream statement shape.
+
+### Alternative: Föllmer oscillation route
+
+Föllmer (1982) bypasses joint couplings entirely by working with
+function-oscillation semi-norms and bounding a contracting linear
+operator on Lipschitz-local functions. This route is cleaner in
+Lean (no product-space measure machinery) but requires redefining
+the core quantities in the B2 chain. Pivot cost is similar to the
+coupling construction (~500 lines).
+
 ## Effort estimate
 
 | Module | Lines | Difficulty | Standalone Mathlib value |

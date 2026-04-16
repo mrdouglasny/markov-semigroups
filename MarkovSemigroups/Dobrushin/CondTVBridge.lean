@@ -30,6 +30,7 @@ influence propagation (Neumann series) to close the covariance bound chain.
 
 import MarkovSemigroups.Dobrushin.CovarianceBound
 import MarkovSemigroups.Convergence.IntegralBounds
+import MarkovSemigroups.Coupling.TVCoupling
 
 open MeasureTheory SingleSiteDisintegration Topology Filter
 
@@ -365,6 +366,78 @@ Define `δ w := marginalTvDist (condSingleSiteMeasure μ x a) μ w`. Since
 `condSingleSiteMeasure μ x a` satisfies DLR at `{z}` for `z ≠ x` and `μ`
 satisfies DLR at every site, the single-site contraction at `z` gives
 `δ z ≤ ∑' w, influenceCoeff γ z w · δ w`. -/
+
+/-- **Dobrushin iterated coupling existence** (axiomatized from
+Dobrushin 1968; the joint-coupling formulation vetted as correct by
+Gemini Deep Think, 2026-04-16).
+
+**Statement.** If two probability measures `μ₁, μ₂` on `SpinConfig I S`
+both satisfy the DLR equation at every singleton `{z}` for `z ∈ T ⊆ I`
+(the "free" sites), then there exists a **joint coupling** `P` of
+`μ₁, μ₂` such that for every `z ∈ T`:
+$$
+  P\{σ_z \ne η_z\} \le \sum_{w} C(z,w)\cdot P\{σ_w \ne η_w\}
+$$
+where `C(z,w) := influenceCoeff γ z w`.
+
+**Why joint-coupling and not marginal-TV.** Gemini Deep Think supplied
+a counterexample showing that the *marginal*-TV version
+`marginalTvDist μ₁ μ₂ z ≤ ∑' w, C(z,w) · marginalTvDist μ₁ μ₂ w` is
+**false**: on `I = {1,2,3}`, `S = {0,1}`, with `γ({1},σ)(1) = 1/2 + ε(σ₂⊕σ₃−1/2)`,
+two Gibbs measures with perfectly correlated vs perfectly anticorrelated
+`(σ_2, σ_3)` have identical *single-site* marginals at 2 and 3 but differ
+by 1/4 at site 1, producing the contradiction `1/4 ≤ 0 + 0`.
+
+The joint-coupling version, by contrast, is classical and correct: the
+quantities `P{σ_w ≠ η_w}` for a **specific** Dobrushin-constructed
+coupling (the iterated site-wise greedy coupling) strictly dominate
+marginal TV and do satisfy the self-consistency inequality. A coupling
+that is merely maximal at the full-TV level does *not* satisfy it
+(this was verified).
+
+**Postulated as a classical textbook theorem.** Formalizing the
+construction of the Dobrushin iterated coupling would be a ~500-line
+upstream project (`MarkovSemigroups/Coupling/DobrushinCoupling.lean`,
+not yet written).
+
+**Use in CondTVBridge.** This axiom is the tool that discharges the
+remaining sorry in `condSingleSiteMeasure_marginalTvDist_contraction_at_nonX`.
+The specialization takes `μ₁ := condSingleSiteMeasure μ x a`
+(satisfies DLR at `{z}` for `z ≠ x`, via `condSingleSiteMeasure_dlr_at_site`),
+`μ₂ := μ` (satisfies DLR everywhere, by `IsGibbsMeasure γ μ`), and
+`T := {z | z ≠ x}`. Wiring the axiom into the downstream chain
+(`condTV_bound`, `covariance_bound_gibbs`) requires a refactor that
+propagates `P{σ_w ≠ η_w}` through `abstract_neumann_iteration` and
+then bounds `marginalTvDist` by it via `tvNorm_le_coupling` at the
+end — left as follow-on work.
+
+References:
+- Dobrushin (1968), "Description of a random field by means of conditional
+  probabilities and conditions of its regularity", Lemma 2.
+- Georgii (1988), *Gibbs Measures and Phase Transitions*, Proposition 8.7. -/
+axiom dobrushin_iterated_coupling_exists
+    {I S : Type*} [DecidableEq I] [MeasurableSpace S] [Countable S]
+    [MeasurableSingletonClass S] [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S)
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (T : Set I)
+    (hμ₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
+    (hμ₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+    ∃ (P : Measure (SpinConfig I S × SpinConfig I S))
+      (_ : IsCoupling P μ₁ μ₂),
+      ∀ z ∈ T,
+        (P {p : SpinConfig I S × SpinConfig I S | p.1 z ≠ p.2 z}).toReal ≤
+          ∑' w, influenceCoeff γ z w *
+            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
 
 /-- **Self-consistency inequality at `z ≠ x` (UNPROVEN — known to be
 false without strengthening).**
