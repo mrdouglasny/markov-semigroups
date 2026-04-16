@@ -530,6 +530,40 @@ theorem dobrushin_correlation_decay_nn_direct {d_lat : ℕ}
   dobrushin_correlation_decay_direct γ hD μ f g C hC_nn x y
     (latticeDist x y) hCov
 
+/-- **General-`I` nearest-neighbor correlation decay via the
+Neumann-series bound.** Variant of `dobrushin_correlation_decay_nn`
+parametrized over an arbitrary distance function `d : I → I → ℕ`
+(with reflexivity and triangle inequality). Consumes the
+covariance-to-`neumannSeriesCoeff` bridge `hCov` (e.g. from
+`covariance_bound_gibbs` in `CondTVBridge.lean`) and produces the
+textbook form `2·Bf·Bg · α^{d(x,y)} / (1−α)`. -/
+theorem dobrushin_correlation_decay_nn_dist
+    (γ : GibbsSpec I S)
+    (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (f g : SpinConfig I S → ℝ)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (x y : I)
+    (d : I → I → ℕ)
+    (h_refl : ∀ x, d x x = 0)
+    (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
+    (h_support : ∀ u v, d u v > 1 → influenceCoeff γ u v = 0)
+    (hCov : |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * neumannSeriesCoeff γ x y) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * hD.α ^ d x y / (1 - hD.α) := by
+  have hNeumann : neumannSeriesCoeff γ x y ≤
+      hD.α ^ d x y / (1 - hD.α) :=
+    neumannSeriesCoeff_nn_dist_bound γ hD d h_refl h_triangle h_support x y
+  have hBfBg_nn : 0 ≤ 2 * Bf * Bg := by positivity
+  have h_1mα_pos : 0 < 1 - hD.α := by linarith [hD.hα_lt]
+  have h_pow_nn : 0 ≤ hD.α ^ d x y := pow_nonneg hD.hα_pos _
+  calc |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)|
+      ≤ 2 * Bf * Bg * neumannSeriesCoeff γ x y := hCov
+    _ ≤ 2 * Bf * Bg * (hD.α ^ d x y / (1 - hD.α)) :=
+        mul_le_mul_of_nonneg_left hNeumann hBfBg_nn
+    _ = 2 * Bf * Bg * hD.α ^ d x y / (1 - hD.α) := by ring
+
 /-! ## B2: Iterated-DLR covariance bound
 
 The Neumann-series wrapper `dobrushin_correlation_decay_direct` above
