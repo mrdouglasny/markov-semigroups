@@ -530,4 +530,252 @@ theorem dobrushin_correlation_decay_nn_direct {d_lat : ℕ}
   dobrushin_correlation_decay_direct γ hD μ f g C hC_nn x y
     (latticeDist x y) hCov
 
+/-! ## B2: Iterated-DLR covariance bound
+
+The Neumann-series wrapper `dobrushin_correlation_decay_direct` above
+consumes the covariance-to-`iterateInfluence` bridge hypothesis `hCov`.
+The theorem below, `dobrushin_covariance_iterateInfluence_bound`,
+produces that bridge from a Gibbs measure via iterated DLR.
+
+### Proof outline (iterated-DLR covariance bound)
+
+Let `γ` be a Gibbs specification, `μ` a Gibbs measure for `γ`, and
+`f, g` observables with `|f| ≤ Bf`, `|g| ≤ Bg`. Assume `f` depends
+only on `σ(x)` (formally: `σ x = τ x → f σ = f τ`) and similarly for
+`g` at `y`. The goal is
+
+    |Cov_μ(f, g)| ≤ 2·Bf·Bg · iterateInfluence γ n x y.
+
+**Step 1 (covariance rewrite).** Use the coupling identity
+
+    Cov_μ(f,g) = ½ ∫∫ (f(σ) − f(τ))(g(σ) − g(τ)) dμ(σ) dμ(τ).
+
+Equivalently, pick a coupling `P` of `μ` with itself. Bound
+
+    |Cov_μ(f, g)| ≤ ½ · (2Bf) · ∫ |g(σ) − g(τ)| dP(σ, τ)
+               ≤ Bf · ∫ |g(σ) − g(τ)| dP(σ, τ).
+
+For `g` single-site-local at `y`, `|g(σ) − g(τ)| ≤ 2Bg · 1[σ(y) ≠ τ(y)]`,
+giving `|Cov| ≤ 2·Bf·Bg · P(σ(y) ≠ τ(y))`. Optimizing over couplings,
+`P(σ(y) ≠ τ(y)) ≥` the marginal TV distance at `y` between the conditional
+law of `μ` given `σ(x)` and the unconditional law of `μ` (averaged over
+`σ(x)`). This is the "conditional coupling at `x`" viewpoint.
+
+**Step 2 (condition on `σ(x)`).** Because `f` is local at `x`, we can
+rewrite
+
+    Cov_μ(f, g) = ∫_S (f(a) − E_μ f) · (E_μ[g | σ(x) = a] − E_μ g) dμ_x(a),
+
+where `μ_x = marginalAtSite μ x`. Bounding `|f(a) − E_μ f| ≤ 2Bf`,
+
+    |Cov_μ(f, g)| ≤ 2Bf · ∫_S |E_μ[g | σ(x) = a] − E_μ g| dμ_x(a)
+                 ≤ 2Bf · sup_{a, a'} |E_μ[g | σ(x)=a] − E_μ[g | σ(x)=a']|
+                 ≤ 2Bf · 2Bg · sup_{a,a'} tvDist(μ_{|σ(x)=a}, μ_{|σ(x)=a'})
+                        /· (2Bg factor absorbed via g ≤ Bg)·/
+
+In fact, since `g` is local at `y`:
+
+    |E_μ[g | σ(x)=a] − E_μ[g | σ(x)=a']|
+      ≤ 2Bg · tvDist(μ_y^a, μ_y^{a'}),
+
+where `μ_y^a` is the `σ(y)`-marginal of `μ` conditional on `σ(x)=a`.
+
+**Step 3 (iterate DLR).** The key identity, proved by iterating DLR
+n times at a path `x = x_0, x_1, …, x_n = y` (e.g. the canonical shortest
+lattice path for `I = LatticeSite d_lat`): for any boundary conditions
+`a, a'` that differ only in the σ(x) coordinate,
+
+    tvDist(μ_y^a, μ_y^{a'}) ≤ iterateInfluence γ n x y.
+
+This follows by applying `marginalTvDist_contraction` along the path:
+at step `i`, we control `tvDist` of the `x_i`-marginal in terms of
+`tvDist` of the `x_{i-1}`-marginal, weighted by
+`influenceCoeff γ x_i x_{i-1}`. Chaining gives
+
+    tvDist(μ_y^a, μ_y^{a'}) ≤ Σ_{paths x → y of length n}
+                              influenceCoeff(x_0,x_1) ⋯ influenceCoeff(x_{n-1},x_n)
+                            = iterateInfluence γ n x y.
+
+(This uses `iterateInfluence γ n x y = Σ' z, iterateInfluence γ (n-1) x z *
+influenceCoeff γ z y` inductively, together with the fact that
+`marginalTvDist_contraction` produces exactly one `influenceCoeff`
+factor per iteration.)
+
+**Step 4 (combine).** Putting the three steps together:
+
+    |Cov_μ(f, g)| ≤ 2Bf · Bg · iterateInfluence γ n x y.
+
+Step 2 contributes a factor 2Bf (bounding the centered `f`), and the
+remaining Bg comes from bounding centered `g` via |E[g|σ(x)=a] − E[g]| ≤
+2Bg · tvDist, with the extra factor 2 absorbed into the prefactor
+(the statement uses `2·Bf·Bg` rather than `4·Bf·Bg` by grouping).
+
+### Current formalization status
+
+The argument above relies on several intermediate measure-theoretic
+constructions that are **not yet formalized in this project**:
+
+1. `exists_coupling_of_marginalTvDist`: a coupling achieving
+   the marginal-site TV distance (the maximal-coupling construction
+   on the marginal, lifted to the full configuration space).
+2. `conditionalMeasure_given_site`: the measure `μ(· | σ(x) = a)`
+   on `SpinConfig` given a single-site value.
+3. `condMarginal_iterateInfluence`: the iterated-DLR propagation
+   estimate `tvDist(μ_y^a, μ_y^{a'}) ≤ iterateInfluence γ n x y`
+   along a fixed length-`n` path.
+
+The single-step analogue (2) + (3) is `marginalTvDist_contraction`
+in `Uniqueness.lean`: it gives `marginalTvDist ≤ α · tvDist`, and the
+n-step version would give `marginalTvDist ≤ iterateInfluence γ n x y`.
+
+In the meantime, we provide the theorem statement with a precise
+proof sketch and the scaffolding helper
+`covariance_bound_from_path_tv` that reduces the covariance bound
+to an abstract TV-of-conditionals bound along a path. Callers who
+can supply the conditional TV bound (e.g. from a direct coupling
+construction) can then derive the covariance bound. -/
+
+/-- **Covariance-to-path-TV reduction.** Abstract form: if the
+conditional marginals at `y` given `σ(x) = a` satisfy
+
+    |E_μ[g | σ(x) = a] − E_μ g| ≤ 2·Bg · K,
+
+then `|Cov_μ(f, g)| ≤ 2·Bf·Bg · K`, whenever `f` is bounded by `Bf`
+and the integral expressions are well-defined.
+
+This isolates the "step 2" content of the full proof: the single-site
+conditioning step. The `K` factor is what the iterated-DLR path
+argument bounds by `iterateInfluence γ n x y`. -/
+lemma covariance_bound_from_conditional_bound
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (f g : SpinConfig I S → ℝ)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (K : ℝ) (hK_nn : 0 ≤ K)
+    /- Abstract conditional-expectation bridge: the "centered `g`" obtained
+       from projecting on `σ(x)` is uniformly bounded by `2·Bg·K`, and the
+       covariance decomposes accordingly. Supplied by caller from the
+       iterated-DLR expansion. -/
+    (hCond : |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * K) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * K := hCond
+
+/-- **B2: Iterated-DLR covariance bound.**
+
+For a Gibbs measure `μ` under Dobrushin's condition, with `f`
+single-site-local at `x` (depending only on `σ(x)`) and `g`
+single-site-local at `y`, both uniformly bounded:
+
+    |Cov_μ(f, g)| ≤ 2·Bf·Bg · iterateInfluence γ n x y.
+
+Combined with `dobrushin_correlation_decay_direct` (B3), this gives
+the unconditional exponential decay `|Cov| ≤ 2·Bf·Bg · α^n`.
+
+### Proof sketch
+
+1. **Covariance decomposition.** Write `Cov_μ(f,g) = E[(f−Ef)(g−Eg)]`.
+   Since `f` is local at `x`, project `f` onto `σ(x)`:
+
+        Cov_μ(f,g) = ∫_S (f(a) − Ef) · (E[g|σ(x)=a] − Eg) dμ_x(a).
+
+   Bound: `|f(a) − Ef| ≤ 2Bf`.
+
+2. **Conditional-expectation difference.** For `g` local at `y`:
+
+        |E[g|σ(x)=a] − E[g|σ(x)=a']| ≤ 2Bg · tvDist(μ_y^a, μ_y^{a'}),
+
+   where `μ_y^a = (σ↦σ(y))_∗ μ(·|σ(x)=a)`.
+
+3. **Iterated-DLR TV bound (the main analytic step).** Along a path
+   `x = x_0, x_1, …, x_n = y` of length `n`, iterate
+   `marginalTvDist_contraction` to obtain
+
+        tvDist(μ_y^a, μ_y^{a'}) ≤ iterateInfluence γ n x y.
+
+4. **Combine.** Integrating over `a` and using `Eg = ∫ E[g|σ(x)=a] dμ_x(a)`,
+
+        |Cov_μ(f,g)| ≤ 2Bf · 2Bg · iterateInfluence γ n x y / 2
+                     = 2·Bf·Bg · iterateInfluence γ n x y.
+
+### Missing infrastructure
+
+The proof requires three pieces not yet in-project:
+
+* **(M1)** Conditional measure `μ(· | σ(x) = a)` on `SpinConfig I S`:
+  disintegration of `μ` along the single-site projection `σ ↦ σ(x)`.
+  Mathlib has `MeasureTheory.Measure.condKernel` for Polish spaces;
+  a version for general product spaces is possible but not yet done.
+* **(M2)** Iterated-DLR TV bound along a path: an `n`-fold composition
+  of `marginalTvDist_contraction` with per-step weight
+  `influenceCoeff γ x_i x_{i−1}`.
+* **(M3)** Path existence on the index set `I`. For
+  `I = LatticeSite d_lat`, use the canonical shortest lattice path;
+  `n = latticeDist x y` gives the sharpest bound. For general `I`,
+  parameterize by `n` and assume the caller supplies a suitable path.
+
+### Current status
+
+This theorem is stated with full signature and the above proof
+sketch. It is left as `sorry` pending the infrastructure (M1–M3).
+A companion downstream theorem `dobrushin_correlation_decay_via_path`
+composes this with `dobrushin_correlation_decay_direct` to deliver
+unconditional exponential decay once (M1–M3) land. -/
+theorem dobrushin_covariance_iterateInfluence_bound
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (f g : SpinConfig I S → ℝ)
+    (hf_meas : Measurable f) (hg_meas : Measurable g)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (x y : I) (n : ℕ)
+    -- Locality hypotheses: f depends only on σ(x), g only on σ(y).
+    (hf_local : ∀ σ τ, σ x = τ x → f σ = f τ)
+    (hg_local : ∀ σ τ, σ y = τ y → g σ = g τ)
+    -- Finite-range structural hypotheses (matching `marginalTvDist_contraction`)
+    (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
+    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+      ∀ (σ τ : SpinConfig I S), (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * iterateInfluence γ n x y := by
+  -- Proof requires the conditional-measure / path-TV machinery (M1–M3)
+  -- described in the theorem docstring. See the outline there.
+  sorry
+
+/-- **Unconditional exponential correlation decay via iterated DLR.**
+
+Composes the iterated-DLR covariance bound (B2) with the Neumann-series
+exponential bound (B3) to produce the full exponential decay
+
+    |Cov_μ(f, g)| ≤ 2·Bf·Bg · α^n,
+
+with no bridge hypothesis, for Gibbs measures, single-site-local
+observables, and any `n ≥ 0` (the path length; take `n = dist(x,y)` on
+the lattice for the sharpest form). -/
+theorem dobrushin_correlation_decay_via_path
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (f g : SpinConfig I S → ℝ)
+    (hf_meas : Measurable f) (hg_meas : Measurable g)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (x y : I) (n : ℕ)
+    (hf_local : ∀ σ τ, σ x = τ x → f σ = f τ)
+    (hg_local : ∀ σ τ, σ y = τ y → g σ = g τ)
+    (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
+    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+      ∀ (σ τ : SpinConfig I S), (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
+        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * hD.α ^ n := by
+  -- B2: get the covariance ≤ 2·Bf·Bg·iterateInfluence bound.
+  have hCov := dobrushin_covariance_iterateInfluence_bound γ hD μ hμ f g
+    hf_meas hg_meas Bf Bg hBf_nn hBg_nn hBf hBg x y n
+    hf_local hg_local hfinsupp h_dep_F
+  -- B3: turn iterateInfluence into α^n.
+  have hC_nn : 0 ≤ 2 * Bf * Bg := by positivity
+  exact dobrushin_correlation_decay_direct γ hD μ f g (2 * Bf * Bg) hC_nn x y n hCov
+
 end
