@@ -368,8 +368,9 @@ satisfies DLR at every site, the single-site contraction at `z` gives
 `δ z ≤ ∑' w, influenceCoeff γ z w · δ w`. -/
 
 /-- **Dobrushin iterated coupling existence** (axiomatized from
-Dobrushin 1968; the joint-coupling formulation vetted as correct by
-Gemini Deep Think, 2026-04-16).
+Dobrushin 1968; the joint-coupling formulation **confirmed correct
+by Gemini Deep Think on 2026-04-16 as the canonical formulation**
+of the classical Dobrushin uniqueness theorem).
 
 **Statement.** If two probability measures `μ₁, μ₂` on `SpinConfig I S`
 both satisfy the DLR equation at every singleton `{z}` for `z ∈ T ⊆ I`
@@ -395,10 +396,24 @@ marginal TV and do satisfy the self-consistency inequality. A coupling
 that is merely maximal at the full-TV level does *not* satisfy it
 (this was verified).
 
-**Postulated as a classical textbook theorem.** Formalizing the
-construction of the Dobrushin iterated coupling would be a ~500-line
-upstream project (`MarkovSemigroups/Coupling/DobrushinCoupling.lean`,
-not yet written).
+**Postulated as a classical textbook theorem.** Gemini's analysis
+identifies the construction of `P` as proceeding via a **coupled
+specification** `γ̄` whose single-site component at `z` is the
+maximal coupling of `γ({z}, σ)` and `γ({z}, η)`. By the definition of
+the influence matrix, this local construction satisfies
+`γ̄_z(σ_z ≠ η_z | σ, η) ≤ ∑ C(z,w)·𝟙(σ_w ≠ η_w)` pointwise. The
+global coupling `P` is then a DLR measure for `γ̄` on `T` with the
+specified marginals; integrating the local inequality against `P`
+yields the stated conclusion.
+
+**Formalization cost.** Replacing this axiom with a proof is a
+~500-line upstream project (`MarkovSemigroups/Coupling/DobrushinCoupling.lean`,
+not yet written). Gemini warns that the **hardest step is not the
+matrix inequality** but the existence of the global coupled measure
+`P` on the uncountable product space `(SpinConfig) × (SpinConfig)`:
+typically requires Prokhorov's theorem / weak limits of finite-volume
+coupled measures, which in turn requires a topology on `S` beyond the
+current `[Countable S] [MeasurableSingletonClass S]` typeclasses.
 
 **Use in CondTVBridge.** This axiom is the tool that discharges the
 remaining sorry in `condSingleSiteMeasure_marginalTvDist_contraction_at_nonX`.
