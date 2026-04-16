@@ -366,73 +366,68 @@ Define `δ w := marginalTvDist (condSingleSiteMeasure μ x a) μ w`. Since
 satisfies DLR at every site, the single-site contraction at `z` gives
 `δ z ≤ ∑' w, influenceCoeff γ z w · δ w`. -/
 
-/-- **Dobrushin marginal-TV contraction inequality** (axiomatized from
-Dobrushin 1968, Lemma 2 / Georgii 1988 §8.1).
+/-- **Self-consistency inequality at `z ≠ x` (UNPROVEN — known to be
+false without strengthening).**
 
-**Statement.** If two probability measures `μ₁`, `μ₂` on `∏_i S_i` both
-satisfy the DLR equation at every singleton `{z}` for `z ∈ T ⊆ I` (where
-T is the set of "free" sites, sites at which DLR holds), then for every
-`z ∈ T`:
-$$
-  \mathrm{marginalTvDist}(μ_1, μ_2)(z) \le \sum_{w} C(z, w) \cdot
-  \mathrm{marginalTvDist}(μ_1, μ_2)(w)
-$$
-where `C(z,w) := influenceCoeff γ z w` is the Dobrushin influence matrix.
+Earlier revisions of this file axiomatized a "marginal-TV Dobrushin
+contraction" at every site in `T ⊆ I` where DLR holds, of the form
+`marginalTvDist μ₁ μ₂ z ≤ ∑' w, C(z,w) · marginalTvDist μ₁ μ₂ w` for
+`z ∈ T`. **That statement is false.**
 
-This is the classical Dobrushin contraction at the marginal-TV level
-(as opposed to full-TV, which `marginalTvDist_contraction` gives). It
-holds because the DLR equation at `{z}` expresses the z-marginal of `μ_i`
-as an integral against the boundary marginals, so marginal-TV at z is
-dominated by a weighted sum of marginal-TVs at sites where the
-boundary distributions differ, with weights given by `C(z, ·)`.
+### Counterexample (Gemini Deep Think, 2026-04-16)
 
-Formal proof in the full generality requires:
-- A *site-indexed* coupling refinement: for each pair `(z, w)`, a
-  coupling of the `(w)`-marginals of `μ₁, μ₂` realising their marginal
-  TV distance, consistent across `w` through the DLR at `z`.
-- The standard argument (Dobrushin-Shlosman, Georgii Prop 8.7) then
-  assembles these couplings via the DLR at z to deliver the inequality.
+Take `I = {1, 2, 3}`, `S = {0, 1}`, `ε = 1/8`, and
+`γ({1}, σ)(1) = 1/2 + ε · (σ_2 ⊕ σ_3 − 1/2)` — site 1's conditional
+depends on the XOR of sites 2 and 3.  Then `C(1,2) = C(1,3) = 2ε = 1/4`
+(Dobrushin row sum `1/2 < 1`).
 
-**Postulated as a classical textbook theorem.** We introduce this as
-an `axiom` rather than proving it. This is a well-documented result in
-the foundations of Gibbs measures; a formalization would replace this
-axiom with a proved lemma in roughly ~400 lines of coupling theory
-(marginal-aware coupling existence + Dobrushin's original argument).
+Let `μ_1 := γ ∘ ν_1` with `ν_1 := ½ δ_{(0,0)} + ½ δ_{(1,1)}` (perfect
+correlation), and `μ_2 := γ ∘ ν_2` with
+`ν_2 := ½ δ_{(0,1)} + ½ δ_{(1,0)}` (perfect anticorrelation). Both
+satisfy DLR at `z = 1`.
 
-The specialization we apply here sets `μ₁ := condSingleSiteMeasure μ x a`
-(which satisfies DLR at `{z}` for all `z ≠ x`, proved in
-`condSingleSiteMeasure_dlr_at_site` above), `μ₂ := μ`, and `T := {z | z ≠ x}`.
+- Site-2 and site-3 marginals are uniform `Bernoulli(1/2)` under both,
+  so `marginalTvDist μ_1 μ_2 2 = marginalTvDist μ_1 μ_2 3 = 0`.
+- Under `μ_1`, `σ_2 ⊕ σ_3 ≡ 0`, so `μ_1(σ_1=1) = 3/8`.
+- Under `μ_2`, `σ_2 ⊕ σ_3 ≡ 1`, so `μ_2(σ_1=1) = 5/8`.
+- Hence `marginalTvDist μ_1 μ_2 1 = 1/4`.
 
-References:
-- Dobrushin (1968), "Description of a random field by means of conditional
-  probabilities and conditions of its regularity", Lemma 2.
-- Georgii (1988), *Gibbs Measures and Phase Transitions*, Proposition 8.7. -/
-axiom marginalTvDist_contraction_of_dlr_at_site
-    {I S : Type*} [DecidableEq I] [MeasurableSpace S] [Countable S]
-    [MeasurableSingletonClass S] [MeasurableEq (SpinConfig I S)]
-    (γ : GibbsSpec I S)
-    (μ₁ μ₂ : Measure (SpinConfig I S))
-    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
-    (T : Set I)
-    (hμ₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
-      MeasurableSet A →
-      (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
-    (hμ₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
-      MeasurableSet A →
-      (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
-    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
-      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
-    ∀ z ∈ T,
-      marginalTvDist μ₁ μ₂ z ≤
-        ∑' w, influenceCoeff γ z w * marginalTvDist μ₁ μ₂ w
+Plugging in: the claim would give `1/4 ≤ (1/4)·0 + (1/4)·0 = 0`.
+Contradiction.
 
-/-- Self-consistency inequality at `z ≠ x` for the conditional measure.
+### Correct direction
 
-Proved from the classical Dobrushin contraction axiom
-`marginalTvDist_contraction_of_dlr_at_site` by specializing to
-`T := {z | z ≠ x}` and using `condSingleSiteMeasure_dlr_at_site`. -/
+The Dobrushin inequality *does* hold at the level of a **joint coupling**:
+there exists a coupling `P` of `μ_1, μ_2` such that for every `z ∈ T`,
+`P{σ_z ≠ η_z} ≤ ∑' w, C(z,w) · P{σ_w ≠ η_w}`. The quantities
+`P{σ_w ≠ η_w}` upper-bound marginal TV but *strictly exceed* it when
+the two measures have different joint correlations with identical
+marginals — which is exactly the failure mode above.
+
+Closing the sorry therefore requires either:
+
+1. **Joint-coupling route.** Build the coupling `P` (Dobrushin 1968
+   coupling construction) and iterate the inequality above on
+   `P{σ_w ≠ η_w}` directly — *not* on `marginalTvDist`. The downstream
+   covariance-bound chain would then need to propagate
+   `P{σ_w ≠ η_w}` rather than `marginalTvDist`, which requires
+   refactoring `covariance_bound_via_bridge` and
+   `covariance_bound_gibbs`.
+
+2. **Föllmer oscillation route** (Föllmer 1982). Bound function
+   oscillations directly via a contracting linear operator on the
+   Lipschitz semi-norm of local functions, bypassing measure
+   couplings entirely. Cleaner in Lean, but requires redefining the
+   key quantity and reworking the covariance-bound pipeline.
+
+Both are substantial (~500+ lines) and out of scope for the current
+session.
+
+### Current status
+
+Left as a `sorry`. The downstream theorems `condTV_bound` and
+`covariance_bound_gibbs` depend on this lemma and therefore also
+remain conditional on it. -/
 lemma condSingleSiteMeasure_marginalTvDist_contraction_at_nonX
     [Countable S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
@@ -449,19 +444,7 @@ lemma condSingleSiteMeasure_marginalTvDist_contraction_at_nonX
     marginalTvDist (condSingleSiteMeasure μ x a) μ z ≤
       ∑' w, influenceCoeff γ z w *
         marginalTvDist (condSingleSiteMeasure μ x a) μ w := by
-  -- Apply the classical Dobrushin contraction axiom with
-  -- T := {z | z ≠ x}. Both measures satisfy DLR at {z} for z ≠ x:
-  -- - μ: by assumption `IsGibbsMeasure γ μ`.
-  -- - condSingleSiteMeasure μ x a: by `condSingleSiteMeasure_dlr_at_site`.
-  refine marginalTvDist_contraction_of_dlr_at_site γ
-    (condSingleSiteMeasure μ x a) μ {z | z ≠ x}
-    ?_ ?_ hfinsupp h_dep_F z hzx
-  · -- condSingleSiteMeasure DLR at z ∈ T via condSingleSiteMeasure_dlr_at_site
-    intro z' hz'T A hA
-    exact condSingleSiteMeasure_dlr_at_site γ μ hμ x a hpos z' hz'T A hA
-  · -- μ satisfies DLR at every site via IsGibbsMeasure
-    intro z' _ A hA
-    exact hμ.dlr {z'} A hA
+  sorry
 
 /-! ### Step 3: the Neumann-series iteration.
 
