@@ -415,16 +415,16 @@ typically requires Prokhorov's theorem / weak limits of finite-volume
 coupled measures, which in turn requires a topology on `S` beyond the
 current `[Countable S] [MeasurableSingletonClass S]` typeclasses.
 
-**Use in CondTVBridge.** This axiom is the tool that discharges the
-remaining sorry in `condSingleSiteMeasure_marginalTvDist_contraction_at_nonX`.
+**Use in CondTVBridge.** This axiom is invoked in
+`condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff` (below).
 The specialization takes `μ₁ := condSingleSiteMeasure μ x a`
 (satisfies DLR at `{z}` for `z ≠ x`, via `condSingleSiteMeasure_dlr_at_site`),
 `μ₂ := μ` (satisfies DLR everywhere, by `IsGibbsMeasure γ μ`), and
-`T := {z | z ≠ x}`. Wiring the axiom into the downstream chain
-(`condTV_bound`, `covariance_bound_gibbs`) requires a refactor that
-propagates `P{σ_w ≠ η_w}` through `abstract_neumann_iteration` and
-then bounds `marginalTvDist` by it via `tvNorm_le_coupling` at the
-end — left as follow-on work.
+`T := {z | z ≠ x}`. The coupling disagreement
+`δ w := (P{p | p.1 w ≠ p.2 w}).toReal` is fed into
+`abstract_neumann_iteration`, then `marginalTvDist ≤ δ y` is obtained
+via `marginalTvDist_le_coupling_site` (pushforward coupling to the
+site-`y` marginals combined with `tvNorm_le_coupling`).
 
 References:
 - Dobrushin (1968), "Description of a random field by means of conditional
@@ -454,85 +454,82 @@ axiom dobrushin_iterated_coupling_exists
           ∑' w, influenceCoeff γ z w *
             (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
 
-/-- **Self-consistency inequality at `z ≠ x` (UNPROVEN — known to be
-false without strengthening).**
+/-! ### Why the marginal-TV self-consistency inequality is NOT used.
 
-Earlier revisions of this file axiomatized a "marginal-TV Dobrushin
-contraction" at every site in `T ⊆ I` where DLR holds, of the form
+An earlier revision tried to axiomatize a *marginal-TV* form
 `marginalTvDist μ₁ μ₂ z ≤ ∑' w, C(z,w) · marginalTvDist μ₁ μ₂ w` for
-`z ∈ T`. **That statement is false.**
+`z ≠ x`. That statement is **false** (Gemini Deep Think counterexample
+2026-04-16: `I = {1,2,3}`, `S = {0,1}`, `ε = 1/8`,
+`γ({1},σ)(1) = 1/2 + ε·(σ_2 ⊕ σ_3 − 1/2)`; perfectly correlated vs
+anticorrelated `(σ_2,σ_3)` yield identical single-site marginals at 2,3
+but disagree by `1/4` at site 1, breaking the claimed inequality).
 
-### Counterexample (Gemini Deep Think, 2026-04-16)
+The correct formulation is the **joint-coupling** version supplied by
+`dobrushin_iterated_coupling_exists` above. Downstream, we bypass the
+marginal-TV intermediate step: we invoke the axiom directly, apply the
+abstract Neumann iteration to the coupling-disagreement quantity
+`δ w := (P{p | p.1 w ≠ p.2 w}).toReal`, then dominate `marginalTvDist`
+by `δ y` at the end via the pushforward helper below. -/
 
-Take `I = {1, 2, 3}`, `S = {0, 1}`, `ε = 1/8`, and
-`γ({1}, σ)(1) = 1/2 + ε · (σ_2 ⊕ σ_3 − 1/2)` — site 1's conditional
-depends on the XOR of sites 2 and 3.  Then `C(1,2) = C(1,3) = 2ε = 1/4`
-(Dobrushin row sum `1/2 < 1`).
+/-- **Pushforward-coupling bound for marginal TV.** If `P` is a joint
+coupling of `μ₁, μ₂` on `SpinConfig I S × SpinConfig I S`, then the
+site-`y` marginal TV disagreement between `μ₁, μ₂` is bounded by the
+`P`-probability that the two coordinates differ at `y`.
 
-Let `μ_1 := γ ∘ ν_1` with `ν_1 := ½ δ_{(0,0)} + ½ δ_{(1,1)}` (perfect
-correlation), and `μ_2 := γ ∘ ν_2` with
-`ν_2 := ½ δ_{(0,1)} + ½ δ_{(1,0)}` (perfect anticorrelation). Both
-satisfy DLR at `z = 1`.
-
-- Site-2 and site-3 marginals are uniform `Bernoulli(1/2)` under both,
-  so `marginalTvDist μ_1 μ_2 2 = marginalTvDist μ_1 μ_2 3 = 0`.
-- Under `μ_1`, `σ_2 ⊕ σ_3 ≡ 0`, so `μ_1(σ_1=1) = 3/8`.
-- Under `μ_2`, `σ_2 ⊕ σ_3 ≡ 1`, so `μ_2(σ_1=1) = 5/8`.
-- Hence `marginalTvDist μ_1 μ_2 1 = 1/4`.
-
-Plugging in: the claim would give `1/4 ≤ (1/4)·0 + (1/4)·0 = 0`.
-Contradiction.
-
-### Correct direction
-
-The Dobrushin inequality *does* hold at the level of a **joint coupling**:
-there exists a coupling `P` of `μ_1, μ_2` such that for every `z ∈ T`,
-`P{σ_z ≠ η_z} ≤ ∑' w, C(z,w) · P{σ_w ≠ η_w}`. The quantities
-`P{σ_w ≠ η_w}` upper-bound marginal TV but *strictly exceed* it when
-the two measures have different joint correlations with identical
-marginals — which is exactly the failure mode above.
-
-Closing the sorry therefore requires either:
-
-1. **Joint-coupling route.** Build the coupling `P` (Dobrushin 1968
-   coupling construction) and iterate the inequality above on
-   `P{σ_w ≠ η_w}` directly — *not* on `marginalTvDist`. The downstream
-   covariance-bound chain would then need to propagate
-   `P{σ_w ≠ η_w}` rather than `marginalTvDist`, which requires
-   refactoring `covariance_bound_via_bridge` and
-   `covariance_bound_gibbs`.
-
-2. **Föllmer oscillation route** (Föllmer 1982). Bound function
-   oscillations directly via a contracting linear operator on the
-   Lipschitz semi-norm of local functions, bypassing measure
-   couplings entirely. Cleaner in Lean, but requires redefining the
-   key quantity and reworking the covariance-bound pipeline.
-
-Both are substantial (~500+ lines) and out of scope for the current
-session.
-
-### Current status
-
-Left as a `sorry`. The downstream theorems `condTV_bound` and
-`covariance_bound_gibbs` depend on this lemma and therefore also
-remain conditional on it. -/
-lemma condSingleSiteMeasure_marginalTvDist_contraction_at_nonX
+Strategy: push `P` forward by `(p.1 y, p.2 y) : S × S`, obtaining a
+coupling of the site-`y` marginals, and apply `tvNorm_le_coupling`. -/
+lemma marginalTvDist_le_coupling_site
     [Countable S] [MeasurableSingletonClass S]
-    [MeasurableEq (SpinConfig I S)]
-    (γ : GibbsSpec I S)
-    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
-    (hμ : IsGibbsMeasure γ μ)
-    (x : I) (a : S) (hpos : μ (fiber x a) ≠ 0)
-    [IsProbabilityMeasure (condSingleSiteMeasure μ x a)]
-    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
-      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal)
-    (z : I) (hzx : z ≠ x) :
-    marginalTvDist (condSingleSiteMeasure μ x a) μ z ≤
-      ∑' w, influenceCoeff γ z w *
-        marginalTvDist (condSingleSiteMeasure μ x a) μ w := by
-  sorry
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (P : Measure (SpinConfig I S × SpinConfig I S))
+    (hP : IsCoupling P μ₁ μ₂) (y : I) :
+    marginalTvDist μ₁ μ₂ y ≤
+      (P {p : SpinConfig I S × SpinConfig I S | p.1 y ≠ p.2 y}).toReal := by
+  haveI := hP.isProb
+  -- The site-y projection from SpinConfig × SpinConfig to S × S.
+  let ρ : SpinConfig I S × SpinConfig I S → S × S :=
+    fun p => (p.1 y, p.2 y)
+  have hρ_meas : Measurable ρ :=
+    ((measurable_pi_apply y).comp measurable_fst).prodMk
+      ((measurable_pi_apply y).comp measurable_snd)
+  -- Q := P.map ρ is a coupling of (marginalAtSite μ₁ y) and (marginalAtSite μ₂ y).
+  set Q : Measure (S × S) := P.map ρ with hQ_def
+  haveI hQ_isProb : IsProbabilityMeasure Q :=
+    Measure.isProbabilityMeasure_map hρ_meas.aemeasurable
+  -- First marginal: Q.map Prod.fst = marginalAtSite μ₁ y
+  have hQ_fst : Q.map Prod.fst = marginalAtSite μ₁ y := by
+    have h1 : Prod.fst ∘ ρ = (fun σ : SpinConfig I S => σ y) ∘ Prod.fst := by
+      funext p; rfl
+    rw [hQ_def, Measure.map_map measurable_fst hρ_meas, h1,
+        ← Measure.map_map (measurable_pi_apply y) measurable_fst, hP.fst_marginal]
+    rfl
+  have hQ_snd : Q.map Prod.snd = marginalAtSite μ₂ y := by
+    have h2 : Prod.snd ∘ ρ = (fun σ : SpinConfig I S => σ y) ∘ Prod.snd := by
+      funext p; rfl
+    rw [hQ_def, Measure.map_map measurable_snd hρ_meas, h2,
+        ← Measure.map_map (measurable_pi_apply y) measurable_snd, hP.snd_marginal]
+    rfl
+  have hQ_coup : IsCoupling Q (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) :=
+    { isProb := hQ_isProb, fst_marginal := hQ_fst, snd_marginal := hQ_snd }
+  -- Key: marginalTvDist μ₁ μ₂ y = tvNorm (marginalAtSite μ₁ y) (marginalAtSite μ₂ y).
+  have h_eq : marginalTvDist μ₁ μ₂ y =
+      tvNorm (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) :=
+    tvDist_eq_tvNorm _ _
+  -- Apply tvNorm_le_coupling: tvNorm ≤ (Q {p | p.1 ≠ p.2}).toReal.
+  have hbound := tvNorm_le_coupling Q (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) hQ_coup
+  -- Rewrite Q {p | p.1 ≠ p.2} = P (ρ ⁻¹' {p | p.1 ≠ p.2}) = P {p | p.1 y ≠ p.2 y}.
+  have h_ne_S : MeasurableSet {p : S × S | p.1 ≠ p.2} := by
+    haveI : MeasurableEq S := inferInstance
+    exact MeasurableSet.compl
+      (measurableSet_eq_fun measurable_fst measurable_snd)
+  have h_Q_eq : Q {p : S × S | p.1 ≠ p.2} =
+      P {p : SpinConfig I S × SpinConfig I S | p.1 y ≠ p.2 y} := by
+    rw [hQ_def, Measure.map_apply hρ_meas h_ne_S]
+    rfl
+  rw [h_eq]
+  rw [h_Q_eq] at hbound
+  exact hbound
 
 /-! ### Step 3: the Neumann-series iteration.
 
@@ -1017,6 +1014,22 @@ lemma abstract_neumann_iteration
   -- δ y ≤ neumann γ y x.
   exact le_of_tendsto_of_tendsto' tendsto_const_nhds h_rhs_tendsto h_ind
 
+/-- **Marginal TV bound via the joint coupling axiom.** For a Gibbs
+measure `μ` under Dobrushin's condition, the `y`-marginal TV distance
+between `condSingleSiteMeasure μ x a` and `μ` is bounded by the
+Neumann-series coefficient `neumannSeriesCoeff γ y x`.
+
+Strategy (bypassing the false marginal-TV contraction):
+1. Invoke `dobrushin_iterated_coupling_exists` with
+   `μ₁ := condSingleSiteMeasure μ x a`, `μ₂ := μ`, `T := {z | z ≠ x}`.
+   DLR for `μ₁` at `z ≠ x` is `condSingleSiteMeasure_dlr_at_site`;
+   DLR for `μ₂ = μ` at every `z` is `hμ.dlr`.
+2. Extract the coupling `P` with coupling self-consistency at `z ≠ x`:
+   `(P{p | p.1 z ≠ p.2 z}).toReal ≤ ∑' w, C(z,w) · (P{p | p.1 w ≠ p.2 w}).toReal`.
+3. Set `δ w := (P{p | p.1 w ≠ p.2 w}).toReal`. Apply
+   `abstract_neumann_iteration` (δ y ≤ neumannSeriesCoeff γ y x).
+4. Use `marginalTvDist_le_coupling_site` to dominate
+   `marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤ δ y`. -/
 lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff
     [Countable S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
@@ -1033,16 +1046,47 @@ lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff
         (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
     marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤
       neumannSeriesCoeff γ y x := by
-  -- Apply the abstract Neumann iteration with δ w = marginalTvDist (cond) μ w.
-  set δ : I → ℝ := fun w => marginalTvDist (condSingleSiteMeasure μ x a) μ w with hδ_def
-  have hδ_nn : ∀ w, 0 ≤ δ w := fun w =>
-    marginalTvDist_nonneg (condSingleSiteMeasure μ x a) μ w
-  have hδ_le_one : ∀ w, δ w ≤ 1 := fun w =>
-    marginalTvDist_le_one (condSingleSiteMeasure μ x a) μ w
-  have hcontract : ∀ z, z ≠ x → δ z ≤ ∑' w, influenceCoeff γ z w * δ w :=
-    fun z hzx => condSingleSiteMeasure_marginalTvDist_contraction_at_nonX
-      γ μ hμ x a hpos hfinsupp h_dep_F z hzx
-  exact abstract_neumann_iteration γ hD x δ hδ_nn hδ_le_one hcontract y
+  -- Step 1: set up DLR hypotheses for the axiom at T := {z | z ≠ x}.
+  set T : Set I := {z | z ≠ x} with hT_def
+  have hdlr₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (condSingleSiteMeasure μ x a A).toReal =
+        ∫ σ, (γ.condDist {z} σ A).toReal ∂(condSingleSiteMeasure μ x a) := by
+    intro z hzT A hA
+    have hzx : z ≠ x := hzT
+    exact condSingleSiteMeasure_dlr_at_site γ μ hμ x a hpos z hzx A hA
+  have hdlr₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
+    intro z _ A hA
+    exact hμ.dlr {z} A hA
+  -- Step 2: invoke the axiom.
+  obtain ⟨P, hP_coup, hP_ineq⟩ :=
+    dobrushin_iterated_coupling_exists γ (condSingleSiteMeasure μ x a) μ T
+      hdlr₁ hdlr₂ hfinsupp h_dep_F
+  haveI := hP_coup.isProb
+  -- Step 3: define δ via coupling disagreement probabilities.
+  set δ : I → ℝ :=
+    fun w => (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+    with hδ_def
+  have hδ_nn : ∀ w, 0 ≤ δ w := fun _ => ENNReal.toReal_nonneg
+  have hδ_le_one : ∀ w, δ w ≤ 1 := by
+    intro w
+    have h := prob_le_one (μ := P)
+      (s := {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w})
+    calc (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+        ≤ (1 : ENNReal).toReal :=
+          ENNReal.toReal_mono (by simp) h
+      _ = 1 := by simp
+  have hcontract : ∀ z, z ≠ x → δ z ≤ ∑' w, influenceCoeff γ z w * δ w := by
+    intro z hzx
+    exact hP_ineq z hzx
+  -- Step 4: apply abstract_neumann_iteration.
+  have hδ_le_neu : δ y ≤ neumannSeriesCoeff γ y x :=
+    abstract_neumann_iteration γ hD x δ hδ_nn hδ_le_one hcontract y
+  -- Step 5: dominate marginalTvDist by δ y via the pushforward helper.
+  have h_marg_le :
+      marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤ δ y :=
+    marginalTvDist_le_coupling_site (condSingleSiteMeasure μ x a) μ P hP_coup y
+  exact le_trans h_marg_le hδ_le_neu
 
 /-! ## The condTV bound -/
 
