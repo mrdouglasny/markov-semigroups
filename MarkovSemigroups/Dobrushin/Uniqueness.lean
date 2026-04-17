@@ -680,11 +680,12 @@ lemma marginalTvDist_contraction
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
     -- Finite-range structural hypotheses (per-row finite influence + invariance)
     (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
-    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)),
-      MeasurableSet A →
+    (h_dep_F : ∀ (x : I) (B : Set S),
+      MeasurableSet B →
       ∀ (σ τ : SpinConfig I S),
         (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) (x : I) :
+        (γ.condDist {x} σ ((· x) ⁻¹' B)).toReal =
+        (γ.condDist {x} τ ((· x) ⁻¹' B)).toReal) (x : I) :
     marginalTvDist μ₁ μ₂ x ≤ hD.α * tvDist μ₁ μ₂ := by
   -- For each measurable B ⊆ S, the cylinder disagreement at x is bounded
   -- by Σ_y C(x,y) · tvDist(μ₁,μ₂), hence by α · tvDist.
@@ -703,7 +704,7 @@ lemma marginalTvDist_contraction
     fun _ B' hB' => abs_toReal_sub_le_tvDist μ₁ μ₂ B' hB'
   have hAcyl : A = (fun σ : SpinConfig I S => σ x) ⁻¹' B := rfl
   have hcontract := dobrushin_single_site_contraction γ μ₁ μ₂ h₁ h₂ x A hA
-    hB hAcyl δ hδ_nn hδ_bound (hfinsupp x) (h_dep_F x A hA)
+    hB hAcyl δ hδ_nn hδ_bound (hfinsupp x) (h_dep_F x B hB)
   -- Assemble: |μ₁(A) - μ₂(A)| ≤ Σ_y C(x,y) * tvDist ≤ α * tvDist
   calc |(μ₁ A).toReal - (μ₂ A).toReal|
       ≤ ∑' y, influenceCoeff γ x y * δ y := hcontract
@@ -730,11 +731,12 @@ lemma tvDist_contraction [Nonempty I] [Countable S] [MeasurableSingletonClass S]
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
     -- Finite-range structural hypotheses
     (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
-    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)),
-      MeasurableSet A →
+    (h_dep_F : ∀ (x : I) (B : Set S),
+      MeasurableSet B →
       ∀ (σ τ : SpinConfig I S),
         (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal)
+        (γ.condDist {x} σ ((· x) ⁻¹' B)).toReal =
+        (γ.condDist {x} τ ((· x) ⁻¹' B)).toReal)
     -- Bridge hypothesis: full TV is dominated by marginal TV between
     -- Gibbs measures. This encapsulates "single-site marginals determine
     -- the Gibbs measure" + a supremum estimate; it is a consequence of
@@ -767,11 +769,12 @@ theorem dobrushin_uniqueness [Nonempty I] [Countable S] [MeasurableSingletonClas
     (h₁ : IsGibbsMeasure γ μ₁) (h₂ : IsGibbsMeasure γ μ₂)
     -- Finite-range structural hypotheses
     (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
-    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)),
-      MeasurableSet A →
+    (h_dep_F : ∀ (x : I) (B : Set S),
+      MeasurableSet B →
       ∀ (σ τ : SpinConfig I S),
         (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal)
+        (γ.condDist {x} σ ((· x) ⁻¹' B)).toReal =
+        (γ.condDist {x} τ ((· x) ⁻¹' B)).toReal)
     -- Bridge hypothesis: full TV is dominated by marginal TV at some
     -- site. For Gibbs measures this follows from the DLR equations
     -- (a measure is determined by its single-site marginals via DLR),

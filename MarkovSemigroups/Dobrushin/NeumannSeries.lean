@@ -768,9 +768,10 @@ theorem dobrushin_covariance_iterateInfluence_bound
     (hg_local : ∀ σ τ, σ y = τ y → g σ = g τ)
     -- Finite-range structural hypotheses (matching `marginalTvDist_contraction`)
     (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
-    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (x : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
+        (γ.condDist {x} σ ((· x) ⁻¹' B)).toReal =
+        (γ.condDist {x} τ ((· x) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * iterateInfluence γ n x y := by
   -- Proof requires the conditional-measure / path-TV machinery (M1–M3)
@@ -799,9 +800,10 @@ theorem dobrushin_correlation_decay_via_path
     (hf_local : ∀ σ τ, σ x = τ x → f σ = f τ)
     (hg_local : ∀ σ τ, σ y = τ y → g σ = g τ)
     (hfinsupp : ∀ x, (Function.support (influenceCoeff γ x ·)).Finite)
-    (h_dep_F : ∀ (x : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (x : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ y ∈ (hfinsupp x).toFinset, σ y = τ y) →
-        (γ.condDist {x} σ A).toReal = (γ.condDist {x} τ A).toReal) :
+        (γ.condDist {x} σ ((· x) ⁻¹' B)).toReal =
+        (γ.condDist {x} τ ((· x) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * hD.α ^ n := by
   -- B2: get the covariance ≤ 2·Bf·Bg·iterateInfluence bound.

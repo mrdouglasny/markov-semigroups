@@ -444,9 +444,10 @@ axiom dobrushin_iterated_coupling_exists
       MeasurableSet A →
       (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     ∃ (P : Measure (SpinConfig I S × SpinConfig I S))
       (_ : IsCoupling P μ₁ μ₂),
       ∀ z ∈ T,
@@ -1041,9 +1042,10 @@ lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff
     [IsProbabilityMeasure (condSingleSiteMeasure μ x a)]
     -- Finite-range structural hypotheses
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤
       neumannSeriesCoeff γ y x := by
   -- Step 1: set up DLR hypotheses for the axiom at T := {z | z ≠ x}.
@@ -1114,9 +1116,10 @@ theorem condTV_bound
     (hg_cond_int : Integrable g (condSingleSiteMeasure μ x a))
     -- Finite-range structural hypotheses
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, g σ ∂(condSingleSiteMeasure μ x a) - ∫ σ, g σ ∂μ| ≤
       2 * Bg * neumannSeriesCoeff γ y x := by
   have hne_top : μ (fiber x a) ≠ ⊤ := (measure_lt_top μ (fiber x a)).ne
@@ -1172,9 +1175,10 @@ theorem covariance_bound_gibbs
       Integrable g (condSingleSiteMeasure μ x a))
     -- Finite-range structural hypotheses
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * neumannSeriesCoeff γ y x := by
   -- Build the hCondTV hypothesis using condTV_bound

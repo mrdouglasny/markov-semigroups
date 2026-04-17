@@ -805,9 +805,10 @@ lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum
     [IsProbabilityMeasure (condFiniteSupportMeasure μ N_f a)]
     (y : I)
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     marginalTvDist (condFiniteSupportMeasure μ N_f a) μ y ≤
       ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
   set T : Set I := {z | z ∉ N_f} with hT_def
@@ -874,9 +875,10 @@ theorem condTV_bound_multisite_y
     (hpos : μ (multiFiber N_f a) ≠ 0)
     (hg_cond_int : Integrable g (condFiniteSupportMeasure μ N_f a))
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f a) - ∫ σ, g σ ∂μ| ≤
       2 * Bg * ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
   have hne_top : μ (multiFiber N_f a) ≠ ⊤ := (measure_lt_top μ _).ne
@@ -923,9 +925,10 @@ theorem condFiniteSupportMeasure_marginalTvDist_nn_dist_bound
     (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
     (h_support : ∀ u v, d u v > 1 → influenceCoeff γ u v = 0)
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     marginalTvDist (condFiniteSupportMeasure μ N_f a) μ y ≤
       ∑ x ∈ N_f, hD.α ^ d y x / (1 - hD.α) := by
   have h1 := condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum
@@ -1340,9 +1343,10 @@ theorem covariance_bound_gibbs_multisite
     -- (pointwise equality a.e. suffices but we assume pointwise for simplicity).
     (g_decomp : ∀ σ, g σ = ∑ y ∈ N_g, g_witness y σ)
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
   -- Build the bridge: for each a : N_f → S with positive-mass fiber,
@@ -1451,9 +1455,10 @@ theorem covariance_bound_gibbs_multisite_nn_dist
     (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
     (h_support : ∀ u v, d u v > 1 → influenceCoeff γ u v = 0)
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
   have h1 := covariance_bound_gibbs_multisite γ hD μ hμ f g hf_meas hg_meas
@@ -1691,9 +1696,10 @@ theorem covariance_bound_gibbs_multisite_general
       μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
       Integrable g (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)))
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
   -- Derive MeasurableEq S from [Countable S] [MeasurableSingletonClass S].
@@ -1822,9 +1828,10 @@ theorem covariance_bound_gibbs_multisite_general_nn_dist
     (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
     (h_support : ∀ u v, d u v > 1 → influenceCoeff γ u v = 0)
     (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (A : Set (SpinConfig I S)), MeasurableSet A →
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
       ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ A).toReal = (γ.condDist {z} τ A).toReal) :
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
   have h1 := covariance_bound_gibbs_multisite_general γ hD μ hμ f g hf_meas hg_meas
