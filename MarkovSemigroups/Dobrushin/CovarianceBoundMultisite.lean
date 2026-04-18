@@ -1851,6 +1851,370 @@ theorem covariance_bound_gibbs_multisite_general_nn_dist
     _ ≤ 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) :=
         mul_le_mul_of_nonneg_left h3 hBfBg_nn
 
+/-! ## Nocount variants
+
+The following variants replace `[Countable S]` with
+`[MeasurableEq S]` (or `[MeasurableSingletonClass S] [MeasurableEq S]`),
+enabling the Dobrushin covariance bound for uncountable compact Lie
+groups like U(n). The coupling axiom `dobrushin_iterated_coupling_exists`
+(already weakened to drop `[Countable S]`) provides the coupling-level
+contraction, and the Neumann iteration / marginal TV bound proceed
+identically.
+
+The main gap is `covariance_bound_via_bridge_multisite`, which uses a
+countable tsum fiber decomposition of the measure. For the nocount case
+we provide an axiom `covariance_tower_property` expressing the
+tower-property decomposition of Cov(f,g) via conditional expectations.
+This is a standard measure-theoretic fact (for any sigma-algebra, not
+just countable partitions) but its formalization requires disintegration
+infrastructure (e.g. `Measure.condKernel`) not currently wired to the
+project's `condFiniteSupportMeasure`.
+
+### Axiom: tower property for the multi-site covariance decomposition -/
+
+/-- **Tower property for the multisite covariance decomposition.**
+
+For `f` `N_f`-local with `|f| <= Bf` on a probability space `μ`,
+if the conditional-expectation difference of `g` on every
+positive-mass multi-fiber `a : N_f -> S` is bounded by `K`, then
+`|Cov_μ(f, g)| <= Bf * K`.
+
+This is a consequence of the tower property of conditional expectations:
+`E[f * (g - Eg)] = E[f * E[g - Eg | sigma_{N_f}]]` (since `f` is
+`σ(N_f)`-measurable) followed by `|...| <= Bf * E[|E[g - Eg | N_f]|]
+<= Bf * K`. The countable version `covariance_bound_via_bridge_multisite`
+proves this using a tsum over fibers; here we postulate the result
+for arbitrary (possibly uncountable) `S`.
+
+**Formalization cost.** Replacing this axiom with a proof requires
+connecting `condFiniteSupportMeasure` with Mathlib's
+`Measure.condKernel` disintegration and the Bochner-integral tower
+property — approximately 200 lines of upstream work. -/
+axiom covariance_tower_property
+    {I S : Type*} [DecidableEq I] [MeasurableSpace S]
+    [MeasurableSingletonClass S] [Inhabited S]
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (f g : SpinConfig I S → ℝ)
+    (Bf : ℝ) (hBf_nn : 0 ≤ Bf) (hBf : ∀ σ, |f σ| ≤ Bf)
+    (N_f : Finset I)
+    (hf_local : ∀ σ τ : SpinConfig I S,
+      (∀ w ∈ N_f, σ w = τ w) → f σ = f τ)
+    (hf : Integrable f μ) (hg : Integrable g μ)
+    (hfg : Integrable (fun σ => f σ * g σ) μ)
+    (K : ℝ) (hK_nn : 0 ≤ K)
+    (hcond_bound : ∀ a : N_f → S,
+      μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
+      |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) -
+          ∫ σ, g σ ∂μ| ≤ K)
+    (choose_σ : (N_f → S) → SpinConfig I S)
+    (h_choose : ∀ a : N_f → S,
+      ∀ w (hw : w ∈ N_f), choose_σ a w = a ⟨w, hw⟩)
+    (hg_cond : ∀ a : N_f → S,
+      μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
+      Integrable g (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a))) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤ Bf * K
+
+/-! ### DLR (no countability) -/
+
+/-- **DLR for `condFiniteSupportMeasure` (no countability).**
+Same as `condFiniteSupportMeasure_dlr_at_site` with `[Countable S]`
+dropped — the proof only uses `[MeasurableSingletonClass S]`. -/
+lemma condFiniteSupportMeasure_dlr_at_site_nocount
+    [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (N_f : Finset I) (a : I → S) (hpos : μ (multiFiber N_f a) ≠ 0)
+    (z : I) (hz : z ∉ N_f)
+    (A : Set (SpinConfig I S)) (hA : MeasurableSet A) :
+    (condFiniteSupportMeasure μ N_f a A).toReal =
+    ∫ σ, (γ.condDist {z} σ A).toReal ∂(condFiniteSupportMeasure μ N_f a) := by
+  have hfib := measurableSet_multiFiber (I := I) (S := S) N_f a
+  have hAfib : MeasurableSet (A ∩ multiFiber N_f a) := hA.inter hfib
+  have dlr_mu := hμ.dlr {z} (A ∩ multiFiber N_f a) hAfib
+  set h : SpinConfig I S → ℝ := fun σ => (γ.condDist {z} σ A).toReal with hh_def
+  set h_int : SpinConfig I S → ℝ :=
+    fun σ => (γ.condDist {z} σ (A ∩ multiFiber N_f a)).toReal with hh_int_def
+  have h_agree : ∀ σ, σ ∈ multiFiber N_f a → h_int σ = h σ := by
+    intro σ hσ
+    have hσ' : ∀ w ∈ N_f, σ w = a w := hσ
+    show (γ.condDist {z} σ (A ∩ multiFiber N_f a)).toReal =
+        (γ.condDist {z} σ A).toReal
+    rw [condDist_inter_multiFiber_eq γ z N_f hz σ a hσ' A hA]
+  have h_zero_off : ∀ σ, σ ∉ multiFiber N_f a → h_int σ = 0 := by
+    intro σ hσ
+    have hσ' : ¬ (∀ w ∈ N_f, σ w = a w) := hσ
+    show (γ.condDist {z} σ (A ∩ multiFiber N_f a)).toReal = 0
+    rw [condDist_inter_multiFiber_eq_zero γ z N_f hz σ a hσ' A]
+    simp
+  have h_int_eq : ∫ σ, h_int σ ∂μ = ∫ σ in multiFiber N_f a, h σ ∂μ := by
+    rw [← integral_indicator hfib]
+    apply integral_congr_ae
+    filter_upwards with σ
+    by_cases hσ : σ ∈ multiFiber N_f a
+    · rw [h_agree σ hσ, Set.indicator_of_mem hσ]
+    · rw [h_zero_off σ hσ, Set.indicator_of_notMem hσ]
+  have hkey : (μ (A ∩ multiFiber N_f a)).toReal =
+      ∫ σ in multiFiber N_f a, h σ ∂μ := by
+    rw [dlr_mu]; exact h_int_eq
+  have hLHS : (condFiniteSupportMeasure μ N_f a A).toReal =
+      ((μ (multiFiber N_f a))⁻¹).toReal * (μ (A ∩ multiFiber N_f a)).toReal := by
+    simp only [condFiniteSupportMeasure, Measure.smul_apply, smul_eq_mul,
+      Measure.restrict_apply hA, ENNReal.toReal_mul,
+      Set.inter_comm A (multiFiber N_f a)]
+  have hRHS : ∫ σ, h σ ∂(condFiniteSupportMeasure μ N_f a) =
+      ((μ (multiFiber N_f a))⁻¹).toReal *
+        ∫ σ in multiFiber N_f a, h σ ∂μ := by
+    simp only [condFiniteSupportMeasure, integral_smul_measure, smul_eq_mul]
+  rw [hLHS, hRHS, hkey]
+
+/-! ### Marginal TV bound (no countability) -/
+
+/-- **Multi-site marginal TV bound (no countability).** Same as
+`condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum` with
+`[Countable S]` replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
+lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
+    [MeasurableSingletonClass S] [MeasurableEq S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (N_f : Finset I) (a : I → S) (hpos : μ (multiFiber N_f a) ≠ 0)
+    [IsProbabilityMeasure (condFiniteSupportMeasure μ N_f a)]
+    (y : I)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    marginalTvDist (condFiniteSupportMeasure μ N_f a) μ y ≤
+      ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
+  set T : Set I := {z | z ∉ N_f} with hT_def
+  have hdlr₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (condFiniteSupportMeasure μ N_f a A).toReal =
+        ∫ σ, (γ.condDist {z} σ A).toReal ∂(condFiniteSupportMeasure μ N_f a) := by
+    intro z hzT A hA
+    exact condFiniteSupportMeasure_dlr_at_site_nocount γ μ hμ N_f a hpos z hzT A hA
+  have hdlr₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
+    intro z _ A hA; exact hμ.dlr {z} A hA
+  obtain ⟨P, hP_coup, hP_ineq⟩ :=
+    dobrushin_iterated_coupling_exists γ (condFiniteSupportMeasure μ N_f a) μ T
+      hdlr₁ hdlr₂ hfinsupp h_dep_F
+  haveI := hP_coup.isProb
+  set δ : I → ℝ :=
+    fun w => (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+  have hδ_nn : ∀ w, 0 ≤ δ w := fun _ => ENNReal.toReal_nonneg
+  have hδ_le_one : ∀ w, δ w ≤ 1 := by
+    intro w
+    calc (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+        ≤ (1 : ENNReal).toReal := ENNReal.toReal_mono (by simp) (prob_le_one)
+      _ = 1 := by simp
+  have hcontract : ∀ z, z ∉ N_f → δ z ≤ ∑' w, influenceCoeff γ z w * δ w :=
+    fun z hzN => hP_ineq z hzN
+  have hδ_le_neu : δ y ≤ ∑ x ∈ N_f, neumannSeriesCoeff γ y x :=
+    abstract_neumann_iteration_finset γ hD N_f δ hδ_nn hδ_le_one hcontract y
+  exact le_trans
+    (marginalTvDist_le_coupling_site_nocount (condFiniteSupportMeasure μ N_f a) μ P hP_coup y)
+    hδ_le_neu
+
+/-! ### condTV bound for single-site g (no countability) -/
+
+/-- **Multi-site condTV bound for single-site g (no countability).**
+Same as `condTV_bound_multisite_y` with `[Countable S]` replaced by
+`[MeasurableSingletonClass S] [MeasurableEq S]`. -/
+theorem condTV_bound_multisite_y_nocount
+    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (g : SpinConfig I S → ℝ) (hg_meas : Measurable g)
+    (Bg : ℝ) (hBg_nn : 0 ≤ Bg) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (N_f : Finset I) (a : I → S) (y : I)
+    (hg_local : ∀ σ τ : SpinConfig I S, σ y = τ y → g σ = g τ)
+    (hg_int : Integrable g μ)
+    (hpos : μ (multiFiber N_f a) ≠ 0)
+    (hg_cond_int : Integrable g (condFiniteSupportMeasure μ N_f a))
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f a) - ∫ σ, g σ ∂μ| ≤
+      2 * Bg * ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
+  have hne_top : μ (multiFiber N_f a) ≠ ⊤ := (measure_lt_top μ _).ne
+  haveI : IsProbabilityMeasure (condFiniteSupportMeasure μ N_f a) :=
+    isProbabilityMeasure_condFiniteSupportMeasure μ N_f a hpos hne_top
+  have h1 := local_integral_sub_le_marginalTvDist
+    (condFiniteSupportMeasure μ N_f a) μ g y hg_local hg_meas Bg hBg_nn hBg
+    hg_cond_int hg_int
+  have h2 := condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
+    γ hD μ hμ N_f a hpos y hfinsupp h_dep_F
+  calc |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f a) - ∫ σ, g σ ∂μ|
+      ≤ 2 * Bg * marginalTvDist (condFiniteSupportMeasure μ N_f a) μ y := h1
+    _ ≤ 2 * Bg * ∑ x ∈ N_f, neumannSeriesCoeff γ y x :=
+        mul_le_mul_of_nonneg_left h2 (by positivity)
+
+/-! ### Multi-site covariance bound (no countability) -/
+
+/-- **Full two-sided multi-site covariance bound (no countability).**
+Same as `covariance_bound_gibbs_multisite_general` with `[Countable S]`
+replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`.
+
+Uses `covariance_tower_property` (axiom) for the bridge step
+instead of the tsum-based `covariance_bound_via_bridge_multisite`. -/
+theorem covariance_bound_gibbs_multisite_general_nocount
+    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (f g : SpinConfig I S → ℝ)
+    (hf_meas : Measurable f) (hg_meas : Measurable g)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (N_f N_g : Finset I)
+    (hf_local : ∀ σ τ, (∀ w ∈ N_f, σ w = τ w) → f σ = f τ)
+    (hg_local : ∀ σ τ, (∀ w ∈ N_g, σ w = τ w) → g σ = g τ)
+    (hf : Integrable f μ) (hg : Integrable g μ)
+    (hfg : Integrable (fun σ => f σ * g σ) μ)
+    (choose_σ : (N_f → S) → SpinConfig I S)
+    (h_choose : ∀ a : N_f → S,
+      ∀ w (hw : w ∈ N_f), choose_σ a w = a ⟨w, hw⟩)
+    (hg_cond : ∀ a : N_f → S,
+      μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
+      Integrable g (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)))
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
+  -- Build the conditional TV bridge using the coupling (no countability).
+  have hCondTV : ∀ a : N_f → S,
+      μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
+      |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) -
+        ∫ σ, g σ ∂μ| ≤
+        2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
+    intro a hpos
+    have hne_top : μ (multiFiber N_f (extendOnFinset N_f a)) ≠ ⊤ :=
+      (measure_lt_top μ _).ne
+    haveI : IsProbabilityMeasure
+        (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) :=
+      isProbabilityMeasure_condFiniteSupportMeasure μ N_f _ hpos hne_top
+    set T : Set I := {z | z ∉ N_f} with hT_def
+    have hdlr₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a) A).toReal =
+          ∫ σ, (γ.condDist {z} σ A).toReal
+            ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) := by
+      intro z hzT A hA
+      exact condFiniteSupportMeasure_dlr_at_site_nocount γ μ hμ N_f _ hpos z hzT A hA
+    have hdlr₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
+      intro z _ A hA; exact hμ.dlr {z} A hA
+    obtain ⟨P, hP_coup, hP_ineq⟩ :=
+      dobrushin_iterated_coupling_exists γ
+        (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) μ T
+        hdlr₁ hdlr₂ hfinsupp h_dep_F
+    haveI := hP_coup.isProb
+    set δ : I → ℝ :=
+      fun w => (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+    have hδ_nn : ∀ w, 0 ≤ δ w := fun _ => ENNReal.toReal_nonneg
+    have hδ_le_one : ∀ w, δ w ≤ 1 := by
+      intro w
+      calc (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+          ≤ (1 : ENNReal).toReal := ENNReal.toReal_mono (by simp) (prob_le_one)
+        _ = 1 := by simp
+    have hcontract : ∀ z, z ∉ N_f → δ z ≤ ∑' w, influenceCoeff γ z w * δ w :=
+      fun z hzN => hP_ineq z hzN
+    have hδ_le_neu : ∀ y, δ y ≤ ∑ x ∈ N_f, neumannSeriesCoeff γ y x := fun y =>
+      abstract_neumann_iteration_finset γ hD N_f δ hδ_nn hδ_le_one hcontract y
+    have h_sum_le : ∑ y ∈ N_g, δ y ≤
+        ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x :=
+      Finset.sum_le_sum (fun y _ => hδ_le_neu y)
+    have h_int_bound :
+        |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) -
+            ∫ σ, g σ ∂μ| ≤ 2 * Bg * ∑ y ∈ N_g, δ y :=
+      local_integral_sub_le_coupling_Ng
+        (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) μ P hP_coup
+        g hg_meas Bg hBg_nn hBg
+        (hg_cond a hpos) hg N_g hg_local
+    calc |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) -
+            ∫ σ, g σ ∂μ|
+        ≤ 2 * Bg * ∑ y ∈ N_g, δ y := h_int_bound
+      _ ≤ 2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x :=
+          mul_le_mul_of_nonneg_left h_sum_le (by positivity)
+  -- Apply the tower-property axiom for the covariance bridge.
+  have hK_nn : 0 ≤ 2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
+    refine mul_nonneg (mul_nonneg (by norm_num) hBg_nn) ?_
+    exact Finset.sum_nonneg (fun y _ =>
+      Finset.sum_nonneg (fun x _ => neumannSeriesCoeff_nonneg γ y x))
+  have hswap :
+      (∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x) =
+      ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x :=
+    Finset.sum_comm
+  calc |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)|
+      ≤ Bf * (2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x) :=
+        covariance_tower_property μ f g Bf hBf_nn hBf N_f
+          hf_local hf hg hfg _ hK_nn hCondTV choose_σ h_choose hg_cond
+    _ = 2 * Bf * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by ring
+    _ = 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
+        rw [hswap]
+
+/-- **Textbook exponential decay wiring (no countability).**
+Same as `covariance_bound_gibbs_multisite_general_nn_dist` with
+`[Countable S]` replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
+theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
+    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (f g : SpinConfig I S → ℝ)
+    (hf_meas : Measurable f) (hg_meas : Measurable g)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (N_f N_g : Finset I)
+    (hf_local : ∀ σ τ, (∀ w ∈ N_f, σ w = τ w) → f σ = f τ)
+    (hg_local : ∀ σ τ, (∀ w ∈ N_g, σ w = τ w) → g σ = g τ)
+    (hf : Integrable f μ) (hg : Integrable g μ)
+    (hfg : Integrable (fun σ => f σ * g σ) μ)
+    (choose_σ : (N_f → S) → SpinConfig I S)
+    (h_choose : ∀ a : N_f → S,
+      ∀ w (hw : w ∈ N_f), choose_σ a w = a ⟨w, hw⟩)
+    (hg_cond : ∀ a : N_f → S,
+      μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
+      Integrable g (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)))
+    (d : I → I → ℕ)
+    (h_refl : ∀ x, d x x = 0)
+    (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
+    (h_support : ∀ u v, d u v > 1 → influenceCoeff γ u v = 0)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
+  have h1 := covariance_bound_gibbs_multisite_general_nocount γ hD μ hμ f g hf_meas hg_meas
+    Bf Bg hBf_nn hBg_nn hBf hBg N_f N_g hf_local hg_local hf hg hfg
+    choose_σ h_choose hg_cond hfinsupp h_dep_F
+  have h2 : ∀ x y, neumannSeriesCoeff γ y x ≤ hD.α ^ d y x / (1 - hD.α) :=
+    fun x y => neumannSeriesCoeff_nn_dist_bound γ hD d h_refl h_triangle h_support y x
+  have h3 : ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x ≤
+      ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
+    apply Finset.sum_le_sum; intro x _
+    apply Finset.sum_le_sum; intro y _
+    exact h2 x y
+  have hBfBg_nn : 0 ≤ 2 * Bf * Bg :=
+    mul_nonneg (mul_nonneg (by norm_num) hBf_nn) hBg_nn
+  calc |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)|
+      ≤ 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := h1
+    _ ≤ 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) :=
+        mul_le_mul_of_nonneg_left h3 hBfBg_nn
+
 end CovarianceBoundMultisite
 
 end

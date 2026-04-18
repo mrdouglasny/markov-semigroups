@@ -297,6 +297,57 @@ lemma condSingleSiteMeasure_dlr_at_site
     simp only [condSingleSiteMeasure, integral_smul_measure, smul_eq_mul]
   rw [hLHS, hRHS, hkey]
 
+/-- **DLR for condSingleSiteMeasure at sites z != x (no countability).**
+
+Same as `condSingleSiteMeasure_dlr_at_site`, but only requires
+`[MeasurableSingletonClass S]` (no `[Countable S]`). The proof is
+identical — the original never uses countability. -/
+lemma condSingleSiteMeasure_dlr_at_site_nocount
+    [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (x : I) (a : S) (hpos : μ (fiber x a) ≠ 0)
+    (z : I) (hzx : z ≠ x)
+    (A : Set (SpinConfig I S)) (hA : MeasurableSet A) :
+    (condSingleSiteMeasure μ x a A).toReal =
+    ∫ σ, (γ.condDist {z} σ A).toReal ∂(condSingleSiteMeasure μ x a) := by
+  have hfib := measurableSet_fiber (I := I) (S := S) x a
+  have hAfib : MeasurableSet (A ∩ fiber x a) := hA.inter hfib
+  have hne_top : μ (fiber x a) ≠ ⊤ := (measure_lt_top μ (fiber x a)).ne
+  have dlr_mu := hμ.dlr {z} (A ∩ fiber x a) hAfib
+  set h : SpinConfig I S → ℝ := fun σ => (γ.condDist {z} σ A).toReal with hh_def
+  set h_int : SpinConfig I S → ℝ := fun σ => (γ.condDist {z} σ (A ∩ fiber x a)).toReal
+    with hh_int_def
+  have h_agree : ∀ σ, σ ∈ fiber x a → h_int σ = h σ := by
+    intro σ hσ
+    simp only [fiber, evalAt, Set.mem_preimage, Set.mem_singleton_iff] at hσ
+    show (γ.condDist {z} σ (A ∩ fiber x a)).toReal = (γ.condDist {z} σ A).toReal
+    rw [condDist_inter_fiber_eq γ z x hzx σ a hσ A hA]
+  have h_zero_off : ∀ σ, σ ∉ fiber x a → h_int σ = 0 := by
+    intro σ hσ
+    simp only [fiber, evalAt, Set.mem_preimage, Set.mem_singleton_iff] at hσ
+    show (γ.condDist {z} σ (A ∩ fiber x a)).toReal = 0
+    rw [condDist_inter_fiber_eq_zero γ z x hzx σ a hσ A]
+    simp
+  have h_int_eq : ∫ σ, h_int σ ∂μ = ∫ σ in fiber x a, h σ ∂μ := by
+    rw [← integral_indicator hfib]
+    apply integral_congr_ae
+    filter_upwards with σ
+    by_cases hσ : σ ∈ fiber x a
+    · rw [h_agree σ hσ, Set.indicator_of_mem hσ]
+    · rw [h_zero_off σ hσ, Set.indicator_of_notMem hσ]
+  have hkey : (μ (A ∩ fiber x a)).toReal = ∫ σ in fiber x a, h σ ∂μ := by
+    rw [dlr_mu]; exact h_int_eq
+  have hLHS : (condSingleSiteMeasure μ x a A).toReal =
+      ((μ (fiber x a))⁻¹).toReal * (μ (A ∩ fiber x a)).toReal := by
+    simp only [condSingleSiteMeasure, Measure.smul_apply, smul_eq_mul,
+      Measure.restrict_apply hA, ENNReal.toReal_mul, Set.inter_comm A (fiber x a)]
+  have hRHS : ∫ σ, h σ ∂(condSingleSiteMeasure μ x a) =
+      ((μ (fiber x a))⁻¹).toReal * ∫ σ in fiber x a, h σ ∂μ := by
+    simp only [condSingleSiteMeasure, integral_smul_measure, smul_eq_mul]
+  rw [hLHS, hRHS, hkey]
+
 /-! ## Marginal TV bound for condSingleSiteMeasure
 
 The key bridge: conditioning a Gibbs measure mu on sigma(x) = a changes
@@ -431,7 +482,7 @@ References:
   probabilities and conditions of its regularity", Lemma 2.
 - Georgii (1988), *Gibbs Measures and Phase Transitions*, Proposition 8.7. -/
 axiom dobrushin_iterated_coupling_exists
-    {I S : Type*} [DecidableEq I] [MeasurableSpace S] [Countable S]
+    {I S : Type*} [DecidableEq I] [MeasurableSpace S]
     [MeasurableSingletonClass S] [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S)
     (μ₁ μ₂ : Measure (SpinConfig I S))
@@ -528,6 +579,48 @@ lemma marginalTvDist_le_coupling_site
       P {p : SpinConfig I S × SpinConfig I S | p.1 y ≠ p.2 y} := by
     rw [hQ_def, Measure.map_apply hρ_meas h_ne_S]
     rfl
+  rw [h_eq]
+  rw [h_Q_eq] at hbound
+  exact hbound
+
+/-- **Pushforward-coupling bound for marginal TV (no countability).**
+Same as `marginalTvDist_le_coupling_site`, replacing
+`[Countable S] [MeasurableSingletonClass S]` with `[MeasurableEq S]`.
+(The original derives `MeasurableEq S` from countability.) -/
+lemma marginalTvDist_le_coupling_site_nocount
+    [MeasurableEq S]
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (P : Measure (SpinConfig I S × SpinConfig I S))
+    (hP : IsCoupling P μ₁ μ₂) (y : I) :
+    marginalTvDist μ₁ μ₂ y ≤
+      (P {p : SpinConfig I S × SpinConfig I S | p.1 y ≠ p.2 y}).toReal := by
+  haveI := hP.isProb
+  let ρ : SpinConfig I S × SpinConfig I S → S × S := fun p => (p.1 y, p.2 y)
+  have hρ_meas : Measurable ρ :=
+    ((measurable_pi_apply y).comp measurable_fst).prodMk
+      ((measurable_pi_apply y).comp measurable_snd)
+  set Q : Measure (S × S) := P.map ρ with hQ_def
+  haveI hQ_isProb : IsProbabilityMeasure Q :=
+    Measure.isProbabilityMeasure_map hρ_meas.aemeasurable
+  have hQ_fst : Q.map Prod.fst = marginalAtSite μ₁ y := by
+    have h1 : Prod.fst ∘ ρ = (fun σ : SpinConfig I S => σ y) ∘ Prod.fst := by funext p; rfl
+    rw [hQ_def, Measure.map_map measurable_fst hρ_meas, h1,
+        ← Measure.map_map (measurable_pi_apply y) measurable_fst, hP.fst_marginal]; rfl
+  have hQ_snd : Q.map Prod.snd = marginalAtSite μ₂ y := by
+    have h2 : Prod.snd ∘ ρ = (fun σ : SpinConfig I S => σ y) ∘ Prod.snd := by funext p; rfl
+    rw [hQ_def, Measure.map_map measurable_snd hρ_meas, h2,
+        ← Measure.map_map (measurable_pi_apply y) measurable_snd, hP.snd_marginal]; rfl
+  have hQ_coup : IsCoupling Q (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) :=
+    { isProb := hQ_isProb, fst_marginal := hQ_fst, snd_marginal := hQ_snd }
+  have h_eq : marginalTvDist μ₁ μ₂ y =
+      tvNorm (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) := tvDist_eq_tvNorm _ _
+  have hbound := tvNorm_le_coupling Q (marginalAtSite μ₁ y) (marginalAtSite μ₂ y) hQ_coup
+  have h_ne_S : MeasurableSet {p : S × S | p.1 ≠ p.2} :=
+    MeasurableSet.compl (measurableSet_eq_fun measurable_fst measurable_snd)
+  have h_Q_eq : Q {p : S × S | p.1 ≠ p.2} =
+      P {p : SpinConfig I S × SpinConfig I S | p.1 y ≠ p.2 y} := by
+    rw [hQ_def, Measure.map_apply hρ_meas h_ne_S]; rfl
   rw [h_eq]
   rw [h_Q_eq] at hbound
   exact hbound
@@ -1090,6 +1183,57 @@ lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff
     marginalTvDist_le_coupling_site (condSingleSiteMeasure μ x a) μ P hP_coup y
   exact le_trans h_marg_le hδ_le_neu
 
+/-- **Marginal TV bound (no countability).** Same as
+`condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff` but
+with `[MeasurableSingletonClass S] [MeasurableEq S]` instead of
+`[Countable S] [MeasurableSingletonClass S]`. The proof uses
+`condSingleSiteMeasure_dlr_at_site_nocount` and
+`marginalTvDist_le_coupling_site_nocount`. -/
+lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff_nocount
+    [MeasurableSingletonClass S] [MeasurableEq S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (x y : I)
+    (a : S) (hpos : μ (fiber x a) ≠ 0)
+    [IsProbabilityMeasure (condSingleSiteMeasure μ x a)]
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤
+      neumannSeriesCoeff γ y x := by
+  set T : Set I := {z | z ≠ x} with hT_def
+  have hdlr₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (condSingleSiteMeasure μ x a A).toReal =
+        ∫ σ, (γ.condDist {z} σ A).toReal ∂(condSingleSiteMeasure μ x a) := by
+    intro z hzT A hA
+    exact condSingleSiteMeasure_dlr_at_site_nocount γ μ hμ x a hpos z hzT A hA
+  have hdlr₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
+    intro z _ A hA; exact hμ.dlr {z} A hA
+  obtain ⟨P, hP_coup, hP_ineq⟩ :=
+    dobrushin_iterated_coupling_exists γ (condSingleSiteMeasure μ x a) μ T
+      hdlr₁ hdlr₂ hfinsupp h_dep_F
+  haveI := hP_coup.isProb
+  set δ : I → ℝ :=
+    fun w => (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+  have hδ_nn : ∀ w, 0 ≤ δ w := fun _ => ENNReal.toReal_nonneg
+  have hδ_le_one : ∀ w, δ w ≤ 1 := by
+    intro w
+    calc (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+        ≤ (1 : ENNReal).toReal := ENNReal.toReal_mono (by simp) (prob_le_one)
+      _ = 1 := by simp
+  have hcontract : ∀ z, z ≠ x → δ z ≤ ∑' w, influenceCoeff γ z w * δ w :=
+    fun z hzx => hP_ineq z hzx
+  have hδ_le_neu : δ y ≤ neumannSeriesCoeff γ y x :=
+    abstract_neumann_iteration γ hD x δ hδ_nn hδ_le_one hcontract y
+  exact le_trans
+    (marginalTvDist_le_coupling_site_nocount (condSingleSiteMeasure μ x a) μ P hP_coup y)
+    hδ_le_neu
+
 /-! ## The condTV bound -/
 
 /-- **The condTV bound.** For a Gibbs measure mu, y-local observable g
@@ -1132,6 +1276,40 @@ theorem condTV_bound
   have h2 := condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff γ hD μ hμ x y a hpos
       hfinsupp h_dep_F
   -- Combine
+  calc |∫ σ, g σ ∂(condSingleSiteMeasure μ x a) - ∫ σ, g σ ∂μ|
+      ≤ 2 * Bg * marginalTvDist (condSingleSiteMeasure μ x a) μ y := h1
+    _ ≤ 2 * Bg * neumannSeriesCoeff γ y x :=
+        mul_le_mul_of_nonneg_left h2 (by linarith)
+
+/-- **The condTV bound (no countability).** Same as `condTV_bound` with
+`[Countable S]` replaced by `[MeasurableEq S]`. -/
+theorem condTV_bound_nocount
+    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [MeasurableEq (SpinConfig I S)]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (g : SpinConfig I S → ℝ) (hg_meas : Measurable g)
+    (Bg : ℝ) (hBg_nn : 0 ≤ Bg) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (x y : I)
+    (hg_local : ∀ σ τ : SpinConfig I S, σ y = τ y → g σ = g τ)
+    (hg_int : Integrable g μ)
+    (a : S) (hpos : μ (fiber x a) ≠ 0)
+    (hg_cond_int : Integrable g (condSingleSiteMeasure μ x a))
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    |∫ σ, g σ ∂(condSingleSiteMeasure μ x a) - ∫ σ, g σ ∂μ| ≤
+      2 * Bg * neumannSeriesCoeff γ y x := by
+  have hne_top : μ (fiber x a) ≠ ⊤ := (measure_lt_top μ (fiber x a)).ne
+  haveI : IsProbabilityMeasure (condSingleSiteMeasure μ x a) :=
+    isProbabilityMeasure_condSingleSiteMeasure μ x a hpos hne_top
+  have h1 := local_integral_sub_le_marginalTvDist _ _ g y hg_local hg_meas Bg hBg_nn hBg
+      hg_cond_int hg_int
+  have h2 := condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff_nocount γ hD μ hμ x y a
+      hpos hfinsupp h_dep_F
   calc |∫ σ, g σ ∂(condSingleSiteMeasure μ x a) - ∫ σ, g σ ∂μ|
       ≤ 2 * Bg * marginalTvDist (condSingleSiteMeasure μ x a) μ y := h1
     _ ≤ 2 * Bg * neumannSeriesCoeff γ y x :=
