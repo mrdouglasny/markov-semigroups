@@ -323,6 +323,106 @@ lemma influenceCoeff_le_one (γ : GibbsSpec I S) (x y : I) :
       obtain ⟨σ, τ, _, hc_eq⟩ := hc; rw [hc_eq]; exact tvDist_le_one _ _)
   · simp only [Set.not_nonempty_iff_eq_empty] at h; rw [h]; simp [sSup, SupSet.sSup]
 
+/-- Pure real-analysis lemma: if `p, q ∈ [0, 1]` satisfy the ratio bounds
+`exp(-C) * q ≤ p` and `exp(-C) * (1-q) ≤ (1-p)`, then `|p - q| ≤ 1 - exp(-C)`.
+
+Proof: WLOG `q ≥ p`. Then `q - p ≤ q - exp(-C)*q = q*(1 - exp(-C)) ≤ 1 - exp(-C)`.
+For `p ≥ q`: `p - q ≤ (1-q) - exp(-C)*(1-q) = (1-q)*(1 - exp(-C)) ≤ 1 - exp(-C)`. -/
+private lemma abs_sub_le_one_sub_exp_neg
+    {p q C : ℝ} (hC : 0 ≤ C)
+    (hq0 : 0 ≤ q) (hq1 : q ≤ 1)
+    (h1 : Real.exp (-C) * q ≤ p)
+    (h2 : Real.exp (-C) * (1 - q) ≤ 1 - p) :
+    |p - q| ≤ 1 - Real.exp (-C) := by
+  have hexp_le : Real.exp (-C) ≤ 1 := by
+    rw [Real.exp_neg]; exact inv_le_one_of_one_le₀ (Real.one_le_exp hC)
+  rw [abs_le]
+  constructor
+  · have : q * (1 - Real.exp (-C)) ≤ 1 - Real.exp (-C) :=
+      mul_le_of_le_one_left (sub_nonneg.mpr hexp_le) hq1
+    nlinarith
+  · have : (1 - q) * (1 - Real.exp (-C)) ≤ 1 - Real.exp (-C) :=
+      mul_le_of_le_one_left (sub_nonneg.mpr hexp_le) (by linarith)
+    nlinarith
+
+/-- Helper: the complement probability in `toReal` form. For a probability
+measure `μ` and measurable set `A`, `(μ Aᶜ).toReal = 1 - (μ A).toReal`. -/
+private lemma prob_compl_toReal_eq {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) [IsProbabilityMeasure μ]
+    (A : Set X) (hA : MeasurableSet A) :
+    (μ Aᶜ).toReal = 1 - (μ A).toReal := by
+  rw [prob_compl_eq_one_sub hA,
+      ENNReal.toReal_sub_of_le (prob_le_one (s := A)) ENNReal.one_ne_top]
+  simp
+
+/-- **Cylinder ratio bound implies influence coefficient bound.**
+
+If for all pairs of boundary conditions `σ, τ` differing only at site `y`,
+the x-cylinder probabilities under `γ.condDist {x}` satisfy the density ratio
+bound `ν(B) ≤ exp(C) · μ(B)` for all measurable `B ⊆ S`, then the influence
+coefficient `C(x, y)` is at most `1 - exp(-C)`.
+
+This is the key estimate for verifying Dobrushin's condition from
+Hamiltonian-level bounds: if changing the boundary at site `y` shifts
+the energy at site `x` by at most `C`, then the conditional densities
+satisfy a ratio bound `exp(-C)`, and the marginal TV distance is
+controlled by `1 - exp(-C)`. For `C` small (weak interaction), this
+gives `C(x, y) ≈ C`, recovering the classical Dobrushin bound. -/
+theorem influenceCoeff_le_of_cylinder_ratio_bound
+    [Countable S] [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S) (x y : I)
+    (C : ℝ) (hC : 0 ≤ C)
+    -- For all σ, τ differing only at y, and all measurable B ⊆ S,
+    -- the x-cylinder probabilities under condDist {x} satisfy a ratio bound.
+    (hRatio : ∀ (σ τ : SpinConfig I S),
+      (∀ z, z ≠ y → σ z = τ z) →
+      ∀ (B : Set S), MeasurableSet B →
+        (γ.condDist {x} τ ((fun σ => σ x) ⁻¹' B)).toReal ≤
+          Real.exp C * (γ.condDist {x} σ ((fun σ => σ x) ⁻¹' B)).toReal) :
+    influenceCoeff γ x y ≤ 1 - Real.exp (-C) := by
+  unfold influenceCoeff
+  -- Handle the case where the defining set might be empty
+  by_cases hne : {c : ℝ | ∃ (σ τ : SpinConfig I S),
+    (∀ z, z ≠ y → σ z = τ z) ∧
+    c = tvDist (marginalAtSite (γ.condDist {x} σ) x)
+               (marginalAtSite (γ.condDist {x} τ) x)}.Nonempty
+  · -- Nonempty case: bound each element of the supremum
+    apply csSup_le hne
+    rintro c ⟨σ, τ, hdiff, rfl⟩
+    -- Bound the tvDist between marginals at site x
+    apply csSup_le (tvDist_set_nonempty _ _)
+    rintro c' ⟨B, hB, rfl⟩
+    rw [marginalAtSite_apply _ _ hB, marginalAtSite_apply _ _ hB]
+    -- Set up the cylinder set A = (· x) ⁻¹' B
+    set A := (fun σ' : SpinConfig I S => σ' x) ⁻¹' B
+    have hA_meas : MeasurableSet A := (measurable_pi_apply x) hB
+    -- Ratio bound on A: q ≤ exp(C) * p, hence exp(-C) * q ≤ p
+    have hexp_inv :
+        Real.exp (-C) * (γ.condDist {x} τ A).toReal ≤
+          (γ.condDist {x} σ A).toReal := by
+      rw [Real.exp_neg, inv_mul_le_iff₀ (Real.exp_pos C)]
+      exact hRatio σ τ hdiff B hB
+    -- Ratio bound on Aᶜ, rewritten via complement probability
+    have hexp_compl :
+        Real.exp (-C) * (1 - (γ.condDist {x} τ A).toReal) ≤
+          1 - (γ.condDist {x} σ A).toReal := by
+      rw [Real.exp_neg, inv_mul_le_iff₀ (Real.exp_pos C)]
+      have hBc : MeasurableSet Bᶜ := hB.compl
+      have := hRatio σ τ hdiff Bᶜ hBc
+      rwa [Set.preimage_compl,
+           prob_compl_toReal_eq _ _ hA_meas,
+           prob_compl_toReal_eq _ _ hA_meas] at this
+    -- Apply the real-analysis helper
+    exact abs_sub_le_one_sub_exp_neg hC
+      ENNReal.toReal_nonneg (condDist_toReal_le_one γ x τ _)
+      hexp_inv hexp_compl
+  · -- Empty case: sSup ∅ ≤ 1 - exp(-C)
+    simp only [Set.not_nonempty_iff_eq_empty] at hne
+    rw [hne, Real.sSup_empty]
+    have : Real.exp (-C) ≤ 1 := by
+      rw [Real.exp_neg]; exact inv_le_one_of_one_le₀ (Real.one_le_exp hC)
+    linarith
+
 /-- `tvDist` (defined here) coincides with `tvNorm` in the coupling module. -/
 lemma tvDist_eq_tvNorm {X : Type*} [MeasurableSpace X]
     (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
