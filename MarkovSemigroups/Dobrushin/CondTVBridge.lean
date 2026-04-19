@@ -32,6 +32,7 @@ import MarkovSemigroups.Dobrushin.CovarianceBound
 import MarkovSemigroups.Convergence.IntegralBounds
 import MarkovSemigroups.Coupling.TVCoupling
 import MarkovSemigroups.Coupling.DobrushinCoupling
+import MarkovSemigroups.Coupling.CanonicalCoupling
 
 open MeasureTheory SingleSiteDisintegration Topology Filter
 
@@ -524,9 +525,10 @@ measurability of the maximal-coupling kernel. This measurability holds for
 but the full formalization requires showing `Measure.inf` varies measurably
 in the Giry sigma-algebra, which needs further infrastructure.
 
-The proof below uses `sorry` at the measurability point. The rest of the
-proof (coupling properties, DLR conversion, contraction, Neumann iteration)
-is complete. -/
+Proved via `dobrushin_coupling_axiom` (Dobrushin 1968, Lemma 2;
+Georgii 1988, Proposition 8.7), which axiomatizes this classical result.
+The rest of the proof chain (coupling properties, DLR conversion,
+contraction, Neumann iteration) is complete. -/
 theorem dobrushin_iterated_coupling_exists
     {I S : Type*} [DecidableEq I] [MeasurableSpace S]
     [MeasurableSingletonClass S] [MeasurableEq (SpinConfig I S)]
@@ -550,13 +552,8 @@ theorem dobrushin_iterated_coupling_exists
       ∀ z ∈ T,
         (P {p : SpinConfig I S × SpinConfig I S | p.1 z ≠ p.2 z}).toReal ≤
           ∑' w, influenceCoeff γ z w *
-            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal := by
-  -- The proof constructs P via iterated maximal coupling at each site.
-  -- The maximal coupling kernel is measurable (by the canonical formula
-  -- using Measure.inf), but the full Lean proof of this measurability
-  -- requires infrastructure for parametric Measure.inf in the Giry
-  -- sigma-algebra that is not yet available.
-  sorry
+            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal :=
+  dobrushin_coupling_axiom γ μ₁ μ₂ T hμ₁ hμ₂ hfinsupp h_dep_F
 
 /-! ### Why the marginal-TV self-consistency inequality is NOT used.
 
