@@ -371,6 +371,76 @@ This is the key result that `.choose`-based `maximalCoupling` cannot provide.
 The proof works by showing each operation in the canonical formula
 (`inf`, subtraction, `map`, `prod`, scalar multiplication) preserves
 measurability of measure-valued functions. -/
+-- Helper: for a countable measurable space, μ A = ∑' a, if a ∈ A then μ {a} else 0.
+-- This is a convenient reformulation of `tsum_indicator_apply_singleton`.
+private lemma measure_eq_tsum_indicator [Countable S] [MeasurableSingletonClass S]
+    (μ : Measure S) (A : Set S) (hA : MeasurableSet A) :
+    μ A = ∑' a : S, A.indicator (fun a => μ {a}) a :=
+  (Measure.tsum_indicator_apply_singleton μ A hA).symm
+
+-- Helper: measurability of evaluation at a singleton for the inf-measure.
+-- For countable S, `(f x ⊓ g x) {a} = min (f x {a}) (g x {a})`.
+private lemma measurable_inf_singleton
+    {X : Type*} [MeasurableSpace X]
+    [Countable S] [MeasurableSingletonClass S]
+    (f g : X → Measure S) (hf : Measurable f) (hg : Measurable g) (a : S) :
+    Measurable (fun x => (f x ⊓ g x) {a}) := by
+  simp_rw [measureInf_singleton]
+  exact ((Measure.measurable_coe (measurableSet_singleton a)).comp hf).min
+    ((Measure.measurable_coe (measurableSet_singleton a)).comp hg)
+
+-- Helper: measurability of the inf-measure evaluation at any measurable set.
+-- Uses the countable singleton decomposition `μ A = ∑' a, if a ∈ A then μ {a} else 0`.
+private lemma measurable_inf_coe
+    {X : Type*} [MeasurableSpace X]
+    [Countable S] [MeasurableSingletonClass S]
+    (f g : X → Measure S) (hf : Measurable f) (hg : Measurable g)
+    (A : Set S) (hA : MeasurableSet A) :
+    Measurable (fun x => (f x ⊓ g x) A) := by
+  have htsum : ∀ x, (f x ⊓ g x) A =
+      ∑' a : S, A.indicator (fun a => (f x ⊓ g x) {a}) a :=
+    fun x => measure_eq_tsum_indicator (f x ⊓ g x) A hA
+  simp_rw [htsum]
+  apply Measurable.ennreal_tsum; intro a
+  -- For fixed a, A.indicator (fun a' => (f x ⊓ g x) {a'}) a is either the
+  -- inf singleton evaluation or 0, depending on whether a ∈ A.
+  by_cases ha : a ∈ A
+  · simp only [indicator_of_mem ha]; exact measurable_inf_singleton f g hf hg a
+  · simp only [indicator_of_notMem ha]; exact measurable_const
+
+-- Helper: measurability of the residual measure at a singleton.
+-- `(f x - f x ⊓ g x) {a} = f x {a} - min(f x {a}, g x {a})`
+private lemma measurable_resid_singleton
+    {X : Type*} [MeasurableSpace X]
+    [Countable S] [MeasurableSingletonClass S]
+    (f g : X → Measure S) (hf : Measurable f) (hg : Measurable g)
+    [∀ x, IsProbabilityMeasure (f x)] [∀ x, IsFiniteMeasure (g x)] (a : S) :
+    Measurable (fun x => (f x - f x ⊓ g x) {a}) := by
+  have hsing := measurableSet_singleton a
+  have : ∀ x, (f x - f x ⊓ g x) {a} = f x {a} - min (f x {a}) (g x {a}) := by
+    intro x
+    rw [Measure.sub_apply hsing (overlap_le_left (f x) (g x)), measureInf_singleton]
+  simp_rw [this]
+  exact (((Measure.measurable_coe hsing).comp hf).sub
+    (((Measure.measurable_coe hsing).comp hf).min
+     ((Measure.measurable_coe hsing).comp hg)))
+
+-- Helper: measurability of the second residual (g x - f x ⊓ g x) at a singleton.
+private lemma measurable_resid_snd_singleton
+    {X : Type*} [MeasurableSpace X]
+    [Countable S] [MeasurableSingletonClass S]
+    (f g : X → Measure S) (hf : Measurable f) (hg : Measurable g)
+    [∀ x, IsFiniteMeasure (f x)] [∀ x, IsProbabilityMeasure (g x)] (b : S) :
+    Measurable (fun x => (g x - f x ⊓ g x) {b}) := by
+  have hsing := measurableSet_singleton b
+  have : ∀ x, (g x - f x ⊓ g x) {b} = g x {b} - min (f x {b}) (g x {b}) := by
+    intro x
+    rw [Measure.sub_apply hsing (overlap_le_right (f x) (g x)), measureInf_singleton]
+  simp_rw [this]
+  exact (((Measure.measurable_coe hsing).comp hg).sub
+    (((Measure.measurable_coe hsing).comp hf).min
+     ((Measure.measurable_coe hsing).comp hg)))
+
 theorem canonicalMaximalCoupling_measurable
     {X : Type*} [MeasurableSpace X]
     [Countable S] [MeasurableSingletonClass S]
@@ -378,22 +448,49 @@ theorem canonicalMaximalCoupling_measurable
     [∀ x, IsProbabilityMeasure (f x)] [∀ x, IsProbabilityMeasure (g x)]
     (hf : Measurable f) (hg : Measurable g) :
     Measurable (fun x => canonicalMaximalCoupling (f x) (g x)) := by
-  -- The canonical coupling is: overlap.map(diag) + c⁻¹ • residμ.prod(residν)
-  -- where overlap = f(x) ⊓ g(x), residμ = f(x) - overlap, etc.
-  --
-  -- Proof outline (all steps are straightforward given Giry measurability):
-  -- 1. x ↦ f(x) ⊓ g(x) is measurable: for countable S,
-  --    (μ ⊓ ν)(A) = ∑' a ∈ A, min(μ{a}, ν{a}), and each term is measurable
-  --    (Measurable.min of evaluation maps), tsum of measurable is measurable.
-  -- 2. x ↦ f(x) - (f(x) ⊓ g(x)) is measurable: Measure.sub of measurable.
-  -- 3. x ↦ m(x).map(diag) is measurable: Measure.map by fixed measurable function.
-  -- 4. x ↦ m₁(x).prod(m₂(x)) is measurable: Measure.prod of measurable.
-  -- 5. x ↦ c(x)⁻¹ • m(x) is measurable: ENNReal.inv, smul are measurable.
-  --
-  -- The key missing infrastructure is a Mathlib lemma for measurability
-  -- of Measure.inf in the Giry sigma-algebra. For countable S this follows
-  -- from the singleton decomposition but requires ~50 lines of glue.
-  sorry
+  -- Reduce to showing measurability of each set evaluation (Giry measurability)
+  apply Measure.measurable_of_measurable_coe
+  intro A hA
+  show Measurable (fun x => canonicalMaximalCoupling (f x) (g x) A)
+  -- Unfold: overlap.map(diag) A + c⁻¹ * (resid_f.prod resid_g) A
+  simp only [canonicalMaximalCoupling, Measure.add_apply, Measure.smul_apply, smul_eq_mul]
+  -- Measurability of c(x)⁻¹ where c(x) = (f x - f x ⊓ g x)(univ)
+  have hc_meas : Measurable (fun x => ((f x - f x ⊓ g x) Set.univ)⁻¹) := by
+    apply Measurable.inv
+    have hc_eq : ∀ x, (f x - f x ⊓ g x) Set.univ = 1 - (f x ⊓ g x) Set.univ := by
+      intro x
+      haveI : IsFiniteMeasure (f x ⊓ g x) := measureInf_isFiniteMeasure (f x) (g x)
+      rw [Measure.sub_apply MeasurableSet.univ (overlap_le_left (f x) (g x)), measure_univ]
+    simp_rw [hc_eq]
+    exact measurable_const.sub (measurable_inf_coe f g hf hg _ MeasurableSet.univ)
+  apply Measurable.add
+  · -- Piece 1: x ↦ (f x ⊓ g x).map(diag) A = (f x ⊓ g x) (diag⁻¹' A)
+    simp_rw [Measure.map_apply measurable_diag hA]
+    exact measurable_inf_coe f g hf hg _ (measurable_diag hA)
+  · -- Piece 2: x ↦ c(x)⁻¹ * ((f x - f x ⊓ g x).prod (g x - f x ⊓ g x)) A
+    apply Measurable.mul hc_meas
+    -- Convert product measure evaluation to a double tsum over singletons.
+    -- Step 1: prod_apply gives an integral
+    -- Step 2: lintegral_countable' converts to tsum
+    -- Step 3: inner measure on a slice decomposes to tsum of singletons
+    have hprod_tsum : ∀ x,
+        ((f x - f x ⊓ g x).prod (g x - f x ⊓ g x)) A =
+        ∑' a : S, (∑' b : S, (Prod.mk a ⁻¹' A).indicator
+          (fun b => (g x - f x ⊓ g x) {b}) b) * (f x - f x ⊓ g x) {a} := by
+      intro x
+      rw [Measure.prod_apply hA, lintegral_countable']
+      congr 1; funext a; congr 1
+      exact measure_eq_tsum_indicator _ _ (measurable_prodMk_left hA)
+    simp_rw [hprod_tsum]
+    apply Measurable.ennreal_tsum; intro a
+    apply Measurable.mul
+    · -- Inner tsum: ∑' b, indicator(slice, resid_g {b})(b)
+      apply Measurable.ennreal_tsum; intro b
+      by_cases hb : b ∈ (Prod.mk a ⁻¹' A)
+      · simp only [indicator_of_mem hb]; exact measurable_resid_snd_singleton f g hf hg b
+      · simp only [indicator_of_notMem hb]; exact measurable_const
+    · -- Outer term: (f x - f x ⊓ g x) {a}
+      exact measurable_resid_singleton f g hf hg a
 
 /-! ## Part 2: Dobrushin iterated coupling existence -/
 
