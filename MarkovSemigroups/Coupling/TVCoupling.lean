@@ -865,4 +865,89 @@ theorem integral_lipschitz_coupling_bound
         congr 1; ext y
         rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal (hc_nn y)]
 
+/-! ## Explicit maximal coupling -/
+
+/-- The explicit maximal coupling of two probability measures,
+constructed via Hahn decomposition. This extracts the witness from
+`exists_maximal_coupling` so that downstream proofs can refer to a
+canonical coupling without carrying existential witnesses. -/
+noncomputable def maximalCoupling (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] [MeasurableEq X] :
+    Measure (X × X) :=
+  (exists_maximal_coupling μ ν).choose
+
+/-- The maximal coupling is a coupling of μ and ν. -/
+theorem maximalCoupling_isCoupling (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] [MeasurableEq X] :
+    IsCoupling (maximalCoupling μ ν) μ ν :=
+  (exists_maximal_coupling μ ν).choose_spec.1
+
+/-- The maximal coupling achieves the total variation distance:
+P({(σ,τ) | σ ≠ τ}) = tvNorm(μ, ν). -/
+theorem maximalCoupling_ne (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] [MeasurableEq X] :
+    ((maximalCoupling μ ν) {p | p.1 ≠ p.2}).toReal = tvNorm μ ν :=
+  (exists_maximal_coupling μ ν).choose_spec.2
+
+/-- The maximal coupling is a probability measure. -/
+instance maximalCoupling_isProbabilityMeasure (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] [MeasurableEq X] :
+    IsProbabilityMeasure (maximalCoupling μ ν) :=
+  (maximalCoupling_isCoupling μ ν).isProb
+
+/-! ## Total variation triangle inequality -/
+
+/-- The defining set of tvNorm is nonempty. -/
+private lemma tvNorm_set_nonempty (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    ({c : ℝ | ∃ A : Set X, MeasurableSet A ∧
+      c = |(μ A).toReal - (ν A).toReal|} : Set ℝ).Nonempty :=
+  ⟨0, ∅, MeasurableSet.empty, by simp⟩
+
+/-- The defining set of tvNorm is bounded above by 1. -/
+private lemma tvNorm_set_bddAbove (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] :
+    BddAbove {c : ℝ | ∃ A : Set X, MeasurableSet A ∧
+      c = |(μ A).toReal - (ν A).toReal|} := by
+  refine ⟨1, fun c hc => ?_⟩
+  obtain ⟨A, _, hcA⟩ := hc
+  rw [hcA]
+  have h1 : (μ A).toReal ≤ 1 :=
+    ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+  have h2 : (ν A).toReal ≤ 1 :=
+    ENNReal.toReal_le_of_le_ofReal one_pos.le (by simp [prob_le_one])
+  have h3 : 0 ≤ (μ A).toReal := ENNReal.toReal_nonneg
+  have h4 : 0 ≤ (ν A).toReal := ENNReal.toReal_nonneg
+  rw [abs_le]; constructor <;> linarith
+
+/-- Each measurable set difference is bounded by tvNorm. -/
+private lemma abs_toReal_sub_le_tvNorm (μ ν : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
+    (A : Set X) (hA : MeasurableSet A) :
+    |(μ A).toReal - (ν A).toReal| ≤ tvNorm μ ν :=
+  le_csSup (tvNorm_set_bddAbove μ ν) ⟨A, hA, rfl⟩
+
+/-- **Triangle inequality for total variation distance.**
+
+tvNorm(μ, ρ) ≤ tvNorm(μ, ν) + tvNorm(ν, ρ).
+
+Proof: For any measurable A,
+  |μ(A) - ρ(A)| ≤ |μ(A) - ν(A)| + |ν(A) - ρ(A)|
+                 ≤ tvNorm(μ, ν) + tvNorm(ν, ρ).
+Taking the supremum over A gives the result. -/
+theorem tvNorm_triangle (μ ν ρ : Measure X)
+    [IsProbabilityMeasure μ] [IsProbabilityMeasure ν] [IsProbabilityMeasure ρ] :
+    tvNorm μ ρ ≤ tvNorm μ ν + tvNorm ν ρ := by
+  unfold tvNorm
+  apply csSup_le (tvNorm_set_nonempty μ ρ)
+  rintro c ⟨A, hA, rfl⟩
+  calc |(μ A).toReal - (ρ A).toReal|
+      = |((μ A).toReal - (ν A).toReal) + ((ν A).toReal - (ρ A).toReal)| := by
+        ring_nf
+    _ ≤ |(μ A).toReal - (ν A).toReal| + |(ν A).toReal - (ρ A).toReal| :=
+        abs_add_le _ _
+    _ ≤ tvNorm μ ν + tvNorm ν ρ :=
+        add_le_add (abs_toReal_sub_le_tvNorm μ ν A hA)
+                   (abs_toReal_sub_le_tvNorm ν ρ A hA)
+
 end

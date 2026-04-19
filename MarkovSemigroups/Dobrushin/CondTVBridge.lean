@@ -31,6 +31,7 @@ influence propagation (Neumann series) to close the covariance bound chain.
 import MarkovSemigroups.Dobrushin.CovarianceBound
 import MarkovSemigroups.Convergence.IntegralBounds
 import MarkovSemigroups.Coupling.TVCoupling
+import MarkovSemigroups.Coupling.DobrushinCoupling
 
 open MeasureTheory SingleSiteDisintegration Topology Filter
 
@@ -480,8 +481,27 @@ site-`y` marginals combined with `tvNorm_le_coupling`).
 References:
 - Dobrushin (1968), "Description of a random field by means of conditional
   probabilities and conditions of its regularity", Lemma 2.
-- Georgii (1988), *Gibbs Measures and Phase Transitions*, Proposition 8.7. -/
-axiom dobrushin_iterated_coupling_exists
+- Georgii (1988), *Gibbs Measures and Phase Transitions*, Proposition 8.7.
+
+**Dobrushin iterated coupling existence.**
+
+For Gibbs measures mu_1, mu_2 satisfying DLR at sites in T, there
+exists a joint coupling P on SpinConfig x SpinConfig such that for
+all z in T, the disagreement at z satisfies the contraction:
+
+  P({sigma z != eta z}) <= sum_w C(z,w) * P({sigma w != eta w})
+
+**Status:** Formerly an axiom; now a theorem with `sorry` in the
+proof. The constructive witness is built in
+`DobrushinCoupling.dobrushin_iterated_coupling_fintype` for the
+`[Fintype I]` case. The remaining sorries are:
+- `updateCoupling_isCoupling`: DLR `.toReal` to Giry monad conversion
+- `dobrushinCoupling_contraction_at_site`: foldl state tracking
+
+The `[Fintype I]` constraint is absent here for compatibility with
+callers on possibly infinite index sets. The constructive proof covers
+all actual use cases (finite lattice YM). -/
+theorem dobrushin_iterated_coupling_exists
     {I S : Type*} [DecidableEq I] [MeasurableSpace S]
     [MeasurableSingletonClass S] [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S)
@@ -504,7 +524,8 @@ axiom dobrushin_iterated_coupling_exists
       ∀ z ∈ T,
         (P {p : SpinConfig I S × SpinConfig I S | p.1 z ≠ p.2 z}).toReal ≤
           ∑' w, influenceCoeff γ z w *
-            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal
+            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal := by
+  sorry
 
 /-! ### Why the marginal-TV self-consistency inequality is NOT used.
 
