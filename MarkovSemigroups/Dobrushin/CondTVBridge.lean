@@ -530,8 +530,8 @@ Georgii 1988, Proposition 8.7), which axiomatizes this classical result.
 The rest of the proof chain (coupling properties, DLR conversion,
 contraction, Neumann iteration) is complete. -/
 theorem dobrushin_iterated_coupling_exists
-    {I S : Type*} [DecidableEq I] [MeasurableSpace S]
-    [MeasurableSingletonClass S] [MeasurableEq (SpinConfig I S)]
+    {I S : Type*} [DecidableEq I] [Fintype I] [MeasurableSpace S]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]

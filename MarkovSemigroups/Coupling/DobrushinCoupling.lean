@@ -34,13 +34,12 @@ where C(z,w) = influenceCoeff gamma z w.
 
 ## Sorry inventory
 
-- `updateCoupling_isCoupling` -- 3 sub-sorries remain:
-  DLR-to-bind conversion is PROVED; gap is measurability of the
-  maximalCoupling-based kernel + bind/map properness trace.
-- `dobrushinCouplingList_isCoupling` -- CLOSED (induction on Sorry 1)
-- `dobrushinCoupling_contraction_at_site` -- foldl state tracking;
-  requires showing later updates don't increase w-disagreement
-  for the contraction at z
+- `updateCoupling_isCoupling` -- CLOSED (3 sub-sorries filled via
+  `canonicalMaximalCoupling` measurability + discrete space argument)
+- `dobrushinCouplingList_isCoupling` -- CLOSED (induction on above)
+- `dobrushinCoupling_contraction_at_site` -- 1 sorry remains:
+  per-site contraction for the sequential sweep requires simultaneous
+  coupling or fixed-point argument (see section docstring)
 
 ## References
 
@@ -51,6 +50,7 @@ where C(z,w) = influenceCoeff gamma z w.
 import MarkovSemigroups.Dobrushin.Specification
 import MarkovSemigroups.Dobrushin.Uniqueness
 import MarkovSemigroups.Coupling.TVCoupling
+import MarkovSemigroups.Coupling.CanonicalCoupling
 
 open MeasureTheory Finset Classical
 
@@ -64,16 +64,16 @@ variable {I : Type*} [DecidableEq I] {S : Type*} [MeasurableSpace S]
 of the z-marginals of `gamma.condDist {z} sigma` and `gamma.condDist {z} eta`.
 -/
 noncomputable def coupledSingleSiteKernel
-    [MeasurableEq S]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (z : I) (σ η : SpinConfig I S) : Measure (S × S) :=
-  maximalCoupling (marginalAtSite (γ.condDist {z} σ) z)
-                  (marginalAtSite (γ.condDist {z} η) z)
+  canonicalMaximalCoupling (marginalAtSite (γ.condDist {z} σ) z)
+                           (marginalAtSite (γ.condDist {z} η) z)
 
 /-- Given a coupling P on (SpinConfig x SpinConfig) and a site z,
 resample the z-coordinate of both copies using the coupled single-site
 kernel. -/
 noncomputable def updateCoupling
-    [MeasurableEq S]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (z : I)
     (P : Measure (SpinConfig I S × SpinConfig I S)) :
     Measure (SpinConfig I S × SpinConfig I S) :=
@@ -83,7 +83,7 @@ noncomputable def updateCoupling
 
 /-- Iterate `updateCoupling` over all sites in a list. -/
 noncomputable def dobrushinCouplingList
-    [MeasurableEq S]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (sites : List I)
     (P₀ : Measure (SpinConfig I S × SpinConfig I S)) :
     Measure (SpinConfig I S × SpinConfig I S) :=
@@ -91,7 +91,7 @@ noncomputable def dobrushinCouplingList
 
 /-- Iterate `updateCoupling` over all sites in a finset T (via its list). -/
 noncomputable def dobrushinCoupling
-    [MeasurableEq S]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (T : Finset I)
     (P₀ : Measure (SpinConfig I S × SpinConfig I S)) :
     Measure (SpinConfig I S × SpinConfig I S) :=
@@ -224,13 +224,14 @@ influence coefficients times the boundary disagreement indicators.
 
 Combines the maximal coupling property (disagreement = tvDist) with the
 telescoping bound `tvDist_marginal_le_influenceCoeff_sum`. -/
-theorem coupledSingleSiteKernel_ne_le [Fintype I] [MeasurableEq S]
+theorem coupledSingleSiteKernel_ne_le [Fintype I]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (z : I) (σ η : SpinConfig I S) :
     ((coupledSingleSiteKernel γ z σ η) {p | p.1 ≠ p.2}).toReal ≤
       ∑ w : I, influenceCoeff γ z w *
         (if σ w = η w then (0 : ℝ) else 1) := by
   classical
-  have h_ne := maximalCoupling_ne
+  have h_ne := canonicalMaximalCoupling_ne
     (marginalAtSite (γ.condDist {z} σ) z)
     (marginalAtSite (γ.condDist {z} η) z)
   unfold coupledSingleSiteKernel at *
@@ -278,22 +279,55 @@ private lemma dlr_toReal_implies_bind_eq
 
 /-! ## Marginal preservation and coupling properties -/
 
-/-- `updateCoupling` preserves the coupling property.
+/-- For a proper Gibbs specification, the conditional distribution at a singleton
+site {z} is the pushforward of its z-marginal under `Function.update σ z`.
 
-**Proved infrastructure:** The DLR `.toReal` → ENNReal bind conversion is
-complete (`hcond_meas`, `hbind₁`, `hbind₂`).
+Concretely: since `condDist {z} σ` is concentrated on configs τ with
+`τ w = σ w` for `w ≠ z`, every such τ equals `Function.update σ z (τ z)`,
+so `condDist {z} σ = (marginalAtSite (condDist {z} σ) z).map (update σ z)`. -/
+private lemma condDist_eq_marginal_map_update
+    [Fintype I] [Countable S] [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S) (z : I) (σ : SpinConfig I S) :
+    γ.condDist {z} σ = (marginalAtSite (γ.condDist {z} σ) z).map (Function.update σ z) := by
+  -- Both sides are probability measures on a countable MeasurableSingletonClass space,
+  -- so it suffices to check they agree on singletons {τ}.
+  ext A hA
+  rw [marginalAtSite, Measure.map_map (measurable_of_countable _) (measurable_of_countable _)]
+  -- RHS: (condDist {z} σ).map (update σ z ∘ (· z)) A
+  -- The composition (update σ z ∘ (· z)) sends τ ↦ update σ z (τ z).
+  -- For τ in the support (agreeing with σ outside {z}), this equals τ.
+  -- So the map is the identity on the support.
+  have hproper := γ.proper {z} σ
+  -- condDist {z} σ (support) = 1
+  set support := {τ : SpinConfig I S | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}
+  -- On the support, update σ z (τ z) = τ
+  have hid : ∀ τ ∈ support, Function.update σ z (τ z) = τ := by
+    intro τ hτ
+    ext w
+    by_cases hw : w = z
+    · subst hw; simp [Function.update]
+    · have : Function.update σ z (τ z) w = σ w := Function.update_of_ne hw (τ z) σ
+      rw [this]
+      exact (hτ w (by simp [hw])).symm
+  -- The composed map equals id ae
+  have hmap_eq : (Function.update σ z ∘ (· z)) =ᵐ[γ.condDist {z} σ] id := by
+    rw [Filter.eventuallyEq_iff_exists_mem]
+    refine ⟨support, ?_, fun τ hτ => hid τ hτ⟩
+    -- support ∈ ae (condDist {z} σ) because supportᶜ has measure 0
+    have hcompl : γ.condDist {z} σ supportᶜ = 0 := by
+      rw [measure_compl MeasurableSet.of_discrete (measure_ne_top _ _), hproper]
+      simp
+    exact mem_ae_iff.mpr hcompl
+  -- map (update σ z ∘ (· z)) (condDist {z} σ) = condDist {z} σ
+  -- follows from hmap_eq: the composed map is id ae
+  have hmapeq : Measure.map (Function.update σ z ∘ (· z)) (γ.condDist {z} σ) =
+      γ.condDist {z} σ := by
+    rw [Measure.map_congr hmap_eq, Measure.map_id]
+  -- The original goal: condDist {z} σ A = (map (update σ z ∘ (· z)) (condDist {z} σ)) A
+  rw [hmapeq]
 
-**Remaining gap (3 sub-sorries):**
-1. `IsProbabilityMeasure`: Requires measurability of the coupled kernel
-   `fun p => (coupledSingleSiteKernel ...).map ψ` for `Measure.bind_apply`.
-2. First marginal `= μ₁`: Requires bind/map decomposition + properness
-   (`condDist {z} σ` supported on configs agreeing with σ outside {z})
-   + DLR bind form.
-3. Second marginal `= μ₂`: Symmetric to (2).
-
-The mathematical argument is clear; the gap is purely the measurability
-of the `maximalCoupling`-based kernel in its parameters. -/
-theorem updateCoupling_isCoupling [MeasurableEq S]
+/-- `updateCoupling` preserves the coupling property. -/
+theorem updateCoupling_isCoupling [Fintype I] [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (z : I)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
@@ -321,28 +355,113 @@ theorem updateCoupling_isCoupling [MeasurableEq S]
     dlr_toReal_implies_bind_eq μ₁ (γ.condDist {z}) hcond_meas.aemeasurable hdlr₁
   have hbind₂ : μ₂ = μ₂.bind (γ.condDist {z}) :=
     dlr_toReal_implies_bind_eq μ₂ (γ.condDist {z}) hcond_meas.aemeasurable hdlr₂
-  -- Step 3: The marginal conditions.
-  -- updateCoupling γ z P = P.bind(fun p => (coupledSingleSiteKernel ...).map ψ)
-  -- where ψ(ss) = (Function.update p.1 z ss.1, Function.update p.2 z ss.2).
-  --
-  -- First marginal of updateCoupling equals μ₁:
-  --   (P.bind f).map Prod.fst = P.bind(fun p => (f p).map Prod.fst)
-  --   = P.bind(fun p => (marginal of condDist at z, mapped to full config))
-  --   = μ₁.bind(condDist {z})   [by coupling + properness]
-  --   = μ₁                       [by DLR bind form]
-  --
-  -- Each step requires measurability conditions that are technically challenging.
-  -- We construct the coupling directly.
+  -- Step 3: Key measurability facts.
+  -- On [Fintype I] [Countable S] [MeasurableSingletonClass S], the spaces
+  -- SpinConfig I S and their products are countable with discrete sigma-algebra.
+  -- So every function is Giry-measurable and every set is measurable.
+  -- Define the kernel
+  set f : SpinConfig I S × SpinConfig I S → Measure (SpinConfig I S × SpinConfig I S) :=
+    fun p => (coupledSingleSiteKernel γ z p.1 p.2).map
+      (fun ss => (Function.update p.1 z ss.1, Function.update p.2 z ss.2)) with hf_def
+  have hf_meas : Measurable f := Measurable.of_discrete
+  -- Each coupledSingleSiteKernel is a probability measure (canonical coupling)
+  have hkernel_prob : ∀ σ η : SpinConfig I S,
+      IsProbabilityMeasure (coupledSingleSiteKernel γ z σ η) := by
+    intro σ η; unfold coupledSingleSiteKernel; infer_instance
+  -- Each f p is a probability measure (image of probability measure under measurable map)
+  have hf_prob : ∀ p, IsProbabilityMeasure (f p) := by
+    intro p
+    haveI := hkernel_prob p.1 p.2
+    exact Measure.isProbabilityMeasure_map (Measurable.of_discrete).aemeasurable
+  -- The coupling kernel's first marginal relates to condDist via properness
+  have hf_fst : ∀ p : SpinConfig I S × SpinConfig I S,
+      (f p).map Prod.fst = γ.condDist {z} p.1 := by
+    intro p
+    simp only [hf_def]
+    -- (coupling.map ψ).map fst = coupling.map (fst ∘ ψ) = coupling.map (fun ss => update p.1 z ss.1)
+    rw [Measure.map_map Measurable.of_discrete Measurable.of_discrete]
+    -- fst ∘ ψ = fun ss => update p.1 z ss.1 = (fun s => update p.1 z s) ∘ fst
+    have hcomp : (fun ss : S × S => (Function.update p.1 z ss.1, Function.update p.2 z ss.2)) =
+        (fun ss => ((fun s => Function.update p.1 z s) ss.1,
+                    (fun s => Function.update p.2 z s) ss.2)) := rfl
+    rw [show Prod.fst ∘ (fun ss : S × S => (Function.update p.1 z ss.1, Function.update p.2 z ss.2))
+        = (fun s => Function.update p.1 z s) ∘ Prod.fst from rfl]
+    rw [← Measure.map_map Measurable.of_discrete Measurable.of_discrete]
+    -- coupling.map fst = marginalAtSite (condDist {z} p.1) z
+    -- by canonicalMaximalCoupling_fst
+    unfold coupledSingleSiteKernel
+    rw [canonicalMaximalCoupling_fst]
+    -- Now: (marginalAtSite (condDist {z} p.1) z).map (update p.1 z) = condDist {z} p.1
+    exact (condDist_eq_marginal_map_update γ z p.1).symm
+  -- Similarly for second marginal
+  have hf_snd : ∀ p : SpinConfig I S × SpinConfig I S,
+      (f p).map Prod.snd = γ.condDist {z} p.2 := by
+    intro p
+    simp only [hf_def]
+    rw [Measure.map_map Measurable.of_discrete Measurable.of_discrete]
+    rw [show Prod.snd ∘ (fun ss : S × S => (Function.update p.1 z ss.1, Function.update p.2 z ss.2))
+        = (fun s => Function.update p.2 z s) ∘ Prod.snd from rfl]
+    rw [← Measure.map_map Measurable.of_discrete Measurable.of_discrete]
+    unfold coupledSingleSiteKernel
+    rw [canonicalMaximalCoupling_snd]
+    exact (condDist_eq_marginal_map_update γ z p.2).symm
+  -- Step 4: Prove the three goals via ext + bind_apply.
+  have hupdate_eq : updateCoupling γ z P = P.bind f := rfl
+  -- Helper: map_apply for fst/snd restricted to bind
+  have hbind_fst_apply : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (P.bind f).map Prod.fst A = ∫⁻ p, (γ.condDist {z} p.1) A ∂P := by
+    intro A hA
+    rw [Measure.map_apply Measurable.of_discrete hA,
+        Measure.bind_apply MeasurableSet.of_discrete hf_meas.aemeasurable]
+    apply lintegral_congr; intro p
+    -- f(p)(fst⁻¹' A) = ((f p).map fst) A = (condDist {z} p.1) A
+    rw [show f p (Prod.fst ⁻¹' A) = (f p).map Prod.fst A from
+      (Measure.map_apply Measurable.of_discrete hA).symm, hf_fst]
+  have hbind_snd_apply : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (P.bind f).map Prod.snd A = ∫⁻ p, (γ.condDist {z} p.2) A ∂P := by
+    intro A hA
+    rw [Measure.map_apply Measurable.of_discrete hA,
+        Measure.bind_apply MeasurableSet.of_discrete hf_meas.aemeasurable]
+    apply lintegral_congr; intro p
+    rw [show f p (Prod.snd ⁻¹' A) = (f p).map Prod.snd A from
+      (Measure.map_apply Measurable.of_discrete hA).symm, hf_snd]
+  -- Helper: convert coupling marginal P.map fst = μ₁ to lintegral form
+  have hlint_fst : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      ∫⁻ p, (γ.condDist {z} p.1) A ∂P = μ₁ A := by
+    intro A hA
+    -- Change of variables: ∫ p, g(p.1) dP = ∫ σ, g(σ) d(P.map fst)
+    have hcov : ∫⁻ p, (γ.condDist {z} p.1) A ∂P =
+        ∫⁻ σ, (γ.condDist {z} σ) A ∂(P.map Prod.fst) := by
+      rw [lintegral_map Measurable.of_discrete Measurable.of_discrete]
+    rw [hcov, hP.fst_marginal]
+    -- Now: ∫ σ, (condDist {z} σ) A dμ₁ = μ₁ A by DLR bind form
+    -- We know μ₁ = μ₁.bind (condDist {z}), so μ₁ A = (μ₁.bind condDist) A = ∫ condDist σ A dμ₁
+    exact (Measure.bind_apply hA hcond_meas.aemeasurable ▸ hbind₁ ▸ rfl)
+  have hlint_snd : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      ∫⁻ p, (γ.condDist {z} p.2) A ∂P = μ₂ A := by
+    intro A hA
+    have hcov : ∫⁻ p, (γ.condDist {z} p.2) A ∂P =
+        ∫⁻ σ, (γ.condDist {z} σ) A ∂(P.map Prod.snd) := by
+      rw [lintegral_map Measurable.of_discrete Measurable.of_discrete]
+    rw [hcov, hP.snd_marginal]
+    exact (Measure.bind_apply hA hcond_meas.aemeasurable ▸ hbind₂ ▸ rfl)
   refine IsCoupling.mk (isProb := ?_) (fst_marginal := ?_) (snd_marginal := ?_)
   · -- IsProbabilityMeasure (updateCoupling γ z P)
-    sorry
+    haveI := hP.isProb  -- register IsProbabilityMeasure P
+    rw [hupdate_eq]; constructor
+    rw [Measure.bind_apply MeasurableSet.univ hf_meas.aemeasurable]
+    have : (fun p => f p Set.univ) = fun _ => (1 : ENNReal) := by
+      ext p; exact measure_univ
+    rw [this, lintegral_const, one_mul, measure_univ]
   · -- (updateCoupling γ z P).map Prod.fst = μ₁
-    sorry
+    rw [hupdate_eq]; ext A hA
+    rw [hbind_fst_apply A hA, hlint_fst A hA]
   · -- (updateCoupling γ z P).map Prod.snd = μ₂
-    sorry
+    rw [hupdate_eq]; ext A hA
+    rw [hbind_snd_apply A hA, hlint_snd A hA]
 
 /-- `dobrushinCouplingList` preserves the coupling property. -/
-theorem dobrushinCouplingList_isCoupling [MeasurableEq S]
+theorem dobrushinCouplingList_isCoupling [Fintype I] [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (sites : List I)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
@@ -381,7 +500,7 @@ theorem dobrushinCouplingList_isCoupling [MeasurableEq S]
       (fun w hw A hA => hd2 w (.tail z hw) A hA)
 
 /-- `dobrushinCoupling` preserves the coupling property. -/
-theorem dobrushinCoupling_isCoupling [MeasurableEq S]
+theorem dobrushinCoupling_isCoupling [Fintype I] [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (T : Finset I)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
@@ -397,11 +516,34 @@ theorem dobrushinCoupling_isCoupling [MeasurableEq S]
     (fun z hz A hA => hdlr₁ z (Multiset.mem_toList.mp hz) A hA)
     (fun z hz A hA => hdlr₂ z (Multiset.mem_toList.mp hz) A hA)
 
-/-! ## Per-site contraction after sweep -/
+/-! ## Per-site contraction after sweep
+
+**Status: 1 sorry remaining.**
+
+The contraction `P{z-ne} ≤ ∑ C(z,w) * P{w-ne}` for the sweep output P
+does not follow from the single-sweep analysis alone. At z's step:
+  `P_k{z-ne} ≤ ∑ C(z,w) * P_{k-1}{w-ne}`
+but for w processed after z, `P_{k-1}{w-ne}` may differ from `P_final{w-ne}`
+(later updates can change w-disagreement in either direction).
+
+The correct proof requires either:
+1. Constructing a simultaneous coupling (product of per-site maximal
+   couplings), or
+2. Using the fixed point of the sweep operator (Banach fixed point on
+   the ℓ∞ weighted disagreement vector), or
+3. Reformulating `dobrushin_iterated_coupling_fintype` to avoid needing
+   the per-site contraction for a single sweep (e.g., using marginal TV
+   bounds directly).
+
+For now, the single-step contraction `updateCoupling_isCoupling` is proved,
+and this sorry is the only gap in the Dobrushin coupling chain. -/
 
 /-- After the Dobrushin coupling sweep, the disagreement at each
-site z in T satisfies the contraction inequality. -/
-theorem dobrushinCoupling_contraction_at_site [Fintype I] [MeasurableEq S]
+site z in T satisfies the contraction inequality.
+
+**sorry**: see section docstring for analysis of the gap. -/
+theorem dobrushinCoupling_contraction_at_site [Fintype I]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S) (T : Finset I)
     (P₀ : Measure (SpinConfig I S × SpinConfig I S))
     [IsProbabilityMeasure P₀]
@@ -425,8 +567,7 @@ This provides a constructive witness for the axiom
 `dobrushin_iterated_coupling_exists` in CondTVBridge.lean
 (modulo the DLR-to-Giry conversion in `updateCoupling_isCoupling`). -/
 theorem dobrushin_iterated_coupling_fintype [Fintype I]
-    [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
@@ -468,5 +609,48 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
     ∑' w, influenceCoeff γ z w * (P {p | p.1 w ≠ p.2 w}).toReal
   rw [tsum_eq_sum (s := Finset.univ) (fun w hw => absurd (Finset.mem_univ w) hw)]
   exact h_contr
+
+/-! ## Dobrushin coupling axiom (moved from CanonicalCoupling.lean) -/
+
+/-- **Dobrushin iterated coupling existence (theorem).**
+
+For probability measures mu_1, mu_2 on SpinConfig I S that both satisfy
+the DLR equation at all singleton sites {z} for z in T, there exists
+a joint coupling P of mu_1 and mu_2 on (SpinConfig I S) x (SpinConfig I S)
+such that for every z in T, the coupling-disagreement probability at z
+satisfies the contraction inequality:
+
+  P{sigma_z != tau_z} <= Sigma_w C(z,w) . P{sigma_w != tau_w}
+
+where C(z,w) = influenceCoeff gamma z w.
+
+References:
+- Dobrushin (1968), Lemma 2
+- Georgii (1988), Proposition 8.7 -/
+theorem dobrushin_coupling_axiom
+    {I S : Type*} [DecidableEq I] [Fintype I] [MeasurableSpace S]
+    [Countable S] [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S)
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (T : Set I)
+    (hμ₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
+    (hμ₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    ∃ (P : Measure (SpinConfig I S × SpinConfig I S))
+      (_ : IsCoupling P μ₁ μ₂),
+      ∀ z ∈ T,
+        (P {p : SpinConfig I S × SpinConfig I S | p.1 z ≠ p.2 z}).toReal ≤
+          ∑' w, influenceCoeff γ z w *
+            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal :=
+  dobrushin_iterated_coupling_fintype γ μ₁ μ₂ T hμ₁ hμ₂ hfinsupp h_dep_F
 
 end

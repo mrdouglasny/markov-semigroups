@@ -36,7 +36,6 @@ References:
 -/
 
 import MarkovSemigroups.Coupling.TVCoupling
-import MarkovSemigroups.Coupling.DobrushinCoupling
 import MarkovSemigroups.Dobrushin.Specification
 import MarkovSemigroups.Dobrushin.Uniqueness
 
@@ -492,65 +491,5 @@ theorem canonicalMaximalCoupling_measurable
       · simp only [indicator_of_notMem hb]; exact measurable_const
     · -- Outer term: (f x - f x ⊓ g x) {a}
       exact measurable_resid_singleton f g hf hg a
-
-/-! ## Part 2: Dobrushin iterated coupling existence -/
-
-/-- **Dobrushin iterated coupling existence (theorem).**
-
-For probability measures mu_1, mu_2 on SpinConfig I S that both satisfy
-the DLR equation at all singleton sites {z} for z in T, there exists
-a joint coupling P of mu_1 and mu_2 on (SpinConfig I S) x (SpinConfig I S)
-such that for every z in T, the coupling-disagreement probability at z
-satisfies the contraction inequality:
-
-  P{sigma_z != tau_z} <= Sigma_w C(z,w) . P{sigma_w != tau_w}
-
-where C(z,w) = influenceCoeff gamma z w.
-
-This is the classical Dobrushin (1968) result. The construction uses
-a "coupled specification" whose site-z component is the canonical
-maximal coupling of the z-marginals, iterated over all sites.
-
-For `[Fintype I]`, the coupling is constructed by finite iteration of
-`updateCoupling` (see DobrushinCoupling.lean). The `[MeasurableEq S]`
-hypothesis (implied by `[Countable S] + [MeasurableSingletonClass S]`
-or by `[SecondCountableTopology S] + [T2Space S]`) is needed for the
-measurability of the coupled kernel via `canonicalMaximalCoupling_measurable`.
-
-For general (infinite) I, the construction would require Prokhorov
-compactness to obtain a DLR measure for the coupled specification.
-
-References:
-- Dobrushin (1968), Lemma 2
-- Georgii (1988), Proposition 8.7 -/
-theorem dobrushin_coupling_axiom
-    {I S : Type*} [DecidableEq I] [Fintype I] [MeasurableSpace S]
-    [MeasurableSingletonClass S] [MeasurableEq S] [MeasurableEq (SpinConfig I S)]
-    (γ : GibbsSpec I S)
-    (μ₁ μ₂ : Measure (SpinConfig I S))
-    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
-    (T : Set I)
-    (hμ₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
-      MeasurableSet A →
-      (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
-    (hμ₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
-      MeasurableSet A →
-      (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
-    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
-    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
-      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
-        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
-        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
-    ∃ (P : Measure (SpinConfig I S × SpinConfig I S))
-      (_ : IsCoupling P μ₁ μ₂),
-      ∀ z ∈ T,
-        (P {p : SpinConfig I S × SpinConfig I S | p.1 z ≠ p.2 z}).toReal ≤
-          ∑' w, influenceCoeff γ z w *
-            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal :=
-  -- Delegate to the constructive fintype proof in DobrushinCoupling.lean.
-  -- The Dobrushin sweep over all sites in T constructs an explicit coupling
-  -- via `updateCoupling` (maximal coupling at each site) iterated over T.
-  -- For [Fintype I], the sweep terminates and produces the required coupling.
-  dobrushin_iterated_coupling_fintype γ μ₁ μ₂ T hμ₁ hμ₂ hfinsupp h_dep_F
 
 end
