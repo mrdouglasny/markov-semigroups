@@ -34,10 +34,13 @@ where C(z,w) = influenceCoeff gamma z w.
 
 ## Sorry inventory
 
-- `updateCoupling_isCoupling` -- DLR-to-Giry monad conversion gap
-  (the .toReal <-> ENNReal conversion is non-trivial)
-- `dobrushinCouplingList_isCoupling` -- depends on above
-- `dobrushinCoupling_contraction_at_site` -- foldl state tracking
+- `updateCoupling_isCoupling` -- 3 sub-sorries remain:
+  DLR-to-bind conversion is PROVED; gap is measurability of the
+  maximalCoupling-based kernel + bind/map properness trace.
+- `dobrushinCouplingList_isCoupling` -- CLOSED (induction on Sorry 1)
+- `dobrushinCoupling_contraction_at_site` -- foldl state tracking;
+  requires showing later updates don't increase w-disagreement
+  for the contraction at z
 
 ## References
 
@@ -234,25 +237,109 @@ theorem coupledSingleSiteKernel_ne_le [Fintype I] [MeasurableEq S]
   rw [h_ne, ← tvDist_eq_tvNorm]
   exact tvDist_marginal_le_influenceCoeff_sum γ z σ η
 
+/-! ## Helper: DLR .toReal → ENNReal bind form -/
+
+/-- Convert the DLR equation from `.toReal` integral form to the
+ENNReal `lintegral` form, then to `μ = μ.bind f`.
+
+If `(μ A).toReal = ∫ σ, (f σ A).toReal ∂μ` for all measurable A,
+and `f` is measurable and each `f σ` is a probability measure,
+then `μ = μ.bind f`. -/
+private lemma dlr_toReal_implies_bind_eq
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (f : SpinConfig I S → Measure (SpinConfig I S))
+    [∀ σ, IsProbabilityMeasure (f σ)]
+    (hf_meas : AEMeasurable f μ)
+    (hdlr : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      (μ A).toReal = ∫ σ, (f σ A).toReal ∂μ) :
+    μ = μ.bind f := by
+  ext A hA
+  -- DLR says (μ A).toReal = ∫ σ, (f σ A).toReal ∂μ
+  -- bind_toReal says (μ.bind f A).toReal = ∫ σ, (f σ A).toReal ∂μ
+  -- So (μ A).toReal = (μ.bind f A).toReal, and both are finite
+  have h_bind : (μ.bind f A).toReal = ∫ σ, (f σ A).toReal ∂μ := by
+    rw [Measure.bind_apply hA hf_meas, ← integral_toReal]
+    · exact (Measure.measurable_coe hA).comp_aemeasurable hf_meas
+    · exact Filter.Eventually.of_forall (fun x => measure_lt_top (f x) A)
+  have h_eq_real : (μ A).toReal = (μ.bind f A).toReal := by
+    rw [hdlr A hA, h_bind]
+  -- Both sides are finite (μ is a probability measure; μ.bind f is too)
+  have hfin₁ : μ A ≠ ⊤ := (measure_lt_top μ A).ne
+  have hfin₂ : μ.bind f A ≠ ⊤ := by
+    have : μ.bind f A < ⊤ := by
+      calc μ.bind f A ≤ μ.bind f Set.univ := measure_mono (Set.subset_univ A)
+        _ = ∫⁻ _, f _ Set.univ ∂μ := Measure.bind_apply MeasurableSet.univ hf_meas
+        _ = ∫⁻ _, 1 ∂μ := by
+            apply lintegral_congr; intro σ; exact measure_univ (μ := f σ)
+        _ = μ Set.univ := lintegral_one
+        _ < ⊤ := measure_lt_top μ Set.univ
+    exact this.ne
+  exact (ENNReal.toReal_eq_toReal_iff' hfin₁ hfin₂).mp h_eq_real
+
 /-! ## Marginal preservation and coupling properties -/
 
 /-- `updateCoupling` preserves the coupling property.
 
-**Gap:** The DLR equation is in `.toReal` form. Converting to the
-Giry monad form `mu.bind (fun sigma => gamma.condDist {z} sigma) = mu`
-is non-trivial due to ENNReal <-> Real conversion. Left as sorry. -/
+**Proved infrastructure:** The DLR `.toReal` → ENNReal bind conversion is
+complete (`hcond_meas`, `hbind₁`, `hbind₂`).
+
+**Remaining gap (3 sub-sorries):**
+1. `IsProbabilityMeasure`: Requires measurability of the coupled kernel
+   `fun p => (coupledSingleSiteKernel ...).map ψ` for `Measure.bind_apply`.
+2. First marginal `= μ₁`: Requires bind/map decomposition + properness
+   (`condDist {z} σ` supported on configs agreeing with σ outside {z})
+   + DLR bind form.
+3. Second marginal `= μ₂`: Symmetric to (2).
+
+The mathematical argument is clear; the gap is purely the measurability
+of the `maximalCoupling`-based kernel in its parameters. -/
 theorem updateCoupling_isCoupling [MeasurableEq S]
     (γ : GibbsSpec I S) (z : I)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
     (P : Measure (SpinConfig I S × SpinConfig I S))
     (hP : IsCoupling P μ₁ μ₂)
-    (_hdlr₁ : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+    (hdlr₁ : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
       (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
-    (_hdlr₂ : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+    (hdlr₂ : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
       (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂) :
     IsCoupling (updateCoupling γ z P) μ₁ μ₂ := by
-  sorry
+  -- Step 1: Show condDist is Measurable (bridge .toReal measurability to ENNReal)
+  have hcond_meas : Measurable (γ.condDist ({z} : Finset I)) := by
+    apply Measure.measurable_of_measurable_coe
+    intro A hA
+    -- condDist {z} σ A = ENNReal.ofReal (condDist {z} σ A).toReal since ≠ ⊤
+    have hne_top : ∀ σ, γ.condDist {z} σ A ≠ ⊤ := fun σ =>
+      (measure_lt_top (γ.condDist {z} σ) A).ne
+    have heq : (fun σ => γ.condDist {z} σ A) =
+        (fun σ => ENNReal.ofReal (γ.condDist {z} σ A).toReal) := by
+      ext σ; exact (ENNReal.ofReal_toReal (hne_top σ)).symm
+    rw [heq]
+    exact ENNReal.measurable_ofReal.comp (γ.measurable_condDist {z} A hA)
+  -- Step 2: Convert DLR from .toReal to bind form:  μ = μ.bind(condDist {z})
+  have hbind₁ : μ₁ = μ₁.bind (γ.condDist {z}) :=
+    dlr_toReal_implies_bind_eq μ₁ (γ.condDist {z}) hcond_meas.aemeasurable hdlr₁
+  have hbind₂ : μ₂ = μ₂.bind (γ.condDist {z}) :=
+    dlr_toReal_implies_bind_eq μ₂ (γ.condDist {z}) hcond_meas.aemeasurable hdlr₂
+  -- Step 3: The marginal conditions.
+  -- updateCoupling γ z P = P.bind(fun p => (coupledSingleSiteKernel ...).map ψ)
+  -- where ψ(ss) = (Function.update p.1 z ss.1, Function.update p.2 z ss.2).
+  --
+  -- First marginal of updateCoupling equals μ₁:
+  --   (P.bind f).map Prod.fst = P.bind(fun p => (f p).map Prod.fst)
+  --   = P.bind(fun p => (marginal of condDist at z, mapped to full config))
+  --   = μ₁.bind(condDist {z})   [by coupling + properness]
+  --   = μ₁                       [by DLR bind form]
+  --
+  -- Each step requires measurability conditions that are technically challenging.
+  -- We construct the coupling directly.
+  refine IsCoupling.mk (isProb := ?_) (fst_marginal := ?_) (snd_marginal := ?_)
+  · -- IsProbabilityMeasure (updateCoupling γ z P)
+    sorry
+  · -- (updateCoupling γ z P).map Prod.fst = μ₁
+    sorry
+  · -- (updateCoupling γ z P).map Prod.snd = μ₂
+    sorry
 
 /-- `dobrushinCouplingList` preserves the coupling property. -/
 theorem dobrushinCouplingList_isCoupling [MeasurableEq S]
@@ -266,7 +353,32 @@ theorem dobrushinCouplingList_isCoupling [MeasurableEq S]
     (hdlr₂ : ∀ z ∈ sites, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
       (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂) :
     IsCoupling (dobrushinCouplingList γ sites P₀) μ₁ μ₂ := by
-  sorry
+  -- Strengthen to: for any superset L of sites, DLR at L implies coupling
+  suffices h : ∀ (L : List I) (Q : Measure (SpinConfig I S × SpinConfig I S)),
+      IsCoupling Q μ₁ μ₂ →
+      (∀ w ∈ L, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (μ₁ A).toReal = ∫ σ, (γ.condDist {w} σ A).toReal ∂μ₁) →
+      (∀ w ∈ L, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (μ₂ A).toReal = ∫ σ, (γ.condDist {w} σ A).toReal ∂μ₂) →
+      IsCoupling (dobrushinCouplingList γ L Q) μ₁ μ₂ from
+    h sites P₀ hP₀ hdlr₁ hdlr₂
+  intro L
+  induction L with
+  | nil => intro Q hQ _ _; exact hQ
+  | cons z rest ih =>
+    intro Q hQ hd1 hd2
+    show IsCoupling (dobrushinCouplingList γ rest (updateCoupling γ z Q)) μ₁ μ₂
+    -- Extract DLR at z from the cons-list hypothesis
+    have hd1z : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁ :=
+      fun A hA => hd1 z (show z ∈ (z :: rest) from .head rest) A hA
+    have hd2z : ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂ :=
+      fun A hA => hd2 z (show z ∈ (z :: rest) from .head rest) A hA
+    exact ih (updateCoupling γ z Q)
+      (updateCoupling_isCoupling γ z μ₁ μ₂ Q hQ hd1z hd2z)
+      (fun w hw A hA => hd1 w (.tail z hw) A hA)
+      (fun w hw A hA => hd2 w (.tail z hw) A hA)
 
 /-- `dobrushinCoupling` preserves the coupling property. -/
 theorem dobrushinCoupling_isCoupling [MeasurableEq S]
