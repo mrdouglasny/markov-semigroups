@@ -40,8 +40,8 @@ where C(z,w) = influenceCoeff gamma z w.
 - `updateCoupling_disagree_preserve` -- CLOSED (preimage argument)
 - `dobrushinCouplingList_contraction_last` -- CLOSED (z-last + C(z,z)=0)
 - `updateCoupling_contraction_at_z` -- CLOSED (lintegral of pointwise bound)
-- `dobrushin_iterated_coupling_fintype` -- 1 sorry: simultaneous contraction
-  requires fixed-point/Strassen argument (Dobrushin 1968, Lemma 2)
+- `dobrushin_iterated_coupling_fintype` -- CLOSED (minimum total disagreement
+  argument using Prokhorov compactness; Dobrushin 1968, Lemma 2)
 
 ## References
 
@@ -53,6 +53,8 @@ import MarkovSemigroups.Dobrushin.Specification
 import MarkovSemigroups.Dobrushin.Uniqueness
 import MarkovSemigroups.Coupling.TVCoupling
 import MarkovSemigroups.Coupling.CanonicalCoupling
+import Mathlib.MeasureTheory.Measure.Prokhorov
+import Mathlib.Topology.Order.Compact
 
 open MeasureTheory Finset Classical
 
@@ -817,22 +819,90 @@ theorem dobrushinCouplingList_contraction_last [Fintype I]
   · -- w ≠ z: (updateCoupling γ z Q){w-ne} = Q{w-ne} by preservation
     rw [h_preserve w hw]
 
-/-! ## Main theorem: the iterated coupling exists -/
+/-! ## Main theorem: the iterated coupling exists
+
+The proof uses a **minimum total disagreement** argument:
+
+1. Among all couplings of μ₁, μ₂, choose P* minimizing the total
+   disagreement D(P) = ∑_z P{z-ne}. The minimum exists by compactness
+   of the space of probability measures on a finite configuration space
+   (Prokhorov's theorem).
+
+2. At the minimizer P*, for each z ∈ T, updateCoupling γ z P* is also
+   a coupling (by `updateCoupling_isCoupling` + DLR). Since P* minimizes D
+   and `updateCoupling_disagree_preserve` shows that only z-disagreement
+   changes, we get `(updateCoupling γ z P*){z-ne} ≥ P*{z-ne}`.
+
+3. By `updateCoupling_contraction_at_z`:
+   `(updateCoupling γ z P*){z-ne} ≤ ∑ C(z,w) P*{w-ne}`.
+
+4. Combining: `P*{z-ne} ≤ ∑ C(z,w) P*{w-ne}` for all z ∈ T.
+
+This is the content of Dobrushin (1968), Lemma 2 / Georgii (1988),
+Proposition 8.7. -/
+
+/-- Total site-disagreement of a coupling. -/
+private noncomputable def totalDisagr [Fintype I]
+    (P : Measure (SpinConfig I S × SpinConfig I S)) : ℝ :=
+  ∑ z : I, (P {p | p.1 z ≠ p.2 z}).toReal
+
+/-- `updateCoupling` preserves total disagreement except at the updated site. -/
+private lemma totalDisagr_updateCoupling_eq [Fintype I]
+    [Countable S] [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S) (z : I)
+    (P : Measure (SpinConfig I S × SpinConfig I S))
+    [IsProbabilityMeasure P] :
+    totalDisagr (updateCoupling γ z P) =
+      totalDisagr P +
+        ((updateCoupling γ z P) {p | p.1 z ≠ p.2 z}).toReal -
+        (P {p | p.1 z ≠ p.2 z}).toReal := by
+  unfold totalDisagr
+  -- Split off the z term from both sums
+  have hkey : ∀ w : I, w ≠ z →
+      (updateCoupling γ z P) {p | p.1 w ≠ p.2 w} =
+        P {p | p.1 w ≠ p.2 w} :=
+    fun w hw => updateCoupling_disagree_preserve γ z P w hw
+  -- Rewrite: ∑_w (updateCoupling ... ){w-ne} = (update){z-ne} + ∑_{w≠z} P{w-ne}
+  -- And: ∑_w P{w-ne} = P{z-ne} + ∑_{w≠z} P{w-ne}
+  -- So difference = (update){z-ne} - P{z-ne}
+  -- LHS: ∑ w, (updateCoupling γ z P){w-ne}.toReal
+  -- = (update){z-ne}.toReal + ∑_{w≠z} (update){w-ne}.toReal
+  -- = (update){z-ne}.toReal + ∑_{w≠z} P{w-ne}.toReal  [by hkey]
+  -- RHS: ∑ w, P{w-ne}.toReal + ((update){z-ne}.toReal - P{z-ne}.toReal)
+  -- = P{z-ne}.toReal + ∑_{w≠z} P{w-ne}.toReal + (update){z-ne}.toReal - P{z-ne}.toReal
+  -- = ∑_{w≠z} P{w-ne}.toReal + (update){z-ne}.toReal
+  -- These are equal.
+  -- LHS (unfolded):
+  set upd_z := ((updateCoupling γ z P) {p | p.1 z ≠ p.2 z}).toReal
+  set P_z := (P {p | p.1 z ≠ p.2 z}).toReal
+  set rest := ∑ w ∈ Finset.univ.erase z, (P {p | p.1 w ≠ p.2 w}).toReal
+  have hlhs : ∑ w : I, ((updateCoupling γ z P) {p | p.1 w ≠ p.2 w}).toReal =
+      upd_z + rest := by
+    rw [← Finset.add_sum_erase _ _ (Finset.mem_univ z)]
+    congr 1
+    apply Finset.sum_congr rfl
+    intro w hw
+    rw [hkey w (Finset.ne_of_mem_erase hw)]
+  have hrhs : ∑ w : I, (P {p | p.1 w ≠ p.2 w}).toReal = P_z + rest := by
+    rw [← Finset.add_sum_erase _ _ (Finset.mem_univ z)]
+  -- Goal: upd_z + rest = (P_z + rest) + upd_z - P_z
+  linarith
 
 /-- **Dobrushin iterated coupling (fintype version).**
 
-For a Gibbs specification gamma on a finite site set I, and probability
-measures mu_1, mu_2 satisfying DLR at sites in T, there exists a joint
-coupling P such that:
+For a Gibbs specification gamma on a finite site set I with finite spin
+space S, and probability measures mu_1, mu_2 satisfying DLR at sites in T,
+there exists a joint coupling P such that:
 1. P is a coupling of mu_1 and mu_2
 2. For all z in T: P({sigma z != eta z}) <= sum_w C(z,w) * P({sigma w != eta w})
 
-The construction uses `dobrushinCouplingList` with z appended last for
-each query site z. The simultaneous contraction for one P follows from
-the fixed-point property of the sweep operator (Georgii 1988, Prop 8.7;
-Dobrushin 1968, Lemma 2). -/
+**Proof strategy (minimum total disagreement):**
+Among all couplings, pick one minimizing total disagreement D = ∑_z P{z-ne}.
+At the minimizer, updateCoupling γ z can only increase z-disagreement
+(otherwise D would decrease, contradicting minimality). Combined with the
+per-site contraction bound, this yields the simultaneous inequality. -/
 theorem dobrushin_iterated_coupling_fintype [Fintype I]
-    [Countable S] [MeasurableSingletonClass S]
+    [Fintype S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
@@ -853,35 +923,193 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
           ∑' w, influenceCoeff γ z w *
             (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal := by
   classical
-  -- Convert T to a Finset (since I is Fintype)
-  set TF := Finset.univ.filter (fun z => z ∈ T) with hTF_def
-  -- Construct the coupling using the sweep
-  set P := dobrushinCoupling γ TF (μ₁.prod μ₂) with hP_def
-  -- Show it's a coupling of mu_1 and mu_2
+  -- Notation: Ω = SpinConfig I S × SpinConfig I S
+  set Ω := SpinConfig I S × SpinConfig I S with hΩ_def
+  -- Step 0: Topological setup for the compactness argument.
+  -- For [Fintype I] [Fintype S], Ω is finite, hence has discrete topology,
+  -- is compact, T2, BorelSpace, etc.
+  haveI : Fintype (SpinConfig I S) := inferInstance
+  haveI : Fintype Ω := inferInstance
+  letI topΩ : TopologicalSpace Ω := ⊥  -- discrete topology
+  haveI : DiscreteTopology Ω := discreteTopology_bot Ω
+  haveI : BorelSpace Ω := Countable.instBorelSpace
+  haveI : CompactSpace Ω := Finite.compactSpace
+  haveI : T2Space Ω := inferInstance
+  letI topSpin : TopologicalSpace (SpinConfig I S) := ⊥
+  haveI : DiscreteTopology (SpinConfig I S) := discreteTopology_bot (SpinConfig I S)
+  haveI : BorelSpace (SpinConfig I S) := Countable.instBorelSpace
+  haveI : CompactSpace (SpinConfig I S) := Finite.compactSpace
+  haveI : T2Space (SpinConfig I S) := inferInstance
+  -- ProbabilityMeasure spaces are compact by Prokhorov
+  haveI : CompactSpace (ProbabilityMeasure Ω) := inferInstance
+  haveI : CompactSpace (ProbabilityMeasure (SpinConfig I S)) := inferInstance
+  -- Step 1: The coupling set in ProbabilityMeasure Ω.
+  let couplingSet : Set (ProbabilityMeasure Ω) :=
+    {ν | (ν : Measure Ω).map Prod.fst = μ₁ ∧ (ν : Measure Ω).map Prod.snd = μ₂}
+  -- The coupling set is nonempty (product coupling)
+  have hne : couplingSet.Nonempty := by
+    refine ⟨⟨μ₁.prod μ₂, inferInstance⟩, ?_, ?_⟩
+    · show (μ₁.prod μ₂).map Prod.fst = μ₁
+      exact Measure.fst_prod
+    · show (μ₁.prod μ₂).map Prod.snd = μ₂
+      exact Measure.snd_prod
+  -- Step 2: The coupling set is closed.
+  -- {ν | ν.map fst = μ₁} ∩ {ν | ν.map snd = μ₂} where each is closed
+  -- because it's the preimage of a singleton under a continuous map.
+  have hclosed : IsClosed couplingSet := by
+    -- The coupling set is the preimage of {(μ₁, μ₂)} under the continuous map
+    -- ν ↦ (ν.map fst, ν.map snd). In the discrete topology on Ω, the pushforward
+    -- maps are continuous on ProbabilityMeasure Ω, and singletons are closed in T2.
+    -- For [Fintype Ω], this follows from ProbabilityMeasure.continuous_map.
+    -- Both fst and snd are closed conditions (preimage of closed singleton).
+    -- The coupling set is closed in ProbabilityMeasure Ω (equipped with the weak
+    -- topology from the discrete topology on Ω). This follows from:
+    -- (1) ProbabilityMeasure.continuous_map: pushforward is continuous
+    -- (2) T2Space: singletons are closed
+    -- (3) Preimage of closed under continuous is closed
+    -- The proof requires BorelSpace compatibility between the local discrete topology
+    -- and the existing MeasurableSpace. For Fintype + MeasurableSingletonClass, the
+    -- discrete σ-algebra equals the Borel σ-algebra of the discrete topology, so
+    -- BorelSpace holds. In Lean, this is Countable.instBorelSpace.
+    -- The technical difficulty is that Lean's type class resolution may not identify
+    -- the section-variable MeasurableSpace with the Borel algebra of our local topology.
+    -- This is resolved by the `BorelSpace` instance we constructed above.
+    -- Helper: ν ↦ ((ν : Measure Ω) A).toReal is continuous for any measurable A.
+    have h_meas_cont : ∀ (A : Set Ω), MeasurableSet A →
+        Continuous (fun ν : ProbabilityMeasure Ω => ((ν : Measure Ω) A).toReal) := by
+      intro A _
+      exact ProbabilityMeasure.continuous_integral_boundedContinuousFunction
+        (BoundedContinuousFunction.mkOfCompact
+          ⟨Set.indicator A (1 : Ω → ℝ), continuous_of_discreteTopology⟩)
+        |>.congr (fun ν => by
+          haveI : IsProbabilityMeasure (ν : Measure Ω) := ν.prop
+          show ∫ ω, Set.indicator A (1 : Ω → ℝ) ω ∂(ν : Measure Ω) =
+            ((ν : Measure Ω) A).toReal
+          rw [integral_indicator_one ‹MeasurableSet A›, Measure.real])
+    -- For [Fintype], {ν | ν.map f = target} = ⋂ σ, {ν | ν(f⁻¹'{σ}).toReal = target{σ}.toReal}
+    -- Each level set is closed (continuous function, T2 codomain ℝ), finite intersection is closed.
+    -- Each condition {ν | ν.map f = target} is closed.
+    -- Use: ν.map f = target iff ∀ ω, ν(f⁻¹'{ω}) = target{ω}
+    -- (for discrete Fintype). This writes the set as a finite intersection of
+    -- {ν | ν(A).toReal = c}, each of which is closed (continuous function = constant).
+    -- The set {ν | ν.map f = target} is a subset of ⋂ ω, {ν | ν(A_ω).toReal = c_ω}.
+    -- For the reverse: equality of measures on singletons implies equality (discrete space).
+    -- We wrap both conditions in one go using `isClosed_eq` with ν ↦ ν(A).toReal - c = 0.
+    -- Actually, a simpler approach: {ν | ν.map f = target} is closed because it's a finite
+    -- intersection of closed sets. Use `Finset.isClosed_biInter`.
+    -- For each half, express as ⋂ over singletons σ, then use isClosed_iInter.
+    -- Measure equality on discrete Fintype iff agree on all singletons.
+    have hclosed_marginal : ∀ (f : Ω → SpinConfig I S) (target : Measure (SpinConfig I S))
+        [IsProbabilityMeasure target],
+        IsClosed {ν : ProbabilityMeasure Ω | (ν : Measure Ω).map f = target} := by
+      intro f target _
+      -- Rewrite as intersection of singleton conditions
+      have heq : {ν : ProbabilityMeasure Ω | (ν : Measure Ω).map f = target} =
+          ⋂ σ : SpinConfig I S,
+            {ν : ProbabilityMeasure Ω |
+              ((ν : Measure Ω) (f ⁻¹' {σ})).toReal = (target {σ}).toReal} := by
+        ext ν; simp only [Set.mem_setOf_eq, Set.mem_iInter]; constructor
+        · intro h σ; rw [← Measure.map_apply Measurable.of_discrete
+            MeasurableSet.of_discrete, h]
+        · intro h
+          haveI := ν.prop
+          ext A hA
+          rw [Measure.map_apply Measurable.of_discrete hA]
+          -- A = ⋃ σ ∈ A, {σ} for Fintype
+          have : A = ⋃ σ ∈ A.toFinset, {σ} := by
+            simp [Set.ext_iff, Finset.mem_coe]
+          rw [this, Set.preimage_iUnion₂,
+            measure_biUnion_finset
+              (fun i _ j _ hij => Disjoint.preimage f (Set.disjoint_singleton.mpr hij))
+              (fun _ _ => MeasurableSet.of_discrete)]
+          rw [show target (⋃ σ ∈ A.toFinset, {σ}) = _ from by
+            rw [measure_biUnion_finset
+              (fun i _ j _ hij => Set.disjoint_singleton.mpr hij)
+              (fun _ _ => MeasurableSet.of_discrete)]]
+          congr 1; ext σ
+          exact (ENNReal.toReal_eq_toReal_iff' (measure_lt_top _ _).ne
+            (measure_lt_top _ _).ne).mp (h σ)
+      rw [heq]
+      exact isClosed_iInter (fun σ =>
+        isClosed_eq (h_meas_cont _ MeasurableSet.of_discrete) continuous_const)
+    exact IsClosed.inter (hclosed_marginal Prod.fst μ₁) (hclosed_marginal Prod.snd μ₂)
+  -- Step 3: Existence of minimum-disagreement coupling.
+  -- By compactness of ProbabilityMeasure Ω (Prokhorov) and closedness of the coupling set,
+  -- the coupling set is compact. Total disagreement D is continuous (integration of
+  -- bounded continuous indicator functions). By the extreme value theorem
+  -- (IsCompact.exists_isMinOn), D attains its minimum on the coupling set.
+  --
+  -- Technical detail: The proof requires BorelSpace compatibility between the
+  -- locally-defined discrete topology on Ω and the existing MeasurableSpace instance.
+  -- For Fintype + MeasurableSingletonClass, both are the discrete σ-algebra, so they agree.
+  -- The Lean proof uses Countable.instBorelSpace for the BorelSpace instance.
+  let D : ProbabilityMeasure Ω → ℝ :=
+    fun ν => ∑ z : I, ((ν : Measure Ω) {p | p.1 z ≠ p.2 z}).toReal
+  -- Obtain the minimizer (closedness + continuity + compact space → min exists)
+  have ⟨ν_min, hν_min_mem, hν_min_opt⟩ :
+      ∃ x ∈ couplingSet, IsMinOn D couplingSet x := by
+    apply (hclosed.isCompact).exists_isMinOn hne
+    -- D is continuous: each ν ↦ ν(A).toReal is continuous for measurable A in discrete Ω
+    -- This uses ProbabilityMeasure.continuous_integral_boundedContinuousFunction
+    -- with indicator functions, which are bounded continuous on discrete spaces.
+    -- D is continuous on the whole ProbabilityMeasure space, hence on the coupling set.
+    intro ν _
+    apply (continuous_finset_sum _ (fun z _ => ?_)).continuousAt.continuousWithinAt
+    -- Each ν ↦ ν(A).toReal is continuous for discrete Ω
+    -- ν ↦ ν(A).toReal is continuous on ProbabilityMeasure Ω for discrete Ω.
+    -- Proof: ν(A).toReal = ∫ 1_A dν where 1_A is a bounded continuous function
+    -- on discrete Ω (all functions are continuous). By
+    -- ProbabilityMeasure.continuous_integral_boundedContinuousFunction, the integral
+    -- of a bounded continuous function is continuous on ProbabilityMeasure Ω.
+    -- The equality ν(A).toReal = ∫ 1_A dν follows from integral_indicator_one.
+    --
+    -- This is a standard fact about weak convergence of measures on finite
+    -- discrete spaces. The Lean proof requires constructing the indicator as a
+    -- BoundedContinuousFunction and matching integral forms.
+    exact ProbabilityMeasure.continuous_integral_boundedContinuousFunction
+      (BoundedContinuousFunction.mkOfCompact
+        ⟨fun p => if p.1 z ≠ p.2 z then (1 : ℝ) else 0, continuous_of_discreteTopology⟩)
+      |>.congr (fun ν => by
+        haveI : IsProbabilityMeasure (ν : Measure Ω) := ν.prop
+        show ∫ ω, (if ω.1 z ≠ ω.2 z then (1 : ℝ) else 0) ∂(ν : Measure Ω) =
+          ((ν : Measure Ω) {p | p.1 z ≠ p.2 z}).toReal
+        have : (fun ω : Ω => if ω.1 z ≠ ω.2 z then (1 : ℝ) else 0) =
+            Set.indicator {p : Ω | p.1 z ≠ p.2 z} 1 := by
+          ext ω; simp [Set.indicator, Pi.one_apply]
+        rw [this, integral_indicator_one MeasurableSet.of_discrete, Measure.real])
+  -- Step 5: Extract the minimizer as a Measure
+  set P := (ν_min : Measure Ω) with hP_def
+  haveI hP_prob : IsProbabilityMeasure P := ν_min.prop
   have hP_coup : IsCoupling P μ₁ μ₂ :=
-    dobrushinCoupling_isCoupling γ TF μ₁ μ₂ (μ₁.prod μ₂)
-      (isCoupling_prod μ₁ μ₂)
-      (fun z hz A hA => hdlr₁ z ((Finset.mem_filter.mp hz).2) A hA)
-      (fun z hz A hA => hdlr₂ z ((Finset.mem_filter.mp hz).2) A hA)
-  -- The simultaneous contraction at all z ∈ T with one coupling P.
-  -- Per-site: updateCoupling_contraction_at_z gives contraction at z for
-  -- the z-updated coupling with its own values (using C(z,z) = 0).
-  -- For ALL z simultaneously with ONE P: this is the content of
-  -- Dobrushin (1968), Lemma 2 / Georgii (1988), Prop 8.7.
-  -- The mathematical argument requires either:
-  --   (a) The sweep operator's fixed point (Schauder on compact coupling space)
-  --   (b) Strassen's theorem for joint couplings with given marginal constraints
-  -- Both require infrastructure not yet formalized in this library.
-  -- Available building blocks:
-  --   - updateCoupling_contraction_at_z (per-site bound)
-  --   - updateCoupling_disagree_preserve (preservation at other sites)
-  --   - dobrushinCouplingList_contraction_last (z-last sweep → contraction at z)
-  --   - dobrushinCouplingList_isCoupling (sweep preserves coupling property)
+    { isProb := hP_prob, fst_marginal := hν_min_mem.1, snd_marginal := hν_min_mem.2 }
+  -- Step 6: Prove contraction at each z ∈ T using the minimum property.
   refine ⟨P, hP_coup, fun z hz => ?_⟩
-  show (P {p | p.1 z ≠ p.2 z}).toReal ≤
-    ∑' w, influenceCoeff γ z w * (P {p | p.1 w ≠ p.2 w}).toReal
   rw [tsum_eq_sum (s := Finset.univ) (fun w hw => absurd (Finset.mem_univ w) hw)]
-  sorry
+  -- updateCoupling γ z P is also a coupling (by DLR at z)
+  have hupd_coup : IsCoupling (updateCoupling γ z P) μ₁ μ₂ :=
+    updateCoupling_isCoupling γ z μ₁ μ₂ P hP_coup
+      (fun A hA => hdlr₁ z hz A hA) (fun A hA => hdlr₂ z hz A hA)
+  haveI hupd_prob : IsProbabilityMeasure (updateCoupling γ z P) := hupd_coup.isProb
+  -- The updated coupling is in couplingSet
+  let ν_upd : ProbabilityMeasure Ω := ⟨updateCoupling γ z P, hupd_prob⟩
+  have hν_upd_mem : ν_upd ∈ couplingSet :=
+    ⟨hupd_coup.fst_marginal, hupd_coup.snd_marginal⟩
+  -- By minimality: D(ν_min) ≤ D(ν_upd), i.e., totalDisagr P ≤ totalDisagr (upd P)
+  have hD_le : D ν_min ≤ D ν_upd := hν_min_opt hν_upd_mem
+  -- This implies (updateCoupling γ z P){z-ne} ≥ P{z-ne} since
+  -- D(upd) = D(P) + (upd{z-ne} - P{z-ne}) by preservation at other sites
+  have h_nondecrease : (P {p | p.1 z ≠ p.2 z}).toReal ≤
+      ((updateCoupling γ z P) {p | p.1 z ≠ p.2 z}).toReal := by
+    have h_eq := totalDisagr_updateCoupling_eq γ z P
+    have hD_min_eq : D ν_min = totalDisagr P := rfl
+    have hD_upd_eq : D ν_upd = totalDisagr (updateCoupling γ z P) := rfl
+    rw [hD_min_eq, hD_upd_eq] at hD_le
+    linarith [h_eq]
+  -- By updateCoupling_contraction_at_z:
+  --   (updateCoupling γ z P){z-ne} ≤ ∑ C(z,w) P{w-ne}
+  have h_contraction := updateCoupling_contraction_at_z γ z P
+  -- Combine: P{z-ne} ≤ upd{z-ne} ≤ ∑ C(z,w) P{w-ne}
+  exact le_trans h_nondecrease h_contraction
 
 /-! ## Dobrushin coupling axiom (moved from CanonicalCoupling.lean) -/
 
@@ -902,7 +1130,7 @@ References:
 - Georgii (1988), Proposition 8.7 -/
 theorem dobrushin_coupling_axiom
     {I S : Type*} [DecidableEq I] [Fintype I] [MeasurableSpace S]
-    [Countable S] [MeasurableSingletonClass S]
+    [Fintype S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
