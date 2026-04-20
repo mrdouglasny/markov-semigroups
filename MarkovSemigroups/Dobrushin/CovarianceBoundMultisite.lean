@@ -1970,12 +1970,13 @@ lemma condFiniteSupportMeasure_dlr_at_site_nocount
 
 /-! ### Marginal TV bound (no countability) -/
 
-/-- **Multi-site marginal TV bound (no countability).** Same as
+/-- **Multi-site marginal TV bound (compact spin space).** Same as
 `condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum` with
-`[Countable S]` replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
+`[Fintype S]` replaced by compact-space typeclasses. -/
 lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
-    [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (hμ : IsGibbsMeasure γ μ)
@@ -1989,6 +1990,8 @@ lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
         (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     marginalTvDist (condFiniteSupportMeasure μ N_f a) μ y ≤
       ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
+  -- Derive MeasurableEq from compact + T2 + second-countable + Borel
+  haveI : MeasurableEq S := inferInstance
   set T : Set I := {z | z ∉ N_f} with hT_def
   have hdlr₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
       (condFiniteSupportMeasure μ N_f a A).toReal =
@@ -1999,7 +2002,8 @@ lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
       (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
     intro z _ A hA; exact hμ.dlr {z} A hA
   obtain ⟨P, hP_coup, hP_ineq⟩ :=
-    dobrushin_iterated_coupling_exists γ (condFiniteSupportMeasure μ N_f a) μ T
+    dobrushin_iterated_coupling_exists_compact γ
+      (condFiniteSupportMeasure μ N_f a) μ T
       hdlr₁ hdlr₂ hfinsupp h_dep_F
   haveI := hP_coup.isProb
   set δ : I → ℝ :=
@@ -2020,12 +2024,13 @@ lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
 
 /-! ### condTV bound for single-site g (no countability) -/
 
-/-- **Multi-site condTV bound for single-site g (no countability).**
-Same as `condTV_bound_multisite_y` with `[Countable S]` replaced by
-`[MeasurableSingletonClass S] [MeasurableEq S]`. -/
+/-- **Multi-site condTV bound for single-site g (compact spin space).**
+Same as `condTV_bound_multisite_y` with `[Fintype S]` replaced by
+compact-space typeclasses. -/
 theorem condTV_bound_multisite_y_nocount
-    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Inhabited S] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (hμ : IsGibbsMeasure γ μ)
@@ -2058,15 +2063,16 @@ theorem condTV_bound_multisite_y_nocount
 
 /-! ### Multi-site covariance bound (no countability) -/
 
-/-- **Full two-sided multi-site covariance bound (no countability).**
-Same as `covariance_bound_gibbs_multisite_general` with `[Countable S]`
-replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`.
+/-- **Full two-sided multi-site covariance bound (compact spin space).**
+Same as `covariance_bound_gibbs_multisite_general` with `[Fintype S]`
+replaced by compact-space typeclasses.
 
 Uses `covariance_tower_property` (axiom) for the bridge step
 instead of the tsum-based `covariance_bound_via_bridge_multisite`. -/
 theorem covariance_bound_gibbs_multisite_general_nocount
-    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Inhabited S] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (hμ : IsGibbsMeasure γ μ)
@@ -2115,7 +2121,7 @@ theorem covariance_bound_gibbs_multisite_general_nocount
         (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
       intro z _ A hA; exact hμ.dlr {z} A hA
     obtain ⟨P, hP_coup, hP_ineq⟩ :=
-      dobrushin_iterated_coupling_exists γ
+      dobrushin_iterated_coupling_exists_compact γ
         (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) μ T
         hdlr₁ hdlr₂ hfinsupp h_dep_F
     haveI := hP_coup.isProb
@@ -2134,6 +2140,8 @@ theorem covariance_bound_gibbs_multisite_general_nocount
     have h_sum_le : ∑ y ∈ N_g, δ y ≤
         ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x :=
       Finset.sum_le_sum (fun y _ => hδ_le_neu y)
+    -- MeasurableEq S is inferred from [SecondCountableTopology S] [T2Space S] [BorelSpace S]
+    haveI : MeasurableEq S := inferInstance
     have h_int_bound :
         |∫ σ, g σ ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) -
             ∫ σ, g σ ∂μ| ≤ 2 * Bg * ∑ y ∈ N_g, δ y :=
@@ -2163,12 +2171,13 @@ theorem covariance_bound_gibbs_multisite_general_nocount
     _ = 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
         rw [hswap]
 
-/-- **Textbook exponential decay wiring (no countability).**
+/-- **Textbook exponential decay wiring (compact spin space).**
 Same as `covariance_bound_gibbs_multisite_general_nn_dist` with
-`[Countable S]` replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
+`[Fintype S]` replaced by compact-space typeclasses. -/
 theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
-    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Inhabited S] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (hμ : IsGibbsMeasure γ μ)

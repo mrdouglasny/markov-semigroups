@@ -555,6 +555,41 @@ theorem dobrushin_iterated_coupling_exists
             (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal :=
   dobrushin_coupling_axiom γ μ₁ μ₂ T hμ₁ hμ₂ hfinsupp h_dep_F
 
+/-- **Dobrushin iterated coupling (compact spin space).**
+
+Same as `dobrushin_iterated_coupling_exists` but with
+`[Fintype S] [MeasurableSingletonClass S]` replaced by
+`[TopologicalSpace S] [CompactSpace S] [T2Space S]
+[SecondCountableTopology S] [BorelSpace S]`.
+
+This enables the Dobrushin coupling for compact Lie groups like U(n). -/
+theorem dobrushin_iterated_coupling_exists_compact
+    {I S : Type*} [DecidableEq I] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [MeasurableSpace S] [BorelSpace S]
+    (γ : GibbsSpec I S)
+    (μ₁ μ₂ : Measure (SpinConfig I S))
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (T : Set I)
+    (hμ₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
+    (hμ₂ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)),
+      MeasurableSet A →
+      (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    ∃ (P : Measure (SpinConfig I S × SpinConfig I S))
+      (_ : IsCoupling P μ₁ μ₂),
+      ∀ z ∈ T,
+        (P {p : SpinConfig I S × SpinConfig I S | p.1 z ≠ p.2 z}).toReal ≤
+          ∑' w, influenceCoeff γ z w *
+            (P {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w}).toReal :=
+  dobrushin_coupling_axiom_compact γ μ₁ μ₂ T hμ₁ hμ₂ hfinsupp h_dep_F
+
 /-! ### Why the marginal-TV self-consistency inequality is NOT used.
 
 An earlier revision tried to axiomatize a *marginal-TV* form
@@ -1232,15 +1267,19 @@ lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff
     marginalTvDist_le_coupling_site (condSingleSiteMeasure μ x a) μ P hP_coup y
   exact le_trans h_marg_le hδ_le_neu
 
-/-- **Marginal TV bound (no countability).** Same as
+/-- **Marginal TV bound (compact spin space).** Same as
 `condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff` but
-with `[MeasurableSingletonClass S] [MeasurableEq S]` instead of
-`[Countable S] [MeasurableSingletonClass S]`. The proof uses
-`condSingleSiteMeasure_dlr_at_site_nocount` and
+for compact (not necessarily finite) spin spaces. Replaces
+`[Fintype S] [MeasurableSingletonClass S]` with
+`[TopologicalSpace S] [CompactSpace S] [T2Space S]
+[SecondCountableTopology S] [BorelSpace S]`.
+
+The proof uses `dobrushin_iterated_coupling_exists_compact` and
 `marginalTvDist_le_coupling_site_nocount`. -/
 lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff_nocount
-    [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (hμ : IsGibbsMeasure γ μ)
@@ -1254,6 +1293,8 @@ lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff_nocount
         (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤
       neumannSeriesCoeff γ y x := by
+  -- Derive MeasurableEq S from [SecondCountableTopology S] [T2Space S] [BorelSpace S]
+  haveI : MeasurableEq S := inferInstance
   set T : Set I := {z | z ≠ x} with hT_def
   have hdlr₁ : ∀ z ∈ T, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
       (condSingleSiteMeasure μ x a A).toReal =
@@ -1264,7 +1305,7 @@ lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff_nocount
       (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ := by
     intro z _ A hA; exact hμ.dlr {z} A hA
   obtain ⟨P, hP_coup, hP_ineq⟩ :=
-    dobrushin_iterated_coupling_exists γ (condSingleSiteMeasure μ x a) μ T
+    dobrushin_iterated_coupling_exists_compact γ (condSingleSiteMeasure μ x a) μ T
       hdlr₁ hdlr₂ hfinsupp h_dep_F
   haveI := hP_coup.isProb
   set δ : I → ℝ :=
@@ -1330,11 +1371,12 @@ theorem condTV_bound
     _ ≤ 2 * Bg * neumannSeriesCoeff γ y x :=
         mul_le_mul_of_nonneg_left h2 (by linarith)
 
-/-- **The condTV bound (no countability).** Same as `condTV_bound` with
-`[Countable S]` replaced by `[MeasurableEq S]`. -/
+/-- **The condTV bound (compact spin space).** Same as `condTV_bound` with
+`[Fintype S]` replaced by compact-space typeclasses. -/
 theorem condTV_bound_nocount
-    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
-    [MeasurableEq (SpinConfig I S)]
+    [Inhabited S] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (hμ : IsGibbsMeasure γ μ)
