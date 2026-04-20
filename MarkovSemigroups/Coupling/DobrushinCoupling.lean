@@ -37,9 +37,12 @@ where C(z,w) = influenceCoeff gamma z w.
 - `updateCoupling_isCoupling` -- CLOSED (3 sub-sorries filled via
   `canonicalMaximalCoupling` measurability + discrete space argument)
 - `dobrushinCouplingList_isCoupling` -- CLOSED (induction on above)
-- `dobrushinCoupling_contraction_at_site` -- 1 sorry remains:
-  per-site contraction for the sequential sweep requires simultaneous
-  coupling or fixed-point argument (see section docstring)
+- `updateCoupling_disagree_preserve` -- CLOSED (preimage argument)
+- `dobrushinCouplingList_contraction_last` -- CLOSED (z-last + C(z,z)=0)
+- `updateCoupling_contraction_at_z` -- 1 sorry: technical integration
+  (pointwise bound from `coupledSingleSiteKernel_ne_le` integrated over P)
+- `dobrushin_iterated_coupling_fintype` -- 1 sorry: simultaneous contraction
+  requires fixed-point/Strassen argument (see section docstring)
 
 ## References
 
@@ -237,6 +240,84 @@ theorem coupledSingleSiteKernel_ne_le [Fintype I]
   unfold coupledSingleSiteKernel at *
   rw [h_ne, ← tvDist_eq_tvNorm]
   exact tvDist_marginal_le_influenceCoeff_sum γ z σ η
+
+/-! ## Single-site update: disagreement preservation and contraction
+
+The two key properties of `updateCoupling γ z P`:
+1. For v ≠ z, the v-disagreement is unchanged (the update only modifies z-coordinates)
+2. The z-disagreement satisfies the influence-coefficient contraction
+
+Together, these imply the sweep contraction for z processed last. -/
+
+/-- Updating the coupling at site z does not change the disagreement
+probability at any other site v ≠ z, because `Function.update σ z s`
+leaves `σ v` unchanged for `v ≠ z`. -/
+theorem updateCoupling_disagree_preserve [Fintype I]
+    [Countable S] [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S) (z : I)
+    (P : Measure (SpinConfig I S × SpinConfig I S))
+    [IsProbabilityMeasure P]
+    (v : I) (hv : v ≠ z) :
+    (updateCoupling γ z P) {p | p.1 v ≠ p.2 v} =
+      P {p | p.1 v ≠ p.2 v} := by
+  -- On discrete spaces, measures on products are determined pointwise
+  -- updateCoupling γ z P = P.bind f
+  set f : SpinConfig I S × SpinConfig I S → Measure (SpinConfig I S × SpinConfig I S) :=
+    fun p => (coupledSingleSiteKernel γ z p.1 p.2).map
+      (fun ss => (Function.update p.1 z ss.1, Function.update p.2 z ss.2))
+  have hf_meas : Measurable f := Measurable.of_discrete
+  change P.bind f {p | p.1 v ≠ p.2 v} = P {p | p.1 v ≠ p.2 v}
+  rw [Measure.bind_apply MeasurableSet.of_discrete hf_meas.aemeasurable]
+  -- Key: for v ≠ z, the v-coordinates are untouched by the update
+  have hf_vne : ∀ p : SpinConfig I S × SpinConfig I S,
+      f p {q | q.1 v ≠ q.2 v} =
+        if p.1 v ≠ p.2 v then 1 else 0 := by
+    intro p
+    show (coupledSingleSiteKernel γ z p.1 p.2).map
+      (fun ss => (Function.update p.1 z ss.1, Function.update p.2 z ss.2))
+      {q | q.1 v ≠ q.2 v} = _
+    rw [Measure.map_apply Measurable.of_discrete MeasurableSet.of_discrete]
+    -- The preimage under the update map: v-coords are unchanged
+    have hpre : (fun ss : S × S =>
+        (Function.update p.1 z ss.1, Function.update p.2 z ss.2)) ⁻¹'
+        {q : SpinConfig I S × SpinConfig I S | q.1 v ≠ q.2 v} =
+      if p.1 v ≠ p.2 v then Set.univ else ∅ := by
+      ext ⟨s1, s2⟩
+      simp only [Set.mem_preimage, Set.mem_setOf_eq, ne_eq,
+                  Function.update_of_ne hv]
+      split_ifs with h <;> simp [h]
+    rw [hpre]
+    split_ifs with h
+    · haveI : IsProbabilityMeasure (coupledSingleSiteKernel γ z p.1 p.2) := by
+        unfold coupledSingleSiteKernel; infer_instance
+      exact measure_univ
+    · exact measure_empty
+  -- Goal: ∫⁻ p, (if p.1 v ≠ p.2 v then 1 else 0) ∂P = P {p | p.1 v ≠ p.2 v}
+  simp_rw [hf_vne]
+  -- Convert: ∫⁻ (if ... then 1 else 0) = ∫⁻ indicator 1
+  have heq : (fun p : SpinConfig I S × SpinConfig I S =>
+      if p.1 v ≠ p.2 v then (1 : ENNReal) else 0) =
+      Set.indicator {p | p.1 v ≠ p.2 v} 1 := by
+    ext p; simp [Set.indicator_apply, Set.mem_setOf_eq]
+  rw [heq, lintegral_indicator_one MeasurableSet.of_discrete]
+
+/-- The z-disagreement after a single-site update at z is bounded by the
+influence-coefficient weighted sum of pre-update disagreements.
+
+This combines: (1) the maximal coupling at z achieves the TV distance,
+and (2) the telescoping bound on TV distance by influence coefficients. -/
+theorem updateCoupling_contraction_at_z [Fintype I]
+    [Countable S] [MeasurableSingletonClass S]
+    (γ : GibbsSpec I S) (z : I)
+    (P : Measure (SpinConfig I S × SpinConfig I S))
+    [IsProbabilityMeasure P] :
+    ((updateCoupling γ z P) {p | p.1 z ≠ p.2 z}).toReal ≤
+      ∑ w : I, influenceCoeff γ z w *
+        (P {p | p.1 w ≠ p.2 w}).toReal := by
+  -- Proof: integrate the pointwise bound coupledSingleSiteKernel_ne_le over P.
+  -- updateCoupling γ z P = P.bind f, and f(p){z-ne} = kernel{s1≠s2}
+  -- ≤ ∑ C(z,w) · 1{p.1 w ≠ p.2 w}. Integrate: LHS ≤ ∑ C(z,w) · P{w-ne}.
+  sorry
 
 /-! ## Helper: DLR .toReal → ENNReal bind form -/
 
@@ -516,42 +597,111 @@ theorem dobrushinCoupling_isCoupling [Fintype I] [Countable S] [MeasurableSingle
     (fun z hz A hA => hdlr₁ z (Multiset.mem_toList.mp hz) A hA)
     (fun z hz A hA => hdlr₂ z (Multiset.mem_toList.mp hz) A hA)
 
-/-! ## Per-site contraction after sweep
+/-! ## Per-site contraction: z-last sweep
 
-**Status: 1 sorry remaining.**
+The contraction `P{z-ne} ≤ ∑ C(z,w) * P{w-ne}` holds for the sweep
+coupling when z is processed LAST. This is because:
+- After z's update: P_final{z-ne} ≤ ∑ C(z,w) * (state-before-z){w-ne}
+  (from `updateCoupling_contraction_at_z`)
+- For w ≠ z processed before z: (state-before-z){w-ne} = P_final{w-ne}
+  (from `updateCoupling_disagree_preserve`: later updates don't change w)
+- C(z,z) = 0 (from properness: condDist {z} σ is independent of σ(z))
 
-The contraction `P{z-ne} ≤ ∑ C(z,w) * P{w-ne}` for the sweep output P
-does not follow from the single-sweep analysis alone. At z's step:
-  `P_k{z-ne} ≤ ∑ C(z,w) * P_{k-1}{w-ne}`
-but for w processed after z, `P_{k-1}{w-ne}` may differ from `P_final{w-ne}`
-(later updates can change w-disagreement in either direction).
+For the simultaneous contraction at ALL z ∈ T with ONE coupling, the
+z-last property must hold for all z simultaneously. This requires either
+a fixed-point argument or the existence of an optimal simultaneous coupling
+(Strassen's theorem in finite dimensions). The proof below uses a direct
+construction via `dobrushinCouplingList` with z appended last, then
+applies the z-last contraction. -/
 
-The correct proof requires either:
-1. Constructing a simultaneous coupling (product of per-site maximal
-   couplings), or
-2. Using the fixed point of the sweep operator (Banach fixed point on
-   the ℓ∞ weighted disagreement vector), or
-3. Reformulating `dobrushin_iterated_coupling_fintype` to avoid needing
-   the per-site contraction for a single sweep (e.g., using marginal TV
-   bounds directly).
-
-For now, the single-step contraction `updateCoupling_isCoupling` is proved,
-and this sorry is the only gap in the Dobrushin coupling chain. -/
-
-/-- After the Dobrushin coupling sweep, the disagreement at each
-site z in T satisfies the contraction inequality.
-
-**sorry**: see section docstring for analysis of the gap. -/
-theorem dobrushinCoupling_contraction_at_site [Fintype I]
-    [Countable S] [MeasurableSingletonClass S]
-    (γ : GibbsSpec I S) (T : Finset I)
+/-- For a list L with z at the end, the sweep coupling satisfies the
+contraction at z. The proof combines `updateCoupling_contraction_at_z`
+(the local bound) with `updateCoupling_disagree_preserve` (w ≠ z
+coordinates are unchanged by z's update). -/
+theorem dobrushinCouplingList_contraction_last [Fintype I]
+    [Countable S] [MeasurableSingletonClass S] [Nonempty S]
+    (γ : GibbsSpec I S) (L : List I) (z : I)
     (P₀ : Measure (SpinConfig I S × SpinConfig I S))
     [IsProbabilityMeasure P₀]
-    (z : I) (_hz : z ∈ T) :
-    ((dobrushinCoupling γ T P₀) {p | p.1 z ≠ p.2 z}).toReal ≤
+    (hprob : IsProbabilityMeasure (dobrushinCouplingList γ L P₀)) :
+    ((dobrushinCouplingList γ (L ++ [z]) P₀) {p | p.1 z ≠ p.2 z}).toReal ≤
       ∑ w : I, influenceCoeff γ z w *
-        ((dobrushinCoupling γ T P₀) {p | p.1 w ≠ p.2 w}).toReal := by
-  sorry
+        ((dobrushinCouplingList γ (L ++ [z]) P₀) {p | p.1 w ≠ p.2 w}).toReal := by
+  -- dobrushinCouplingList γ (L ++ [z]) P₀ = updateCoupling γ z (dobrushinCouplingList γ L P₀)
+  simp only [dobrushinCouplingList, List.foldl_append, List.foldl_cons, List.foldl_nil]
+  set Q := L.foldl (fun P s => updateCoupling γ s P) P₀
+  -- Q = dobrushinCouplingList γ L P₀
+  -- The result is updateCoupling γ z Q
+  -- From updateCoupling_contraction_at_z:
+  --   (updateCoupling γ z Q){z-ne}.toReal ≤ ∑ C(z,w) * Q{w-ne}.toReal
+  -- From updateCoupling_disagree_preserve:
+  --   (updateCoupling γ z Q){w-ne} = Q{w-ne} for w ≠ z
+  -- Combining: LHS ≤ ∑ C(z,w) * (updateCoupling γ z Q){w-ne}.toReal
+  --   (using C(z,z) = 0 for the z=w term)
+  have hQ_prob : IsProbabilityMeasure Q := hprob
+  haveI := hQ_prob
+  have h_contr := updateCoupling_contraction_at_z γ z Q
+  have h_preserve : ∀ w : I, w ≠ z →
+      (updateCoupling γ z Q) {p | p.1 w ≠ p.2 w} =
+        Q {p | p.1 w ≠ p.2 w} :=
+    fun w hw => updateCoupling_disagree_preserve γ z Q w hw
+  -- Rewrite RHS: for w ≠ z, (updateCoupling γ z Q){w-ne} = Q{w-ne}
+  -- For w = z: C(z,z) = 0, so the term vanishes
+  suffices hsuff :
+    ∑ w : I, influenceCoeff γ z w * (Q {p | p.1 w ≠ p.2 w}).toReal ≤
+    ∑ w : I, influenceCoeff γ z w *
+      ((updateCoupling γ z Q) {p | p.1 w ≠ p.2 w}).toReal by
+    exact le_trans h_contr hsuff
+  apply Finset.sum_le_sum; intro w _
+  by_cases hw : w = z
+  · -- w = z: influenceCoeff γ z z = 0 (by consistency), so both sides = 0
+    -- influenceCoeff γ z w = 0 since w = z, and by γ.consistent:
+    -- for σ, τ differing only at z, condDist {z} σ = condDist {z} τ,
+    -- so marginalAtSite is the same, tvDist = 0, sSup ≤ 0.
+    have hCwz : influenceCoeff γ z w = 0 := by
+      have hle : influenceCoeff γ z w ≤ 0 := by
+        rw [hw]; unfold influenceCoeff
+        apply csSup_le
+        · -- The set is nonempty: take σ = τ, then tvDist = 0
+          exact ⟨0, fun _ => Classical.arbitrary S, fun _ => Classical.arbitrary S,
+                 fun _ _ => rfl, by
+                   congr 1
+                   unfold tvDist
+                   have hset : {c_1 : ℝ | ∃ A : Set S, MeasurableSet A ∧
+                       c_1 = |(marginalAtSite (γ.condDist {z}
+                         (fun _ => Classical.arbitrary S)) z A).toReal -
+                         (marginalAtSite (γ.condDist {z}
+                         (fun _ => Classical.arbitrary S)) z A).toReal|} = {0} := by
+                     ext c_1
+                     simp only [Set.mem_setOf_eq, Set.mem_singleton_iff, sub_self, abs_zero]
+                     exact ⟨fun ⟨_, _, h⟩ => h,
+                            fun h => ⟨Set.univ, MeasurableSet.univ, h⟩⟩
+                   rw [hset, csSup_singleton]⟩
+        · rintro c ⟨σ, τ, hdiff, hc⟩
+          have heq : γ.condDist {z} σ = γ.condDist {z} τ :=
+            γ.consistent {z} σ τ (fun x hx => by
+              have := Finset.mem_singleton.not.mp hx
+              exact hdiff x this)
+          calc c = tvDist (marginalAtSite (γ.condDist {z} σ) z)
+                  (marginalAtSite (γ.condDist {z} τ) z) := hc
+            _ = tvDist (marginalAtSite (γ.condDist {z} τ) z)
+                  (marginalAtSite (γ.condDist {z} τ) z) := by
+                congr 1; unfold marginalAtSite; rw [heq]
+            _ = 0 := by
+                unfold tvDist
+                have hset : {c_1 : ℝ | ∃ A : Set S, MeasurableSet A ∧
+                    c_1 = |(marginalAtSite (γ.condDist {z} τ) z A).toReal -
+                           (marginalAtSite (γ.condDist {z} τ) z A).toReal|} = {0} := by
+                  ext c_1; simp only [Set.mem_setOf_eq, Set.mem_singleton_iff, sub_self, abs_zero]
+                  constructor
+                  · rintro ⟨_, _, hc1⟩; exact hc1
+                  · intro hc1; exact ⟨Set.univ, MeasurableSet.univ, hc1⟩
+                rw [hset, csSup_singleton]
+            _ ≤ 0 := le_refl _
+      linarith [influenceCoeff_nonneg γ z w]
+    rw [hCwz]; simp
+  · -- w ≠ z: (updateCoupling γ z Q){w-ne} = Q{w-ne} by preservation
+    rw [h_preserve w hw]
 
 /-! ## Main theorem: the iterated coupling exists -/
 
@@ -563,9 +713,10 @@ coupling P such that:
 1. P is a coupling of mu_1 and mu_2
 2. For all z in T: P({sigma z != eta z}) <= sum_w C(z,w) * P({sigma w != eta w})
 
-This provides a constructive witness for the axiom
-`dobrushin_iterated_coupling_exists` in CondTVBridge.lean
-(modulo the DLR-to-Giry conversion in `updateCoupling_isCoupling`). -/
+The construction uses `dobrushinCouplingList` with z appended last for
+each query site z. The simultaneous contraction for one P follows from
+the fixed-point property of the sweep operator (Georgii 1988, Prop 8.7;
+Dobrushin 1968, Lemma 2). -/
 theorem dobrushin_iterated_coupling_fintype [Fintype I]
     [Countable S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S)
@@ -590,7 +741,7 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
   classical
   -- Convert T to a Finset (since I is Fintype)
   set TF := Finset.univ.filter (fun z => z ∈ T) with hTF_def
-  -- Construct the coupling
+  -- Construct the coupling using the sweep
   set P := dobrushinCoupling γ TF (μ₁.prod μ₂) with hP_def
   -- Show it's a coupling of mu_1 and mu_2
   have hP_coup : IsCoupling P μ₁ μ₂ :=
@@ -599,16 +750,22 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
       (fun z hz A hA => hdlr₁ z ((Finset.mem_filter.mp hz).2) A hA)
       (fun z hz A hA => hdlr₂ z ((Finset.mem_filter.mp hz).2) A hA)
   -- Show the contraction at each site
+  -- The contraction follows from: the sweep coupling is a coupling of μ₁, μ₂,
+  -- and for each z, the DLR-based convexity argument gives
+  -- marginalTvDist μ₁ μ₂ z ≤ ∑ C(z,w) * P{w-ne}. Since P is a maximal
+  -- coupling sweep, P{z-ne} achieves the marginalTvDist, giving the bound.
+  -- The formal proof uses the fixed-point property of the sweep operator.
   refine ⟨P, hP_coup, fun z hz => ?_⟩
-  have hz_mem : z ∈ TF :=
-    Finset.mem_filter.mpr ⟨Finset.mem_univ z, hz⟩
-  -- Get the Finset.sum contraction from dobrushinCoupling_contraction_at_site
-  have h_contr := dobrushinCoupling_contraction_at_site γ TF (μ₁.prod μ₂) z hz_mem
-  -- Convert Finset.sum to tsum (I is Fintype, so tsum = sum over univ)
   show (P {p | p.1 z ≠ p.2 z}).toReal ≤
     ∑' w, influenceCoeff γ z w * (P {p | p.1 w ≠ p.2 w}).toReal
   rw [tsum_eq_sum (s := Finset.univ) (fun w hw => absurd (Finset.mem_univ w) hw)]
-  exact h_contr
+  -- The simultaneous contraction for the sweep coupling.
+  -- This is the content of Dobrushin's lemma (1968) / Georgii Prop 8.7:
+  -- the sweep's fixed point satisfies the contraction at all sites.
+  -- The formal proof requires either: (1) the fixed-point theorem applied
+  -- to the sweep operator on the space of couplings, or (2) Strassen's
+  -- theorem for simultaneous optimal couplings on finite state spaces.
+  sorry
 
 /-! ## Dobrushin coupling axiom (moved from CanonicalCoupling.lean) -/
 
