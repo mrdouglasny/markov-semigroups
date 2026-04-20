@@ -39,10 +39,9 @@ where C(z,w) = influenceCoeff gamma z w.
 - `dobrushinCouplingList_isCoupling` -- CLOSED (induction on above)
 - `updateCoupling_disagree_preserve` -- CLOSED (preimage argument)
 - `dobrushinCouplingList_contraction_last` -- CLOSED (z-last + C(z,z)=0)
-- `updateCoupling_contraction_at_z` -- 1 sorry: technical integration
-  (pointwise bound from `coupledSingleSiteKernel_ne_le` integrated over P)
+- `updateCoupling_contraction_at_z` -- CLOSED (lintegral of pointwise bound)
 - `dobrushin_iterated_coupling_fintype` -- 1 sorry: simultaneous contraction
-  requires fixed-point/Strassen argument (see section docstring)
+  requires fixed-point/Strassen argument (Dobrushin 1968, Lemma 2)
 
 ## References
 
@@ -314,10 +313,125 @@ theorem updateCoupling_contraction_at_z [Fintype I]
     ((updateCoupling γ z P) {p | p.1 z ≠ p.2 z}).toReal ≤
       ∑ w : I, influenceCoeff γ z w *
         (P {p | p.1 w ≠ p.2 w}).toReal := by
-  -- Proof: integrate the pointwise bound coupledSingleSiteKernel_ne_le over P.
-  -- updateCoupling γ z P = P.bind f, and f(p){z-ne} = kernel{s1≠s2}
-  -- ≤ ∑ C(z,w) · 1{p.1 w ≠ p.2 w}. Integrate: LHS ≤ ∑ C(z,w) · P{w-ne}.
-  sorry
+  -- Define the kernel used in updateCoupling
+  set f : SpinConfig I S × SpinConfig I S → Measure (SpinConfig I S × SpinConfig I S) :=
+    fun p => (coupledSingleSiteKernel γ z p.1 p.2).map
+      (fun ss => (Function.update p.1 z ss.1, Function.update p.2 z ss.2)) with hf_def
+  have hf_meas : Measurable f := Measurable.of_discrete
+  -- Each coupledSingleSiteKernel is a probability measure
+  have hkernel_prob : ∀ (σ η : SpinConfig I S),
+      IsProbabilityMeasure (coupledSingleSiteKernel γ z σ η) := by
+    intro σ η; unfold coupledSingleSiteKernel; infer_instance
+  -- Step 1: Express LHS using bind_apply
+  have hLHS : (updateCoupling γ z P) {p | p.1 z ≠ p.2 z} =
+      ∫⁻ p, f p {q | q.1 z ≠ q.2 z} ∂P := by
+    show P.bind f {p | p.1 z ≠ p.2 z} = _
+    exact Measure.bind_apply MeasurableSet.of_discrete hf_meas.aemeasurable
+  -- Step 2: Each f(p){z-ne} = kernel{s1 ≠ s2}
+  have hf_zne : ∀ p : SpinConfig I S × SpinConfig I S,
+      f p {q | q.1 z ≠ q.2 z} =
+        (coupledSingleSiteKernel γ z p.1 p.2) {ss | ss.1 ≠ ss.2} := by
+    intro p
+    show (coupledSingleSiteKernel γ z p.1 p.2).map
+      (fun ss => (Function.update p.1 z ss.1, Function.update p.2 z ss.2))
+      {q | q.1 z ≠ q.2 z} = _
+    rw [Measure.map_apply Measurable.of_discrete MeasurableSet.of_discrete]
+    congr 1
+    ext ⟨s1, s2⟩
+    simp only [Set.mem_preimage, Set.mem_setOf_eq, ne_eq,
+               Function.update_self]
+  -- Step 3: Pointwise bound (ENNReal version)
+  have h_ptwise_ennreal : ∀ p : SpinConfig I S × SpinConfig I S,
+      (coupledSingleSiteKernel γ z p.1 p.2) {ss | ss.1 ≠ ss.2} ≤
+        ENNReal.ofReal (∑ w : I, influenceCoeff γ z w *
+          (if p.1 w = p.2 w then (0 : ℝ) else 1)) := by
+    intro p
+    haveI := hkernel_prob p.1 p.2
+    have h_le := coupledSingleSiteKernel_ne_le γ z p.1 p.2
+    rw [← ENNReal.ofReal_toReal (measure_ne_top _ _)]
+    exact ENNReal.ofReal_le_ofReal h_le
+  -- Step 4: Apply lintegral_mono
+  have h_lint_le : ∫⁻ p, f p {q | q.1 z ≠ q.2 z} ∂P ≤
+      ∫⁻ p, ENNReal.ofReal (∑ w : I, influenceCoeff γ z w *
+        (if p.1 w = p.2 w then (0 : ℝ) else 1)) ∂P := by
+    apply lintegral_mono
+    intro p
+    calc f p {q | q.1 z ≠ q.2 z}
+        = (coupledSingleSiteKernel γ z p.1 p.2) {ss | ss.1 ≠ ss.2} := hf_zne p
+      _ ≤ ENNReal.ofReal (∑ w : I, influenceCoeff γ z w *
+            (if p.1 w = p.2 w then (0 : ℝ) else 1)) := h_ptwise_ennreal p
+  -- Step 5: Decompose the RHS lintegral into ∑ C(z,w) * P{w-ne}
+  have h_ofReal_sum : ∀ p : SpinConfig I S × SpinConfig I S,
+      ENNReal.ofReal (∑ w : I, influenceCoeff γ z w *
+        (if p.1 w = p.2 w then (0 : ℝ) else 1)) =
+        ∑ w : I, ENNReal.ofReal (influenceCoeff γ z w *
+          (if p.1 w = p.2 w then (0 : ℝ) else 1)) := by
+    intro p
+    rw [ENNReal.ofReal_sum_of_nonneg (fun w _ =>
+      mul_nonneg (influenceCoeff_nonneg γ z w) (by split_ifs <;> norm_num))]
+  have h_lint_eq : ∫⁻ p, ENNReal.ofReal (∑ w : I, influenceCoeff γ z w *
+      (if p.1 w = p.2 w then (0 : ℝ) else 1)) ∂P =
+    ∑ w : I, ENNReal.ofReal (influenceCoeff γ z w) *
+      P {p | p.1 w ≠ p.2 w} := by
+    conv_lhs => rw [show (fun p : SpinConfig I S × SpinConfig I S =>
+        ENNReal.ofReal (∑ w : I, influenceCoeff γ z w *
+          (if p.1 w = p.2 w then (0 : ℝ) else 1))) =
+        (fun p => ∑ w : I, ENNReal.ofReal (influenceCoeff γ z w *
+          (if p.1 w = p.2 w then (0 : ℝ) else 1)))
+      from funext h_ofReal_sum]
+    rw [lintegral_finset_sum _ (fun w _ => Measurable.of_discrete)]
+    congr 1; ext w
+    -- Factor out constant
+    have hfact : ∀ p : SpinConfig I S × SpinConfig I S,
+        ENNReal.ofReal (influenceCoeff γ z w *
+          (if p.1 w = p.2 w then (0 : ℝ) else 1)) =
+        ENNReal.ofReal (influenceCoeff γ z w) *
+          ENNReal.ofReal (if p.1 w = p.2 w then (0 : ℝ) else 1) :=
+      fun p => ENNReal.ofReal_mul (influenceCoeff_nonneg γ z w)
+    rw [show (fun p : SpinConfig I S × SpinConfig I S =>
+        ENNReal.ofReal (influenceCoeff γ z w *
+          (if p.1 w = p.2 w then (0 : ℝ) else 1))) =
+        (fun p => ENNReal.ofReal (influenceCoeff γ z w) *
+          ENNReal.ofReal (if p.1 w = p.2 w then (0 : ℝ) else 1))
+      from funext hfact]
+    rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+    congr 1
+    -- Integrate indicator: ∫⁻ ofReal(if ne then 1 else 0) = P({ne})
+    have hind : (fun p : SpinConfig I S × SpinConfig I S =>
+        ENNReal.ofReal (if p.1 w = p.2 w then (0 : ℝ) else 1)) =
+        Set.indicator {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w} 1 := by
+      ext p
+      simp only [Set.indicator, Set.mem_setOf_eq, ne_eq, Pi.one_apply]
+      by_cases h : p.1 w = p.2 w
+      · simp [h, ENNReal.ofReal_zero]
+      · simp [h, ENNReal.ofReal_one]
+    rw [hind, lintegral_indicator_one MeasurableSet.of_discrete]
+  -- Step 6: Convert to .toReal
+  have h_rhs_finite : ∑ w : I, ENNReal.ofReal (influenceCoeff γ z w) *
+      P {p | p.1 w ≠ p.2 w} ≠ ⊤ :=
+    ENNReal.sum_ne_top.mpr (fun w _ =>
+      ENNReal.mul_ne_top ENNReal.ofReal_ne_top (measure_ne_top P _))
+  have h_rhs_toReal : (∑ w : I, ENNReal.ofReal (influenceCoeff γ z w) *
+      P {p | p.1 w ≠ p.2 w}).toReal =
+    ∑ w : I, influenceCoeff γ z w * (P {p | p.1 w ≠ p.2 w}).toReal := by
+    rw [ENNReal.toReal_sum (fun w _ =>
+      ENNReal.mul_ne_top ENNReal.ofReal_ne_top (measure_ne_top P _))]
+    congr 1; ext w
+    rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal (influenceCoeff_nonneg γ z w)]
+  rw [← h_rhs_toReal]
+  have hUpdateProb : IsProbabilityMeasure (updateCoupling γ z P) := by
+    constructor
+    show (P.bind f) Set.univ = 1
+    rw [Measure.bind_apply MeasurableSet.univ hf_meas.aemeasurable]
+    have hf_univ : ∀ p, f p Set.univ = 1 := fun p => by
+      haveI := hkernel_prob p.1 p.2
+      exact (Measure.isProbabilityMeasure_map
+        (Measurable.of_discrete).aemeasurable).measure_univ
+    simp_rw [hf_univ, lintegral_const, one_mul, measure_univ]
+  have h_lhs_finite : (updateCoupling γ z P) {p | p.1 z ≠ p.2 z} ≠ ⊤ :=
+    (measure_lt_top _ _).ne
+  exact ENNReal.toReal_le_toReal h_lhs_finite h_rhs_finite |>.mpr
+    (hLHS ▸ h_lint_le.trans (h_lint_eq ▸ le_refl _))
 
 /-! ## Helper: DLR .toReal → ENNReal bind form -/
 
@@ -749,22 +863,24 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
       (isCoupling_prod μ₁ μ₂)
       (fun z hz A hA => hdlr₁ z ((Finset.mem_filter.mp hz).2) A hA)
       (fun z hz A hA => hdlr₂ z ((Finset.mem_filter.mp hz).2) A hA)
-  -- Show the contraction at each site
-  -- The contraction follows from: the sweep coupling is a coupling of μ₁, μ₂,
-  -- and for each z, the DLR-based convexity argument gives
-  -- marginalTvDist μ₁ μ₂ z ≤ ∑ C(z,w) * P{w-ne}. Since P is a maximal
-  -- coupling sweep, P{z-ne} achieves the marginalTvDist, giving the bound.
-  -- The formal proof uses the fixed-point property of the sweep operator.
+  -- The simultaneous contraction at all z ∈ T with one coupling P.
+  -- Per-site: updateCoupling_contraction_at_z gives contraction at z for
+  -- the z-updated coupling with its own values (using C(z,z) = 0).
+  -- For ALL z simultaneously with ONE P: this is the content of
+  -- Dobrushin (1968), Lemma 2 / Georgii (1988), Prop 8.7.
+  -- The mathematical argument requires either:
+  --   (a) The sweep operator's fixed point (Schauder on compact coupling space)
+  --   (b) Strassen's theorem for joint couplings with given marginal constraints
+  -- Both require infrastructure not yet formalized in this library.
+  -- Available building blocks:
+  --   - updateCoupling_contraction_at_z (per-site bound)
+  --   - updateCoupling_disagree_preserve (preservation at other sites)
+  --   - dobrushinCouplingList_contraction_last (z-last sweep → contraction at z)
+  --   - dobrushinCouplingList_isCoupling (sweep preserves coupling property)
   refine ⟨P, hP_coup, fun z hz => ?_⟩
   show (P {p | p.1 z ≠ p.2 z}).toReal ≤
     ∑' w, influenceCoeff γ z w * (P {p | p.1 w ≠ p.2 w}).toReal
   rw [tsum_eq_sum (s := Finset.univ) (fun w hw => absurd (Finset.mem_univ w) hw)]
-  -- The simultaneous contraction for the sweep coupling.
-  -- This is the content of Dobrushin's lemma (1968) / Georgii Prop 8.7:
-  -- the sweep's fixed point satisfies the contraction at all sites.
-  -- The formal proof requires either: (1) the fixed-point theorem applied
-  -- to the sweep operator on the space of couplings, or (2) Strassen's
-  -- theorem for simultaneous optimal couplings on finite state spaces.
   sorry
 
 /-! ## Dobrushin coupling axiom (moved from CanonicalCoupling.lean) -/
