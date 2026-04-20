@@ -531,7 +531,7 @@ The rest of the proof chain (coupling properties, DLR conversion,
 contraction, Neumann iteration) is complete. -/
 theorem dobrushin_iterated_coupling_exists
     {I S : Type*} [DecidableEq I] [Fintype I] [MeasurableSpace S]
-    [Countable S] [MeasurableSingletonClass S]
+    [Fintype S] [MeasurableSingletonClass S]
     (γ : GibbsSpec I S)
     (μ₁ μ₂ : Measure (SpinConfig I S))
     [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
@@ -1174,7 +1174,7 @@ Strategy (bypassing the false marginal-TV contraction):
 4. Use `marginalTvDist_le_coupling_site` to dominate
    `marginalTvDist (condSingleSiteMeasure μ x a) μ y ≤ δ y`. -/
 lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff
-    [Countable S] [MeasurableSingletonClass S]
+    [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1239,7 +1239,7 @@ with `[MeasurableSingletonClass S] [MeasurableEq S]` instead of
 `condSingleSiteMeasure_dlr_at_site_nocount` and
 `marginalTvDist_le_coupling_site_nocount`. -/
 lemma condSingleSiteMeasure_marginalTvDist_le_neumannSeriesCoeff_nocount
-    [MeasurableSingletonClass S] [MeasurableEq S]
+    [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1295,7 +1295,7 @@ Used as the bridge `hCondTV` of
 `covariance_le_neumannSeriesCoeff` (with the Neumann-series index
 swapped to the row-propagation form `(y, x)`). -/
 theorem condTV_bound
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1333,7 +1333,7 @@ theorem condTV_bound
 /-- **The condTV bound (no countability).** Same as `condTV_bound` with
 `[Countable S]` replaced by `[MeasurableEq S]`. -/
 theorem condTV_bound_nocount
-    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1383,7 +1383,7 @@ Note: the Neumann-series index is `(y, x)` — the walk propagates
 from `y` (the site of `g`) to `x` (the conditioned site of `f`),
 using the row-sum form of the influence matrix. -/
 theorem covariance_bound_gibbs
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]

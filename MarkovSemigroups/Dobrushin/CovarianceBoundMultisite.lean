@@ -796,7 +796,7 @@ lemma abstract_neumann_iteration_finset
 TV distance between `condFiniteSupportMeasure μ N_f a` and `μ` is bounded
 by the sum of Neumann-series coefficients `∑ x ∈ N_f, neumannSeriesCoeff γ y x`. -/
 lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum
-    [Countable S] [MeasurableSingletonClass S]
+    [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -862,7 +862,7 @@ a single-site-local g at y bounded by Bg, and a multi-site conditioning at
 `(N_f, a)`, the conditional-expectation difference is bounded by
 `2 · Bg · ∑ x ∈ N_f, neumannSeriesCoeff γ y x`. -/
 theorem condTV_bound_multisite_y
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -912,7 +912,7 @@ Use case: lgt plaquette mass-gap proof where the plaquette observable `plaqObs`
 depends on 4 links (i.e. `N_f` has 4 elements). The bound gives:
 `marginalTvDist(cond μ N_f a, μ, y) ≤ ∑ x ∈ N_f, α^{d(y,x)}/(1−α)`. -/
 theorem condFiniteSupportMeasure_marginalTvDist_nn_dist_bound
-    [Countable S] [MeasurableSingletonClass S]
+    [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1307,7 +1307,7 @@ Wilson plaquette is `∑ over 4 links, contribution depending only on that link`
 The `|N_g|` factor is absorbed into the outer sum: the final bound is exactly
 `∑∑` (not a max times `|N_g|`). -/
 theorem covariance_bound_gibbs_multisite
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1420,7 +1420,7 @@ theorem covariance_bound_gibbs_multisite
 Specializes `covariance_bound_gibbs_multisite` via
 `neumannSeriesCoeff_nn_dist_bound` to the textbook `α^{d(y,x)}/(1−α)` form. -/
 theorem covariance_bound_gibbs_multisite_nn_dist
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1675,7 +1675,7 @@ This is suitable for Wilson plaquette observables
 `gaugeReTr (plaquetteHolonomy U p)` where no natural single-site decomposition
 exists. -/
 theorem covariance_bound_gibbs_multisite_general
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1702,7 +1702,7 @@ theorem covariance_bound_gibbs_multisite_general
         (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
-  -- Derive MeasurableEq S from [Countable S] [MeasurableSingletonClass S].
+  -- Derive MeasurableEq S from [Fintype S] [MeasurableSingletonClass S].
   haveI : MeasurableEq S := inferInstance
   -- Build the bridge: for each a : N_f → S with positive-mass fiber, the
   -- conditional TV difference on g is bounded by
@@ -1803,7 +1803,7 @@ This is the calling point for downstream applications (e.g. LGT Wilson
 plaquette mass-gap proofs) where the observable is a product of link
 variables rather than a sum of link-local terms. -/
 theorem covariance_bound_gibbs_multisite_general_nn_dist
-    [Inhabited S] [Countable S] [MeasurableSingletonClass S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -1974,7 +1974,7 @@ lemma condFiniteSupportMeasure_dlr_at_site_nocount
 `condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum` with
 `[Countable S]` replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
 lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
-    [MeasurableSingletonClass S] [MeasurableEq S]
+    [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -2024,7 +2024,7 @@ lemma condFiniteSupportMeasure_marginalTvDist_le_neumannSeriesSum_nocount
 Same as `condTV_bound_multisite_y` with `[Countable S]` replaced by
 `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
 theorem condTV_bound_multisite_y_nocount
-    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -2065,7 +2065,7 @@ replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`.
 Uses `covariance_tower_property` (axiom) for the bridge step
 instead of the tsum-based `covariance_bound_via_bridge_multisite`. -/
 theorem covariance_bound_gibbs_multisite_general_nocount
-    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -2167,7 +2167,7 @@ theorem covariance_bound_gibbs_multisite_general_nocount
 Same as `covariance_bound_gibbs_multisite_general_nn_dist` with
 `[Countable S]` replaced by `[MeasurableSingletonClass S] [MeasurableEq S]`. -/
 theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
-    [Inhabited S] [MeasurableSingletonClass S] [MeasurableEq S]
+    [Inhabited S] [Fintype I] [Fintype S] [MeasurableSingletonClass S] [MeasurableEq S]
     [MeasurableEq (SpinConfig I S)]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
