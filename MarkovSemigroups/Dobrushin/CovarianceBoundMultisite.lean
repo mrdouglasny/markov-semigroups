@@ -1886,13 +1886,20 @@ This is a consequence of the tower property of conditional expectations:
 proves this using a tsum over fibers; here we postulate the result
 for arbitrary (possibly uncountable) `S`.
 
-**Formalization cost.** Replacing this axiom with a proof requires
-connecting `condFiniteSupportMeasure` with Mathlib's
-`Measure.condKernel` disintegration and the Bochner-integral tower
-property — approximately 200 lines of upstream work. -/
-axiom covariance_tower_property
+**Note.** The original `axiom` version omitted `[Countable S]`, claiming
+validity for arbitrary (possibly uncountable) `S`. However, the statement
+is false in that generality: for atomless probability measures, every
+multi-fiber has measure zero, making `hcond_bound` vacuously true with
+`K = 0`, while the covariance can be non-zero. The countability
+hypothesis is essential for the tsum-based fiber decomposition.
+
+For uncountable compact spin spaces (e.g. compact Lie groups), the
+correct bridge requires Mathlib's `condKernel` disintegration or
+`condexp` conditional expectation. The downstream `_nocount` theorems
+now also carry `[Countable S]` until that infrastructure is wired. -/
+theorem covariance_tower_property
     {I S : Type*} [DecidableEq I] [MeasurableSpace S]
-    [MeasurableSingletonClass S] [Inhabited S]
+    [Countable S] [MeasurableSingletonClass S] [Inhabited S]
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
     (f g : SpinConfig I S → ℝ)
     (Bf : ℝ) (hBf_nn : 0 ≤ Bf) (hBf : ∀ σ, |f σ| ≤ Bf)
@@ -1912,7 +1919,9 @@ axiom covariance_tower_property
     (hg_cond : ∀ a : N_f → S,
       μ (multiFiber N_f (extendOnFinset N_f a)) ≠ 0 →
       Integrable g (condFiniteSupportMeasure μ N_f (extendOnFinset N_f a))) :
-    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤ Bf * K
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤ Bf * K :=
+  covariance_bound_via_bridge_multisite μ f g Bf hBf_nn hBf N_f hf_local
+    hf hg hfg K hK_nn hcond_bound choose_σ h_choose hg_cond
 
 /-! ### DLR (no countability) -/
 
@@ -2061,16 +2070,19 @@ theorem condTV_bound_multisite_y_nocount
     _ ≤ 2 * Bg * ∑ x ∈ N_f, neumannSeriesCoeff γ y x :=
         mul_le_mul_of_nonneg_left h2 (by positivity)
 
-/-! ### Multi-site covariance bound (no countability) -/
+/-! ### Multi-site covariance bound (compact spin space, countable) -/
 
 /-- **Full two-sided multi-site covariance bound (compact spin space).**
 Same as `covariance_bound_gibbs_multisite_general` with `[Fintype S]`
 replaced by compact-space typeclasses.
 
-Uses `covariance_tower_property` (axiom) for the bridge step
-instead of the tsum-based `covariance_bound_via_bridge_multisite`. -/
+Uses `covariance_tower_property` for the bridge step.
+
+**Note.** Currently requires `[Countable S]` for the tsum-based fiber
+decomposition in `covariance_tower_property`. Removing this hypothesis
+requires Mathlib's `condKernel` disintegration infrastructure. -/
 theorem covariance_bound_gibbs_multisite_general_nocount
-    [Inhabited S] [Fintype I]
+    [Inhabited S] [Fintype I] [Countable S]
     [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
     [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
@@ -2173,9 +2185,12 @@ theorem covariance_bound_gibbs_multisite_general_nocount
 
 /-- **Textbook exponential decay wiring (compact spin space).**
 Same as `covariance_bound_gibbs_multisite_general_nn_dist` with
-`[Fintype S]` replaced by compact-space typeclasses. -/
+`[Fintype S]` replaced by compact-space typeclasses.
+
+**Note.** Currently requires `[Countable S]` — see
+`covariance_bound_gibbs_multisite_general_nocount` for details. -/
 theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
-    [Inhabited S] [Fintype I]
+    [Inhabited S] [Fintype I] [Countable S]
     [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
     [BorelSpace S]
     (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
