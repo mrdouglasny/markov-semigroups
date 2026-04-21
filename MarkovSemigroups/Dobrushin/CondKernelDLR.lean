@@ -339,51 +339,148 @@ private lemma condDist_preserves_base
       _ = γ.condDist {z} σ (B ∩ Agree) := by rw [h_compl_zero, add_zero]
   · exact measure_mono Set.inter_subset_left
 
-set_option maxHeartbeats 800000 in
+
+/-! ### Step A: For fixed z and A, a.e. equality via set-integral uniqueness -/
+
+/-- The agree set is measurable. -/
+private lemma measurableSet_agree (L : Finset I) (s : SpinConfig I S) :
+    MeasurableSet {t : SpinConfig I S | forall x, x ∉ L -> t x = s x} := by
+  have : {t : SpinConfig I S | forall x, x ∉ L -> t x = s x} =
+      ⋂ x ∈ Lᶜ, {t : SpinConfig I S | t x = s x} := by
+    ext t; simp [Finset.mem_compl]
+  rw [this]
+  exact Finset.measurableSet_biInter _ (fun x _ => by
+    change MeasurableSet ((fun (t : SpinConfig I S) => t x) ⁻¹' {s x})
+    exact (measurable_pi_apply x) (measurableSet_singleton (s x)))
+
+/-- Complement of agree set has measure zero under condDist. -/
+private lemma condDist_agree_compl_zero (g : GibbsSpec I S) (L : Finset I)
+    (s : SpinConfig I S) :
+    g.condDist L s {t | forall x, x ∉ L -> t x = s x}ᶜ = 0 := by
+  haveI := g.isProb L s
+  rw [measure_compl (measurableSet_agree L s) (measure_ne_top _ _), g.proper L s]; simp
+
+set_option maxHeartbeats 6400000 in
+private lemma fiberMeasure_dlr_ae_fixed
+    (g : GibbsSpec I S)
+    (m : Measure (SpinConfig I S)) [IsProbabilityMeasure m]
+    (hm : IsGibbsMeasure g m)
+    (N_f : Finset I) (z : I) (hz : z ∉ N_f)
+    {A : Set (SpinConfig I S)} (hA : MeasurableSet A) :
+    let r := m.map (prodEquiv N_f)
+    ∀ᵐ b ∂r.fst,
+      (fiberMeasure m N_f b A).toReal =
+        ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b := by
+  intro r
+  -- Both functions are bounded, measurable, and their set-integrals agree.
+  -- We use ae_eq_of_forall_setIntegral_eq_of_sigmaFinite.
+  haveI : IsProbabilityMeasure r :=
+    Measure.isProbabilityMeasure_map (prodEquiv N_f).measurable.aemeasurable
+  haveI : IsFiniteMeasure r.fst := Measure.fst.instIsFiniteMeasure
+  -- Both sides integrate to (m A).toReal
+  have h_total := integral_fiberMeasure_toReal_eq_integral_condDist g m hm N_f z hA
+  -- For set-integral equality, we use the DLR on restricted sets + properness
+  -- The key argument: condDist {z} preserves N_f-coordinates (z ∉ N_f),
+  -- so restricting to a base set T commutes with condDist averaging.
+  -- This is the core measure-theoretic step.
+  -- Both sides are bounded by 1, measurable, and have equal total integrals.
+  -- Moreover, they have equal set-integrals (by DLR on restricted sets).
+  sorry
+
+/-! ### Steps B + C: upgrade to all A and all z -/
+
+set_option maxHeartbeats 3200000 in
 lemma fiberMeasure_dlr_ae
-    (γ : GibbsSpec I S)
-    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
-    (hμ : IsGibbsMeasure γ μ)
+    (g : GibbsSpec I S)
+    (m : Measure (SpinConfig I S)) [IsProbabilityMeasure m]
+    (hm : IsGibbsMeasure g m)
     (N_f : Finset I) :
     let e := prodEquiv N_f
-    let ρ := μ.map e
-    ∀ᵐ b ∂ρ.fst,
+    let r := m.map e
+    ∀ᵐ b ∂r.fst,
       ∀ z, z ∉ N_f →
         ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
-          (fiberMeasure μ N_f b A).toReal =
-            ∫ σ, (γ.condDist {z} σ A).toReal ∂fiberMeasure μ N_f b := by
-  intro e ρ
-  -- For each fixed z ∉ N_f and fixed measurable A, we have a.e. equality
-  -- by combining DLR, disintegration, properness, and uniqueness of conditional expectations.
-  -- Both sides define finite measures in A (LHS is fiberMeasure b, RHS is the DLR-average).
-  -- They agree on every measurable A for a.e. b (depending on A), but since the space is
-  -- Standard Borel (hence countably generated), we can upgrade to "for a.e. b, for ALL A"
-  -- by taking a countable intersection over a generating π-system and using π-λ.
-  -- Finally, we intersect over the finitely many z ∉ N_f.
-  -- The full proof requires set-integral equality (properness of condDist) +
-  -- ae_eq uniqueness + countable generation + finite intersection.
-  -- For the complete formalization, we use the integral equality established above
-  -- and the structure of probability measures.
-  -- Both sides as functions of b are integral_condKernel decompositions of the DLR identity,
-  -- and by uniqueness of disintegration they agree a.e.
-  -- Core: for each z and A, the ae equality
-  have h_ae_fixed : ∀ z, z ∉ N_f → ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
-      ∀ᵐ b ∂ρ.fst, (fiberMeasure μ N_f b A).toReal =
-        ∫ σ, (γ.condDist {z} σ A).toReal ∂fiberMeasure μ N_f b := by
-    intro z hz A hA
-    -- Both sides integrate to the same value (μ A).toReal over ρ.fst
-    -- and both sides, viewed as functions of A for fixed b, define finite measures.
-    -- By uniqueness of disintegration (the two functions have equal integrals
-    -- against all indicator functions of the base), they agree a.e.
-    -- This uses setIntegral equality (from DLR + properness) + ae_eq uniqueness.
-    sorry
-  -- Upgrade: for each z, for a.e. b, for ALL A
-  -- Since SpinConfig I S is Standard Borel, the σ-algebra is countably generated.
-  -- Both sides are finite measures in A. Two finite measures agreeing on a countable
-  -- generating π-system agree everywhere. Take countable intersection of a.e. sets.
-  -- Finite intersection over z ∉ N_f (since I is Fintype):
-  -- The set of z ∉ N_f is finite (at most |I| elements).
-  sorry
+          (fiberMeasure m N_f b A).toReal =
+            ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b := by
+  intro e r
+  -- Step C: Finite intersection over z ∉ N_f
+  have h_finite_z : ({z : I | z ∉ N_f}).Countable :=
+    (Set.Finite.subset (Set.toFinite _) (fun _ h => h)).countable
+  suffices h_all_z : ∀ z, z ∉ N_f →
+      ∀ᵐ b ∂r.fst, ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+        (fiberMeasure m N_f b A).toReal =
+          ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b by
+    have := (ae_ball_iff h_finite_z).mpr (fun z hz => h_all_z z hz)
+    filter_upwards [this] with b hb z hz A hA; exact hb z hz A hA
+  intro z hz
+  -- Step B: For fixed z, upgrade from "a.e. for each A" to "a.e. for all A"
+  -- using ae_induction_on_inter (pi-lambda for a.e. properties).
+  haveI : StandardBorelSpace (SpinConfig I S) := inferInstance
+  set f := embeddingReal (SpinConfig I S)
+  have hf := measurableEmbedding_embeddingReal (SpinConfig I S)
+  set Iic_rat := ⋃ a : ℚ, ({Set.Iic (a : ℝ)} : Set (Set ℝ))
+  set gen := (Set.preimage f) '' Iic_rat
+  have h_gen_eq : MeasurableSpace.generateFrom gen =
+      (inferInstance : MeasurableSpace (SpinConfig I S)) := by
+    show MeasurableSpace.generateFrom ((Set.preimage f) '' Iic_rat) = _
+    rw [← MeasurableSpace.comap_generateFrom]
+    change (MeasurableSpace.generateFrom Iic_rat).comap f = _
+    rw [← Real.borel_eq_generateFrom_Iic_rat, ← BorelSpace.measurable_eq (α := ℝ), hf.comap_eq]
+  have h_pi : IsPiSystem gen := Real.isPiSystem_Iic_rat.comap f
+  apply MeasurableSpace.ae_induction_on_inter h_gen_eq.symm h_pi
+  · -- C(b, empty)
+    apply ae_of_all; intro b; simp [measure_empty]
+  · -- C(b, generators): for a.e. b, C holds on all generators
+    have h_gen_count : gen.Countable := by
+      apply Set.Countable.image
+      exact Set.countable_iUnion (fun _ => Set.countable_singleton _)
+    rw [ae_ball_iff h_gen_count]
+    intro t ht
+    obtain ⟨s, hs, rfl⟩ := ht
+    rw [Set.mem_iUnion] at hs; obtain ⟨q, hq⟩ := hs
+    rw [Set.mem_singleton_iff] at hq; subst hq
+    exact fiberMeasure_dlr_ae_fixed g m hm N_f z hz (hf.measurable measurableSet_Iic)
+  · -- Complement closure
+    apply ae_of_all; intro b A hA hCA
+    haveI := fiberMeasure_isProbabilityMeasure m N_f b
+    have hLHS : (fiberMeasure m N_f b Aᶜ).toReal = 1 - (fiberMeasure m N_f b A).toReal := by
+      rw [prob_compl_eq_one_sub hA, ENNReal.toReal_sub_of_le prob_le_one (by simp)]; simp
+    have hRHS : ∫ s, (g.condDist {z} s Aᶜ).toReal ∂fiberMeasure m N_f b =
+        1 - ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b := by
+      have h_cd_compl : ∀ s, (g.condDist {z} s Aᶜ).toReal = 1 - (g.condDist {z} s A).toReal := by
+        intro s; haveI := g.isProb {z} s
+        rw [prob_compl_eq_one_sub hA, ENNReal.toReal_sub_of_le prob_le_one (by simp)]; simp
+      simp_rw [h_cd_compl]
+      rw [integral_sub (integrable_const 1)
+        (Integrable.of_bound (g.measurable_condDist {z} A hA).aestronglyMeasurable 1
+          (ae_of_all _ (fun s => by
+            rw [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+            exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+              (by rw [ENNReal.ofReal_one]; exact prob_le_one))))]
+      simp [measure_univ]
+    rw [hLHS, hRHS, hCA]
+  · -- Countable disjoint union closure
+    apply ae_of_all; intro b As hdisj hAs_meas hAs_C
+    haveI := fiberMeasure_isProbabilityMeasure m N_f b
+    have hLHS : (fiberMeasure m N_f b (⋃ n, As n)).toReal =
+        ∑' n, (fiberMeasure m N_f b (As n)).toReal := by
+      rw [measure_iUnion hdisj hAs_meas]
+      exact ENNReal.tsum_toReal_eq (fun n => measure_ne_top _ _)
+    have hRHS : ∫ s, (g.condDist {z} s (⋃ n, As n)).toReal ∂fiberMeasure m N_f b =
+        ∑' n, ∫ s, (g.condDist {z} s (As n)).toReal ∂fiberMeasure m N_f b := by
+      have h_cd_union : ∀ s, (g.condDist {z} s (⋃ n, As n)).toReal =
+          ∑' n, (g.condDist {z} s (As n)).toReal := by
+        intro s; rw [measure_iUnion hdisj hAs_meas]
+        exact ENNReal.tsum_toReal_eq (fun n => measure_ne_top _ _)
+      simp_rw [h_cd_union]
+      rw [integral_tsum
+        (fun n => (g.measurable_condDist {z} (As n) (hAs_meas n)).aestronglyMeasurable)
+        (by
+          -- Each enorm term is ≤ 1, and terms sum via disjointness to ≤ 1.
+          -- ‖condDist(As n).toReal‖ₑ ≤ condDist(As n) ≤ 1, and
+          -- ∫ condDist(As n) d(fiber b) has tsum ≤ 1.
+          sorry)]
+    rw [hLHS, hRHS]; exact tsum_congr hAs_C
 
 /-- Bounded measurable functions are integrable against probability measures. -/
 private lemma integrable_of_bounded_measurable
