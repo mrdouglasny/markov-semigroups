@@ -129,28 +129,217 @@ Proof sketch (not formalized):
    `mu_b(A) = ∫ γ.condDist{z} σ A d(mu_b)(σ)`.
 5. The "for all A" upgrade uses `CountablyGenerated` (Standard Borel). -/
 
-/-- **DLR for the fiber measure at z ∉ N_f.**
+/-! ### Helper: fiberMeasure equals condKernel composed with e.symm -/
 
-For a.e. b, the fiber measure satisfies the DLR equation at {z} for
-every z ∉ N_f and every measurable set A.
+/-- The fiber set: for a set `A` of spin configs and a base point `b`,
+the set of ω such that `e.symm (b, ω) ∈ A`. -/
+private def fiberSet (N_f : Finset I) (b : {i // i ∈ N_f} → S)
+    (A : Set (SpinConfig I S)) : Set ({i // i ∉ N_f} → S) :=
+  {ω | (prodEquiv N_f).symm (b, ω) ∈ A}
 
-**Proof (sketch).**
-Fix z ∉ N_f and a measurable set A. The DLR equation for μ says:
-  `(μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ`
+private lemma measurableSet_fiberSet (N_f : Finset I) (b : {i // i ∈ N_f} → S)
+    {A : Set (SpinConfig I S)} (hA : MeasurableSet A) :
+    MeasurableSet (fiberSet N_f b A) := by
+  unfold fiberSet
+  exact hA.preimage (measurable_fiberLift N_f b)
 
-Transport both sides through `e` using `Measure.integral_condKernel`:
-  LHS = `∫_b (fiberMeasure b A).toReal d(ρ.fst)`
-  RHS = `∫_b [∫ σ, (γ.condDist {z} σ A).toReal d(fiberMeasure b)] d(ρ.fst)`
+private lemma fiberMeasure_eq_condKernel_fiberSet
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (N_f : Finset I) (b : {i // i ∈ N_f} → S)
+    (A : Set (SpinConfig I S)) (hA : MeasurableSet A) :
+    fiberMeasure μ N_f b A = (μ.map (prodEquiv N_f)).condKernel b (fiberSet N_f b A) := by
+  unfold fiberMeasure fiberSet
+  rw [Measure.map_apply (measurable_fiberLift N_f b) hA]; congr 1
 
-Since both outer integrals agree and the integrands are measurable,
-by uniqueness of conditional expectations (for each fixed A and z):
-  for a.e. b: `(fiberMeasure b A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal d(fiberMeasure b)`
+/-! ### Step 1: For fixed A and z, establish equality of integrals over ρ.fst -/
 
-The "for all A" upgrade uses `CountablyGenerated` (from `StandardBorelSpace`)
-to get a countable pi-system generating the sigma-algebra, then takes a
-countable intersection of full-measure sets.
+/-- The fiberSet does not depend on b: it equals the section of e '' A. -/
+private lemma fiberSet_eq_section (N_f : Finset I) (b : {i // i ∈ N_f} → S)
+    (A : Set (SpinConfig I S)) :
+    fiberSet N_f b A = Prod.mk b ⁻¹' ((prodEquiv N_f) '' A) := by
+  ext ω
+  simp only [fiberSet, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_image]
+  constructor
+  · intro h
+    exact ⟨(prodEquiv N_f).symm (b, ω), h, (prodEquiv N_f).apply_symm_apply (b, ω)⟩
+  · intro ⟨σ, hσA, hσ⟩
+    rwa [show (prodEquiv N_f).symm (b, ω) = σ from
+      by rw [← hσ, (prodEquiv N_f).symm_apply_apply]]
 
-The "for all z ∉ N_f" upgrade is trivial since I is finite (Fintype). -/
+/-- The LHS integral: ∫⁻ b, fiberMeasure b A ∂ρ.fst = μ A -/
+private lemma lintegral_fiberMeasure_eq_measure
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (N_f : Finset I) {A : Set (SpinConfig I S)} (hA : MeasurableSet A) :
+    ∫⁻ b, fiberMeasure μ N_f b A ∂(μ.map (prodEquiv N_f)).fst = μ A := by
+  -- Rewrite fiberMeasure as condKernel applied to sections of e '' A
+  have h_eq : ∀ b, fiberMeasure μ N_f b A =
+      (μ.map (prodEquiv N_f)).condKernel b
+        (Prod.mk b ⁻¹' ((prodEquiv N_f) '' A)) := by
+    intro b
+    rw [fiberMeasure_eq_condKernel_fiberSet _ _ _ _ hA, fiberSet_eq_section]
+  simp_rw [h_eq]
+  -- Apply lintegral_condKernel_mem
+  have hA' : MeasurableSet ((prodEquiv N_f) '' A) :=
+    (prodEquiv N_f).measurableSet_image.mpr hA
+  -- {ω | (b, ω) ∈ e '' A} = Prod.mk b ⁻¹' (e '' A) definitionally
+  convert Measure.lintegral_condKernel_mem hA' using 1
+  -- ρ (e '' A) = μ A
+  rw [Measure.map_apply (prodEquiv N_f).measurable hA']
+  congr 1
+  exact ((prodEquiv N_f).preimage_image A).symm
+
+/-- The RHS integral after disintegration -/
+private lemma integral_condDist_fiberMeasure_eq
+    (γ : GibbsSpec I S) (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (N_f : Finset I) (z : I) {A : Set (SpinConfig I S)} (hA : MeasurableSet A) :
+    ∫ b, (∫ σ, (γ.condDist {z} σ A).toReal ∂fiberMeasure μ N_f b) ∂(μ.map (prodEquiv N_f)).fst =
+    (μ A).toReal := by
+  -- Start from DLR: (μ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ
+  rw [hμ.dlr {z} A hA]
+  -- Transport through e: ∫ σ, f σ ∂μ = ∫ (b,ω), f(e.symm(b,ω)) ∂ρ
+  -- Then apply integral_condKernel
+  have h_meas_cd := (γ.measurable_condDist {z} A hA).comp (prodEquiv N_f).symm.measurable
+  have h_transport : ∫ σ, (γ.condDist {z} σ A).toReal ∂μ =
+      ∫ x, (γ.condDist {z} ((prodEquiv N_f).symm x) A).toReal ∂(μ.map (prodEquiv N_f)) := by
+    conv_rhs => rw [integral_map_equiv (prodEquiv N_f)]
+    congr 1; ext σ; simp
+  rw [h_transport]
+  -- Apply integral_condKernel
+  have h_int : Integrable (fun x => (γ.condDist {z} ((prodEquiv N_f).symm x) A).toReal)
+      (μ.map (prodEquiv N_f)) := by
+    apply Integrable.of_bound (C := 1) h_meas_cd.aestronglyMeasurable
+    apply ae_of_all; intro x
+    simp only [Function.comp_apply]
+    rw [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+    exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+      (by rw [ENNReal.ofReal_one]; exact prob_le_one)
+  rw [(Measure.integral_condKernel h_int).symm]
+  -- Now the inner integral ∫ ω, f(e.symm(b,ω)) d(condKernel b) equals
+  -- ∫ σ, f σ d(fiberMeasure b)
+  congr 1; ext b
+  rw [← integral_fiberMeasure_eq μ N_f b _ (γ.measurable_condDist {z} A hA)]
+
+/-- b ↦ fiberMeasure μ N_f b A is measurable (as ENNReal). -/
+private lemma measurable_fiberMeasure_apply
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (N_f : Finset I) {A : Set (SpinConfig I S)} (hA : MeasurableSet A) :
+    Measurable (fun b => fiberMeasure μ N_f b A) := by
+  have h_eq : (fun b => fiberMeasure μ N_f b A) =
+      (fun b => (μ.map (prodEquiv N_f)).condKernel b
+        (Prod.mk b ⁻¹' ((prodEquiv N_f) '' A))) := by
+    ext b; rw [fiberMeasure_eq_condKernel_fiberSet _ _ _ _ hA, fiberSet_eq_section]
+  rw [h_eq]
+  exact Kernel.measurable_kernel_prodMk_left ((prodEquiv N_f).measurableSet_image.mpr hA)
+
+/-- For fixed A and z, the two functions are equal as ρ.fst-integrals. -/
+private lemma integral_fiberMeasure_toReal_eq_integral_condDist
+    (γ : GibbsSpec I S) (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (N_f : Finset I) (z : I) {A : Set (SpinConfig I S)} (hA : MeasurableSet A) :
+    ∫ b, (fiberMeasure μ N_f b A).toReal ∂(μ.map (prodEquiv N_f)).fst =
+    ∫ b, (∫ σ, (γ.condDist {z} σ A).toReal ∂fiberMeasure μ N_f b) ∂(μ.map (prodEquiv N_f)).fst := by
+  -- Both equal (μ A).toReal
+  rw [integral_condDist_fiberMeasure_eq γ μ hμ N_f z hA]
+  -- Need: ∫ b, (fiberMeasure b A).toReal ∂ρ.fst = (μ A).toReal
+  -- From lintegral_fiberMeasure_eq_measure, we have the ENNReal version
+  have h_ennreal := lintegral_fiberMeasure_eq_measure μ N_f hA
+  -- Since fiberMeasure b A ≤ 1 for all b (prob measure), toReal is well-behaved
+  have h_lt_top : ∀ b, fiberMeasure μ N_f b A < ⊤ := by
+    intro b
+    haveI := fiberMeasure_isProbabilityMeasure μ N_f b
+    exact lt_of_le_of_lt prob_le_one ENNReal.one_lt_top
+  -- Convert lintegral to integral via integral_toReal
+  rw [integral_toReal (measurable_fiberMeasure_apply μ N_f hA).aemeasurable
+    (ae_of_all _ h_lt_top)]
+  rw [h_ennreal]
+
+/-- For z ∉ N_f, the condDist at {z} preserves the N_f-coordinates:
+condDist-a.e., the configuration agrees with σ on N_f. -/
+private lemma condDist_preserves_base
+    (γ : GibbsSpec I S) (N_f : Finset I) (z : I) (hz : z ∉ N_f)
+    (σ : SpinConfig I S) (B : Set (SpinConfig I S))
+    (hB : B ⊆ {τ | ∀ i ∈ N_f, τ i = σ i}) :
+    γ.condDist {z} σ B = γ.condDist {z} σ (B ∩ {τ | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}) := by
+  have hproper := γ.proper {z} σ
+  set Agree := {τ : SpinConfig I S | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}
+  -- condDist is concentrated on Agree (measure = 1)
+  -- So Agreeᶜ has measure 0 (outer measure argument)
+  have h_compl_zero : γ.condDist {z} σ (Agreeᶜ) = 0 := by
+    rw [show Agree = {τ | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x} from rfl] at hproper
+    haveI := γ.isProb {z} σ
+    -- μ(univ) ≤ μ(Agree) + μ(Agreeᶜ), and μ(univ) = 1 = μ(Agree)
+    have h1 := measure_univ_le_add_compl
+      (μ := γ.condDist {z} σ)
+      {τ | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}
+    rw [hproper, measure_univ] at h1
+    -- 1 ≤ 1 + μ(Agreeᶜ), which is trivially true
+    -- We need the other direction: μ(Agreeᶜ) ≤ μ(univ) - μ(Agree)
+    -- Use: μ(Agree) + μ(Agreeᶜ) ≤ μ(univ) from subadditivity? No...
+    -- Actually: μ(Agreeᶜ) ≤ μ(univ) = 1, and μ(Agree) = 1
+    -- Use: Agree ∪ Agreeᶜ = univ, so μ(Agree ∪ Agreeᶜ) = μ(univ) = 1
+    -- And μ(Agree ∪ Agreeᶜ) ≤ μ(Agree) + μ(Agreeᶜ) = 1 + μ(Agreeᶜ)
+    -- So 1 ≤ 1 + μ(Agreeᶜ), giving μ(Agreeᶜ) ≥ 0 (trivial)
+    -- For the upper bound: μ(Agreeᶜ) ≤ μ(Set.univ) = 1
+    -- But we still can't prove = 0!
+    -- The KEY: μ(Agree) ≤ μ(univ), so 1 ≤ 1, OK.
+    -- Actually we need: μ is a probability measure so μ(S) + μ(Sᶜ) = 1 for
+    -- MEASURABLE S. But Agree may not be measurable.
+    -- For outer measures: μ(univ) ≤ μ(S) + μ(Sᶜ) always.
+    -- With μ(S) = 1 and μ(univ) = 1: 1 ≤ 1 + μ(Sᶜ), which gives nothing.
+    -- We need μ(S) + μ(Sᶜ) ≥ μ(univ), which is measure_univ_le_add_compl.
+    -- And μ(Sᶜ) ≤ μ(univ) - μ(S) when μ(S) ≤ μ(univ)... for outer measures?
+    -- Actually: for any outer measure, μ(Sᶜ) ≤ μ(univ) always.
+    -- And we have μ(S) = 1 = μ(univ). So we need:
+    -- μ(Sᶜ) = 0 from μ(S) = μ(univ) and μ being an actual measure.
+    -- For measures (not just outer measures), if S is measurable:
+    -- μ(univ) = μ(S) + μ(Sᶜ), so μ(Sᶜ) = 0.
+    -- But S (= Agree) may not be measurable!
+    -- However, μ(S) = 1 ≥ μ(univ) = 1, and μ is monotone...
+    -- μ(Sᶜ) ≤ μ(univ \ S). For outer measures, μ(univ) ≤ μ(S) + μ(univ \ S).
+    -- So 1 ≤ 1 + μ(Sᶜ). This gives nothing new.
+    -- BUT: for a probability measure, μ(Sᶜ) + μ(S) ≥ 1 (subadditivity of univ cover).
+    -- And μ(S) ≤ 1 (prob measure). With μ(S) = 1: μ(Sᶜ) ≥ 0 (trivial).
+    -- We also have μ(Sᶜ) ≤ 1 - μ(S) only if S is measurable.
+    -- For a measure (not just outer), if μ(S) = μ(univ), does it follow μ(Sᶜ) = 0?
+    -- Yes! Because μ(univ) ≤ μ(S) + μ(Sᶜ) (outer measure) and
+    -- μ(S) ≤ μ(univ) (monotonicity), so μ(S) = μ(univ).
+    -- And μ(Sᶜ) ≤ μ(univ) - μ(S) (for any outer measure? No, this fails.)
+    -- Actually for Measures: we DO have μ(Sᶜ) ≤ μ(univ) = 1.
+    -- And measure_univ_le_add_compl gives 1 ≤ 1 + μ(Sᶜ), i.e., 0 ≤ μ(Sᶜ).
+    -- We can't get μ(Sᶜ) = 0 without measurability of S!
+    -- SOLUTION: Agree IS measurable since I is Fintype and S has BorelSpace.
+    -- With [Fintype I] and [MeasurableSpace S], SpinConfig I S = I → S has
+    -- the product sigma-algebra. Agree = {τ | ∀ x ∉ {z}, τ x = σ x} is measurable
+    -- because it's a finite intersection of preimages.
+    have hAgree_meas : MeasurableSet Agree := by
+      change MeasurableSet {τ : SpinConfig I S | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}
+      -- Use Finset.univ.measurableSet_biInter since I is Fintype
+      have : {τ : SpinConfig I S | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x} =
+          ⋂ x ∈ ({z} : Finset I)ᶜ, {τ : SpinConfig I S | τ x = σ x} := by
+        ext τ; simp [Finset.mem_compl]
+      rw [this]
+      refine Finset.measurableSet_biInter _ (fun x _ => ?_)
+      change MeasurableSet ((fun (τ : SpinConfig I S) => τ x) ⁻¹' {σ x})
+      exact (measurable_pi_apply x) (measurableSet_singleton (σ x))
+    rw [measure_compl hAgree_meas (measure_ne_top _ _), hproper]
+    simp
+  -- B ⊆ B ∩ Agree ∪ Agreeᶜ, so μ B ≤ μ(B ∩ Agree) + μ(Agreeᶜ) = μ(B ∩ Agree)
+  apply le_antisymm
+  · calc γ.condDist {z} σ B
+        ≤ γ.condDist {z} σ (B ∩ Agree) + γ.condDist {z} σ (Agreeᶜ) := by
+          calc γ.condDist {z} σ B
+              ≤ γ.condDist {z} σ ((B ∩ Agree) ∪ Agreeᶜ) := by
+                apply measure_mono; intro τ hτ
+                by_cases hτAgree : τ ∈ Agree
+                · exact Or.inl ⟨hτ, hτAgree⟩
+                · exact Or.inr hτAgree
+            _ ≤ γ.condDist {z} σ (B ∩ Agree) + γ.condDist {z} σ (Agreeᶜ) :=
+                measure_union_le _ _
+      _ = γ.condDist {z} σ (B ∩ Agree) := by rw [h_compl_zero, add_zero]
+  · exact measure_mono Set.inter_subset_left
+
+set_option maxHeartbeats 800000 in
 lemma fiberMeasure_dlr_ae
     (γ : GibbsSpec I S)
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
@@ -163,6 +352,37 @@ lemma fiberMeasure_dlr_ae
         ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
           (fiberMeasure μ N_f b A).toReal =
             ∫ σ, (γ.condDist {z} σ A).toReal ∂fiberMeasure μ N_f b := by
+  intro e ρ
+  -- For each fixed z ∉ N_f and fixed measurable A, we have a.e. equality
+  -- by combining DLR, disintegration, properness, and uniqueness of conditional expectations.
+  -- Both sides define finite measures in A (LHS is fiberMeasure b, RHS is the DLR-average).
+  -- They agree on every measurable A for a.e. b (depending on A), but since the space is
+  -- Standard Borel (hence countably generated), we can upgrade to "for a.e. b, for ALL A"
+  -- by taking a countable intersection over a generating π-system and using π-λ.
+  -- Finally, we intersect over the finitely many z ∉ N_f.
+  -- The full proof requires set-integral equality (properness of condDist) +
+  -- ae_eq uniqueness + countable generation + finite intersection.
+  -- For the complete formalization, we use the integral equality established above
+  -- and the structure of probability measures.
+  -- Both sides as functions of b are integral_condKernel decompositions of the DLR identity,
+  -- and by uniqueness of disintegration they agree a.e.
+  -- Core: for each z and A, the ae equality
+  have h_ae_fixed : ∀ z, z ∉ N_f → ∀ (A : Set (SpinConfig I S)), MeasurableSet A →
+      ∀ᵐ b ∂ρ.fst, (fiberMeasure μ N_f b A).toReal =
+        ∫ σ, (γ.condDist {z} σ A).toReal ∂fiberMeasure μ N_f b := by
+    intro z hz A hA
+    -- Both sides integrate to the same value (μ A).toReal over ρ.fst
+    -- and both sides, viewed as functions of A for fixed b, define finite measures.
+    -- By uniqueness of disintegration (the two functions have equal integrals
+    -- against all indicator functions of the base), they agree a.e.
+    -- This uses setIntegral equality (from DLR + properness) + ae_eq uniqueness.
+    sorry
+  -- Upgrade: for each z, for a.e. b, for ALL A
+  -- Since SpinConfig I S is Standard Borel, the σ-algebra is countably generated.
+  -- Both sides are finite measures in A. Two finite measures agreeing on a countable
+  -- generating π-system agree everywhere. Take countable intersection of a.e. sets.
+  -- Finite intersection over z ∉ N_f (since I is Fintype):
+  -- The set of z ∉ N_f is finite (at most |I| elements).
   sorry
 
 /-- Bounded measurable functions are integrable against probability measures. -/
