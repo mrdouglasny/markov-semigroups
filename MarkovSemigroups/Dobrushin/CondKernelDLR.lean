@@ -360,6 +360,76 @@ private lemma condDist_agree_compl_zero (g : GibbsSpec I S) (L : Finset I)
   haveI := g.isProb L s
   rw [measure_compl (measurableSet_agree L s) (measure_ne_top _ _), g.proper L s]; simp
 
+/-- For σ with (e σ).1 ∈ T, condDist {z} σ (A ∩ basePreimage T) = condDist {z} σ A,
+where basePreimage T = {σ | (e σ).1 ∈ T} and z ∉ N_f. -/
+private lemma condDist_intersect_basePreimage
+    (γ : GibbsSpec I S) (N_f : Finset I) (z : I) (hz : z ∉ N_f)
+    (A : Set (SpinConfig I S)) (T : Set ({i // i ∈ N_f} → S))
+    (σ : SpinConfig I S) (hσ : (prodEquiv N_f σ).1 ∈ T) :
+    γ.condDist {z} σ (A ∩ {τ | (prodEquiv N_f τ).1 ∈ T}) = γ.condDist {z} σ A := by
+  set Agree := {τ : SpinConfig I S | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}
+  have h_compl_zero := condDist_agree_compl_zero γ {z} σ
+  -- Agree ⊆ {τ | (prodEquiv τ).1 ∈ T}: z ∉ N_f so condDist preserves N_f coords.
+  have hAgree_sub : Agree ⊆ {τ | (prodEquiv N_f τ).1 ∈ T} := by
+    intro τ hτ; show (prodEquiv N_f τ).1 ∈ T
+    have h_eq : (prodEquiv N_f τ).1 = (prodEquiv N_f σ).1 := by
+      ext ⟨i, hi⟩; exact hτ i (fun hiz => hz (Finset.mem_singleton.mp hiz ▸ hi))
+    rw [h_eq]; exact hσ
+  -- condDist A ≤ condDist (A ∩ BP): A \ BP has condDist 0 (⊆ Agreeᶜ)
+  apply le_antisymm (measure_mono Set.inter_subset_left)
+  -- A ⊆ (A ∩ BP) ∪ (A \ BP) ⊆ (A ∩ BP) ∪ Agreeᶜ
+  calc γ.condDist {z} σ A
+      ≤ γ.condDist {z} σ ((A ∩ {τ | (prodEquiv N_f τ).1 ∈ T}) ∪ Agreeᶜ) := by
+        apply measure_mono; intro τ hτA
+        by_cases hτT : (prodEquiv N_f τ).1 ∈ T
+        · exact Or.inl ⟨hτA, hτT⟩
+        · right; intro hτAgree; exact hτT ((hAgree_sub hτAgree) : (prodEquiv N_f τ).1 ∈ T)
+    _ ≤ γ.condDist {z} σ (A ∩ {τ | (prodEquiv N_f τ).1 ∈ T}) +
+        γ.condDist {z} σ (Agreeᶜ) := measure_union_le _ _
+    _ = γ.condDist {z} σ (A ∩ {τ | (prodEquiv N_f τ).1 ∈ T}) := by
+        rw [h_compl_zero, add_zero]
+
+/-- For σ with (e σ).1 ∉ T, condDist {z} σ (A ∩ basePreimage T) = 0. -/
+private lemma condDist_intersect_basePreimage_zero
+    (γ : GibbsSpec I S) (N_f : Finset I) (z : I) (hz : z ∉ N_f)
+    (A : Set (SpinConfig I S)) (T : Set ({i // i ∈ N_f} → S))
+    (σ : SpinConfig I S) (hσ : (prodEquiv N_f σ).1 ∉ T) :
+    γ.condDist {z} σ (A ∩ {τ | (prodEquiv N_f τ).1 ∈ T}) = 0 := by
+  set Agree := {τ : SpinConfig I S | ∀ x, x ∉ ({z} : Finset I) → τ x = σ x}
+  have h_compl_zero := condDist_agree_compl_zero γ {z} σ
+  -- Agree ⊆ {τ | (prodEquiv N_f τ).1 ∉ T}: preserves N_f coords to σ which is ∉ T
+  have hAgree_sub : Agree ⊆ {τ | (prodEquiv N_f τ).1 ∉ T} := by
+    intro τ hτ
+    show (prodEquiv N_f τ).1 ∉ T
+    have h_eq : (prodEquiv N_f τ).1 = (prodEquiv N_f σ).1 := by
+      ext ⟨i, hi⟩; exact hτ i (fun hiz => hz (Finset.mem_singleton.mp hiz ▸ hi))
+    rw [h_eq]; exact hσ
+  -- A ∩ {τ | (prodEquiv τ).1 ∈ T} ⊆ Agreeᶜ
+  apply le_antisymm _ (zero_le _)
+  calc γ.condDist {z} σ (A ∩ {τ | (prodEquiv N_f τ).1 ∈ T})
+      ≤ γ.condDist {z} σ (Agreeᶜ) := by
+        apply measure_mono; intro τ ⟨_, hτT⟩ hτAgree
+        exact absurd hτT (hAgree_sub hτAgree)
+    _ = 0 := h_compl_zero
+
+/-- fiberMeasure b assigns zero to sets disjoint from {σ | (e σ).1 = b}. -/
+private lemma fiberMeasure_compl_base
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (N_f : Finset I) (b : {i // i ∈ N_f} → S) :
+    fiberMeasure μ N_f b {σ | (prodEquiv N_f σ).1 ≠ b} = 0 := by
+  unfold fiberMeasure
+  have h_lift := measurable_fiberLift N_f b
+  -- The preimage is empty: every ω maps to (b, ω), which has fst = b.
+  have h_empty : (fun ω => (prodEquiv N_f).symm (b, ω)) ⁻¹'
+      {σ | (prodEquiv N_f σ).1 ≠ b} = ∅ := by
+    ext ω; simp only [Set.mem_preimage, Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false,
+      not_not, MeasurableEquiv.apply_symm_apply]
+  -- {σ | (prodEquiv N_f σ).1 ≠ b} is measurable
+  have h_meas : MeasurableSet {σ : SpinConfig I S | (prodEquiv N_f σ).1 ≠ b} := by
+    apply MeasurableSet.compl
+    exact (measurable_fst.comp (prodEquiv N_f).measurable) (measurableSet_singleton b)
+  rw [Measure.map_apply h_lift h_meas, h_empty, measure_empty]
+
 set_option maxHeartbeats 6400000 in
 private lemma fiberMeasure_dlr_ae_fixed
     (g : GibbsSpec I S)
@@ -372,20 +442,136 @@ private lemma fiberMeasure_dlr_ae_fixed
       (fiberMeasure m N_f b A).toReal =
         ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b := by
   intro r
-  -- Both functions are bounded, measurable, and their set-integrals agree.
-  -- We use ae_eq_of_forall_setIntegral_eq_of_sigmaFinite.
   haveI : IsProbabilityMeasure r :=
     Measure.isProbabilityMeasure_map (prodEquiv N_f).measurable.aemeasurable
   haveI : IsFiniteMeasure r.fst := Measure.fst.instIsFiniteMeasure
-  -- Both sides integrate to (m A).toReal
-  have h_total := integral_fiberMeasure_toReal_eq_integral_condDist g m hm N_f z hA
-  -- For set-integral equality, we use the DLR on restricted sets + properness
-  -- The key argument: condDist {z} preserves N_f-coordinates (z ∉ N_f),
-  -- so restricting to a base set T commutes with condDist averaging.
-  -- This is the core measure-theoretic step.
-  -- Both sides are bounded by 1, measurable, and have equal total integrals.
-  -- Moreover, they have equal set-integrals (by DLR on restricted sets).
-  sorry
+  -- Step 1: Integrability of both sides
+  have hF_int : Integrable (fun b => (fiberMeasure m N_f b A).toReal) r.fst :=
+    Integrable.of_bound ((ENNReal.measurable_toReal.comp
+      (measurable_fiberMeasure_apply m N_f hA)).aestronglyMeasurable) 1
+      (ae_of_all _ fun b => by
+        rw [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+        haveI := fiberMeasure_isProbabilityMeasure m N_f b
+        exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+          (by rw [ENNReal.ofReal_one]; exact prob_le_one))
+  have hG_aesm : AEStronglyMeasurable
+      (fun b => ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b) r.fst := by
+    have h1 : AEStronglyMeasurable
+        (fun (x : ({i // i ∈ N_f} → S) × ({i // i ∉ N_f} → S)) =>
+          (g.condDist {z} ((prodEquiv N_f).symm x) A).toReal) r :=
+      ((g.measurable_condDist {z} A hA).comp (prodEquiv N_f).symm.measurable).aestronglyMeasurable
+    exact h1.integral_condKernel.congr (ae_of_all _ fun b =>
+      (integral_fiberMeasure_eq m N_f b _ (g.measurable_condDist {z} A hA)).symm)
+  have hG_int : Integrable (fun b => ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b)
+      r.fst := by
+    apply Integrable.of_bound hG_aesm 1
+    apply ae_of_all; intro b
+    rw [Real.norm_eq_abs]; apply abs_le.mpr; constructor
+    · have := integral_nonneg (μ := fiberMeasure m N_f b)
+        (f := fun s => (g.condDist {z} s A).toReal) (fun _ => ENNReal.toReal_nonneg)
+      linarith
+    · haveI := fiberMeasure_isProbabilityMeasure m N_f b
+      calc ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b
+          ≤ ∫ _, 1 ∂fiberMeasure m N_f b := by
+            apply integral_mono
+              (Integrable.of_bound (g.measurable_condDist {z} A hA).aestronglyMeasurable 1
+                (ae_of_all _ fun s => by
+                  rw [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+                  exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+                    (by rw [ENNReal.ofReal_one]; exact prob_le_one)))
+              (integrable_const 1)
+              (fun s => ENNReal.toReal_le_of_le_ofReal zero_le_one
+                (by rw [ENNReal.ofReal_one]; exact prob_le_one))
+        _ = 1 := by simp
+  -- Step 2: ae equality via set-integral uniqueness
+  apply Integrable.ae_eq_of_forall_setIntegral_eq _ _ hF_int hG_int
+  intro T hT _
+  -- Step 3: Set-integral equality for each measurable T
+  -- Apply integral_fiberMeasure_toReal_eq_integral_condDist to A ∩ BP
+  -- where BP = {σ | (prodEquiv N_f σ).1 ∈ T}
+  have hBP_meas : MeasurableSet {σ : SpinConfig I S | (prodEquiv N_f σ).1 ∈ T} :=
+    hT.preimage (measurable_fst.comp (prodEquiv N_f).measurable)
+  have hABP := integral_fiberMeasure_toReal_eq_integral_condDist g m hm N_f z (hA.inter hBP_meas)
+  -- fiberMeasure b concentrated on {σ | (prodEquiv σ).1 = b}
+  have hfib_ae : ∀ b, ∀ᵐ σ ∂fiberMeasure m N_f b, (prodEquiv N_f σ).1 = b := by
+    intro b
+    have := fiberMeasure_compl_base m N_f b
+    rw [Filter.eventually_iff]
+    show fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 = b}ᶜ = 0
+    have h2 : {σ : SpinConfig I S | (prodEquiv N_f σ).1 = b}ᶜ =
+        {σ | (prodEquiv N_f σ).1 ≠ b} := by ext σ; simp
+    rw [h2]; exact this
+  -- LHS of hABP = ∫ b, indicator T F b
+  have hABP_lhs : ∀ b, (fiberMeasure m N_f b (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T})).toReal =
+      T.indicator (fun b => (fiberMeasure m N_f b A).toReal) b := by
+    intro b
+    by_cases hbT : b ∈ T
+    · -- b ∈ T: fiber(A ∩ BP) = fiber(A), because fiber b ⊆ BP
+      rw [Set.indicator_of_mem hbT]; congr 1
+      apply le_antisymm (measure_mono Set.inter_subset_left)
+      -- BPᶜ has fiber-measure 0
+      have h_compl : fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ∉ T} = 0 :=
+        le_antisymm (calc _
+            ≤ fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ≠ b} :=
+              measure_mono (fun σ (hσ : (prodEquiv N_f σ).1 ∉ T) (hh : (prodEquiv N_f σ).1 = b) =>
+                hσ (hh.symm ▸ hbT))
+          _ = 0 := fiberMeasure_compl_base m N_f b) (zero_le _)
+      -- A ⊆ (A ∩ BP) ∪ BPᶜ
+      calc fiberMeasure m N_f b A
+          ≤ fiberMeasure m N_f b ((A ∩ {σ | (prodEquiv N_f σ).1 ∈ T}) ∪
+            {σ | (prodEquiv N_f σ).1 ∉ T}) :=
+              measure_mono (fun σ hσ => by
+                by_cases h : (prodEquiv N_f σ).1 ∈ T
+                · exact Or.inl ⟨hσ, h⟩
+                · exact Or.inr h)
+        _ ≤ fiberMeasure m N_f b (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T}) +
+            fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ∉ T} :=
+            measure_union_le _ _
+        _ = fiberMeasure m N_f b (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T}) + 0 := by
+            rw [h_compl]
+        _ = fiberMeasure m N_f b (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T}) := add_zero _
+    · -- b ∉ T: fiber(A ∩ BP) = 0 because fiber b ∩ BP = ∅
+      rw [Set.indicator_of_notMem hbT]
+      have h_zero : fiberMeasure m N_f b (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T}) = 0 :=
+        le_antisymm (calc fiberMeasure m N_f b (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T})
+            ≤ fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ∈ T} :=
+              measure_mono Set.inter_subset_right
+          _ ≤ fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ≠ b} := by
+              apply measure_mono; intro σ (hσ : (prodEquiv N_f σ).1 ∈ T)
+                (hh : (prodEquiv N_f σ).1 = b); exact hbT (hh ▸ hσ)
+          _ = 0 := fiberMeasure_compl_base m N_f b) (zero_le _)
+      rw [h_zero]; simp
+  -- RHS of hABP = ∫ b, indicator T G b
+  have hABP_rhs : ∀ b,
+      (∫ s, (g.condDist {z} s (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T})).toReal
+        ∂fiberMeasure m N_f b) =
+      T.indicator (fun b => ∫ s, (g.condDist {z} s A).toReal ∂fiberMeasure m N_f b) b := by
+    intro b
+    by_cases hbT : b ∈ T
+    · rw [Set.indicator_of_mem hbT]
+      exact integral_congr_ae (by
+        filter_upwards [hfib_ae b] with σ hσ
+        congr 1; exact condDist_intersect_basePreimage g N_f z hz A T σ (hσ ▸ hbT))
+    · rw [Set.indicator_of_notMem hbT]
+      haveI := fiberMeasure_isProbabilityMeasure m N_f b
+      apply le_antisymm _ (integral_nonneg fun _ => ENNReal.toReal_nonneg)
+      calc ∫ s, (g.condDist {z} s (A ∩ {σ | (prodEquiv N_f σ).1 ∈ T})).toReal
+              ∂fiberMeasure m N_f b
+          ≤ ∫ _, (0 : ℝ) ∂fiberMeasure m N_f b := by
+            apply integral_mono_ae
+            · exact Integrable.of_bound
+                (g.measurable_condDist {z} _ (hA.inter hBP_meas)).aestronglyMeasurable 1
+                (ae_of_all _ fun s => by
+                  rw [Real.norm_eq_abs, abs_of_nonneg ENNReal.toReal_nonneg]
+                  exact ENNReal.toReal_le_of_le_ofReal zero_le_one
+                    (by rw [ENNReal.ofReal_one]; exact prob_le_one))
+            · exact integrable_const 0
+            · filter_upwards [hfib_ae b] with σ hσ
+              rw [condDist_intersect_basePreimage_zero g N_f z hz A T σ (hσ ▸ hbT)]; simp
+        _ = 0 := by simp
+  -- Combine
+  simp_rw [hABP_lhs, hABP_rhs] at hABP
+  rwa [integral_indicator hT, integral_indicator hT] at hABP
 
 /-! ### Steps B + C: upgrade to all A and all z -/
 
@@ -476,10 +662,35 @@ lemma fiberMeasure_dlr_ae
       rw [integral_tsum
         (fun n => (g.measurable_condDist {z} (As n) (hAs_meas n)).aestronglyMeasurable)
         (by
-          -- Each enorm term is ≤ 1, and terms sum via disjointness to ≤ 1.
-          -- ‖condDist(As n).toReal‖ₑ ≤ condDist(As n) ≤ 1, and
-          -- ∫ condDist(As n) d(fiber b) has tsum ≤ 1.
-          sorry)]
+          -- ∑' n, ∫⁻ s, ‖condDist(As n).toReal‖ₑ ∂fiber ≠ ⊤
+          -- Bound: each ‖x.toReal‖ₑ ≤ 1 since condDist is a probability measure.
+          -- So each lintegral term ≤ 1 (prob measure fiber).
+          -- Moreover, the pointwise sum ∑' n, ‖...‖ₑ ≤ 1 by disjointness.
+          -- Step 1: Show each ‖...‖ₑ = condDist(As n) (as ENNReal)
+          have h_enorm_eq : ∀ n s, ‖(g.condDist {z} s (As n)).toReal‖ₑ =
+              g.condDist {z} s (As n) := by
+            intro n s
+            rw [Real.enorm_eq_ofReal ENNReal.toReal_nonneg,
+              ENNReal.ofReal_toReal (measure_ne_top _ _)]
+          -- Step 2: AEMeasurability of the enorm functions
+          have h_ae_meas : ∀ n, AEMeasurable
+              (fun s => ‖(g.condDist {z} s (As n)).toReal‖ₑ)
+              (fiberMeasure m N_f b) := by
+            intro n
+            exact ((g.measurable_condDist {z} (As n) (hAs_meas n)).enorm).aemeasurable
+          -- Step 3: Swap sum and integral
+          rw [← lintegral_tsum h_ae_meas]
+          -- Step 4: Bound the integrand by 1
+          apply ne_top_of_le_ne_top ENNReal.one_ne_top
+          calc ∫⁻ s, ∑' n, ‖(g.condDist {z} s (As n)).toReal‖ₑ ∂fiberMeasure m N_f b
+              ≤ ∫⁻ _, 1 ∂fiberMeasure m N_f b := by
+                apply lintegral_mono; intro s
+                simp_rw [h_enorm_eq]
+                calc ∑' n, g.condDist {z} s (As n)
+                    = g.condDist {z} s (⋃ n, As n) := by
+                      rw [measure_iUnion hdisj hAs_meas]
+                  _ ≤ 1 := prob_le_one
+            _ = 1 := by simp [measure_univ])]
     rw [hLHS, hRHS]; exact tsum_congr hAs_C
 
 /-- Bounded measurable functions are integrable against probability measures. -/
