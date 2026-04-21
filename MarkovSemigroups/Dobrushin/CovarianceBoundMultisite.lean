@@ -71,8 +71,12 @@ self-contained and fully-proved with zero sorries.
 -/
 
 import MarkovSemigroups.Dobrushin.CondTVBridge
+import Mathlib.Probability.Kernel.Disintegration.Integral
+import Mathlib.Topology.Metrizable.Urysohn
+import Mathlib.Topology.Metrizable.CompletelyMetrizable
 
-open MeasureTheory SingleSiteDisintegration Topology Filter Set
+open MeasureTheory SingleSiteDisintegration Topology Filter Set TopologicalSpace
+  ProbabilityTheory
 
 noncomputable section
 
@@ -2078,10 +2082,10 @@ replaced by compact-space typeclasses.
 
 Uses `covariance_tower_property` for the bridge step.
 
-**Note.** Currently requires `[Countable S]` for the tsum-based fiber
-decomposition in `covariance_tower_property`. Removing this hypothesis
-requires Mathlib's `condKernel` disintegration infrastructure. -/
-theorem covariance_bound_gibbs_multisite_general_nocount
+**Note.** Requires `[Countable S]` for the tsum-based fiber
+decomposition in `covariance_tower_property`. For the uncountable version
+using `condKernel` disintegration, see `covariance_bound_gibbs_multisite_general_nocount`. -/
+theorem covariance_bound_gibbs_multisite_general_countable
     [Inhabited S] [Fintype I] [Countable S]
     [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
     [BorelSpace S]
@@ -2187,9 +2191,9 @@ theorem covariance_bound_gibbs_multisite_general_nocount
 Same as `covariance_bound_gibbs_multisite_general_nn_dist` with
 `[Fintype S]` replaced by compact-space typeclasses.
 
-**Note.** Currently requires `[Countable S]` — see
-`covariance_bound_gibbs_multisite_general_nocount` for details. -/
-theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
+**Note.** Requires `[Countable S]`. For the uncountable version, see
+`covariance_bound_gibbs_multisite_general_nn_dist_nocount`. -/
+theorem covariance_bound_gibbs_multisite_general_nn_dist_countable
     [Inhabited S] [Fintype I] [Countable S]
     [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
     [BorelSpace S]
@@ -2222,9 +2226,316 @@ theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
         (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
     |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
       2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
-  have h1 := covariance_bound_gibbs_multisite_general_nocount γ hD μ hμ f g hf_meas hg_meas
+  have h1 := covariance_bound_gibbs_multisite_general_countable γ hD μ hμ f g hf_meas hg_meas
     Bf Bg hBf_nn hBg_nn hBf hBg N_f N_g hf_local hg_local hf hg hfg
     choose_σ h_choose hg_cond hfinsupp h_dep_F
+  have h2 : ∀ x y, neumannSeriesCoeff γ y x ≤ hD.α ^ d y x / (1 - hD.α) :=
+    fun x y => neumannSeriesCoeff_nn_dist_bound γ hD d h_refl h_triangle h_support y x
+  have h3 : ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x ≤
+      ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
+    apply Finset.sum_le_sum; intro x _
+    apply Finset.sum_le_sum; intro y _
+    exact h2 x y
+  have hBfBg_nn : 0 ≤ 2 * Bf * Bg :=
+    mul_nonneg (mul_nonneg (by norm_num) hBf_nn) hBg_nn
+  calc |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)|
+      ≤ 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := h1
+    _ ≤ 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) :=
+        mul_le_mul_of_nonneg_left h3 hBfBg_nn
+
+/-! ### StandardBorelSpace from compact metrizable -/
+
+/-- Compact metrizable spaces are StandardBorelSpace: compact T2 +
+second-countable implies metrizable (Urysohn), then compact metric implies
+Polish, and Polish + Borel implies StandardBorelSpace. -/
+private instance standardBorelOfCompact (S : Type*) [MeasurableSpace S] [TopologicalSpace S]
+    [CompactSpace S] [T2Space S] [SecondCountableTopology S] [BorelSpace S] :
+    StandardBorelSpace S := by
+  haveI : MetrizableSpace S := inferInstance
+  letI := metrizableSpaceMetric S; exact inferInstance
+
+/-! ### Tower property via condKernel (no countability) -/
+
+/-- **Tower property for covariance via condKernel disintegration.**
+
+For `f` `N_f`-local with `|f| ≤ Bf` on a probability space `μ`,
+if the conditional-expectation difference of `g` on the condKernel fiber
+is a.e. bounded by `K`, then `|Cov_μ(f, g)| ≤ Bf * K`.
+
+This uses Mathlib's `Measure.condKernel` disintegration via the product
+decomposition `(I → S) ≃ᵐ ({i // i ∈ N_f} → S) × ({i // i ∉ N_f} → S)`.
+No countability assumption on `S` is needed. -/
+theorem covariance_tower_property_compact
+    {I S : Type*} [DecidableEq I] [Fintype I] [MeasurableSpace S]
+    [Inhabited S]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (f g : SpinConfig I S → ℝ)
+    (Bf : ℝ) (hBf_nn : 0 ≤ Bf) (hBf : ∀ σ, |f σ| ≤ Bf)
+    (N_f : Finset I)
+    (hf_local : ∀ σ τ : SpinConfig I S,
+      (∀ w ∈ N_f, σ w = τ w) → f σ = f τ)
+    (hf : Integrable f μ) (hg : Integrable g μ)
+    (hfg : Integrable (fun σ => f σ * g σ) μ)
+    (K : ℝ) (hK_nn : 0 ≤ K)
+    -- condKernel-based a.e. bound on the conditional-expectation gap:
+    (hcond_ae_bound :
+      ∀ᵐ b ∂(μ.map (MeasurableEquiv.piEquivPiSubtypeProd
+        (fun _ : I => S) (fun i => i ∈ N_f))).fst,
+        |(∫ ω, g ((MeasurableEquiv.piEquivPiSubtypeProd
+          (fun _ : I => S) (fun i => i ∈ N_f)).symm (b, ω))
+          ∂(μ.map (MeasurableEquiv.piEquivPiSubtypeProd
+            (fun _ : I => S) (fun i => i ∈ N_f))).condKernel b)
+          - ∫ σ, g σ ∂μ| ≤ K) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤ Bf * K := by
+  -- Set up the product decomposition
+  let p : I → Prop := fun i => i ∈ N_f
+  haveI : DecidablePred p := fun i => N_f.decidableMem i
+  let e := MeasurableEquiv.piEquivPiSubtypeProd (fun _ : I => S) p
+  let ρ := μ.map e
+  haveI : IsProbabilityMeasure ρ :=
+    Measure.isProbabilityMeasure_map e.measurable.aemeasurable
+  haveI : Nonempty ({i // ¬p i} → S) := ⟨fun _ => default⟩
+  set Eg := ∫ σ, g σ ∂μ
+  -- Centering identity: Cov(f, g) = E[f · (g - Eg)]
+  have hfEg : Integrable (fun σ => f σ * Eg) μ := by
+    have : (fun σ => f σ * Eg) = fun σ => Eg * f σ := by ext σ; ring
+    rw [this]; exact hf.const_mul Eg
+  have hfgc : Integrable (fun σ => f σ * (g σ - Eg)) μ := by
+    have : (fun σ => f σ * (g σ - Eg)) = fun σ => f σ * g σ - Eg * f σ := by
+      ext σ; ring
+    rw [this]; exact hfg.sub (hf.const_mul Eg)
+  have cov_eq : ∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * Eg =
+      ∫ σ, f σ * (g σ - Eg) ∂μ := by
+    have h1 : ∫ σ, f σ * (g σ - Eg) ∂μ =
+        ∫ σ, (f σ * g σ - Eg * f σ) ∂μ := by
+      apply integral_congr_ae; filter_upwards with σ; ring
+    rw [h1, integral_sub hfg (hf.const_mul Eg)]
+    have h2 : ∫ σ, Eg * f σ ∂μ = Eg * ∫ σ, f σ ∂μ := integral_const_mul Eg f
+    linarith
+  rw [cov_eq]
+  -- Define h := f * (g - Eg) transported to the product space
+  let fbar : ({i // p i} → S) × ({i // ¬p i} → S) → ℝ :=
+    fun x => f (e.symm x)
+  let gbar : ({i // p i} → S) × ({i // ¬p i} → S) → ℝ :=
+    fun x => g (e.symm x)
+  let hprod : ({i // p i} → S) × ({i // ¬p i} → S) → ℝ :=
+    fun x => fbar x * (gbar x - Eg)
+  -- Transport the integral to the product space
+  have h_transport : ∫ σ, f σ * (g σ - Eg) ∂μ = ∫ x, hprod x ∂ρ := by
+    rw [show ρ = μ.map e from rfl, integral_map_equiv e]
+    apply integral_congr_ae; filter_upwards with σ
+    show f σ * (g σ - Eg) = f (e.symm (e σ)) * (g (e.symm (e σ)) - Eg)
+    simp
+  -- Show hprod is integrable w.r.t. ρ
+  have hprod_int : Integrable hprod ρ := by
+    rw [show ρ = μ.map e from rfl]
+    rw [integrable_map_equiv e]
+    convert hfgc using 1
+    ext σ; simp [hprod, fbar, gbar, Function.comp]
+  rw [h_transport]
+  -- Apply the condKernel disintegration:
+  -- ∫ hprod dρ = ∫_b ∫_ω hprod(b,ω) d(condKernel b) d(fst)
+  have h_disint : ∫ x, hprod x ∂ρ =
+      ∫ b, ∫ ω, hprod (b, ω) ∂(ρ.condKernel b) ∂ρ.fst :=
+    (Measure.integral_condKernel hprod_int).symm
+  rw [h_disint]
+  -- Key: f is N_f-local, so fbar(b,ω) depends only on b.
+  -- For ANY ω₁ ω₂, fbar(b,ω₁) = fbar(b,ω₂), because e.symm(b,ω) agrees with
+  -- e.symm(b,ω') on N_f.
+  have f_const_fiber : ∀ b ω₁ ω₂, fbar (b, ω₁) = fbar (b, ω₂) := by
+    intro b ω₁ ω₂
+    apply hf_local
+    intro w hw
+    -- e.symm (b,ω) w depends only on b when w ∈ N_f (since p w = True for w ∈ N_f)
+    show (e.symm (b, ω₁)) w = (e.symm (b, ω₂)) w
+    -- e.symm is Equiv.piEquivPiSubtypeProd.symm
+    -- For w ∈ N_f, p w holds, so e.symm (b, ω) w = b ⟨w, hw⟩
+    have : p w := hw
+    change (Equiv.piEquivPiSubtypeProd p (fun _ => S)).symm (b, ω₁) w =
+           (Equiv.piEquivPiSubtypeProd p (fun _ => S)).symm (b, ω₂) w
+    simp [Equiv.piEquivPiSubtypeProd, this]
+  -- Factor f out of the inner integral:
+  -- ∫_ω hprod(b,ω) d(condKernel b) = fbar(b,*) * ∫_ω (gbar(b,ω) - Eg) d(condKernel b)
+  -- We choose an arbitrary ω₀ to evaluate fbar.
+  haveI : Nonempty ({i // ¬p i} → S) := ⟨fun _ => default⟩
+  let ω₀ : {i // ¬p i} → S := fun _ => default
+  -- gbar is integrable: transport hg through the equivalence
+  have hgbar_int_rho : Integrable gbar ρ := by
+    show Integrable (g ∘ e.symm) (μ.map e)
+    rw [integrable_map_equiv e]
+    convert hg using 1; ext σ; simp [Function.comp]
+  -- For a.e. b, gbar(b, ·) is integrable against condKernel b
+  have hgbar_ck_ae : ∀ᵐ b ∂ρ.fst,
+      Integrable (fun ω => gbar (b, ω)) (ρ.condKernel b) :=
+    hgbar_int_rho.condKernel_ae
+  -- condKernel b is always a probability measure
+  haveI : IsMarkovKernel ρ.condKernel := inferInstance
+  -- The inner integral simplifies
+  have h_inner : ∀ᵐ b ∂ρ.fst,
+      ∫ ω, hprod (b, ω) ∂(ρ.condKernel b) =
+        fbar (b, ω₀) * ((∫ ω, gbar (b, ω) ∂(ρ.condKernel b)) - Eg) := by
+    filter_upwards [hgbar_ck_ae] with b hgbar_b
+    -- hprod(b,ω) = fbar(b,ω₀) * (gbar(b,ω) - Eg) since fbar is constant in ω
+    have h_eq : ∀ ω, hprod (b, ω) = fbar (b, ω₀) * (gbar (b, ω) - Eg) := by
+      intro ω; show fbar (b, ω) * (gbar (b, ω) - Eg) = _
+      rw [f_const_fiber b ω ω₀]
+    rw [integral_congr_ae (Filter.Eventually.of_forall h_eq), integral_const_mul]
+    congr 1
+    haveI : IsProbabilityMeasure (ρ.condKernel b) :=
+      IsMarkovKernel.isProbabilityMeasure b
+    rw [integral_sub hgbar_b (integrable_const Eg)]
+    simp [integral_const, measure_univ]
+  -- Now bound: |∫_b fbar(b,ω₀) * (cond_mean_g(b) - Eg) d(fst)| ≤ Bf * K
+  -- using |fbar| ≤ Bf and |cond_mean_g(b) - Eg| ≤ K for a.e. b
+  set φ : ({i // p i} → S) → ℝ :=
+    fun b => (∫ ω, gbar (b, ω) ∂(ρ.condKernel b)) - Eg
+  -- The ae bound on φ
+  -- hcond_ae_bound uses `let` bindings for p/e/ρ that are definitionally equal to ours.
+  -- We extract the bound by working through the filter_upwards.
+  -- Extract the ae bound from hcond_ae_bound.
+  -- The let bindings in hcond_ae_bound are definitionally equal to our p/e/ρ,
+  -- but Lean needs help seeing through them.
+  -- The ae bound (use withReducible to force kernel-level comparison)
+  have hφ_ae : ∀ᵐ b ∂ρ.fst, |φ b| ≤ K := by
+    have := hcond_ae_bound
+    simp only [MeasurableEquiv.piEquivPiSubtypeProd, Equiv.piEquivPiSubtypeProd] at this ⊢
+    exact this
+  -- The function b ↦ ∫ hprod(b,·) d(condKernel b) is integrable (from hprod_int)
+  have h_inner_int : Integrable (fun b => ∫ ω, hprod (b, ω) ∂(ρ.condKernel b)) ρ.fst :=
+    hprod_int.integral_condKernel
+  -- The function b ↦ fbar(b,ω₀) * φ(b) is integrable (a.e. equal to the above)
+  have h_prod_int : Integrable (fun b => fbar (b, ω₀) * φ b) ρ.fst := by
+    apply h_inner_int.congr
+    filter_upwards [h_inner] with b hb; rw [← hb]
+  -- ρ.fst is a probability measure
+  have hfst_prob : IsProbabilityMeasure ρ.fst := by
+    constructor; rw [Measure.fst_univ]; exact measure_univ (μ := ρ)
+  -- Rewrite the integral using the inner simplification and bound
+  calc |∫ b, ∫ ω, hprod (b, ω) ∂(ρ.condKernel b) ∂ρ.fst|
+      = |∫ b, fbar (b, ω₀) * φ b ∂ρ.fst| := by
+        congr 1; exact integral_congr_ae h_inner
+    _ ≤ ∫ b, |fbar (b, ω₀) * φ b| ∂ρ.fst := by
+        have h := norm_integral_le_integral_norm
+          (f := fun b => fbar (b, ω₀) * φ b) (μ := ρ.fst)
+        simp only [Real.norm_eq_abs] at h; exact h
+    _ = ∫ b, |fbar (b, ω₀)| * |φ b| ∂ρ.fst := by
+        congr 1; ext b; exact abs_mul _ _
+    _ ≤ ∫ _, Bf * K ∂ρ.fst := by
+        apply integral_mono_ae
+        · -- |fbar * φ| is integrable since fbar * φ is
+          have : Integrable (fun b => ‖fbar (b, ω₀) * φ b‖) ρ.fst := h_prod_int.norm
+          convert this using 1; ext b; rw [Real.norm_eq_abs, abs_mul]
+        · exact integrable_const _
+        · filter_upwards [hφ_ae] with b hb
+          exact mul_le_mul (hBf _) hb (abs_nonneg _) hBf_nn
+    _ = Bf * K := by
+        simp [integral_const, measure_univ]
+
+/-! ### Multi-site covariance bound (compact, truly uncountable) -/
+
+/-- **Full two-sided multi-site covariance bound (compact spin space, no countability).**
+
+Removes `[Countable S]` from `covariance_bound_gibbs_multisite_general_nocount`
+by using `Measure.condKernel` disintegration instead of discrete fiber decomposition.
+
+The hypothesis `hcond_ae_bound` provides the a.e. condKernel-based bound on
+the conditional-expectation gap of `g`. This is the continuous analog of the
+`hcond_bound` hypothesis in `covariance_tower_property`. -/
+theorem covariance_bound_gibbs_multisite_general_nocount
+    [Inhabited S] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (f g : SpinConfig I S → ℝ)
+    (hf_meas : Measurable f) (hg_meas : Measurable g)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (N_f N_g : Finset I)
+    (hf_local : ∀ σ τ, (∀ w ∈ N_f, σ w = τ w) → f σ = f τ)
+    (hg_local : ∀ σ τ, (∀ w ∈ N_g, σ w = τ w) → g σ = g τ)
+    (hf : Integrable f μ) (hg : Integrable g μ)
+    (hfg : Integrable (fun σ => f σ * g σ) μ)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal)
+    -- condKernel-based a.e. bound on the conditional-expectation gap of g
+    (hcond_ae_bound :
+      ∀ᵐ b ∂(μ.map (MeasurableEquiv.piEquivPiSubtypeProd
+        (fun _ : I => S) (fun i => i ∈ N_f))).fst,
+        |(∫ ω, g ((MeasurableEquiv.piEquivPiSubtypeProd
+          (fun _ : I => S) (fun i => i ∈ N_f)).symm (b, ω))
+          ∂(μ.map (MeasurableEquiv.piEquivPiSubtypeProd
+            (fun _ : I => S) (fun i => i ∈ N_f))).condKernel b)
+          - ∫ σ, g σ ∂μ| ≤
+          2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
+  have hK_nn : 0 ≤ 2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by
+    refine mul_nonneg (mul_nonneg (by norm_num) hBg_nn) ?_
+    exact Finset.sum_nonneg (fun y _ =>
+      Finset.sum_nonneg (fun x _ => neumannSeriesCoeff_nonneg γ y x))
+  have hswap :
+      (∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x) =
+      ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x :=
+    Finset.sum_comm
+  calc |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)|
+      ≤ Bf * (2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x) :=
+        covariance_tower_property_compact μ f g Bf hBf_nn hBf N_f
+          hf_local hf hg hfg _ hK_nn hcond_ae_bound
+    _ = 2 * Bf * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x := by ring
+    _ = 2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x := by
+        rw [hswap]
+
+/-- **Textbook exponential decay wiring (compact spin space, no countability).**
+
+Removes `[Countable S]` from `covariance_bound_gibbs_multisite_general_nn_dist_nocount`
+by using the condKernel-based `covariance_bound_gibbs_multisite_general_nocount`. -/
+theorem covariance_bound_gibbs_multisite_general_nn_dist_nocount
+    [Inhabited S] [Fintype I]
+    [TopologicalSpace S] [CompactSpace S] [T2Space S] [SecondCountableTopology S]
+    [BorelSpace S]
+    (γ : GibbsSpec I S) (hD : DobrushinCondition γ)
+    (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ]
+    (hμ : IsGibbsMeasure γ μ)
+    (f g : SpinConfig I S → ℝ)
+    (hf_meas : Measurable f) (hg_meas : Measurable g)
+    (Bf Bg : ℝ) (hBf_nn : 0 ≤ Bf) (hBg_nn : 0 ≤ Bg)
+    (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (N_f N_g : Finset I)
+    (hf_local : ∀ σ τ, (∀ w ∈ N_f, σ w = τ w) → f σ = f τ)
+    (hg_local : ∀ σ τ, (∀ w ∈ N_g, σ w = τ w) → g σ = g τ)
+    (hf : Integrable f μ) (hg : Integrable g μ)
+    (hfg : Integrable (fun σ => f σ * g σ) μ)
+    (d : I → I → ℕ)
+    (h_refl : ∀ x, d x x = 0)
+    (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
+    (h_support : ∀ u v, d u v > 1 → influenceCoeff γ u v = 0)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal)
+    -- condKernel-based a.e. bound
+    (hcond_ae_bound :
+      ∀ᵐ b ∂(μ.map (MeasurableEquiv.piEquivPiSubtypeProd
+        (fun _ : I => S) (fun i => i ∈ N_f))).fst,
+        |(∫ ω, g ((MeasurableEquiv.piEquivPiSubtypeProd
+          (fun _ : I => S) (fun i => i ∈ N_f)).symm (b, ω))
+          ∂(μ.map (MeasurableEquiv.piEquivPiSubtypeProd
+            (fun _ : I => S) (fun i => i ∈ N_f))).condKernel b)
+          - ∫ σ, g σ ∂μ| ≤
+          2 * Bg * ∑ y ∈ N_g, ∑ x ∈ N_f, neumannSeriesCoeff γ y x) :
+    |∫ σ, f σ * g σ ∂μ - (∫ σ, f σ ∂μ) * (∫ σ, g σ ∂μ)| ≤
+      2 * Bf * Bg * ∑ x ∈ N_f, ∑ y ∈ N_g, hD.α ^ d y x / (1 - hD.α) := by
+  have h1 := covariance_bound_gibbs_multisite_general_nocount γ hD μ hμ f g hf_meas hg_meas
+    Bf Bg hBf_nn hBg_nn hBf hBg N_f N_g hf_local hg_local hf hg hfg
+    hfinsupp h_dep_F hcond_ae_bound
   have h2 : ∀ x y, neumannSeriesCoeff γ y x ≤ hD.α ^ d y x / (1 - hD.α) :=
     fun x y => neumannSeriesCoeff_nn_dist_bound γ hD d h_refl h_triangle h_support y x
   have h3 : ∑ x ∈ N_f, ∑ y ∈ N_g, neumannSeriesCoeff γ y x ≤
