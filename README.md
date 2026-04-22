@@ -38,9 +38,13 @@ The central result chain:
    the infimum over couplings of the disagreement probability.
    Maximal coupling construction.
 
-8. **Dobrushin uniqueness:** for lattice spin systems, Dobrushin's
-   condition (column sums of influence matrix < 1) implies unique
-   Gibbs measure with exponential correlation decay.
+8. **Dobrushin uniqueness theory:** for lattice spin systems on compact
+   state spaces, Dobrushin's condition (column sums of influence matrix
+   < 1) implies unique Gibbs measure with exponential correlation decay.
+   Includes canonical maximal coupling, iterated Dobrushin coupling via
+   Prokhorov compactness, multi-site covariance bounds via condKernel
+   disintegration, and Neumann series exponential decay. Used by
+   [lgt](https://github.com/mrdouglasny/lgt) for the Yang-Mills mass gap.
 
 9. **Diamagnetic inequality** for finite matrices: |(M+iV)^{-1}(x,y)|
    ≤ M^{-1}(x,y) via heat kernel positivity for Z-matrices.
@@ -142,10 +146,19 @@ MarkovSemigroups/
     Doeblin.lean                -- Doeblin's condition, n-step mixing
   Coupling/                     -- Coupling theory
     TVCoupling.lean             -- TV = inf coupling disagreement, maximal coupling
+    CanonicalCoupling.lean      -- Constructive pointwise-min coupling, Giry measurability
+    DobrushinCoupling.lean      -- Iterated Dobrushin coupling via min-disagreement
+    ProkhorovCoupling.lean      -- Prokhorov coupling for compact spin spaces (0 sorry)
   Dobrushin/                    -- Dobrushin uniqueness for lattice spin systems
     Specification.lean          -- Gibbs specifications, conditional distributions
-    StrongCoupling.lean         -- Strong-coupling verification of Dobrushin condition
     Uniqueness.lean             -- Uniqueness + exponential correlation decay
+    StrongCoupling.lean         -- Strong-coupling verification of Dobrushin condition
+    CovarianceBound.lean        -- Single-site covariance bounds
+    CondTVBridge.lean           -- Conditional TV bridge, single-site disintegration
+    CovarianceBoundMultisite.lean -- Multi-site covariance bounds via condKernel
+    CondKernelDLR.lean          -- condKernel inherits DLR, ae bound
+    NeumannSeries.lean          -- Neumann series for influence matrix
+    FiniteLattice.lean          -- Finite lattice distance structure
   Matrix/                       -- Finite matrix semigroup theory
     HeatKernel.lean             -- exp(-tM) >= 0 for Z-matrices (proved)
     LaplaceTransform.lean       -- M^{-1} = integral exp(-tM) dt
@@ -156,8 +169,9 @@ MarkovSemigroups/
 ## Formalization status
 
 **Zero sorry's in core theory** (Abstract/ + Diffusion/ + Convergence/ +
-Instances/BrascampLieb). Sorry's exist only in concrete instances
-(TwoPoint, Euclidean), newer modules (Dobrushin), and Matrix/.
+Coupling/ + Instances/BrascampLieb + Dobrushin covariance bounds).
+Sorry's exist only in concrete instances (TwoPoint, Euclidean),
+one unused theorem in NeumannSeries, and Matrix/.
 
 ### Fully proved (zero sorry's)
 
@@ -197,17 +211,27 @@ Instances/BrascampLieb). Sorry's exist only in concrete instances
   All fields mathematically true; sorry's are Lean infrastructure gaps
   (Fubini, differentiation under integral).
 
-### TV coupling (Coupling/TVCoupling.lean)
+### TV coupling (Coupling/)
 
 - `tvDist_le_coupling`: TV ≤ P(σ ≠ τ) for any coupling — **proved**
 - `maximal_coupling`: optimal coupling construction — **proved**
 - `tvDist_eq_inf_coupling`: coupling characterization — **proved**
+- `canonicalMaximalCoupling`: constructive pointwise-min coupling — **proved**
+- Giry measurability of canonical coupling — **proved** (for countable S)
+- `dobrushin_iterated_coupling_fintype`: min-disagreement coupling (finite S) — **proved**
+- `prokhorov_coupling_theorem`: min-disagreement coupling (compact S) — **proved**
+  via Prokhorov compactness + Portmanteau lsc + kernel Radon-Nikodym
 
-### Dobrushin uniqueness (Dobrushin/ — work in progress)
+### Dobrushin uniqueness (Dobrushin/)
 
 - `GibbsSpec`, `IsGibbsMeasure`: Gibbs specifications — **defined**
 - `DobrushinCondition`: influence matrix condition — **defined**
-- `dobrushin_uniqueness`, `dobrushin_correlation_decay` — **in progress** (3 sorry's)
+- `dobrushin_uniqueness`: Dobrushin uniqueness theorem — **proved**
+- `influenceCoeff`, `influenceCoeff_le_of_cylinder_ratio_bound` — **proved**
+- Single-site disintegration (`condSingleSiteMeasure`) — **proved**
+- Multi-site covariance bounds via `condKernel` — **proved**
+- `condKernel_ae_bound`: condKernel fiber inherits DLR — **proved**
+- Neumann series exponential decay — **proved** (modulo one unused sorry)
 
 ### Matrix semigroup theory (Matrix/)
 
