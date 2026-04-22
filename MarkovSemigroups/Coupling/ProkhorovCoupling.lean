@@ -1068,4 +1068,30 @@ theorem prokhorov_coupling_theorem
   -- Step 6: Combine P{z-ne} ≤ Q_z{z-ne} ≤ Σ C(z,w) * P{w-ne}
   exact le_trans h_nondecrease hQ_z_contract
 
+/-- Alias for backward compatibility. Previously an axiom in DobrushinCoupling.lean,
+now proved via `prokhorov_coupling_theorem`. -/
+theorem dobrushin_coupling_axiom_compact
+    (γ : GibbsSpec I S)
+    (μ₁ μ₂ : Measure Ω)
+    [IsProbabilityMeasure μ₁] [IsProbabilityMeasure μ₂]
+    (T : Set I)
+    (hμ₁ : ∀ z ∈ T, ∀ (A : Set Ω),
+      MeasurableSet A →
+      (μ₁ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₁)
+    (hμ₂ : ∀ z ∈ T, ∀ (A : Set Ω),
+      MeasurableSet A →
+      (μ₂ A).toReal = ∫ σ, (γ.condDist {z} σ A).toReal ∂μ₂)
+    (hfinsupp : ∀ z, (Function.support (influenceCoeff γ z ·)).Finite)
+    (h_dep_F : ∀ (z : I) (B : Set S), MeasurableSet B →
+      ∀ (σ τ : SpinConfig I S), (∀ w ∈ (hfinsupp z).toFinset, σ w = τ w) →
+        (γ.condDist {z} σ ((· z) ⁻¹' B)).toReal =
+        (γ.condDist {z} τ ((· z) ⁻¹' B)).toReal) :
+    ∃ (P : Measure (Ω × Ω))
+      (_ : IsCoupling P μ₁ μ₂),
+      ∀ z ∈ T,
+        (P {p : Ω × Ω | p.1 z ≠ p.2 z}).toReal ≤
+          ∑' w, influenceCoeff γ z w *
+            (P {p : Ω × Ω | p.1 w ≠ p.2 w}).toReal :=
+  prokhorov_coupling_theorem γ μ₁ μ₂ T hμ₁ hμ₂ hfinsupp h_dep_F
+
 end

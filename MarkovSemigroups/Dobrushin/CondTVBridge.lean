@@ -33,6 +33,7 @@ import MarkovSemigroups.Convergence.IntegralBounds
 import MarkovSemigroups.Coupling.TVCoupling
 import MarkovSemigroups.Coupling.DobrushinCoupling
 import MarkovSemigroups.Coupling.CanonicalCoupling
+import MarkovSemigroups.Coupling.ProkhorovCoupling
 
 open MeasureTheory SingleSiteDisintegration Topology Filter
 
