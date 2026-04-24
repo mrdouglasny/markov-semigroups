@@ -1,5 +1,19 @@
 # markov-semigroups Development Plan
 
+> **Historical document.** This is the original development plan,
+> written before the project took its current shape. The file
+> layout described below (e.g. `OrnsteinUhlenbeck/`,
+> `FunctionalInequalities/`) does not match the current tree —
+> the actual layout is `Abstract/`, `Diffusion/`, `Convergence/`,
+> `Coupling/`, `Dobrushin/`, `Instances/`, `Matrix/`, documented in
+> `README.md` and `CLAUDE.md`. Phases 1–3 are largely done
+> (Bakry-Émery, LSI, Holley-Stroock, Doeblin, TV coupling,
+> spectral gap); a large Dobrushin-uniqueness layer was added
+> beyond the original plan and is now used by
+> [lgt](https://github.com/mrdouglasny/lgt). Phase 4 (interacting
+> spectral gap for P(Φ)₂) remains research; the Gemini review at
+> the bottom of this file is still current.
+
 ## Overview
 
 Build functional inequality infrastructure (Poincaré, log-Sobolev,

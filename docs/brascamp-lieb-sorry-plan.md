@@ -1,6 +1,11 @@
 # Plan: Filling Brascamp-Lieb Sorry's
 
-Status: 3 sorry's remaining after `ffb9f1f`
+> **STATUS: RESOLVED.** All sorries in Brascamp-Lieb are closed.
+> See `Instances/BrascampLieb.lean` for the final proofs and
+> `README.md` / `status.md` for the current audit. This document
+> is kept as a historical record of the implementation plan.
+
+Status at time of writing: 3 sorry's remaining after `ffb9f1f`.
 
 ## Priority Ordering
 

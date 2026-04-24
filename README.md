@@ -191,16 +191,18 @@ one unused theorem in NeumannSeries, and Matrix/.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 4 matrix)
+### Postulated as textbook axioms (2 core + 2 matrix = 4 total)
 
 | Axiom | Reference |
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
-| `exp_entryNonneg_of_entryNonneg` | Nonneg matrix exp (trivial, needs tsum API) |
 | `m_matrix_inverse_nonneg` | M-matrix theory (Berman-Plemmons Ch. 6) |
-| `trotter_product_formula` | Lie-Trotter (BCH remainder estimate) |
 | `diamagnetic_resolvent` | Diamagnetic inequality (assembles 5 steps) |
+
+(`exp_entryNonneg_of_entryNonneg` and `trotter_product_formula` were
+previously axiomatized but are now proved as theorems in
+`Matrix/HeatKernel.lean` and `Matrix/Trotter.lean`.)
 
 ### Concrete instances
 
