@@ -1,10 +1,13 @@
-**4 axioms. 11 sorry's total**, all in concrete instance files:
-2 in the TwoPoint instance (mathematically false for jump processes
-— validates that the diffusion axiom is a real constraint), and 9
-in the Euclidean Gaussian instance (Lean infrastructure gaps:
-Fubini, differentiation under the integral).
-**Zero sorry's in core theory** (Abstract/, Diffusion/,
-Convergence/, Coupling/, Dobrushin/, Matrix/, Instances/BrascampLieb).
+**4 axioms. 11 sorry's total**, all quarantined in
+`Instances/WorkInProgress/`: 2 in TwoPoint (mathematically false
+for jump processes — validates that the diffusion axiom is a real
+constraint) and 9 in Euclidean (Lean infrastructure gaps: Fubini,
+differentiation under the integral — the underlying math is
+Gross's 1975 Gaussian log-Sobolev inequality).
+**Zero sorry's in the main tree** (Abstract/, Diffusion/,
+Convergence/, Coupling/, Dobrushin/, Matrix/, and the three
+sorry-free concrete instances in `Instances/`: BrascampLieb,
+Torus, GFFIdentification).
 
 ## Project structure
 
@@ -14,8 +17,8 @@ Convergence/, Coupling/, Dobrushin/, Matrix/, Instances/BrascampLieb).
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
-| Instances/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
-| Instances/Euclidean | 1 | 9 | 0 | Standard Gaussian (sorry's = Lean infra gaps) |
+| Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
+| Instances/WorkInProgress/Euclidean | 1 | 9 | 0 | Standard Gaussian (sorry's = Lean infra gaps) |
 | Matrix/ | 4 | 0 | 2 | Heat kernel, Trotter, diamagnetic inequality |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
 | Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
@@ -49,11 +52,11 @@ Convergence/, Coupling/, Dobrushin/, Matrix/, Instances/BrascampLieb).
 
 ## Sorry's by location
 
-### Instances/TwoPoint.lean (2 sorry's — mathematically false)
+### Instances/WorkInProgress/TwoPoint.lean (2 sorry's — mathematically false)
 - `Γ_leibniz` — Leibniz/diffusion property fails for jump processes
 - `semigroup_entropy_sq_decay_bound` — consequence of Leibniz failure
 
-### Instances/Euclidean.lean (9 sorry's — hard analytic, IsCore tractable ones filled)
+### Instances/WorkInProgress/Euclidean.lean (9 sorry's — hard analytic, IsCore tractable ones filled)
 Tractable sorries using the `IsCore` hypothesis (smooth + bounded test
 functions) were resolved in 113cb3c. Remaining:
 - `IsCore_semigroup` — smoothness of `P_t f` via differentiation under integral
@@ -113,7 +116,7 @@ Infrastructure for lgt mass-gap proof. 0 axioms, 0 sorries.
 - `dobrushin_correlation_decay_direct`: direct route, `|Cov| ≤ C·α^n` from iterated-coupling bridge
 - `dobrushin_correlation_decay_nn_direct`: lattice specialization, `|Cov| ≤ C·α^{d(x,y)}` (no `1/(1-α)` factor) — matches the form consumed by lgt's `dobrushin_correlation_bound`
 
-### Gaussian instance (Instances/Euclidean.lean)
+### Gaussian instance (Instances/WorkInProgress/Euclidean.lean)
 - `ouSemigroup` (Mehler formula), `ouGamma`, `ouEnergy` — defined
 - `energy_smul_left`, `energy_symm`, `energy_nonneg`, `energy_const` — **proved**
 - `Γ_symm`, `Γ_nonneg`, `Γ_const`, `energy_eq_integral_Γ` — **proved**

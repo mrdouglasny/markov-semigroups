@@ -132,12 +132,13 @@ MarkovSemigroups/
   Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
     CarreDuChamp.lean           -- BakryEmerySpace: Gamma, semigroup, curvature
     L2Semigroup.lean            -- Bridge to hille-yosida semigroup theory
-  Instances/                    -- Layer 3: concrete spaces
-    Euclidean.lean              -- R: standard Gaussian, OU semigroup, rho=1
-    TwoPoint.lean               -- {0,1}: simplest instance (19/21 fields proved)
+  Instances/                    -- Layer 3: concrete spaces (sorry-free)
     Torus.lean                  -- T^d: heat semigroup, Fourier modes (header)
     GFFIdentification.lean      -- OU invariant on T^d = GFF (header)
     BrascampLieb.lean           -- Brascamp-Lieb for log-concave measures
+    WorkInProgress/             -- Layer 3, in progress (honest sorries)
+      Euclidean.lean            --   R: standard Gaussian, OU semigroup (9 sorry)
+      TwoPoint.lean             --   {0,1}: diffusion axiom fails (2 sorry)
   Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
     RelativeEntropy.lean        -- Entropy decay under semigroup
@@ -168,12 +169,16 @@ MarkovSemigroups/
 
 ## Formalization status
 
-**Zero sorry's in core theory** (Abstract/ + Diffusion/ + Convergence/ +
-Coupling/ + Instances/BrascampLieb + Dobrushin/ + Matrix/).
-Sorry's exist only in concrete instances: 9 in Euclidean (Lean
-infrastructure gaps — Fubini, differentiation under the integral)
-and 2 in TwoPoint (mathematically false for jump processes —
-validates that the diffusion axiom is a real constraint).
+**Zero sorry's in the main tree** (Abstract/, Diffusion/, Convergence/,
+Coupling/, Dobrushin/, Matrix/, and the three sorry-free instances in
+`Instances/`: BrascampLieb, Torus, GFFIdentification). 11 sorries
+remain, all quarantined in `Instances/WorkInProgress/`: 9 in Euclidean
+(Lean infrastructure gaps — Fubini, differentiation under the
+integral) and 2 in TwoPoint (mathematically false for jump processes
+— validates that the diffusion axiom is a real constraint). These
+WIP instances are imported by the top-level module so that callers
+of `#print axioms` on any theorem that transitively uses them will
+see the sorry surface honestly.
 
 ### Fully proved (zero sorry's)
 

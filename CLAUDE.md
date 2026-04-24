@@ -63,10 +63,13 @@ MarkovSemigroups/
     CondKernelDLR.lean          --   condKernel fiber inherits DLR
     NeumannSeries.lean          --   Neumann series / distance-aware bound
     FiniteLattice.lean          --   Finite lattice distance structure
-  Instances/                    -- Concrete spaces
+  Instances/                    -- Concrete spaces (sorry-free)
     BrascampLieb.lean           --   Brascamp-Lieb inequality (proved)
-    TwoPoint.lean               --   {0,1} uniform (2 sorry's = false)
-    Euclidean.lean              --   Standard Gaussian (9 sorry's = Lean gaps)
+    Torus.lean                  --   Torus heat semigroup (header)
+    GFFIdentification.lean      --   OU invariant = GFF (header)
+    WorkInProgress/             -- Concrete spaces with sorries (honest)
+      TwoPoint.lean             --   {0,1} uniform (2 sorry's = math false)
+      Euclidean.lean            --   Standard Gaussian (9 sorry's = Lean gaps)
   Matrix/                       -- Finite matrix semigroup theory
     HeatKernel.lean             --   exp(-tM) ≥ 0 for Z-matrices (proved)
     LaplaceTransform.lean       --   M⁻¹ = ∫exp(-tM) dt (1 axiom)

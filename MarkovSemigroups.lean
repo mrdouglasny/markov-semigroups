@@ -11,11 +11,14 @@ import MarkovSemigroups.Diffusion.BakryEmery
 import MarkovSemigroups.Diffusion.OrnsteinUhlenbeck
 import MarkovSemigroups.Diffusion.InvariantMeasure
 
--- Concrete instances
-import MarkovSemigroups.Instances.Euclidean
+-- Concrete instances (sorry-free)
 import MarkovSemigroups.Instances.Torus
 import MarkovSemigroups.Instances.GFFIdentification
 import MarkovSemigroups.Instances.BrascampLieb
+
+-- Work-in-progress instances (contain sorries — see README)
+import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import MarkovSemigroups.Instances.WorkInProgress.TwoPoint
 
 -- Matrix semigroup theory (diamagnetic inequality)
 import MarkovSemigroups.Matrix.HeatKernel
