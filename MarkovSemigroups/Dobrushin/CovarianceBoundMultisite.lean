@@ -75,6 +75,10 @@ import Mathlib.Probability.Kernel.Disintegration.Integral
 import Mathlib.Topology.Metrizable.Urysohn
 import Mathlib.Topology.Metrizable.CompletelyMetrizable
 
+set_option linter.unusedSectionVars false
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 open MeasureTheory SingleSiteDisintegration Topology Filter Set TopologicalSpace
   ProbabilityTheory
 
@@ -205,7 +209,7 @@ lemma condDist_multiFiber_eq_zero [MeasurableSingletonClass S]
     (σ : SpinConfig I S) (a : I → S)
     (hσ : ¬ (∀ w ∈ N_f, σ w = a w)) :
     γ.condDist {z} σ (multiFiber N_f a) = 0 := by
-  push_neg at hσ
+  push Not at hσ
   obtain ⟨w, hwN, hne⟩ := hσ
   have hwz : w ≠ z := by
     intro hwz'; subst hwz'; exact hz hwN
@@ -1515,7 +1519,7 @@ private lemma abs_sub_g_le_sum_indicator_Ng
     intro y _
     exact Set.indicator_nonneg (fun _ _ => by norm_num) _
   · -- Some coordinate differs: use boundedness.
-    push_neg at hagree
+    push Not at hagree
     obtain ⟨y₀, hy₀N, hy₀ne⟩ := hagree
     have hy₀mem :
         ((σ, τ) : SpinConfig I S × SpinConfig I S) ∈

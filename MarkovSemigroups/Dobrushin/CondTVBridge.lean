@@ -35,6 +35,10 @@ import MarkovSemigroups.Coupling.DobrushinCoupling
 import MarkovSemigroups.Coupling.CanonicalCoupling
 import MarkovSemigroups.Coupling.ProkhorovCoupling
 
+set_option linter.unusedSectionVars false
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 open MeasureTheory SingleSiteDisintegration Topology Filter
 
 noncomputable section

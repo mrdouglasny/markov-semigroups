@@ -56,6 +56,10 @@ import MarkovSemigroups.Coupling.CanonicalCoupling
 import Mathlib.MeasureTheory.Measure.Prokhorov
 import Mathlib.Topology.Order.Compact
 
+set_option linter.unusedSectionVars false
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 open MeasureTheory Finset Classical
 
 noncomputable section

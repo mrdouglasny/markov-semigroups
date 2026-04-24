@@ -43,6 +43,10 @@ import MarkovSemigroups.Dobrushin.CovarianceBoundMultisite
 import Mathlib.Topology.Metrizable.Urysohn
 import Mathlib.Topology.Metrizable.CompletelyMetrizable
 
+set_option linter.unusedSectionVars false
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 open MeasureTheory ProbabilityTheory CovarianceBoundMultisite Topology Filter Set
   TopologicalSpace
 

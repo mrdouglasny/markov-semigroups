@@ -16,6 +16,10 @@ single-site disintegration (M1).
 import MarkovSemigroups.Dobrushin.NeumannSeries
 import MarkovSemigroups.Tools.SingleSiteDisintegration
 
+set_option linter.unusedSectionVars false
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 open MeasureTheory SingleSiteDisintegration
 
 noncomputable section

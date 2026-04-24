@@ -35,6 +35,10 @@ import Mathlib.Probability.Kernel.MeasurableLIntegral
 import Mathlib.Probability.Kernel.RadonNikodym
 import Mathlib.Probability.Kernel.Composition.Prod
 
+set_option linter.unusedSectionVars false
+set_option linter.unusedSimpArgs false
+set_option linter.unusedVariables false
+
 open MeasureTheory MeasureTheory.Measure Topology Filter ProbabilityTheory
 open scoped ENNReal NNReal
 
