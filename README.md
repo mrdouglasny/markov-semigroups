@@ -169,9 +169,11 @@ MarkovSemigroups/
 ## Formalization status
 
 **Zero sorry's in core theory** (Abstract/ + Diffusion/ + Convergence/ +
-Coupling/ + Instances/BrascampLieb + Dobrushin covariance bounds).
-Sorry's exist only in concrete instances (TwoPoint, Euclidean),
-one unused theorem in NeumannSeries, and Matrix/.
+Coupling/ + Instances/BrascampLieb + Dobrushin/ + Matrix/).
+Sorry's exist only in concrete instances: 9 in Euclidean (Lean
+infrastructure gaps — Fubini, differentiation under the integral)
+and 2 in TwoPoint (mathematically false for jump processes —
+validates that the diffusion axiom is a real constraint).
 
 ### Fully proved (zero sorry's)
 
@@ -233,7 +235,7 @@ previously axiomatized but are now proved as theorems in
 - Single-site disintegration (`condSingleSiteMeasure`) — **proved**
 - Multi-site covariance bounds via `condKernel` — **proved**
 - `condKernel_ae_bound`: condKernel fiber inherits DLR — **proved**
-- Neumann series exponential decay — **proved** (modulo one unused sorry)
+- Neumann series exponential decay — **proved**
 
 ### Matrix semigroup theory (Matrix/)
 

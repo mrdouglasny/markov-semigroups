@@ -1,14 +1,10 @@
-# markov-semigroups — Status
-
-**4 axioms. 12 sorry's total**: 1 orphan in Dobrushin (in an unused
-single-site B2 theorem, `dobrushin_covariance_iterateInfluence_bound`,
-pending M1–M3 infrastructure — see its docstring; nothing downstream
-depends on it), 2 in the TwoPoint instance (mathematically false for
-jump processes — validates that the diffusion axiom is a real
-constraint), and 9 in the Euclidean Gaussian instance (Lean
-infrastructure gaps: Fubini, differentiation under the integral).
-**Zero sorry's in any theorem actually consumed by downstream
-projects (lgt, pphi2, etc.).**
+**4 axioms. 11 sorry's total**, all in concrete instance files:
+2 in the TwoPoint instance (mathematically false for jump processes
+— validates that the diffusion axiom is a real constraint), and 9
+in the Euclidean Gaussian instance (Lean infrastructure gaps:
+Fubini, differentiation under the integral).
+**Zero sorry's in core theory** (Abstract/, Diffusion/,
+Convergence/, Coupling/, Dobrushin/, Matrix/, Instances/BrascampLieb).
 
 ## Project structure
 
@@ -22,7 +18,7 @@ projects (lgt, pphi2, etc.).**
 | Instances/Euclidean | 1 | 9 | 0 | Standard Gaussian (sorry's = Lean infra gaps) |
 | Matrix/ | 4 | 0 | 2 | Heat kernel, Trotter, diamagnetic inequality |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
-| Dobrushin/ | 5 | 1 (orphan) | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
+| Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
 
 ## Axioms
 
@@ -68,15 +64,13 @@ functions) were resolved in 113cb3c. Remaining:
 - `semigroup_ergodic` — L² convergence of OU semigroup
 - `semigroup_entropy_sq_decay_bound`, `semigroup_entropy_sq_ergodic` — entropy analysis
 
-### Dobrushin/ (1 orphan sorry)
+### Dobrushin/ (0 sorry's)
 Complete: Specification, Uniqueness (with bridge hypothesis for
-hMargToFull), StrongCoupling, FiniteLattice, most of NeumannSeries.
-One sorry in `dobrushin_covariance_iterateInfluence_bound`
-(NeumannSeries.lean:779) — a single-site-local B2 theorem pending
-the M1–M3 infrastructure listed in its docstring. This theorem is
-not referenced by any downstream consumer; lgt's mass-gap proof
-uses the multisite path in `CovarianceBoundMultisite.lean`, which
-is independent.
+hMargToFull), StrongCoupling, FiniteLattice, NeumannSeries,
+CovarianceBoundMultisite, CondTVBridge, CondKernelDLR. An earlier
+single-site B2 stub (`dobrushin_covariance_iterateInfluence_bound`
+and its corollary) was removed as subsumed by the multisite bound
+in `CovarianceBoundMultisite.lean`.
 
 ## Proved results (highlights)
 
@@ -107,9 +101,7 @@ is independent.
 - `euler_factor_nonneg`, `isEntryNonneg_pow/mul/add` — **proved**
 
 ### Dobrushin correlation decay (Dobrushin/NeumannSeries.lean)
-Infrastructure for lgt mass-gap proof. 0 axioms. 1 orphan sorry in
-`dobrushin_covariance_iterateInfluence_bound` (not consumed
-downstream); all results listed below are fully proved.
+Infrastructure for lgt mass-gap proof. 0 axioms, 0 sorries.
 - `iterateInfluence`: n-step influence matrix `(C^n)_{xy}` — defined
 - `iterateInfluence_pointwise_bound`: `(C^n)_{xy} ≤ α^n` — **proved**
 - `iterateInfluence_dist_zero`: `(C^n)_{xy} = 0` for `n < d(x,y)/R` under finite-range influence — **proved**
