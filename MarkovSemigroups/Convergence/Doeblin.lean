@@ -23,6 +23,8 @@ import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Measure.GiryMonad
 import MarkovSemigroups.Convergence.IntegralBounds
 
+set_option linter.unusedSimpArgs false
+
 open MeasureTheory
 
 noncomputable section
@@ -63,7 +65,7 @@ structure DoeblinCondition {X : Type*} [MeasurableSpace X]
 /-- **Doeblin one-step contraction.** -/
 theorem doeblin_one_step_contraction {X : Type*} [MeasurableSpace X]
     (μ π : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure π]
-    (ε : ℝ) (hε : 0 < ε) (hε1 : ε ≤ 1)
+    (ε : ℝ) (_hε : 0 < ε) (hε1 : ε ≤ 1)
     (hmin : ∀ (A : Set X), MeasurableSet A →
       ε * (π A).toReal ≤ (μ A).toReal) :
     ∀ (A : Set X), MeasurableSet A →

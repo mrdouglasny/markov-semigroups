@@ -27,6 +27,8 @@ needed for infinite lattices or for correlation decay bounds.
 
 import MarkovSemigroups.Dobrushin.Specification
 
+set_option linter.unusedSimpArgs false
+
 open MeasureTheory Finset
 
 noncomputable section

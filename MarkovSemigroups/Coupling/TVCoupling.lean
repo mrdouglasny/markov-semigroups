@@ -47,6 +47,8 @@ import Mathlib.MeasureTheory.Measure.MeasureSpace
 import Mathlib.MeasureTheory.Measure.Prod
 import Mathlib.MeasureTheory.Measure.Decomposition.RadonNikodym
 
+set_option linter.unusedSimpArgs false
+
 open MeasureTheory Set
 
 noncomputable section
@@ -594,7 +596,7 @@ theorem coupling_coord_ne_le (P : Measure (X × X))
     (μ ν : Measure X) [IsProbabilityMeasure μ] [IsProbabilityMeasure ν]
     (hP : IsCoupling P μ ν)
     {Y : Type*} [MeasurableSpace Y]
-    (π : X → Y) (hπ : Measurable π) :
+    (π : X → Y) (_hπ : Measurable π) :
     (P {p : X × X | π p.1 ≠ π p.2}).toReal ≤
       (P {p : X × X | p.1 ≠ p.2}).toReal := by
   have := hP.isProb
@@ -614,7 +616,7 @@ private lemma pointwise_lipschitz_telescope
     {ι : Type*} [DecidableEq ι]
     {S : Type*} [DecidableEq S]
     (h : (ι → S) → ℝ)
-    (c : ι → ℝ) (hc_nn : ∀ y, 0 ≤ c y)
+    (c : ι → ℝ) (_hc_nn : ∀ y, 0 ≤ c y)
     (hc_lip : ∀ (σ τ : ι → S) (y : ι),
       (∀ z, z ≠ y → σ z = τ z) → |h σ - h τ| ≤ c y)
     (F : Finset ι)

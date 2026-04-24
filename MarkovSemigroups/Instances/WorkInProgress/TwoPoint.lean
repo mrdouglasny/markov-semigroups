@@ -21,6 +21,8 @@ import MarkovSemigroups.Diffusion.CarreDuChamp
 import Mathlib.MeasureTheory.Integral.Bochner.SumMeasure
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 
+set_option linter.unusedSimpArgs false
+
 open MeasureTheory Filter Set Real
 
 noncomputable section

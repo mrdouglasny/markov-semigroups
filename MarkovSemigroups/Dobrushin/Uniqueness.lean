@@ -44,6 +44,8 @@ import Mathlib.Topology.Algebra.InfiniteSum.Constructions
 import Mathlib.Topology.Algebra.InfiniteSum.Real
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 
+set_option linter.unusedSectionVars false
+
 open MeasureTheory Finset
 
 noncomputable section
@@ -472,7 +474,7 @@ lemma condDist_integral_bound [Countable S] [MeasurableSingletonClass S]
     -- Dobrushin contraction (single-site marginal disagreements).
     {B : Set S} (hB : MeasurableSet B)
     (hA_cyl : A = (fun σ : SpinConfig I S => σ x) ⁻¹' B)
-    (δ : I → ℝ) (hδ_nn : ∀ y, 0 ≤ δ y)
+    (δ : I → ℝ) (_hδ_nn : ∀ y, 0 ≤ δ y)
     (hδ_bound : ∀ (y : I) (B : Set (SpinConfig I S)),
       MeasurableSet B → |(μ₁ B).toReal - (μ₂ B).toReal| ≤ δ y)
     -- Finite support of the influence coefficients (nearest-neighbor case)
@@ -931,13 +933,13 @@ theorem dobrushin_correlation_decay {d : ℕ}
     (hD : DobrushinCondition γ)
     (μ : Measure (SpinConfig (LatticeSite d) S))
     [IsProbabilityMeasure μ]
-    (hμ : IsGibbsMeasure γ μ)
+    (_hμ : IsGibbsMeasure γ μ)
     (f g : SpinConfig (LatticeSite d) S → ℝ)
-    (hf : Measurable f) (hg : Measurable g)
-    (Bf Bg : ℝ) (hBf : ∀ σ, |f σ| ≤ Bf) (hBg : ∀ σ, |g σ| ≤ Bg)
+    (_hf : Measurable f) (_hg : Measurable g)
+    (Bf Bg : ℝ) (_hBf : ∀ σ, |f σ| ≤ Bf) (_hBg : ∀ σ, |g σ| ≤ Bg)
     (x y : LatticeSite d)
-    (hf_local : ∀ σ τ, σ x = τ x → f σ = f τ)
-    (hg_local : ∀ σ τ, σ y = τ y → g σ = g τ)
+    (_hf_local : ∀ σ τ, σ x = τ x → f σ = f τ)
+    (_hg_local : ∀ σ τ, σ y = τ y → g σ = g τ)
     -- Bridge hypothesis: the geometric Neumann-series covariance bound.
     -- This encapsulates the coupling / iterated-contraction / Neumann-
     -- series argument, which would require a substantial separate
@@ -970,7 +972,7 @@ yields existence.
 theorem dobrushin_existence [TopologicalSpace S] [CompactSpace S]
     [MeasurableSpace S] [BorelSpace S]
     (γ : GibbsSpec I S)
-    (hD : DobrushinCondition γ)
+    (_hD : DobrushinCondition γ)
     -- Bridge hypothesis: existence + Gibbs measure structure.
     -- Full proof requires Schauder/Banach fixed-point on tight
     -- probability measures with Feller specification kernel.
@@ -979,8 +981,8 @@ theorem dobrushin_existence [TopologicalSpace S] [CompactSpace S]
       IsGibbsMeasure γ μ)
     -- Feller property: the conditional distribution is continuous
     -- in the boundary condition (weak topology on measures).
-    (hFeller : ∀ (Λ : Finset I)
-      (A : Set (SpinConfig I S)) (hA : MeasurableSet A),
+    (_hFeller : ∀ (Λ : Finset I)
+      (A : Set (SpinConfig I S)) (_hA : MeasurableSet A),
       Continuous (fun σ : SpinConfig I S => (γ.condDist Λ σ A).toReal)) :
     ∃ (μ : Measure (SpinConfig I S)) (_ : IsProbabilityMeasure μ),
       IsGibbsMeasure γ μ :=

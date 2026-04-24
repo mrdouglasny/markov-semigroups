@@ -43,6 +43,8 @@ import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
 import Mathlib.LinearAlgebra.Dual.Lemmas
 import Mathlib.Topology.Algebra.Module.FiniteDimension
 
+set_option linter.unusedSectionVars false
+
 open MeasureTheory
 
 noncomputable section

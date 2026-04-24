@@ -166,6 +166,7 @@ theorem IsCore.integrable {f : ℝ → ℝ} (hf : IsCore f) : Integrable f γ :=
   refine Integrable.mono' (integrable_const M) hf.stronglyMeasurable.aestronglyMeasurable ?_
   exact Filter.Eventually.of_forall (fun x => hM x)
 
+@[reducible]
 def dirichletSpace : DirichletSpace ℝ where
   μ := γ
   hμ := inferInstance
@@ -235,7 +236,7 @@ def dirichletSpace : DirichletSpace ℝ where
       rw [h_deriv_fun]
       have : deriv (fun y => c * deriv f y) x = c * deriv (deriv f) x := by
         have := deriv_const_smul_field c (deriv f) (x := x)
-        simpa [smul_eq_mul] using this
+        simp [smul_eq_mul] at this; exact this
       exact this
     refine ⟨?_, ?_, ?_⟩
     · rw [h1]
@@ -303,6 +304,7 @@ def dirichletSpace : DirichletSpace ℝ where
 /-! ## BakryEmerySpace instance -/
 
 /-- The BakryEmerySpace instance for ℝ with standard Gaussian and OU semigroup. -/
+@[reducible]
 def bakryEmerySpace : BakryEmerySpace ℝ where
   toDirichletSpace := dirichletSpace
   Γ := ouGamma

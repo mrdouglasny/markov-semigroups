@@ -259,7 +259,7 @@ d(x, y) > nR where R is the influence range, then (C^n)_{xy} = 0.
 Requires `d` to be a pseudometric-like ℕ-valued function:
 `d x x = 0` (reflexivity) and the triangle inequality. -/
 lemma iterateInfluence_dist_zero (γ : GibbsSpec I S)
-    (d : I → I → ℕ) (R : ℕ) (hR_pos : 0 < R)
+    (d : I → I → ℕ) (R : ℕ) (_hR_pos : 0 < R)
     (h_refl : ∀ x, d x x = 0)
     (h_triangle : ∀ x y z, d x y ≤ d x z + d z y)
     (h_support : ∀ x y, d x y > R → influenceCoeff γ x y = 0)
@@ -284,7 +284,7 @@ lemma iterateInfluence_dist_zero (γ : GibbsSpec I S)
         rw [ih x z hz]
         ring
       · -- Then d z y > R, so C(z, y) = 0
-        push_neg at hz
+        push Not at hz
         have hzy : d z y > R := by
           -- d x y ≤ d x z + d z y, so d z y ≥ d x y - d x z > (n+1)R - nR = R
           have htri := h_triangle x y z

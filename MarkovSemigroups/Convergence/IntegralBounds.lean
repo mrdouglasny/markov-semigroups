@@ -10,6 +10,8 @@ import Mathlib.MeasureTheory.Integral.Bochner.Set
 import Mathlib.MeasureTheory.Integral.Layercake
 import Mathlib.MeasureTheory.Function.LocallyIntegrable
 
+set_option linter.unusedSimpArgs false
+
 open MeasureTheory Set
 
 noncomputable section
@@ -39,7 +41,7 @@ theorem tv_integral_bound {X : Type*} [MeasurableSpace X]
     (f : X → ℝ) (hf_meas : Measurable f) (C : ℝ) (hC : 0 ≤ C)
     (hf_int_μ : Integrable f μ) (hf_int_π : Integrable f π)
     (hf_nn : ∀ x, 0 ≤ f x) (hf_le : ∀ x, f x ≤ C)
-    (δ : ℝ) (hδ : 0 ≤ δ)
+    (δ : ℝ) (_hδ : 0 ≤ δ)
     (hgap : ∀ (A : Set X), MeasurableSet A →
       |(μ A).toReal - (π A).toReal| ≤ δ) :
     |∫ x, f x ∂μ - ∫ x, f x ∂π| ≤ C * δ := by

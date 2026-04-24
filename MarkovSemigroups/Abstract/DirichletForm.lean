@@ -33,6 +33,8 @@ import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 import Mathlib.Analysis.SpecialFunctions.Log.NegMulLog
 
+set_option linter.unusedSectionVars false
+
 open MeasureTheory
 
 noncomputable section
@@ -450,7 +452,7 @@ theorem pointwise_entropy_lower (g : ℝ) (t : ℝ) (ε₁ : ℝ) (hε₁ : 0 < 
       field_simp
     linarith
   · -- Case ε₁ < 1: multiply h_taylor at s=tg by 2(1+tg) > 0
-    push_neg at heps
+    push Not at heps
     have htaylor := h_taylor (t * g) habs_tg_D
     have hlog_sq : Real.log ((1 + t * g) ^ 2) = 2 * Real.log (1 + t * g) := by
       rw [Real.log_pow]; push_cast; ring
@@ -820,7 +822,7 @@ theorem entropy_quadratic_lower (f : X → ℝ) (ε : ℝ) (hε : 0 < ε) (hε_l
         linarith
       · -- ε ≥ 4: both sides ≤ 0. Use ∫s² ≥ 4t²V(1-tB) (from h_s2_lb)
         -- and multiply by the NEGATIVE coefficient, flipping the inequality.
-        push_neg at hε4
+        push Not at hε4
         have hcoeff_neg : (1 - ε / 4) / 2 ≤ 0 := by linarith
         -- LHS = hcoeff · ∫s² where hcoeff ≤ 0 and ∫s² ≥ 4t²V(1-tB) ≥ 0
         -- Since hcoeff ≤ 0: hcoeff · ∫s² ≥ hcoeff · (upper bound of ∫s²)
@@ -925,7 +927,7 @@ theorem rothaus_entropy_expansion (f : X → ℝ) (ε : ℝ) (hε : 0 < ε)
     -- But we can be smarter: (2-ε) ≤ -2, t² ≥ 0, V could be anything.
     -- If V ≤ 0: (2-ε)t²V ≥ 0 (product of two negatives and a nonneg).
     -- Hmm. Just use δ = 1 with entropy_quadratic_lower at ε' = 3 < 4:
-    push_neg at hε4
+    push Not at hε4
     have hε3 : (0 : ℝ) < 3 := by norm_num
     have hε3_lt : (3 : ℝ) < 4 := by norm_num
     obtain ⟨δ, hδ_pos, hδ⟩ := entropy_quadratic_lower f 3 hε3 hε3_lt hf_int hf2_int B hB hf_bdd

@@ -274,7 +274,7 @@ Dobrushin's condition holds with α = 2d · β.
 This gives a mass gap for all lattice models at sufficiently
 high temperature / weak coupling. -/
 def strong_coupling_dobrushin (γ : GibbsSpec (LatticeSite d) S)
-    (hNN : IsNearestNeighbor γ)
+    (_hNN : IsNearestNeighbor γ)
     (β : ℝ) (hIB : InteractionBound γ β)
     (hβ_small : 2 * d * β < 1) :
     DobrushinCondition γ where

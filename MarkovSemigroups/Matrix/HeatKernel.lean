@@ -36,6 +36,8 @@ import Mathlib.Analysis.SpecialFunctions.Exponential
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.Topology.Algebra.InfiniteSum.Order
 
+set_option linter.unusedSectionVars false
+
 noncomputable section
 
 open Matrix BigOperators Finset
@@ -126,13 +128,13 @@ theorem euler_factor_nonneg (M : Matrix n n ℝ) (hZ : IsZMatrix M)
     -- |M i i| ≤ ‖M‖, so t/n · |M i i| ≤ t/n · ‖M‖ < 1
     have hn_pos : (0 : ℝ) < n := by
       by_contra h
-      push_neg at h
+      push Not at h
       have : t * ‖M‖ < 0 := lt_of_lt_of_le hn (by exact_mod_cast h)
       linarith [mul_nonneg ht (norm_nonneg M)]
     have htn : t / ↑n * ‖M‖ < 1 := by
       rw [div_mul_eq_mul_div, div_lt_one hn_pos]; exact hn
     have hn_pos : (0 : ℝ) < n := by
-      by_contra h; push_neg at h
+      by_contra h; push Not at h
       linarith [mul_nonneg ht (norm_nonneg M)]
     have htn_pos : 0 ≤ t / ↑n := div_nonneg ht hn_pos.le
     have htn_norm : t / ↑n * ‖M‖ < 1 := by

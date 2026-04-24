@@ -98,7 +98,7 @@ structure GibbsSpec (I : Type*) [DecidableEq I] (S : Type*)
   /-- Measurability: σ ↦ condDist(Λ, σ)(A) is measurable.
       Required for the DLR integral to be well-defined. -/
   measurable_condDist : ∀ (Λ : Finset I)
-    (A : Set (SpinConfig I S)) (hA : MeasurableSet A),
+    (A : Set (SpinConfig I S)) (_hA : MeasurableSet A),
     Measurable (fun σ : SpinConfig I S => (condDist Λ σ A).toReal)
 
 attribute [instance] GibbsSpec.isProb
@@ -113,7 +113,7 @@ structure IsGibbsMeasure {I : Type*} [DecidableEq I] {S : Type*}
     [IsProbabilityMeasure μ] : Prop where
   /-- DLR consistency condition. -/
   dlr : ∀ (Λ : Finset I)
-    (A : Set (SpinConfig I S)) (hA : MeasurableSet A),
+    (A : Set (SpinConfig I S)) (_hA : MeasurableSet A),
     (μ A).toReal = ∫ σ, (γ.condDist Λ σ A).toReal ∂μ
 
 end
