@@ -211,6 +211,38 @@ see the sorry surface honestly.
 previously axiomatized but are now proved as theorems in
 `Matrix/HeatKernel.lean` and `Matrix/Trotter.lean`.)
 
+### Which theorems actually depend on these axioms?
+
+Verified by `#print axioms` on a fresh build. The axiom footprint
+is narrow: everything outside the rows below is axiom-free (depends
+only on Lean's three standard axioms `propext`, `Classical.choice`,
+`Quot.sound`).
+
+| Axiom | Transitive consumers inside this repo |
+|---|---|
+| `gross_lsi_implies_hypercontractive` | `MarkovSemigroup.hypercontractive_of_logSobolev`, `MarkovSemigroup.gross_equivalence` (`Abstract/Hypercontractivity.lean`) |
+| `gross_hypercontractive_implies_lsi` | `MarkovSemigroup.logSobolev_of_hypercontractive`, `MarkovSemigroup.gross_equivalence` (`Abstract/Hypercontractivity.lean`) |
+| `m_matrix_inverse_nonneg` | None — declared for external callers; no theorem in this repo uses it |
+| `diamagnetic_resolvent` | None — declared for external callers; no theorem in this repo uses it |
+
+The rest of the library is axiom-free. Specifically, the
+Bakry-Émery Poincaré / LSI / variance decay / entropy decay
+(`Diffusion/CarreDuChamp.lean`), Brascamp-Lieb
+(`Instances/BrascampLieb.lean`), Doeblin mixing
+(`Convergence/Doeblin.lean`), Dobrushin uniqueness
+(`Dobrushin/Uniqueness.lean`), TV coupling
+(`Coupling/TVCoupling.lean`), Neumann-series correlation decay
+(`Dobrushin/NeumannSeries.lean`), the multisite covariance bound
+(`Dobrushin/CovarianceBoundMultisite.lean`), and heat-kernel
+positivity for Z-matrices (`Matrix/HeatKernel.lean`) all have
+`#print axioms` showing only the three Lean built-ins.
+
+**For downstream consumers:** [lgt](https://github.com/mrdouglasny/lgt)'s
+Yang-Mills mass-gap proof uses only the Dobrushin + Coupling +
+Matrix/HeatKernel paths, none of which touch the four textbook
+axioms. `#print axioms ym_mass_gap_UN` on the lgt side shows only
+`propext`, `Classical.choice`, `Quot.sound`.
+
 ### Concrete instances
 
 - **TwoPoint** ({0,1}, uniform measure): 19/21 BakryEmerySpace fields
