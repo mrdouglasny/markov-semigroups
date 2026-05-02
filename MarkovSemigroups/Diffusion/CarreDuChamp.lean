@@ -91,8 +91,14 @@ class BakryEmerySpace (X : Type*) [MeasurableSpace X]
     Real.exp (-2 * ρ * t) * ∫ x, Γ f f x ∂μ
   /-- P_0 = id. -/
   semigroup_zero : ∀ f, semigroup 0 f = f
-  /-- Semigroup property: P_{s+t} = P_s ∘ P_t. -/
-  semigroup_add : ∀ s t f, 0 ≤ s → 0 ≤ t →
+  /-- Semigroup property: P_{s+t} = P_s ∘ P_t.
+
+  The `IsCore f` hypothesis ensures `f` is integrable against the
+  semigroup's invariant measure on every kernel; without it the
+  Mehler-style integrals can diverge and Lean's `integral`-returns-0
+  default desyncs the two sides. All concrete instances we use only
+  ever apply the semigroup to `IsCore` test functions. -/
+  semigroup_add : ∀ s t f, 0 ≤ s → 0 ≤ t → IsCore f →
     semigroup (s + t) f = semigroup s (semigroup t f)
   /-- P_t is a contraction on L²(μ). -/
   semigroup_contraction : ∀ (f : X → ℝ) (t : ℝ), 0 ≤ t → IsCore f →

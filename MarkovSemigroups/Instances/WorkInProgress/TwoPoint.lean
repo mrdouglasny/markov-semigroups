@@ -463,7 +463,7 @@ def bakryEmerySpace : BakryEmerySpace TwoPoint where
     nlinarith [sq_nonneg (f .zero - f .one), exp_nonneg (-4 * α * t)]
   semigroup_zero := fun f => by
     ext i; simp [semigroup, coeff_zero]
-  semigroup_add := fun s t f hs ht => by
+  semigroup_add := fun s t f hs ht _ => by
     ext i; cases i <;> simp only [semigroup, coeff, flip_zero, flip_one] <;> {
       rw [show -2 * α * (s + t) = (-2 * α * s) + (-2 * α * t) from by ring, exp_add]
       ring
