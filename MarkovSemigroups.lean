@@ -4,6 +4,7 @@ import MarkovSemigroups.Abstract.Poincare
 import MarkovSemigroups.Abstract.LogSobolev
 import MarkovSemigroups.Abstract.HolleyStroock
 import MarkovSemigroups.Abstract.Hypercontractivity
+import MarkovSemigroups.Abstract.Concentration
 
 -- Diffusion semigroups (Riemannian structure)
 import MarkovSemigroups.Diffusion.CarreDuChamp
@@ -35,6 +36,16 @@ import MarkovSemigroups.Dobrushin.Uniqueness
 import MarkovSemigroups.Dobrushin.StrongCoupling
 import MarkovSemigroups.Dobrushin.FiniteLattice
 import MarkovSemigroups.Dobrushin.NeumannSeries
+
+-- Dobrushin–Zegarlinski for continuous spin systems (gradient interaction)
+import MarkovSemigroups.DobrushinZegarlinski.AbstractInfluence
+import MarkovSemigroups.DobrushinZegarlinski.EntropyChainRule
+import MarkovSemigroups.DobrushinZegarlinski.EuclideanTransport
+import MarkovSemigroups.DobrushinZegarlinski.InteractionMatrix
+import MarkovSemigroups.DobrushinZegarlinski.LocalLSI
+import MarkovSemigroups.DobrushinZegarlinski.GlobalLSI
+import MarkovSemigroups.DobrushinZegarlinski.EntrywiseCovariance
+import MarkovSemigroups.DobrushinZegarlinski.Concentration
 
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
