@@ -69,6 +69,29 @@ import MarkovSemigroups.Gaussian.OUEigenfunctions
 
 noncomputable section
 
+namespace MeasureTheory.Lp
+
+/-- The coercion `Lp E p μ → (α → E)` distributes over `Finset` sums almost
+everywhere. Inductive bridge from `coeFn_zero` and `coeFn_add`; not currently
+in Mathlib at v4.29.0. -/
+theorem coeFn_finset_sum {α E ι : Type*} [MeasurableSpace α]
+    {μ : Measure α} [NormedAddCommGroup E] {p : ENNReal} [DecidableEq ι]
+    (s : Finset ι) (f : ι → Lp E p μ) :
+    ((∑ i ∈ s, f i : Lp E p μ) : α → E)
+      =ᵐ[μ] ∑ i ∈ s, ((f i : Lp E p μ) : α → E) := by
+  induction s using Finset.induction with
+  | empty =>
+      simp only [Finset.sum_empty]
+      exact Lp.coeFn_zero E p μ
+  | insert i s hi ih =>
+      rw [Finset.sum_insert hi, Finset.sum_insert hi]
+      filter_upwards [Lp.coeFn_add (f i) (∑ j ∈ s, f j), ih]
+        with x hx_add hx_ih
+      simp only [Pi.add_apply, Finset.sum_apply] at hx_add hx_ih ⊢
+      rw [hx_add, hx_ih]
+
+end MeasureTheory.Lp
+
 namespace MarkovSemigroups.Gaussian
 
 open MeasureTheory
@@ -192,7 +215,7 @@ derivation.)
 
 **Reference:** Janson §5.1.
 
-**Proof strategy** (discharge plan, axiomatised here):
+**Proof strategy:**
 1. Decompose `F = ∑_{k=0..d} f_k` with `f_k = chaosProjection n k F`
    via `chaosProjection_sum_eq_of_mem_wienerChaosLE`.
 2. Triangle inequality on `eLpNorm` (`eLpNorm_sum_le`):
@@ -205,19 +228,73 @@ derivation.)
    (`chaosProjection_eLpNorm_two_le`):
    `‖f_k‖_2 ≤ ‖F‖_2` for each `k`.
 6. Sum over `k = 0, …, d` (cardinality `d+1`):
-   `∑_k (p-1)^{d/2} ‖f_k‖_2 ≤ (d+1) (p-1)^{d/2} ‖F‖_2`.
-
-The Lean implementation needs an `Lp.coeFn_finset_sum` bridge (sum
-of `Lp` coercions equals coercion of `Lp` sum, almost everywhere)
-that isn't currently in Mathlib; the chaos-projection axioms above
-are sufficient for the rest of the chain. -/
-axiom bonami_nelson_chaosLE (n d : ℕ)
+   `∑_k (p-1)^{d/2} ‖f_k‖_2 ≤ (d+1) (p-1)^{d/2} ‖F‖_2`. -/
+theorem bonami_nelson_chaosLE (n d : ℕ)
     (F : Lp ℝ 2 (stdGaussianFin n))
-    (_hF : F ∈ wienerChaosLE n d)
-    (p : ℝ) (_hp : 2 ≤ p) :
+    (hF : F ∈ wienerChaosLE n d)
+    (p : ℝ) (hp : 2 ≤ p) :
     eLpNorm (F : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n) ≤
       ENNReal.ofReal (((d : ℝ) + 1) * (p - 1) ^ ((d : ℝ) / 2)) *
-        eLpNorm (F : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n)
+        eLpNorm (F : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n) := by
+  set f : ℕ → Lp ℝ 2 (stdGaussianFin n) := fun k => chaosProjection n k F
+    with hf_def
+  have h_mem : ∀ k, f k ∈ wienerChaos n k :=
+    fun k => chaosProjection_mem_wienerChaos n k F
+  have h_decomp : F = ∑ k ∈ Finset.range (d + 1), f k :=
+    chaosProjection_sum_eq_of_mem_wienerChaosLE n d F hF
+  have h_contract : ∀ k,
+      eLpNorm ((f k : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) ≤
+        eLpNorm ((F : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) :=
+    fun k => chaosProjection_eLpNorm_two_le n k F
+  have hp_minus_1_one_le : (1 : ℝ) ≤ p - 1 := by linarith
+  have h_each : ∀ k ∈ Finset.range (d + 1),
+      eLpNorm ((f k : (Fin n → ℝ) → ℝ)) (ENNReal.ofReal p) (stdGaussianFin n) ≤
+        ENNReal.ofReal ((p - 1) ^ ((d : ℝ) / 2)) *
+          eLpNorm ((F : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) := by
+    intro k hk
+    have hk_le_d : (k : ℝ) ≤ (d : ℝ) := by
+      exact_mod_cast Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
+    have h_kd : (p - 1) ^ ((k : ℝ) / 2) ≤ (p - 1) ^ ((d : ℝ) / 2) := by
+      apply Real.rpow_le_rpow_of_exponent_le hp_minus_1_one_le
+      linarith
+    calc eLpNorm ((f k : (Fin n → ℝ) → ℝ))
+            (ENNReal.ofReal p) (stdGaussianFin n)
+        ≤ ENNReal.ofReal ((p - 1) ^ ((k : ℝ) / 2)) *
+            eLpNorm ((f k : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) :=
+          bonami_nelson_chaos n k (f k) (h_mem k) p hp
+      _ ≤ ENNReal.ofReal ((p - 1) ^ ((d : ℝ) / 2)) *
+            eLpNorm ((f k : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) := by gcongr
+      _ ≤ ENNReal.ofReal ((p - 1) ^ ((d : ℝ) / 2)) *
+            eLpNorm ((F : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) := by
+            gcongr; exact h_contract k
+  have h_card : (Finset.range (d + 1)).card = d + 1 := Finset.card_range _
+  have h_meas : ∀ i ∈ Finset.range (d + 1),
+      AEStronglyMeasurable ((f i : (Fin n → ℝ) → ℝ)) (stdGaussianFin n) :=
+    fun i _ => Lp.aestronglyMeasurable _
+  have hp_one : 1 ≤ ENNReal.ofReal p := by
+    rw [← ENNReal.ofReal_one]
+    exact ENNReal.ofReal_le_ofReal (by linarith)
+  have h_coe_sum :
+      ((F : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ)
+        =ᵐ[stdGaussianFin n]
+          ∑ k ∈ Finset.range (d + 1),
+            ((f k : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ) := by
+    rw [h_decomp]; exact Lp.coeFn_finset_sum _ _
+  rw [eLpNorm_congr_ae h_coe_sum]
+  refine (eLpNorm_sum_le h_meas hp_one).trans ?_
+  refine (Finset.sum_le_card_nsmul (Finset.range (d + 1))
+    (fun k => eLpNorm ((f k : (Fin n → ℝ) → ℝ))
+      (ENNReal.ofReal p) (stdGaussianFin n))
+    (ENNReal.ofReal ((p - 1) ^ ((d : ℝ) / 2)) *
+      eLpNorm ((F : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n)) h_each).trans ?_
+  rw [h_card, nsmul_eq_mul, ← mul_assoc]
+  refine mul_le_mul_left ?_ _
+  have h_card_cast : ((d + 1 : ℕ) : ENNReal) = ENNReal.ofReal ((d : ℝ) + 1) := by
+    rw [ENNReal.ofReal_add (by positivity) (by norm_num),
+      ENNReal.ofReal_natCast, ENNReal.ofReal_one]
+    push_cast; rfl
+  rw [h_card_cast]
+  rw [← ENNReal.ofReal_mul (by positivity : (0 : ℝ) ≤ (d : ℝ) + 1)]
 
 /-- **Polynomial Chaos Concentration (Janson Theorem 5.10).**
 
