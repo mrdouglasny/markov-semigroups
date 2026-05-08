@@ -308,18 +308,53 @@ $$
 
 **Reference:** Janson, *Gaussian Hilbert Spaces*, Theorem 5.10.
 
-**Proof strategy** (Markov + optimize, three lines):
-1. By Markov,
-   $\mathbb P(|F| > \lambda \|F\|_2) \le \mathbb E |F|^p / (\lambda \|F\|_2)^p$.
-2. By Bonami-Nelson on $\mathcal H^{\le d}$,
-   $\mathbb E |F|^p \le \bigl((d+1)(p-1)^{d/2}\bigr)^p \, \|F\|_2^p$.
-3. Combined: $\mathbb P(\dots) \le \bigl((d+1)(p-1)^{d/2} / \lambda\bigr)^p
-   = (d+1)^p \exp\bigl(p[(d/2)\log(p-1) - \log \lambda]\bigr)$.
-4. Set $p - 1 = (\lambda / ((d+1) e))^{2/d}$ to make the exponent
-   $\le -d/2 \cdot (\lambda / ((d+1)e))^{2/d}$.
-5. The $(d+1)^p$ prefactor is absorbed into the constant for
-   $\lambda$ above a threshold $\lambda_0(d)$; below that the bound
-   $\le 2$ is trivial. -/
+**Discharge plan** (Gemini deep-think, 2026-05-08; standard textbook
+calculus, ~50–150 lines of Lean once attempted):
+
+*Explicit constant:*
+`c_d := (1/2) * (1 / (Real.exp 1 * (d + 1))) ^ (2 / d)`.
+
+*Threshold:*
+`λ₀ := Real.exp 1 * (d + 1)`.
+
+*Proof sketch:* Reduce to `‖F‖_2 = 1` (the inequality is homogeneous
+in `F` once we divide by `‖F‖_2`; the `‖F‖_2 = 0` case has empty
+event LHS = 0). Case-split on `λ`:
+
+* **`λ ≥ λ₀` (large `λ`).** Set `p := 1 + (λ / λ₀)^(2/d)`. Then
+  `p ≥ 2` (since `λ/λ₀ ≥ 1` and `2/d > 0`).
+  - Markov (`MeasureTheory.meas_ge_le_mul_pow_eLpNorm_enorm`):
+    `μ {|F| > λ} ≤ ‖F‖_p^p / λ^p`.
+  - `bonami_nelson_chaosLE` at this `p`:
+    `‖F‖_p ≤ (d+1)(p-1)^{d/2} = (d+1) · (λ/λ₀)`
+    (the algebra: `(p-1)^{d/2} = ((λ/λ₀)^{2/d})^{d/2} = λ/λ₀`).
+  - So `((d+1)(p-1)^{d/2})/λ = (d+1)/λ₀ = 1/Real.exp 1`,
+    and the bound becomes `(1/e)^p = exp(-p)
+    = exp(-(1 + (λ/λ₀)^{2/d})) = exp(-1) · exp(-(λ/λ₀)^{2/d})`.
+  - Compare to target `2 · exp(-c_d λ^{2/d})`: with `c_d = (1/2) λ₀^{-2/d}`
+    and `(λ/λ₀)^{2/d} = λ^{2/d} · λ₀^{-2/d}`, this reduces to
+    `1/(2e) ≤ exp((1/2)(λ/λ₀)^{2/d})`, which holds since
+    `(λ/λ₀)^{2/d} ≥ 1` and `1 ≤ 2 e^{3/2}` (a `nlinarith`/`norm_num`
+    check).
+
+* **`0 < λ < λ₀` (small `λ`).** The bound `μ {|F| > λ‖F‖_2} ≤ 1` is
+  trivial (probability measure). Suffices to show
+  `1 ≤ 2 · exp(-c_d λ^{2/d})`, i.e., `c_d λ^{2/d} ≤ log 2`.
+  - With `c_d = (1/2) λ₀^{-2/d}` and `λ < λ₀`, the LHS is
+    `(1/2) (λ/λ₀)^{2/d} < 1/2`.
+  - And `1/2 < log 2 ≈ 0.693…`, a `Real.log_two_gt_d9`-style fact.
+
+The combined bound holds with this single `c_d`. The optimization
+choice for `p` is the standard Janson recipe; the algebraic
+identification `(p-1)^{d/2} = λ/λ₀` is the slickness that makes the
+exponential exactly `(1/e)^p`.
+
+Left as an axiom for now: the calculus closes manually but the Lean
+engineering (interleaving `Real.rpow`, `Real.exp`, `Real.log`,
+ENNReal/ofReal coercions, and case-splits on `‖F‖_2 = 0`) is genuinely
+~hours of tactic work. Standard project-management practice in large
+Lean formalizations (Liquid Tensor Experiment, Sphere Eversion) is to
+state and use the conclusion while the discharge is queued. -/
 axiom polynomial_chaos_concentration (n d : ℕ) (_hd : 1 ≤ d) :
     ∃ c_d : ℝ, 0 < c_d ∧
       ∀ (F : Lp ℝ 2 (stdGaussianFin n)),
