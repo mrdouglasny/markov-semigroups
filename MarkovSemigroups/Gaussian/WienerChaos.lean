@@ -114,6 +114,31 @@ axiom wienerChaos_isInternalDirectSum (n : ℕ) :
 axiom chaosProjection (n k : ℕ) :
     Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)
 
+/-- **Range of the chaos projection:** `chaosProjection n k F ∈ wienerChaos n k`. -/
+axiom chaosProjection_mem_wienerChaos (n k : ℕ)
+    (F : Lp ℝ 2 (stdGaussianFin n)) :
+    chaosProjection n k F ∈ wienerChaos n k
+
+/-- **Chaos decomposition for elements of `wienerChaosLE n d`:**
+$F \;=\; \sum_{k = 0}^{d} P_k F$, where $P_k = $ `chaosProjection n k`.
+This is the finite-sum specialization of
+`wienerChaos_isInternalDirectSum`: for `F ∈ ⨆_{k ≤ d} H_k`, the
+direct-sum decomposition is supported on `{0, …, d}`. -/
+axiom chaosProjection_sum_eq_of_mem_wienerChaosLE (n d : ℕ)
+    (F : Lp ℝ 2 (stdGaussianFin n)) (_hF : F ∈ wienerChaosLE n d) :
+    F = ∑ k ∈ Finset.range (d + 1), chaosProjection n k F
+
+/-- **Chaos projection is $L^2$-contractive:** `‖P_k F‖₂ ≤ ‖F‖₂`.
+
+This is automatic for any orthogonal projection, but is stated as an
+axiom here because `chaosProjection` is declared opaquely. The
+`eLpNorm`-form is the technical version most useful when bounding
+sums. -/
+axiom chaosProjection_eLpNorm_two_le (n k : ℕ)
+    (F : Lp ℝ 2 (stdGaussianFin n)) :
+    eLpNorm ((chaosProjection n k F : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) ≤
+      eLpNorm ((F : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n)
+
 /-- A multivariate Hermite polynomial of total degree $k$ lies in
 the $k$-th chaos. (Building block: the chaos contains all of its
 Hermite generators.)

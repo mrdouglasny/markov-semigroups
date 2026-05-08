@@ -179,17 +179,38 @@ theorem bonami_nelson_chaos (n k : ℕ)
 /-- **Bonami-Nelson L^p improvement on $\mathcal H^{\le d}$.**
 
 Triangle inequality across $k = 0, \dots, d$ extends the per-chaos
-bound to $\mathcal H^{\le d}$ at the cost of a degree-$d$ prefactor:
+bound `bonami_nelson_chaos` to $\mathcal H^{\le d}$ at the cost of a
+degree-$d$ prefactor:
 $$
 \|F\|_{L^p} \;\le\; (d + 1) \, (p - 1)^{d/2} \, \|F\|_{L^2}.
 $$
 
+(A sharper $\sqrt{d+1}$ factor is available via Cauchy–Schwarz on the
+chaos decomposition + the `wienerChaos_orthogonal` Pythagoras; the
+$(d+1)$ factor here is adequate for the downstream concentration
+derivation.)
+
 **Reference:** Janson §5.1.
 
-**Proof strategy:** Decompose `F = ∑ k ∈ range (d+1), Π_k F` via the
-chaos projections (`chaosProjection`), apply `bonami_nelson_chaos` to
-each summand, take triangle inequality, dominate $(p-1)^{k/2}$ by
-$(p-1)^{d/2}$ for $k \le d$ and $p \ge 2$. -/
+**Proof strategy** (discharge plan, axiomatised here):
+1. Decompose `F = ∑_{k=0..d} f_k` with `f_k = chaosProjection n k F`
+   via `chaosProjection_sum_eq_of_mem_wienerChaosLE`.
+2. Triangle inequality on `eLpNorm` (`eLpNorm_sum_le`):
+   `‖F‖_p ≤ ∑_k ‖f_k‖_p`.
+3. Per-chaos `bonami_nelson_chaos` on each summand:
+   `‖f_k‖_p ≤ (p-1)^{k/2} ‖f_k‖_2`.
+4. Bound `(p-1)^{k/2} ≤ (p-1)^{d/2}` for `k ≤ d` (Real.rpow monotone
+   in the exponent for `p-1 ≥ 1`).
+5. `eLpNorm`-contractive `chaosProjection`
+   (`chaosProjection_eLpNorm_two_le`):
+   `‖f_k‖_2 ≤ ‖F‖_2` for each `k`.
+6. Sum over `k = 0, …, d` (cardinality `d+1`):
+   `∑_k (p-1)^{d/2} ‖f_k‖_2 ≤ (d+1) (p-1)^{d/2} ‖F‖_2`.
+
+The Lean implementation needs an `Lp.coeFn_finset_sum` bridge (sum
+of `Lp` coercions equals coercion of `Lp` sum, almost everywhere)
+that isn't currently in Mathlib; the chaos-projection axioms above
+are sufficient for the rest of the chain. -/
 axiom bonami_nelson_chaosLE (n d : ℕ)
     (F : Lp ℝ 2 (stdGaussianFin n))
     (_hF : F ∈ wienerChaosLE n d)
