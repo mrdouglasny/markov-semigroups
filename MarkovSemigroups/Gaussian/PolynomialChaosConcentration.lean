@@ -96,7 +96,9 @@ axiom bonami_nelson_chaos (n k : ℕ)
     (f : Lp ℝ 2 (stdGaussianFin n))
     (_hf : f ∈ wienerChaos n k)
     (p : ℝ) (_hp : 2 ≤ p) :
-    ‖f‖ ≤ (p - 1) ^ ((k : ℝ) / 2) * ‖f‖
+    eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n) ≤
+      ENNReal.ofReal ((p - 1) ^ ((k : ℝ) / 2)) *
+        eLpNorm (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n)
 
 /-- **Bonami-Nelson L^p improvement on $\mathcal H^{\le d}$.**
 
@@ -116,7 +118,9 @@ axiom bonami_nelson_chaosLE (n d : ℕ)
     (F : Lp ℝ 2 (stdGaussianFin n))
     (_hF : F ∈ wienerChaosLE n d)
     (p : ℝ) (_hp : 2 ≤ p) :
-    ‖F‖ ≤ ((d : ℝ) + 1) * (p - 1) ^ ((d : ℝ) / 2) * ‖F‖
+    eLpNorm (F : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n) ≤
+      ENNReal.ofReal (((d : ℝ) + 1) * (p - 1) ^ ((d : ℝ) / 2)) *
+        eLpNorm (F : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n)
 
 /-- **Polynomial Chaos Concentration (Janson Theorem 5.10).**
 
