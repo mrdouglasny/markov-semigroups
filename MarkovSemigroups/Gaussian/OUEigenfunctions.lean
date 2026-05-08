@@ -104,6 +104,21 @@ axiom ouGenerator_hermiteMultiEval {n : ℕ} (α : Fin n → ℕ)
     ouGenerator n (hermiteMultiEval α) x =
       -(MultiIndex.totalDegree α : ℝ) * hermiteMultiEval α x
 
+/-- **The Ornstein–Uhlenbeck semigroup action on $L^2(\gamma_n)$.**
+
+The OU semigroup $T_t$ acts on $L^2(\gamma_n)$ as a continuous linear
+map: it is the heat semigroup of the OU generator
+$L = \Delta - x \cdot \nabla$, equivalently the Mehler convolution
+$(T_t f)(x) = \int f(e^{-t} x + \sqrt{1 - e^{-2t}}\, y)\, d\gamma_n(y)$.
+
+This is declared as an opaque axiom; its constraining properties are
+the chaos-action and hypercontractivity axioms below. A concrete
+construction (Mehler formula) lives in
+`Diffusion/OrnsteinUhlenbeck.lean` (skeleton). -/
+axiom ouSemigroupAct (n : ℕ) (t : ℝ) :
+    MeasureTheory.Lp ℝ 2 (stdGaussianFin n) →L[ℝ]
+      MeasureTheory.Lp ℝ 2 (stdGaussianFin n)
+
 /-- **The OU semigroup acts on $\mathcal H_k$ by $e^{-kt}$.**
 
 The OU semigroup $T_t$ on $L^2(\gamma_n)$ commutes with the spectral
@@ -116,17 +131,37 @@ identity above. The connection: $T_t = e^{tL}$, so on the eigenspace
 of $L$ with eigenvalue $-k$, $T_t$ is multiplication by $e^{-kt}$.
 
 **Reference:** Janson, *Gaussian Hilbert Spaces*, Theorem 4.4 +
-the OU semigroup's L²-spectral-resolution. Bakry-Gentil-Ledoux §2.7.
-
-**Status note:** depends on the OU semigroup definition in
-`Diffusion/OrnsteinUhlenbeck.lean` being filled in. Currently that
-file is a docstring skeleton; this axiom is the natural target once
-the OU semigroup is concretely available. -/
-axiom ouSemigroup_act_wienerChaos {n : ℕ} (k : ℕ) (t : ℝ) (_ht : 0 ≤ t)
+the OU semigroup's L²-spectral-resolution. Bakry-Gentil-Ledoux §2.7. -/
+axiom ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
+    (t : ℝ) (_ht : 0 ≤ t)
     (f : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))
     (_hf : f ∈ wienerChaos n k) :
-    True
-    -- TARGET (after OU is concrete):
-    -- OUSemigroup.act t f = Real.exp (-k * t) • f
+    ouSemigroupAct n t f = Real.exp (-(k : ℝ) * t) • f
+
+/-- **Nelson's hypercontractive bound for the OU semigroup.**
+
+For any $p \ge 2$ and $t \ge 0$ with $e^{2t} \ge p - 1$, the OU
+semigroup $T_t$ maps $L^2(\gamma_n)$ to $L^p(\gamma_n)$ with operator
+norm $\le 1$:
+$$
+\|T_t f\|_{L^p(\gamma_n)} \;\le\; \|f\|_{L^2(\gamma_n)}.
+$$
+
+This is the original "Nelson bound" (Nelson 1973), equivalent to the
+Gaussian log-Sobolev inequality (Gross 1975) plus the Bakry-Émery
+curvature lower bound for OU.
+
+**Reference:** E. Nelson, *The free Markoff field*, J. Funct. Anal.
+12 (1973), §3. Bakry-Gentil-Ledoux Thm 5.2.3. -/
+axiom ouSemigroupAct_eLpNorm_hypercontractive {n : ℕ}
+    (p : ℝ) (hp : 2 ≤ p)
+    (t : ℝ) (_ht : 0 ≤ t)
+    (_h_nelson : p - 1 ≤ Real.exp (2 * t))
+    (f : MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) :
+    MeasureTheory.eLpNorm
+        ((ouSemigroupAct n t f : (Fin n → ℝ) → ℝ))
+        (ENNReal.ofReal p) (stdGaussianFin n) ≤
+      MeasureTheory.eLpNorm
+        ((f : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n)
 
 end MarkovSemigroups.Gaussian

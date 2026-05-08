@@ -92,13 +92,89 @@ $T_t$ acts as multiplication by $e^{-kt}$
 (`ouSemigroup_act_wienerChaos`), hence
 $\|f\|_{L^p} \cdot e^{-kt} \le \|f\|_{L^2}$. Solving for
 $\|f\|_{L^p}$ with $e^{2t} = p - 1$ gives the bound. -/
-axiom bonami_nelson_chaos (n k : ℕ)
+theorem bonami_nelson_chaos (n k : ℕ)
     (f : Lp ℝ 2 (stdGaussianFin n))
-    (_hf : f ∈ wienerChaos n k)
-    (p : ℝ) (_hp : 2 ≤ p) :
+    (hf : f ∈ wienerChaos n k)
+    (p : ℝ) (hp : 2 ≤ p) :
     eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n) ≤
       ENNReal.ofReal ((p - 1) ^ ((k : ℝ) / 2)) *
-        eLpNorm (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n)
+        eLpNorm (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n) := by
+  -- Choose t = (1/2) log(p-1). With p ≥ 2 we get t ≥ 0 and e^{2t} = p - 1.
+  set t : ℝ := (1 / 2) * Real.log (p - 1) with ht_def
+  have hp1 : (1 : ℝ) ≤ p - 1 := by linarith
+  have hp1_pos : (0 : ℝ) < p - 1 := by linarith
+  have ht_nonneg : 0 ≤ t := by
+    have hlog : 0 ≤ Real.log (p - 1) := Real.log_nonneg hp1
+    rw [ht_def]; positivity
+  have h_exp_2t : Real.exp (2 * t) = p - 1 := by
+    have h2t : 2 * t = Real.log (p - 1) := by rw [ht_def]; ring
+    rw [h2t, Real.exp_log hp1_pos]
+  have h_nelson : p - 1 ≤ Real.exp (2 * t) := by rw [h_exp_2t]
+  -- Apply OU hypercontractivity at this t.
+  have h_hyper :=
+    ouSemigroupAct_eLpNorm_hypercontractive p hp t ht_nonneg h_nelson f
+  -- Identify T_t f = e^{-kt} • f using the chaos action axiom.
+  have h_chaos := ouSemigroupAct_eq_smul_of_mem_wienerChaos k t ht_nonneg f hf
+  -- Substitute: eLpNorm (T_t f) p ≤ eLpNorm f 2 becomes
+  --             eLpNorm (e^{-kt} • f) p ≤ eLpNorm f 2.
+  have h_coe :
+      ((ouSemigroupAct n t f : Lp ℝ 2 (stdGaussianFin n)) :
+        (Fin n → ℝ) → ℝ)
+        =ᵐ[stdGaussianFin n]
+          Real.exp (-(k : ℝ) * t) • ((f : (Fin n → ℝ) → ℝ)) := by
+    have := Lp.coeFn_smul (Real.exp (-(k : ℝ) * t)) f
+    have hsm : ((Real.exp (-(k : ℝ) * t) • f :
+        Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ)
+          =ᵐ[stdGaussianFin n]
+            Real.exp (-(k : ℝ) * t) • ((f : (Fin n → ℝ) → ℝ)) := this
+    have hcong : ouSemigroupAct n t f =
+        Real.exp (-(k : ℝ) * t) • f := h_chaos
+    exact hcong ▸ hsm
+  rw [eLpNorm_congr_ae h_coe] at h_hyper
+  rw [eLpNorm_const_smul] at h_hyper
+  -- h_hyper : ‖e^{-kt}‖ₑ * eLpNorm f p ≤ eLpNorm f 2
+  have h_exp_pos : 0 < Real.exp (-(k : ℝ) * t) := Real.exp_pos _
+  have h_enorm : ‖Real.exp (-(k : ℝ) * t)‖ₑ =
+      ENNReal.ofReal (Real.exp (-(k : ℝ) * t)) := by
+    rw [Real.enorm_eq_ofReal h_exp_pos.le]
+  rw [h_enorm] at h_hyper
+  -- Now we have ENNReal.ofReal e^{-kt} * eLpNorm f p ≤ eLpNorm f 2.
+  -- Multiply both sides by ENNReal.ofReal e^{kt} and identify
+  -- e^{kt} = (p-1)^{k/2}.
+  have h_mul_inv : ENNReal.ofReal (Real.exp (-(k : ℝ) * t)) *
+      ENNReal.ofReal (Real.exp ((k : ℝ) * t)) = 1 := by
+    rw [← ENNReal.ofReal_mul h_exp_pos.le, ← Real.exp_add]
+    have : -(k : ℝ) * t + (k : ℝ) * t = 0 := by ring
+    rw [this, Real.exp_zero, ENNReal.ofReal_one]
+  have h_exp_kt_pos : 0 < Real.exp ((k : ℝ) * t) := Real.exp_pos _
+  have h_step :
+      eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n)
+        ≤ ENNReal.ofReal (Real.exp ((k : ℝ) * t)) *
+            eLpNorm (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n) := by
+    have h_left :
+        ENNReal.ofReal (Real.exp ((k : ℝ) * t)) *
+          (ENNReal.ofReal (Real.exp (-(k : ℝ) * t)) *
+            eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n))
+          = eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p)
+              (stdGaussianFin n) := by
+      rw [← mul_assoc, mul_comm (ENNReal.ofReal _)
+        (ENNReal.ofReal (Real.exp (-(k : ℝ) * t))), h_mul_inv, one_mul]
+    calc eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p) (stdGaussianFin n)
+        = ENNReal.ofReal (Real.exp ((k : ℝ) * t)) *
+            (ENNReal.ofReal (Real.exp (-(k : ℝ) * t)) *
+              eLpNorm (f : (Fin n → ℝ) → ℝ) (ENNReal.ofReal p)
+                (stdGaussianFin n)) := h_left.symm
+      _ ≤ ENNReal.ofReal (Real.exp ((k : ℝ) * t)) *
+          eLpNorm (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n) := by
+            exact mul_le_mul_right h_hyper
+              (ENNReal.ofReal (Real.exp ((k : ℝ) * t)))
+  -- Identify e^{kt} = (p-1)^{k/2} as nonneg reals.
+  have h_kt_eq : Real.exp ((k : ℝ) * t) = (p - 1) ^ ((k : ℝ) / 2) := by
+    have hkt : (k : ℝ) * t = Real.log (p - 1) * ((k : ℝ) / 2) := by
+      rw [ht_def]; ring
+    rw [hkt, ← Real.rpow_def_of_pos hp1_pos ((k : ℝ) / 2)]
+  rw [h_kt_eq] at h_step
+  exact h_step
 
 /-- **Bonami-Nelson L^p improvement on $\mathcal H^{\le d}$.**
 
