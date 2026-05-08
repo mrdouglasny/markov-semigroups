@@ -47,6 +47,12 @@ import MarkovSemigroups.DobrushinZegarlinski.GlobalLSI
 import MarkovSemigroups.DobrushinZegarlinski.EntrywiseCovariance
 import MarkovSemigroups.DobrushinZegarlinski.Concentration
 
+-- Wiener chaos / polynomial concentration (downstream of OU + hypercontractivity)
+import MarkovSemigroups.Gaussian.HermitePolynomials
+import MarkovSemigroups.Gaussian.WienerChaos
+import MarkovSemigroups.Gaussian.OUEigenfunctions
+import MarkovSemigroups.Gaussian.PolynomialChaosConcentration
+
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
 import MarkovSemigroups.Convergence.RelativeEntropy
