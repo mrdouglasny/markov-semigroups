@@ -56,6 +56,13 @@ semigroup-level reformulation depends on the
 -/
 
 import MarkovSemigroups.Gaussian.WienerChaos
+import Mathlib.Analysis.Calculus.Deriv.Pi
+import Mathlib.Analysis.Calculus.FDeriv.Mul
+import Mathlib.Analysis.Calculus.Deriv.Mul
+import Mathlib.Analysis.Calculus.ContDiff.Basic
+import Mathlib.Analysis.Calculus.ContDiff.Polynomial
+import Mathlib.Analysis.Calculus.ContDiff.Operations
+import Mathlib.Analysis.Calculus.ContDiff.FiniteDimension
 
 noncomputable section
 
@@ -186,18 +193,288 @@ theorem ouGenerator1D_hermiteEval (k : ℕ) (x : ℝ) :
     push_cast at h_rec ⊢
     linear_combination ((m : ℝ) + 2) * h_rec
 
+/-! ## Multivariate slicing helpers (toward `ouGenerator_hermiteMultiEval`)
+
+The OU generator definition uses `fderiv` on `(Fin n → ℝ) → ℝ`. To
+reduce to the 1D case, slice along each coordinate: for fixed `x` and
+`i`, the slice `s ↦ hermiteMultiEval α (Function.update x i s)` equals
+`(∏_{j ≠ i} H_{α_j}(x_j)) · hermiteEval (α i) s`, and its
+1D `ouGenerator1D` is computed by `ouGenerator1D_hermiteEval` times the
+constant `∏_{j ≠ i} H_{α_j}(x_j)`. -/
+
+/-- The "co-product" excluding coordinate `i`. -/
+private noncomputable def hermiteMultiCoprod {n : ℕ} (α : Fin n → ℕ)
+    (i : Fin n) (x : Fin n → ℝ) : ℝ :=
+  ∏ j ∈ (Finset.univ.erase i), hermiteEval (α j) (x j)
+
+/-- The slice `s ↦ hermiteMultiEval α (update x i s)` equals
+`(∏_{j ≠ i} H_{α_j}(x_j)) · hermiteEval (α i) s`. -/
+private lemma hermiteMultiEval_update {n : ℕ} (α : Fin n → ℕ)
+    (x : Fin n → ℝ) (i : Fin n) (s : ℝ) :
+    hermiteMultiEval α (Function.update x i s) =
+      hermiteMultiCoprod α i x * hermiteEval (α i) s := by
+  unfold hermiteMultiEval hermiteMultiCoprod
+  rw [← Finset.mul_prod_erase (Finset.univ : Finset (Fin n))
+        (fun j => hermiteEval (α j) ((Function.update x i s) j)) (Finset.mem_univ i)]
+  rw [Function.update_self]
+  rw [mul_comm]
+  congr 1
+  refine Finset.prod_congr rfl ?_
+  intro j hj
+  have hj' : j ≠ i := (Finset.mem_erase.mp hj).1
+  simp [Function.update_of_ne hj']
+
+/-- Slice has a 1D derivative. -/
+private lemma hermiteMultiEval_slice_HasDerivAt {n : ℕ} (α : Fin n → ℕ)
+    (x : Fin n → ℝ) (i : Fin n) (s : ℝ) :
+    HasDerivAt (fun t : ℝ => hermiteMultiEval α (Function.update x i t))
+      (hermiteMultiCoprod α i x * deriv (hermiteEval (α i)) s) s := by
+  -- Slice equals const · hermiteEval (α i) (·).
+  have h_eq : (fun t : ℝ => hermiteMultiEval α (Function.update x i t)) =
+      fun t => hermiteMultiCoprod α i x * hermiteEval (α i) t := by
+    funext t
+    exact hermiteMultiEval_update α x i t
+  rw [h_eq]
+  exact (hermiteEval_differentiable (α i)).differentiableAt.hasDerivAt.const_mul
+    (hermiteMultiCoprod α i x)
+
+/-- Helper: a Finset-product of `C^∞` functions of the form
+`x ↦ p_j (x j)` is `C^∞`. -/
+private lemma hermiteMultiProd_contDiff {n : ℕ} (α : Fin n → ℕ)
+    (t : Finset (Fin n)) :
+    ContDiff ℝ ⊤ (fun x : Fin n → ℝ => ∏ j ∈ t, hermiteEval (α j) (x j)) := by
+  classical
+  induction t using Finset.induction_on with
+  | empty =>
+    simp only [Finset.prod_empty]
+    exact contDiff_const
+  | insert k s hk ih =>
+    have h_eq : (fun x : Fin n → ℝ => ∏ j ∈ insert k s, hermiteEval (α j) (x j)) =
+        fun x => hermiteEval (α k) (x k) * ∏ j ∈ s, hermiteEval (α j) (x j) := by
+      funext x
+      exact Finset.prod_insert hk
+    rw [h_eq]
+    refine ContDiff.mul ?_ ih
+    -- hermiteEval (α k) (x k) = (hermitePolyR (α k)).eval (x k) = aeval (x k) (hermitePolyR (α k))
+    -- composed with the projection x ↦ x k
+    have h_one : ContDiff ℝ ⊤ (fun y : ℝ => (hermitePolyR (α k)).eval y) := by
+      have : (fun y : ℝ => (hermitePolyR (α k)).eval y) =
+          fun y : ℝ => Polynomial.aeval y (hermitePolyR (α k)) := by
+        funext y
+        simp [Polynomial.aeval_def, Polynomial.eval₂_eq_eval_map, Polynomial.map_id]
+      rw [this]
+      exact Polynomial.contDiff_aeval (hermitePolyR (α k)) ⊤
+    exact h_one.comp (contDiff_apply ℝ ℝ k)
+
+/-- `hermiteMultiEval α` is `C^∞`, hence smooth. -/
+private lemma hermiteMultiEval_contDiff {n : ℕ} (α : Fin n → ℕ) :
+    ContDiff ℝ ⊤ (hermiteMultiEval α) := by
+  unfold hermiteMultiEval
+  exact hermiteMultiProd_contDiff α Finset.univ
+
+/-- `hermiteMultiEval α` is differentiable at every point. -/
+private lemma hermiteMultiEval_differentiable {n : ℕ} (α : Fin n → ℕ) :
+    Differentiable ℝ (hermiteMultiEval α) :=
+  (hermiteMultiEval_contDiff α).differentiable (by norm_num)
+
+private lemma hermiteMultiEval_differentiableAt {n : ℕ} (α : Fin n → ℕ)
+    (x : Fin n → ℝ) :
+    DifferentiableAt ℝ (hermiteMultiEval α) x :=
+  (hermiteMultiEval_differentiable α).differentiableAt
+
+/-- Connect the slice derivative to the partial derivative `fderiv … (Pi.single i 1)`. -/
+private lemma fderiv_hermiteMultiEval_apply_single {n : ℕ}
+    (α : Fin n → ℕ) (x : Fin n → ℝ) (i : Fin n) :
+    fderiv ℝ (hermiteMultiEval α) x (Pi.single i 1) =
+      hermiteMultiCoprod α i x * deriv (hermiteEval (α i)) (x i) := by
+  -- The slice `s ↦ f (update x i s)` has derivative
+  -- `fderiv f (update x i s) (Pi.single i 1)` by chain rule, then equals
+  -- the slice's 1D derivative by `hermiteMultiEval_slice_HasDerivAt`.
+  have h_slice := hermiteMultiEval_slice_HasDerivAt α x i (x i)
+  have h_chain : HasDerivAt
+      (fun s : ℝ => hermiteMultiEval α (Function.update x i s))
+      (fderiv ℝ (hermiteMultiEval α) x (Pi.single i 1)) (x i) := by
+    have h_update := hasDerivAt_update x i (x i)
+    have h_f : HasFDerivAt (hermiteMultiEval α)
+        (fderiv ℝ (hermiteMultiEval α) x) x :=
+      (hermiteMultiEval_differentiableAt α x).hasFDerivAt
+    have h_eq : x = Function.update x i (x i) := (Function.update_eq_self i x).symm
+    exact HasFDerivAt.comp_hasDerivAt_of_eq (x := x i) (l := hermiteMultiEval α)
+      (l' := fderiv ℝ (hermiteMultiEval α) x) (y := x)
+      (f := Function.update x i) (f' := Pi.single i 1)
+      h_f h_update h_eq
+  exact h_chain.unique h_slice
+
+/-- The function `y ↦ fderiv f y (Pi.single i 1)` (the i-th partial derivative
+as a function of the base point) coincides on the i-line through x with
+`s ↦ c · deriv (hermiteEval (α i)) s` where `c = hermiteMultiCoprod α i x`. -/
+private lemma fderiv_apply_single_update {n : ℕ}
+    (α : Fin n → ℕ) (x : Fin n → ℝ) (i : Fin n) (s : ℝ) :
+    fderiv ℝ (hermiteMultiEval α) (Function.update x i s) (Pi.single i 1) =
+      hermiteMultiCoprod α i x * deriv (hermiteEval (α i)) s := by
+  rw [fderiv_hermiteMultiEval_apply_single α (Function.update x i s) i]
+  -- Need: `hermiteMultiCoprod α i (update x i s) = hermiteMultiCoprod α i x`
+  -- and `(update x i s) i = s`.
+  congr 1
+  · unfold hermiteMultiCoprod
+    refine Finset.prod_congr rfl ?_
+    intro j hj
+    have hj' : j ≠ i := (Finset.mem_erase.mp hj).1
+    simp [Function.update_of_ne hj']
+  · rw [Function.update_self]
+
+/-- `deriv` of `hermiteEval k` is differentiable. (Used for the second slice
+derivative.) -/
+private lemma deriv_hermiteEval_differentiable (k : ℕ) :
+    Differentiable ℝ (deriv (hermiteEval k)) := by
+  match k with
+  | 0 =>
+    have h : deriv (hermiteEval 0) = fun _ : ℝ => (0 : ℝ) := by
+      have h_const : hermiteEval 0 = fun _ : ℝ => (1 : ℝ) := by
+        funext y; show (hermitePolyR 0).eval y = 1
+        simp [hermitePolyR, Polynomial.hermite_zero]
+      funext y
+      rw [h_const]; exact deriv_const y 1
+    rw [h]; exact differentiable_const 0
+  | k + 1 =>
+    have h : deriv (hermiteEval (k + 1)) = fun y => ((k + 1 : ℕ) : ℝ) * hermiteEval k y := by
+      funext y
+      simpa using deriv_hermiteEval_succ k y
+    rw [h]; exact (hermiteEval_differentiable k).const_mul _
+
+/-- Second slice derivative: the slice `s ↦ fderiv f (update x i s) (Pi.single i 1)`
+has 1D derivative `c · deriv²(hermiteEval (α i)) (x i)` at `s = x i`. -/
+private lemma fderiv_apply_single_slice_HasDerivAt {n : ℕ}
+    (α : Fin n → ℕ) (x : Fin n → ℝ) (i : Fin n) :
+    HasDerivAt
+      (fun s : ℝ => fderiv ℝ (hermiteMultiEval α) (Function.update x i s)
+        (Pi.single i 1))
+      (hermiteMultiCoprod α i x * deriv (deriv (hermiteEval (α i))) (x i))
+      (x i) := by
+  have h_eq : (fun s : ℝ => fderiv ℝ (hermiteMultiEval α) (Function.update x i s)
+        (Pi.single i 1)) =
+      fun s => hermiteMultiCoprod α i x * deriv (hermiteEval (α i)) s := by
+    funext s
+    exact fderiv_apply_single_update α x i s
+  rw [h_eq]
+  exact (deriv_hermiteEval_differentiable (α i)).differentiableAt.hasDerivAt.const_mul
+    (hermiteMultiCoprod α i x)
+
+-- (`hermiteMultiEval_contDiff` defined above.)
+
+/-- Connect the second slice derivative to `fderiv (fderiv f) x v w`. -/
+private lemma fderiv_fderiv_apply_single_single {n : ℕ}
+    (α : Fin n → ℕ) (x : Fin n → ℝ) (i : Fin n) :
+    fderiv ℝ (fderiv ℝ (hermiteMultiEval α)) x (Pi.single i 1) (Pi.single i 1) =
+      hermiteMultiCoprod α i x * deriv (deriv (hermiteEval (α i))) (x i) := by
+  -- Strategy: T = (· at Pi.single i 1) is a CLM. Apply chain rule:
+  -- `g(y) := fderiv f y (Pi.single i 1) = T (fderiv f y)`. So
+  -- `fderiv g x v = T (fderiv (fderiv f) x v)`.
+  -- The slice 1D derivative of g at x_i along Function.update equals `fderiv g x (Pi.single i 1)`.
+  -- And the slice equals the explicit derivative by `fderiv_apply_single_slice_HasDerivAt`.
+  set T : ((Fin n → ℝ) →L[ℝ] ℝ) →L[ℝ] ℝ :=
+    ContinuousLinearMap.apply ℝ ℝ (Pi.single i (1 : ℝ))
+  set g : (Fin n → ℝ) → ℝ := fun y => fderiv ℝ (hermiteMultiEval α) y (Pi.single i 1)
+  -- g = T ∘ fderiv (hermiteMultiEval α)
+  have h_g : g = fun y => T (fderiv ℝ (hermiteMultiEval α) y) := by
+    funext y
+    rfl
+  -- f is C^2
+  have h_f_top : ContDiff ℝ ⊤ (hermiteMultiEval α) := hermiteMultiEval_contDiff α
+  have h_fderiv_c1 : ContDiff ℝ 1 (fderiv ℝ (hermiteMultiEval α)) :=
+    h_f_top.fderiv_right (le_top)
+  have h_fderiv_diff : DifferentiableAt ℝ (fderiv ℝ (hermiteMultiEval α)) x :=
+    (h_fderiv_c1.differentiable (by norm_num)).differentiableAt
+  -- fderiv g x = T ∘ fderiv (fderiv f) x.
+  have h_fderiv_g : fderiv ℝ g x = T.comp (fderiv ℝ (fderiv ℝ (hermiteMultiEval α)) x) := by
+    rw [h_g]
+    exact (T.hasFDerivAt.comp x h_fderiv_diff.hasFDerivAt).fderiv
+  -- Apply at Pi.single i 1
+  have h_eval :
+      fderiv ℝ g x (Pi.single i 1) =
+      fderiv ℝ (fderiv ℝ (hermiteMultiEval α)) x (Pi.single i 1) (Pi.single i 1) := by
+    rw [h_fderiv_g]
+    rfl
+  -- And `fderiv g x (Pi.single i 1) = c · deriv²(hermiteEval (α i)) (x i)`
+  -- via the slice + chain rule:
+  have h_g_diff : DifferentiableAt ℝ g x := by
+    rw [h_g]
+    exact T.differentiableAt.comp x h_fderiv_diff
+  have h_chain : HasDerivAt (fun s => g (Function.update x i s))
+      (fderiv ℝ g x (Pi.single i 1)) (x i) := by
+    have h_update := hasDerivAt_update x i (x i)
+    have h_g_fderiv : HasFDerivAt g (fderiv ℝ g x) x := h_g_diff.hasFDerivAt
+    have h_eq2 : x = Function.update x i (x i) := (Function.update_eq_self i x).symm
+    exact HasFDerivAt.comp_hasDerivAt_of_eq (x := x i) (l := g)
+      (l' := fderiv ℝ g x) (y := x)
+      (f := Function.update x i) (f' := Pi.single i 1)
+      h_g_fderiv h_update h_eq2
+  have h_slice := fderiv_apply_single_slice_HasDerivAt α x i
+  rw [← h_eval]
+  exact h_chain.unique h_slice
+
 /-- **Multivariate Hermite polynomials are OU eigenfunctions:**
 `L H_α = -|α| · H_α`.
 
-**Proof strategy:** $L = \sum_i L_i$ where $L_i$ acts only on the
-$i$-th coordinate. Since $H_\alpha(x) = \prod_j H_{\alpha_j}(x_j)$,
-$L_i H_\alpha$ multiplies through to $-\alpha_i \cdot H_\alpha$. Sum
-over $i$ gives $-|\alpha| \cdot H_\alpha$. The 1D base case is
-`ouGenerator1D_hermiteEval` above. -/
-axiom ouGenerator_hermiteMultiEval {n : ℕ} (α : Fin n → ℕ)
+**Proof:** Slice each coordinate:
+`hermiteMultiEval α (update x i s) = c_i(x) · hermiteEval (α i) s`
+where `c_i(x) := ∏_{j ≠ i} hermiteEval (α j) (x j)`. The 1D and 2D
+partial derivatives factor through `c_i(x)`, so the i-th term of
+`ouGenerator n` is `c_i(x) · ouGenerator1D (hermiteEval (α i)) (x i)`.
+By `ouGenerator1D_hermiteEval` this equals
+`c_i(x) · (-α_i) · hermiteEval (α i) (x i) = -α_i · hermiteMultiEval α x`.
+Summing over i gives `-(∑_i α_i) · hermiteMultiEval α x =
+-(MultiIndex.totalDegree α) · hermiteMultiEval α x`. -/
+theorem ouGenerator_hermiteMultiEval {n : ℕ} (α : Fin n → ℕ)
     (x : Fin n → ℝ) :
     ouGenerator n (hermiteMultiEval α) x =
-      -(MultiIndex.totalDegree α : ℝ) * hermiteMultiEval α x
+      -(MultiIndex.totalDegree α : ℝ) * hermiteMultiEval α x := by
+  classical
+  unfold ouGenerator MultiIndex.totalDegree
+  -- Rewrite each fderiv term using the slicing lemmas.
+  have h_partial : ∀ i : Fin n,
+      fderiv ℝ (hermiteMultiEval α) x (Pi.single i 1) =
+        hermiteMultiCoprod α i x * deriv (hermiteEval (α i)) (x i) := by
+    intro i; exact fderiv_hermiteMultiEval_apply_single α x i
+  have h_partial2 : ∀ i : Fin n,
+      fderiv ℝ (fderiv ℝ (hermiteMultiEval α)) x (Pi.single i 1) (Pi.single i 1) =
+        hermiteMultiCoprod α i x * deriv (deriv (hermiteEval (α i))) (x i) := by
+    intro i; exact fderiv_fderiv_apply_single_single α x i
+  simp_rw [h_partial, h_partial2]
+  -- Now: ∑_i c_i · (deriv²(hermiteEval (α i)) (x i)) - ∑_i x i · (c_i · deriv(hermiteEval (α i)) (x i))
+  --   = ∑_i c_i · ouGenerator1D(hermiteEval (α i))(x i)
+  --   = ∑_i c_i · (-α_i) · hermiteEval (α i) (x i)
+  --   = -∑_i α_i · hermiteMultiEval α x
+  rw [← Finset.sum_sub_distrib]
+  rw [show (fun i : Fin n =>
+      hermiteMultiCoprod α i x * deriv (deriv (hermiteEval (α i))) (x i) -
+      x i * (hermiteMultiCoprod α i x * deriv (hermiteEval (α i)) (x i))) =
+      (fun i => hermiteMultiCoprod α i x *
+        (deriv (deriv (hermiteEval (α i))) (x i) -
+         x i * deriv (hermiteEval (α i)) (x i))) from by
+    funext i; ring]
+  -- The bracket is `ouGenerator1D (hermiteEval (α i)) (x i)`
+  rw [show (fun i : Fin n =>
+        hermiteMultiCoprod α i x *
+        (deriv (deriv (hermiteEval (α i))) (x i) -
+         x i * deriv (hermiteEval (α i)) (x i))) =
+      (fun i => hermiteMultiCoprod α i x * ouGenerator1D (hermiteEval (α i)) (x i)) from by
+    funext i; rfl]
+  -- Apply 1D OU theorem
+  simp_rw [ouGenerator1D_hermiteEval]
+  -- ∑_i c_i · (-α_i · hermiteEval (α i) (x i)) = ∑_i (-α_i · ∏_j hermiteEval (α j) (x j))
+  -- and the latter = -(∑_i α_i) · hermiteMultiEval α x.
+  rw [show (fun i : Fin n =>
+        hermiteMultiCoprod α i x * (-((α i : ℝ)) * hermiteEval (α i) (x i))) =
+      (fun i => -((α i : ℝ)) * hermiteMultiEval α x) from by
+    funext i
+    unfold hermiteMultiEval hermiteMultiCoprod
+    rw [← Finset.mul_prod_erase (Finset.univ : Finset (Fin n))
+        (fun j => hermiteEval (α j) (x j)) (Finset.mem_univ i)]
+    ring]
+  rw [← Finset.sum_mul, Finset.sum_neg_distrib]
+  push_cast
+  ring
 
 /-- **The Ornstein–Uhlenbeck semigroup action on $L^2(\gamma_n)$.**
 
