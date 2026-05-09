@@ -139,12 +139,12 @@ theorem hermiteMulti_orthogonality {n : ℕ} (α β : Fin n → ℕ) :
 
 /-- **Multivariate Hermite polynomials are nonzero in L²(γ).**
 
-Immediate corollary of the orthogonality: `‖H_α‖_{L²}² = ∏ᵢ αᵢ! ≥ 1 > 0`.
-This is what justifies treating the Hermite family as a (countable)
-linearly independent system. -/
-axiom hermiteMulti_l2_pos {n : ℕ} (α : Fin n → ℕ) :
+Immediate corollary of the orthogonality: `‖H_α‖_{L²}² = ∏ᵢ αᵢ! ≥ 1 > 0`. -/
+theorem hermiteMulti_l2_pos {n : ℕ} (α : Fin n → ℕ) :
     0 < ∫ x : Fin n → ℝ,
-      hermiteMultiEval α x * hermiteMultiEval α x ∂(stdGaussianFin n)
+      hermiteMultiEval α x * hermiteMultiEval α x ∂(stdGaussianFin n) := by
+  rw [hermiteMulti_orthogonality, if_pos rfl]
+  exact_mod_cast Finset.prod_pos (fun i _ => Nat.factorial_pos (α i))
 
 /-- **Density of multivariate Hermite polynomials in L²(γ).**
 
