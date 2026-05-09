@@ -43,8 +43,13 @@ import Mathlib.RingTheory.Polynomial.Hermite.Basic
 import Mathlib.RingTheory.Polynomial.Hermite.Gaussian
 import Mathlib.Algebra.MvPolynomial.Equiv
 import Mathlib.Probability.Distributions.Gaussian.Real
+import Mathlib.MeasureTheory.Integral.Pi
+import SchwartzNuclear.HermiteWick
+import GaussianField.WickMultivariate
 
 noncomputable section
+
+open MeasureTheory GaussianField
 
 namespace MarkovSemigroups.Gaussian
 
@@ -68,6 +73,15 @@ noncomputable def stdGaussianFin (n : ℕ) :
     MeasureTheory.Measure (Fin n → ℝ) :=
   MeasureTheory.Measure.pi (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)
 
+/-- The 1D probabilist's Hermite polynomial evaluated at `x` equals
+the unit-variance Wick monomial, via gaussian-field's `wick_eq_hermiteR`. -/
+private lemma hermiteEval_eq_wickMonomial_one (k : ℕ) (x : ℝ) :
+    hermiteEval k x = wickMonomial k 1 x := by
+  unfold hermiteEval
+  rw [wick_eq_hermiteR k 1 (by norm_num : (0:ℝ) < 1)]
+  show _ = Real.sqrt 1 ^ k * _
+  rw [Real.sqrt_one, one_pow, one_mul, div_one]
+
 /-- **Orthogonality of multivariate Hermite polynomials** under the
 standard multivariate Gaussian.
 
@@ -75,18 +89,53 @@ standard multivariate Gaussian.
 
 **Reference:** Janson, *Gaussian Hilbert Spaces*, Theorem 3.21.
 
-**Proof strategy:** Fubini on the product Gaussian reduces to the
-1D case for each coordinate. The 1D probabilist's Hermite
-orthogonality
-`∫ H_k(x) H_m(x) e^{-x²/2} dx / √(2π) = δ_{km} · k!`
-follows from Mathlib's `Polynomial.hermite_eq_deriv_gaussian'`
-(the Rodrigues formula) by integration by parts applied `min k m`
-times. The tensor product then yields the product of factorials.
--/
-axiom hermiteMulti_orthogonality {n : ℕ} (α β : Fin n → ℕ) :
+**Proof:** Identify the 1D Hermite evaluation with gaussian-field's
+unit-variance Wick monomial (`hermiteEval_eq_wickMonomial_one`),
+combine the two products into one product of pairs, apply Fubini on
+the pi measure (`integral_fintype_prod_eq_prod`), and reduce each
+factor to the 1D Wick orthogonality
+`wickMonomial_inner_gaussianReal_one`. -/
+theorem hermiteMulti_orthogonality {n : ℕ} (α β : Fin n → ℕ) :
     ∫ x : Fin n → ℝ,
       hermiteMultiEval α x * hermiteMultiEval β x ∂(stdGaussianFin n) =
-    if α = β then ((∏ i, (α i).factorial : ℕ) : ℝ) else 0
+    if α = β then ((∏ i, (α i).factorial : ℕ) : ℝ) else 0 := by
+  -- Step 1: combine the two products into one product of pairs and
+  -- replace `hermiteEval` by `wickMonomial _ 1`.
+  have h_eq : ∀ x : Fin n → ℝ,
+      hermiteMultiEval α x * hermiteMultiEval β x =
+      ∏ i, wickMonomial (α i) 1 (x i) * wickMonomial (β i) 1 (x i) := by
+    intro x
+    unfold hermiteMultiEval
+    rw [← Finset.prod_mul_distrib]
+    refine Finset.prod_congr rfl ?_
+    intro i _
+    rw [hermiteEval_eq_wickMonomial_one, hermiteEval_eq_wickMonomial_one]
+  simp_rw [h_eq]
+  -- Step 2: Fubini on the pi measure splits the integral as a product.
+  unfold stdGaussianFin
+  rw [integral_fintype_prod_eq_prod
+    (f := fun i (x : ℝ) => wickMonomial (α i) 1 x * wickMonomial (β i) 1 x)]
+  -- Step 3: each factor is the 1D Wick orthogonality.
+  simp_rw [wickMonomial_inner_gaussianReal_one]
+  -- Step 4: combine the per-coordinate indicators into the multi-index indicator.
+  by_cases hαβ : α = β
+  · rw [if_pos hαβ]
+    rw [show (∏ i : Fin n,
+        if α i = β i then (((α i).factorial : ℕ) : ℝ) else 0) =
+        ∏ i : Fin n, ((α i).factorial : ℝ) from by
+      refine Finset.prod_congr rfl ?_
+      intro i _
+      rw [if_pos (by rw [hαβ] : α i = β i)]]
+    push_cast
+    rfl
+  · rw [if_neg hαβ]
+    -- Some i has α i ≠ β i, so that factor is 0.
+    obtain ⟨i, hi⟩ : ∃ i, α i ≠ β i := by
+      by_contra h
+      push Not at h
+      exact hαβ (funext h)
+    apply Finset.prod_eq_zero (Finset.mem_univ i)
+    rw [if_neg hi]
 
 /-- **Multivariate Hermite polynomials are nonzero in L²(γ).**
 
