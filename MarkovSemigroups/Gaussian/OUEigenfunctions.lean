@@ -74,22 +74,117 @@ noncomputable def ouGenerator (n : ℕ) (f : (Fin n → ℝ) → ℝ) :
     (∑ i, fderiv ℝ (fderiv ℝ f) x (Pi.single i 1) (Pi.single i 1)) -
     (∑ i, x i * fderiv ℝ f x (Pi.single i 1))
 
-/-- **1D Hermite polynomials are OU eigenfunctions:**
-`L₁ H_k = -k · H_k`.
+/-- The 1D Hermite polynomial as an `ℝ[X]` polynomial. Wrapper around
+`(Polynomial.hermite k).map (Int.castRingHom ℝ)` matching gaussian-field's
+`hermiteR k` so we can reuse `Polynomial.deriv_aeval` and the
+`hermite_derivative` recurrence. -/
+private noncomputable abbrev hermitePolyR (k : ℕ) : Polynomial ℝ :=
+  (Polynomial.hermite k).map (Int.castRingHom ℝ)
 
-**Proof strategy:** Direct calculation from the probabilist's Hermite
-recurrence
-- $H_{k+1}(x) = x \, H_k(x) - k \, H_{k-1}(x)$
-- $H_k'(x) = k \, H_{k-1}(x)$
+private lemma hermitePolyR_eval_eq_hermiteEval (k : ℕ) (x : ℝ) :
+    (hermitePolyR k).eval x = hermiteEval k x := rfl
 
-so $H_k''(x) - x H_k'(x) = k(k-1) H_{k-2}(x) - x \cdot k H_{k-1}(x)$,
-and the recurrence collapses this to $-k H_k(x)$. Both identities
-are in Mathlib's `Polynomial.hermite` API
-(`hermite_succ`, `derivative_hermite`).
+private lemma derivative_hermitePolyR (k : ℕ) :
+    Polynomial.derivative (hermitePolyR (k + 1)) =
+      ((k + 1 : ℕ) : Polynomial ℝ) * hermitePolyR k := by
+  simp only [hermitePolyR]
+  rw [Polynomial.derivative_map, hermite_derivative,
+      Polynomial.map_mul, Polynomial.map_natCast]
+
+/-- Derivative of `hermiteEval (k+1)` is `(k+1) · hermiteEval k`. -/
+private lemma deriv_hermiteEval_succ (k : ℕ) (x : ℝ) :
+    deriv (hermiteEval (k + 1)) x = (k + 1 : ℝ) * hermiteEval k x := by
+  -- deriv (eval (hermite (k+1))) = eval (derivative (hermite (k+1)))
+  -- = eval ((k+1) * hermite k) = (k+1) * hermiteEval k
+  have h_aeval : deriv (fun u : ℝ => (hermitePolyR (k + 1)).eval u) x =
+      (Polynomial.derivative (hermitePolyR (k + 1))).eval x := by
+    have h1 : (fun u : ℝ => (hermitePolyR (k + 1)).eval u) =
+        fun u : ℝ => Polynomial.aeval u (hermitePolyR (k + 1)) := by
+      ext u
+      simp [Polynomial.aeval_def, Polynomial.eval₂_eq_eval_map, Polynomial.map_id]
+    rw [h1, Polynomial.deriv_aeval]
+    simp [Polynomial.aeval_def, Polynomial.eval₂_eq_eval_map, Polynomial.map_id]
+  show deriv (fun u : ℝ => (hermitePolyR (k + 1)).eval u) x = _
+  rw [h_aeval, derivative_hermitePolyR, Polynomial.eval_mul, Polynomial.eval_natCast]
+  push_cast
+  rfl
+
+/-- Hermite three-term recurrence at the value level:
+`hermiteEval (k + 2) x = x · hermiteEval (k + 1) x − (k + 1) · hermiteEval k x`. -/
+private lemma hermiteEval_recurrence (k : ℕ) (x : ℝ) :
+    hermiteEval (k + 2) x =
+      x * hermiteEval (k + 1) x - ((k + 1 : ℕ) : ℝ) * hermiteEval k x := by
+  -- `hermite (k+2) = X * hermite (k+1) - derivative (hermite (k+1))`
+  -- and `derivative (hermite (k+1)) = (k+1) * hermite k`.
+  show (hermitePolyR (k + 2)).eval x =
+    x * (hermitePolyR (k + 1)).eval x - ((k + 1 : ℕ) : ℝ) * (hermitePolyR k).eval x
+  have h1 : hermitePolyR (k + 2) =
+      Polynomial.X * hermitePolyR (k + 1) -
+        Polynomial.derivative (hermitePolyR (k + 1)) := by
+    simp only [hermitePolyR]
+    rw [Polynomial.hermite_succ, Polynomial.map_sub, Polynomial.map_mul,
+      Polynomial.map_X, Polynomial.derivative_map]
+  rw [h1, Polynomial.eval_sub, Polynomial.eval_mul, Polynomial.eval_X,
+      derivative_hermitePolyR, Polynomial.eval_mul, Polynomial.eval_natCast]
+
+/-- `hermiteEval` is differentiable on ℝ (as a polynomial evaluation). -/
+private lemma hermiteEval_differentiable (k : ℕ) :
+    Differentiable ℝ (hermiteEval k) := by
+  show Differentiable ℝ (fun u : ℝ => (hermitePolyR k).eval u)
+  exact (hermitePolyR k).differentiable
+
+/-- **1D Hermite polynomials are OU eigenfunctions:** `L₁ H_k = −k · H_k`.
+
+**Proof:** From `H_k'(x) = k · H_{k-1}(x)` (`deriv_hermiteEval_succ`) and the
+three-term recurrence `H_{k+2}(x) = x H_{k+1}(x) − (k+1) H_k(x)`
+(`hermiteEval_recurrence`), expand `L₁ H_k = H_k'' - x · H_k'`
+and collapse via the recurrence.
 
 **Reference:** Janson, *Gaussian Hilbert Spaces*, Theorem 4.4. -/
-axiom ouGenerator1D_hermiteEval (k : ℕ) (x : ℝ) :
-    ouGenerator1D (hermiteEval k) x = -(k : ℝ) * hermiteEval k x
+theorem ouGenerator1D_hermiteEval (k : ℕ) (x : ℝ) :
+    ouGenerator1D (hermiteEval k) x = -(k : ℝ) * hermiteEval k x := by
+  unfold ouGenerator1D
+  match k with
+  | 0 =>
+    -- hermiteEval 0 = (fun _ => 1), so all derivatives vanish.
+    have h_const : hermiteEval 0 = fun _ : ℝ => (1 : ℝ) := by
+      funext y
+      show (hermitePolyR 0).eval y = 1
+      simp [hermitePolyR, Polynomial.hermite_zero]
+    rw [h_const]
+    simp
+  | 0 + 1 =>
+    -- hermiteEval 1 = id, deriv = 1, deriv² = 0; goal: 0 - x · 1 = -1 · x
+    have h_id : hermiteEval 1 = fun y : ℝ => y := by
+      funext y
+      show (hermitePolyR 1).eval y = y
+      simp [hermitePolyR, Polynomial.hermite_succ, Polynomial.hermite_zero]
+    rw [h_id]
+    simp
+  | m + 1 + 1 =>
+    -- f' = (m+2) · hermiteEval (m+1)
+    have h_d1 : deriv (hermiteEval (m + 2)) = fun y => ((m + 2 : ℕ) : ℝ) * hermiteEval (m + 1) y := by
+      funext y
+      have := deriv_hermiteEval_succ (m + 1) y
+      convert this using 1
+      push_cast; ring
+    rw [h_d1]
+    -- f'' = (m+2) · deriv (hermiteEval (m+1)) = (m+2)(m+1) hermiteEval m
+    have h_d2 : deriv (fun y => ((m + 2 : ℕ) : ℝ) * hermiteEval (m + 1) y) x =
+        ((m + 2 : ℕ) : ℝ) * (((m + 1 : ℕ) : ℝ) * hermiteEval m x) := by
+      rw [deriv_const_mul _ ((hermiteEval_differentiable (m + 1)).differentiableAt)]
+      rw [deriv_hermiteEval_succ]
+      push_cast; ring
+    rw [h_d2]
+    -- Goal: (m+2)(m+1) H_m x − x · (m+2) · H_{m+1} x = -(m+2) · H_{m+2} x
+    -- Use H_{m+2} x = x · H_{m+1} x − (m+1) · H_m x.
+    have h_rec := hermiteEval_recurrence m x
+    -- Normalise `m+1+1` to `m+2` and push casts.
+    show ((m + 2 : ℕ) : ℝ) * (((m + 1 : ℕ) : ℝ) * hermiteEval m x) -
+        x * (((m + 2 : ℕ) : ℝ) * hermiteEval (m + 1) x) =
+      -((m + 2 : ℕ) : ℝ) * hermiteEval (m + 2) x
+    push_cast at h_rec ⊢
+    linear_combination ((m : ℝ) + 2) * h_rec
 
 /-- **Multivariate Hermite polynomials are OU eigenfunctions:**
 `L H_α = -|α| · H_α`.
