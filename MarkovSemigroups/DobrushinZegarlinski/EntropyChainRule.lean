@@ -109,6 +109,7 @@ def siteSmoothing (spec : GibbsSpec Λ ℝ) (x : Λ)
     (g : SpinConfig Λ ℝ → ℝ) : SpinConfig Λ ℝ → ℝ :=
   fun σ => ∫ τ, g τ ∂(spec.condDist {x} σ)
 
+omit [Fintype Λ] in
 /-- The smoothing of a constant function is the same constant.
 Follows from `IsProbabilityMeasure` of `spec.condDist`: the integral
 of a constant against a probability measure is the constant. -/
@@ -118,6 +119,7 @@ of a constant against a probability measure is the constant. -/
   unfold siteSmoothing
   rw [integral_const, probReal_univ, smul_eq_mul, one_mul]
 
+omit [Fintype Λ] in
 /-- The smoothing of a nonneg function is nonneg. -/
 lemma siteSmoothing_nonneg (spec : GibbsSpec Λ ℝ) (x : Λ)
     {g : SpinConfig Λ ℝ → ℝ} (hg : 0 ≤ g) :

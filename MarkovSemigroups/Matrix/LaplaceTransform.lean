@@ -35,6 +35,7 @@ We use the concrete characterization: x^T M x > 0 for all x ≠ 0. -/
 def IsPosDef (M : Matrix n n ℝ) : Prop :=
   M.IsHermitian ∧ ∀ x : n → ℝ, x ≠ 0 → 0 < x ⬝ᵥ M.mulVec x
 
+omit [DecidableEq n] in
 /-- Bridge from the local `IsPosDef` (using `n → ℝ` quantification) to
 Mathlib's `Matrix.PosDef` (using `n →₀ ℝ`).
 

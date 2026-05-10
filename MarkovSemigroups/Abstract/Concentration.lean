@@ -296,7 +296,7 @@ theorem lipschitz_concentration_two_sided_of_lsi
       left; rw [heq] at hx; exact hx
     · -- |X x| = -X x: conclude -X x > t.
       right
-      simp only [Set.mem_union, Set.mem_setOf_eq]
+      simp only [Set.mem_setOf_eq]
       rw [heq] at hx; exact hx
   have h_right := lipschitz_concentration_of_lsi h_lsi hF_lip hF_int t ht
   -- For -F: still L-Lipschitz, integrable; gives {(-F) − ∫(-F) > t}.

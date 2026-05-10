@@ -273,7 +273,7 @@ lemma iterate_dist_zero (M : AbstractInfluenceMatrix I)
       intro z
       by_cases hz : d x z > n * R
       · rw [ih x z hz]; ring
-      · push_neg at hz
+      · push Not at hz
         have hzy : d z y > R := by
           have htri := h_triangle x y z
           have h1 : d x y > n * R + R := by
