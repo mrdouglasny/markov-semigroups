@@ -12,11 +12,6 @@ git = "https://github.com/mrdouglasny/hille-yosida.git"
 rev = "main"
 
 [[require]]
-name = "GaussianField"
-git = "https://github.com/mrdouglasny/gaussian-field.git"
-rev = "main"
-
-[[require]]
 name = "SpectralPositivity"
 git = "https://github.com/mrdouglasny/spectral-positivity.git"
 rev = "main"

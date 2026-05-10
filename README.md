@@ -3,8 +3,11 @@
 Markov semigroups, functional inequalities, and convergence to
 equilibrium in Lean 4. Built on the
 [hille-yosida](https://github.com/mrdouglasny/hille-yosida) C₀-semigroup
-framework and [gaussian-field](https://github.com/mrdouglasny/gaussian-field)
-Gaussian measure library.
+framework. The downstream
+[gaussian-hilbert](https://github.com/mrdouglasny/gaussian-hilbert) library
+combines this repo with
+[gaussian-field](https://github.com/mrdouglasny/gaussian-field) for
+finite-dim Wiener chaos / polynomial-chaos concentration work.
 
 ## What this project proves
 
@@ -75,19 +78,16 @@ The central result chain:
     `Var_μ_Gibbs(F) ≤ L²/(c·(1−α))`. Closes the LSI → concentration
     → variance / spectral-gap chain.
 
-13. **Multivariate Hermite + Wiener chaos** (finite-dim, in `Gaussian/`):
-    multivariate Hermite orthogonality `⟨H_α, H_β⟩_{γ_n} = δ_{αβ} ∏ α_i!`
-    is fully proved via Fubini + the gaussian-field 1D Wick-orthogonality.
-    Polynomial L²-density (`hermiteMulti_dense`) is a proved theorem,
-    rewired through one external textbook axiom in gaussian-field
-    (`polynomial_dense_L2_of_subGaussian`, justified by Janson Thm 2.6
-    and proved sub-Gaussian for the standard product Gaussian via
-    Mathlib's Fernique theorem). The 1D OU eigenfunction property
-    `L H_k = -k H_k` and the multivariate version are proved from the
-    Hermite recurrence. Wiener chaos subspaces, orthogonality, the chaos
-    sum decomposition for `wienerChaosLE`, and (in progress) the full
-    Hilbert-sum decomposition complete the polynomial-chaos infrastructure
-    for pphi2/pphi2N's Cluster A concentration argument (Janson Thm 5.10).
+**Multivariate Hermite / Wiener chaos / OU eigenfunctions /
+polynomial-chaos concentration** (Janson Theorem 5.10) live in
+[gaussian-hilbert](https://github.com/mrdouglasny/gaussian-hilbert)
+since 2026-05-10. They were originally drafted here in a `Gaussian/`
+subdirectory, but the content is "facts about the standard Gaussian
+measure" rather than "facts about abstract Markov semigroups", and
+gaussian-hilbert (which sits on top of gaussian-field +
+markov-semigroups + Mathlib) is the natural home. Removing the cluster
+also cleanly eliminated markov-semigroups' cross-repo dependency on
+gaussian-field.
 
 ## Architecture: three layers of abstraction
 
@@ -176,11 +176,9 @@ MarkovSemigroups/
     L2Semigroup.lean            -- Bridge to hille-yosida semigroup theory
     InvariantMeasure.lean       -- Invariant probability measures
     OrnsteinUhlenbeck.lean      -- Abstract OU semigroup on Hilbert spaces
-  Gaussian/                     -- Finite-dim Gaussian + Wiener chaos
-    HermitePolynomials.lean     -- Multivariate Hermite, orthogonality + density (proved; density rests on gaussian-field axiom polynomial_dense_L2_of_subGaussian)
-    WienerChaos.lean            -- wienerChaos n k (closed L² subspace), orthogonality, chaos sum on wienerChaosLE, full Hilbert-sum decomposition wienerChaos_isHilbertSum (proved from hermiteMulti_dense)
-    OUEigenfunctions.lean       -- ouGenerator_hermiteMultiEval (proved); semigroup action ouSemigroupAct on chaos pieces (3 axioms — placeholder OU operator + eigenvalue action + Nelson hypercontractivity)
-    PolynomialChaosConcentration.lean -- Janson Thm 5.10 polynomial-chaos concentration
+  -- (Wiener chaos / multivariate Hermite / OU eigenfunctions /
+  -- polynomial-chaos concentration moved to gaussian-hilbert as
+  -- GaussianHilbert.* on 2026-05-10.)
   Instances/                    -- Layer 3: concrete spaces (sorry-free)
     Torus.lean                  -- T^d: heat semigroup, Fourier modes (header)
     GFFIdentification.lean      -- OU invariant on T^d = GFF (header)
@@ -269,7 +267,7 @@ see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 4 Gaussian1D + 3 Gaussian = 14 total, +1 external dep on gaussian-field)
+### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 4 Gaussian1D = 11 total)
 
 *See [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md) for the per-axiom
 vetting verdicts (Standard / Likely correct / Placeholder / etc.),
@@ -290,10 +288,6 @@ self-audit), and links to the discharge plans.*
 | `ouSemigroup_gradient_decay` | BGL Theorem 5.5.2 (∫(P_t f')² ≤ e^{-2t} ∫(f')²) |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) |
 | `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 (Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t})E(f)) |
-| `ouSemigroupAct` (placeholder OU operator definition; Mehler kernel infrastructure not yet in place) | BGL §2.7.4 |
-| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | BGL §2.7.4 (OU eigenvalues on chaos: `T_t H_k = e^{-kt} H_k`) |
-| `ouSemigroupAct_eLpNorm_hypercontractive` | Nelson (1973) J. Funct. Anal. 12 §3 (Bonami-Beckner-Nelson hypercontractivity); BGL Thm 5.2.3 |
-| **External dep:** `GaussianField.GeneralResults.polynomial_dense_L2_of_subGaussian` | Janson, *Gaussian Hilbert Spaces*, Thm 2.6 (sub-Gaussian probability measures admit polynomial-dense L²); load-bearing for `hermiteMulti_dense` and downstream Wiener-chaos completeness |
 
 The four Gaussian1D axioms are concrete-instance bridges to the
 abstract Bakry-Émery layer for the standard Gaussian + OU semigroup
@@ -349,10 +343,6 @@ only on Lean's three standard axioms `propext`, `Classical.choice`,
 | `herbst_mgf_bound` | `lipschitz_concentration_of_lsi` (proven theorem, `Abstract/Concentration.lean`, derived from this axiom + Mathlib's Chernoff `measure_ge_le_exp_mul_mgf`); `lipschitz_concentration_left_of_lsi` and `lipschitz_concentration_two_sided_of_lsi` (proven, by reflection / union bound); `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi` (proven `L^p` moment bounds); `lipschitz_concentration_of_zegarlinski` + left-tail + two-sided + Mathlib bridge + `MemLp` (`DobrushinZegarlinski/Concentration.lean`, all composing with the global LSI from the Zegarlinski hypothesis) |
 | `poincare_of_lsi` | `variance_lipschitz_le_of_lsi` (proven `Var(F) ≤ L²/c` via Mathlib's `norm_fderiv_le_of_lipschitz`); `variance_lipschitz_le_of_zegarlinski` (proven Zegarlinski composition `Var ≤ L²/(c·(1-α))`). Declared for spectral-gap-style fluctuation bounds |
 | `gaussian2D_orthogonal_invariance` … `ouSemigroup_entropy_sq_decay_bound` (5 axioms) | `Gaussian1D.bakryEmerySpace` (proven `BakryEmerySpace ℝ` instance, `Instances/WorkInProgress/Euclidean.lean`); none consumed transitively by any theorem outside that file. They surface in `#print axioms` only on theorems that explicitly invoke the Gaussian1D instance (the abstract `BakryEmerySpace` theory in `Diffusion/CarreDuChamp.lean` is itself axiom-free) |
-| `ouSemigroupAct` | `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive` (in same file), and `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (`Gaussian/PolynomialChaosConcentration.lean`). Placeholder OU-semigroup-on-L²(γ_n) operator; the abstract `OUSemigroup` skeleton in `Diffusion/OrnsteinUhlenbeck.lean` will provide the real definition once the Mehler kernel infrastructure lands |
-| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (`Gaussian/PolynomialChaosConcentration.lean`) |
-| `ouSemigroupAct_eLpNorm_hypercontractive` | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (`Gaussian/PolynomialChaosConcentration.lean`); the load-bearing Bonami-Beckner-Nelson step |
-| **External:** `GaussianField.GeneralResults.polynomial_dense_L2_of_subGaussian` | `hermiteMulti_dense` (proved theorem, `Gaussian/HermitePolynomials.lean`, via the `Submodule`-span change of basis between monomials and multivariate Hermite); transitively, `wienerChaos_isHilbertSum` (`Gaussian/WienerChaos.lean`) |
 
 **DZ-layer axiom audit (verified `#print axioms` 2026-05-01):** the
 proven content of `DobrushinZegarlinski/` — `AbstractInfluenceMatrix`

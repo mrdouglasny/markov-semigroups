@@ -1,10 +1,9 @@
 # Axiom Audit
 
-*Centralized registry of every textbook axiom in `markov-semigroups`,
-plus the one external axiom in `gaussian-field` that the polynomial-chaos
-pipeline transitively rests on. Each row records the axiom's literature
-reference, vetting verdict, discharge plan (if any), and downstream
-consumers. Last refreshed: 2026-05-09.*
+*Centralized registry of every textbook axiom in `markov-semigroups`.
+Each row records the axiom's literature reference, vetting verdict,
+discharge plan (if any), and downstream consumers. Last refreshed:
+2026-05-10.*
 
 ## Conventions
 
@@ -26,23 +25,19 @@ consumers. Last refreshed: 2026-05-09.*
 
 ## Summary
 
-15 axioms total. Of these:
+11 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
 - **4 Gaussian1D BGL Ch. 2** axioms — Mehler-kernel-level facts on `(ℝ, γ_1)`
-- **3 Gaussian OU action** axioms — placeholder for OU-on-`L²(γ_n)` and chaos eigenvalues + Nelson HC
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
-- **1 external** axiom in gaussian-field — polynomial L² density for sub-Gaussian measures
 
-The polynomial-chaos pipeline (proved theorems
-`hermiteMulti_dense`, `wienerChaos_isHilbertSum`, `bonami_nelson_*`,
-`polynomial_chaos_concentration`) transitively rests on:
-`polynomial_dense_L2_of_subGaussian` (gaussian-field) +
-`gross_lsi_implies_hypercontractive` + 4 Gaussian1D BGL axioms (via the
-Mehler-kernel discharge plan) + 3 OU placeholder axioms (until that
-plan lands).
-
+The Wiener-chaos / multivariate-Hermite cluster (3 OU placeholder
+axioms + 1 external `polynomial_dense_L2_of_subGaussian`, plus the
+proved theorems `hermiteMulti_dense`, `wienerChaos_isHilbertSum`,
+`bonami_nelson_*`, `polynomial_chaos_concentration`) **moved to
+[gaussian-hilbert](https://github.com/mrdouglasny/gaussian-hilbert)**
+on 2026-05-10. See that repo for the current home and audit.
 ## Audit table
 
 ### Core: hypercontractivity / Gross duality
@@ -58,14 +53,6 @@ plan lands).
 |---|---|---|---|---|---|---|
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
-
-### Gaussian / OU semigroup action (placeholder cluster)
-
-| Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
-|---|---|---|---|---|---|---|
-| `ouSemigroupAct` | [`Gaussian/OUEigenfunctions.lean:490`](../MarkovSemigroups/Gaussian/OUEigenfunctions.lean#L490) | BGL §2.7.4 (OU semigroup definition) | Placeholder | LP | Defines the OU semigroup as a CLM `Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)` without specifying the operator. Discharge: define explicitly as the Mehler integral. See [Stage A in `ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md#stage-a--mehler-operator-on-l-250-lines-5-7-days-no-new-axioms) (~250 lines / ~1 week). | `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive` (same file); `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
-| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | [`Gaussian/OUEigenfunctions.lean:507`](../MarkovSemigroups/Gaussian/OUEigenfunctions.lean#L507) | BGL §2.7.4 (OU eigenvalues on chaos: `T_t H_k = e^{-kt} H_k`); Janson §3.4 (Mehler-Hermite identity); Nualart §1.4 | Placeholder | LP | OU semigroup multiplies each Hermite chaos `H_k` by `e^{-kt}`. Direct discharge: prove the 1D Mehler-Hermite identity `∫ He_k(e^{-t}x + √(1-e^{-2t})y) dγ(y) = e^{-kt} He_k(x)` via Hermite generating function; tensor product to multivariate; extend to closure by linearity + density. See [Stage C′ in plan](ou-mehler-discharge-plan.md#stage-c--hermite-eigenvalues-via-1d-mehler-hermite-identity-250-lines-parallel-to-ab) (~250 lines / ~1 week). | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
-| `ouSemigroupAct_eLpNorm_hypercontractive` | [`Gaussian/OUEigenfunctions.lean:528`](../MarkovSemigroups/Gaussian/OUEigenfunctions.lean#L528) | Nelson (1973) J. Funct. Anal. 12 §3 (Bonami-Beckner-Nelson hypercontractivity); BGL Theorem 5.2.3 | Placeholder | LP | The hypercontractive bound `‖T_t f‖_{L^p} ≤ ‖f‖_{L^q}` for `e^{2t} ≥ p-1`, `q = 2`. Discharge route: Bakry-Émery curvature 1 on `(Fin n → ℝ, γ_n)` → LSI(1) → `gross_lsi_implies_hypercontractive`. See [Stages C+E in plan](ou-mehler-discharge-plan.md#stage-c--multivariate-bakryemeryspace-600-lines-10-14-days-no-new-axioms) (~650 lines / ~2-3 weeks; uses 4 Gaussian1D BGL axioms transitively). Shortcut available via [LSI tensorization (Stage C-β)](ou-mehler-discharge-plan.md#optional-shortcut-stage-c--no-full-be-instance-1-axiom): adds 1 axiom but cuts 1 week. | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (the load-bearing Bonami-Beckner-Nelson step) |
 
 ### Gaussian1D BGL Ch. 2 (4 axioms — Mehler-kernel-level facts on ℝ)
 
@@ -120,33 +107,22 @@ themselves are invoked.
 - `exp_entryNonneg_of_entryNonneg` (now in `Matrix/HeatKernel.lean`, via Metzler shift)
 - `trotter_product_formula` (now in `Matrix/Trotter.lean`)
 
-### External (gaussian-field)
-
-| Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
-|---|---|---|---|---|---|---|
-| `polynomial_dense_L2_of_subGaussian` | [`gaussian-field/GeneralResults/PolynomialDensityGaussian.lean:90`](https://github.com/mrdouglasny/gaussian-field/blob/main/GeneralResults/PolynomialDensityGaussian.lean#L90) | S. Janson, *Gaussian Hilbert Spaces*, Cambridge (1997), Theorem 2.6; Nualart, *Malliavin Calculus*, §1.1.1; Berg, *Multidimensional moment problem*, Lecture Notes in Math. 1210 (1986) | Standard | LP | Multivariate polynomials are dense in `L²(μ)` for any sub-Gaussian probability measure on `Fin n → ℝ`. Textbook proof: (1) `Cc(ℝⁿ)` dense in `L²(μ)`; (2) Stone-Weierstrass on each ball; (3) sub-Gaussian tail controls polynomial L²-mass on tail. Estimated 4-7 days to formalize (the tail-control step is the analytic content; everything else is Mathlib). Marked **(NOT VERIFIED)** in source — *Pending DT vetting pass.* | `hermiteMulti_dense` (proved theorem, `Gaussian/HermitePolynomials.lean`); transitively `wienerChaos_isHilbertSum` (`Gaussian/WienerChaos.lean`); and via that chain, every theorem in `polynomial-chaos-roadmap.md` |
-
 ## Open vetting items
 
 These haven't been independently vetted yet — would be valuable to send
 through `mcp__gemini__deep_think_gemini` and/or `codex:codex-rescue`
 when the budget allows:
 
-1. **`polynomial_dense_L2_of_subGaussian` (gaussian-field).** Statement
-   is well-cited and standard, but a deep-think pass on (a) hypothesis
-   sufficiency, (b) Cc-density vs Schwartz-density choice, (c) the
-   measurability prerequisites would close the loop. Marked
-   **(NOT VERIFIED)** in source.
-2. **`herbst_mgf_bound`.** Literature review only (LP). A deep-think
+1. **`herbst_mgf_bound`.** Literature review only (LP). A deep-think
    pass would confirm the statement matches Herbst-style assumptions
    (no hidden `IsCore`-flavored constraints).
-3. **`zegarlinski_lsi_inequality`.** Multi-page proof in the literature
+2. **`zegarlinski_lsi_inequality`.** Multi-page proof in the literature
    with several non-trivial sufficient-condition flavors (Otto-Reznikoff
    vs original Zegarlinski). Worth a careful side-by-side check that
    the formalized statement matches the strongest published version
    (and that the sufficient-condition `J/c ≤ α < 1` is exactly the one
    we use in `LocalLSI.lean` / `InteractionMatrix.lean`).
-4. **`diamagnetic_resolvent`.** The 5-step assembly is informal — a
+3. **`diamagnetic_resolvent`.** The 5-step assembly is informal — a
    deep-think pass on whether the statement is the right packaging
    (vs splitting into 5 axioms or 1 cleaner statement) would help.
 

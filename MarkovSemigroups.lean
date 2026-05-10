@@ -47,11 +47,11 @@ import MarkovSemigroups.DobrushinZegarlinski.GlobalLSI
 import MarkovSemigroups.DobrushinZegarlinski.EntrywiseCovariance
 import MarkovSemigroups.DobrushinZegarlinski.Concentration
 
--- Wiener chaos / polynomial concentration (downstream of OU + hypercontractivity)
-import MarkovSemigroups.Gaussian.HermitePolynomials
-import MarkovSemigroups.Gaussian.WienerChaos
-import MarkovSemigroups.Gaussian.OUEigenfunctions
-import MarkovSemigroups.Gaussian.PolynomialChaosConcentration
+-- (Wiener chaos / multivariate Hermite / OU eigenfunctions /
+-- polynomial-chaos concentration moved to gaussian-hilbert as
+-- GaussianHilbert.* on 2026-05-10. Downstream consumers should
+-- import that library directly. See README + docs/AXIOM_AUDIT.md
+-- for context.)
 
 -- Consequences
 import MarkovSemigroups.Convergence.SpectralGap
