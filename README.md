@@ -271,6 +271,12 @@ see the axiom/sorry surface honestly.
 
 ### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 4 Gaussian1D + 3 Gaussian = 14 total, +1 external dep on gaussian-field)
 
+*See [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md) for the per-axiom
+vetting verdicts (Standard / Likely correct / Placeholder / etc.),
+review provenance (deep-think, Gemini chat, literature page-ref,
+self-audit), and links to the discharge plans.*
+
+
 | Axiom | Reference |
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
