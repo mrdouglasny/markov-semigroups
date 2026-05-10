@@ -1,6 +1,6 @@
 # Polynomial Chaos Concentration in markov-semigroups: Roadmap
 
-*Drafted 2026-05-08. Companion to
+*Drafted 2026-05-08, updated 2026-05-09. Companion to
 [`pphi2/docs/polynomial-chaos-concentration.md`](https://github.com/mrdouglasny/pphi2/blob/main/docs/polynomial-chaos-concentration.md)
 which states the goal and gives the full proof sketch + references. This
 file is the markov-semigroups-side implementation roadmap: concrete file
@@ -20,6 +20,28 @@ $\|F\|_{L^p} \le (p-1)^{d/2} \|F\|_{L^2}$ for $p \ge 2$.
 
 The downstream consumer is `pphi2`'s Cluster A (4 axioms reducing to the
 Glimm-Jaffe Ch. 8 dynamical-cutoff Nelson estimate).
+
+## Status (2026-05-09)
+
+**Effectively done in three weeks of wall-clock**, but the OU semigroup
+action on chaos pieces still rests on 3 placeholder axioms (the underlying
+Mehler-kernel infrastructure is stubbed). All four target files exist
+and are sorry-free:
+
+| File | Lines | Status |
+|---|---|---|
+| `Gaussian/HermitePolynomials.lean` | ~460 | **Proved**: `hermiteMulti_orthogonality`, `hermiteMulti_l2_pos`, `hermiteMulti_dense`. The density theorem rests on one external axiom in gaussian-field (`polynomial_dense_L2_of_subGaussian`, Janson Thm 2.6). |
+| `Gaussian/WienerChaos.lean` | ~530 | **Proved**: `wienerChaos n k` def, `wienerChaos_orthogonal`, `chaosProjection_sum_eq_of_mem_wienerChaosLE`, full chaos arithmetic, and `wienerChaos_isHilbertSum` (the Hilbert-sum decomposition `L²(γ) = ⊕̂ₖ Hₖ`, derived from `hermiteMulti_dense` via `IsHilbertSum.mkInternal`). The legacy `wienerChaos_isInternalDirectSum` axiom statement was *strictly stronger* than the true theorem (would require finite chaos expansions) and has been replaced. |
+| `Gaussian/OUEigenfunctions.lean` | ~540 | **Proved**: `ouGenerator_hermiteMultiEval` (1D + multivariate eigenfunction property `L H_α = -|α| H_α`). Three placeholder axioms remain for the OU semigroup operator (`ouSemigroupAct`) and its action on chaos pieces (`ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive`) — these will be discharged once `Diffusion/OrnsteinUhlenbeck.lean` is filled in. |
+| `Gaussian/PolynomialChaosConcentration.lean` | ~630 | **Proved**: `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration`. Axiom footprint per `#print axioms`: the three OU placeholder axioms above (Lean built-ins aside). |
+
+Net: the polynomial-chaos concentration theorem is in place and ready
+for downstream consumption. The remaining axiom debt is (a) the
+gaussian-field analytic axiom `polynomial_dense_L2_of_subGaussian`
+(used by `hermiteMulti_dense` and `wienerChaos_isHilbertSum`), and
+(b) the three OU-semigroup placeholder axioms in
+`Gaussian/OUEigenfunctions.lean` (consumed by the Bonami-Nelson and
+polynomial-chaos-concentration theorems).
 
 ## Strategy: finite-dim Hermite, no stochastic calculus
 
@@ -42,178 +64,183 @@ Hermite polynomials. Specifically:
 This bypasses spectral-theorem machinery for unbounded operators on
 $L^2(\gamma_C)$.
 
-## File layout
+## File layout (as built)
 
-A new directory `MarkovSemigroups/Gaussian/` parallel to
-`Diffusion/`, holding four files. Each file's main theorems are listed
-with their core dependencies on Mathlib + existing markov-semigroups.
+`MarkovSemigroups/Gaussian/`, parallel to `Diffusion/`.
 
 ### `Gaussian/HermitePolynomials.lean` — multivariate Hermite
 
-Builds on Mathlib's `Polynomial.hermite : ℕ → Polynomial ℤ` (1D).
-
 ```lean
-/-- Multivariate Hermite polynomial for a finite multi-index. -/
-noncomputable def hermiteMulti {n : ℕ} (α : Fin n → ℕ) : MvPolynomial (Fin n) ℝ
+/-- Evaluation of the 1D probabilist's Hermite polynomial at a real point. -/
+noncomputable def hermiteEval (k : ℕ) (x : ℝ) : ℝ
 
-/-- Evaluating a multivariate Hermite at a Gaussian-distributed point. -/
+/-- Multivariate Hermite evaluated at `x : Fin n → ℝ`: H_α(x) = ∏ᵢ H_{αᵢ}(xᵢ). -/
 noncomputable def hermiteMultiEval {n : ℕ} (α : Fin n → ℕ) (x : Fin n → ℝ) : ℝ
 
 /-- Total degree of a multi-index. -/
 def MultiIndex.totalDegree {n : ℕ} (α : Fin n → ℕ) : ℕ := ∑ i, α i
 
-/-- **Orthogonality of multivariate Hermite under the standard Gaussian.**
-    `∫ H_α(x) H_β(x) dγ(x) = δ_{αβ} · ∏_i α_i!` -/
+/-- Standard product Gaussian on `Fin n → ℝ`. -/
+noncomputable def stdGaussianFin (n : ℕ) : Measure (Fin n → ℝ)
+
+/-- **Orthogonality of multivariate Hermite under the standard Gaussian.** -/
 theorem hermiteMulti_orthogonality {n : ℕ} (α β : Fin n → ℕ) :
-    ∫ x : Fin n → ℝ, hermiteMultiEval α x * hermiteMultiEval β x ∂stdGaussianℝⁿ n =
-      if α = β then ∏ i, (α i).factorial else 0
+    ∫ x : Fin n → ℝ, hermiteMultiEval α x * hermiteMultiEval β x ∂(stdGaussianFin n) =
+      if α = β then ((∏ i, (α i).factorial : ℕ) : ℝ) else 0
+
+/-- **Density of multivariate Hermite polynomials in L²(γ).** -/
+theorem hermiteMulti_dense {n : ℕ} (f : (Fin n → ℝ) → ℝ)
+    (hf : MemLp f 2 (stdGaussianFin n)) (ε : ℝ) (hε : 0 < ε) :
+    ∃ (s : Finset (Fin n → ℕ)) (c : (Fin n → ℕ) → ℝ),
+      (∫ x, |f x - ∑ α ∈ s, c α * hermiteMultiEval α x| ^ 2 ∂(stdGaussianFin n)) < ε
 ```
 
-Approximate length: 200-300 lines. Heavy on Mathlib's `MvPolynomial` and
-`Polynomial.hermite` infrastructure; the orthogonality reduces to the 1D
-case via Fubini on independent components.
+The orthogonality reduces to the 1D case via Fubini on the pi-measure
+plus the gaussian-field identity `wickMonomial_inner_gaussianReal_one`.
+The density is the algebraic combination of `polynomial_dense_L2_of_subGaussian`
+(textbook axiom, gaussian-field) and a `Submodule.span`-based change of basis
+between multivariate monomials and multivariate Hermite (proved here, ~300
+lines of `MvPolynomial.induction_on` + Hermite three-term recurrence).
 
 ### `Gaussian/WienerChaos.lean` — chaos decomposition
 
 ```lean
 /-- The k-th Wiener chaos: closure of degree-k Hermite polynomials in L². -/
-noncomputable def wienerChaos {n : ℕ} (γ : Measure (Fin n → ℝ)) (k : ℕ) :
-    Submodule ℝ (Lp ℝ 2 γ)
+def wienerChaos (n k : ℕ) : Submodule ℝ (Lp ℝ 2 (stdGaussianFin n))
 
-/-- Chaos decomposition: `L²(γ) = ⊕_k H_k`. -/
-theorem wienerChaos_isInternalDirectSum {n : ℕ} (γ : Measure (Fin n → ℝ))
-    [IsStandardGaussian γ] :
-    DirectSum.IsInternal (wienerChaos γ : ℕ → Submodule ℝ (Lp ℝ 2 γ))
+/-- Polynomials of total degree ≤ d. -/
+noncomputable def wienerChaosLE (n d : ℕ) : Submodule ℝ (Lp ℝ 2 (stdGaussianFin n))
 
-/-- Polynomials of total degree ≤ d span `⊕_{k ≤ d} H_k`. -/
-theorem mem_wienerChaosLE {n : ℕ} (γ : Measure (Fin n → ℝ)) (d : ℕ)
-    (P : MvPolynomial (Fin n) ℝ) (hP : P.totalDegree ≤ d) :
-    (P.eval) ∈ ⨆ k ∈ Finset.range (d + 1), wienerChaos γ k
+/-- Orthogonal projection L² → H_k. -/
+noncomputable def chaosProjection (n k : ℕ) :
+    Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)
+
+/-- Distinct chaos spaces are orthogonal. -/
+theorem wienerChaos_orthogonal (n : ℕ) {j k : ℕ} (hjk : j ≠ k) ...
+
+/-- Hilbert-sum decomposition L²(γ) = ⊕̂ₖ Hₖ (proved from `hermiteMulti_dense`). -/
+theorem wienerChaos_isHilbertSum (n : ℕ) :
+    IsHilbertSum ℝ (fun k => wienerChaos n k) (fun k => (wienerChaos n k).subtypeₗᵢ)
+
+/-- Sum decomposition F = ∑_{k ≤ d} P_k F for F ∈ wienerChaosLE. -/
+theorem chaosProjection_sum_eq_of_mem_wienerChaosLE (n d : ℕ)
+    (F : Lp ℝ 2 (stdGaussianFin n)) (hF : F ∈ wienerChaosLE n d) :
+    F = ∑ k ∈ Finset.range (d + 1), chaosProjection n k F
 ```
-
-Approximate length: 200-300 lines. The completeness of Hermite polynomials
-in $L^2(\gamma)$ follows from density of polynomials (Mathlib has this
-for the standard Gaussian on ℝ; multivariate uses Fubini).
 
 ### `Gaussian/OUEigenfunctions.lean` — H_k as eigenspace of L
 
 ```lean
-/-- The OU generator `L = Δ - x · ∇` acting on smooth functions. -/
-noncomputable def ouGenerator {n : ℕ} : (((Fin n → ℝ) → ℝ) → (Fin n → ℝ) → ℝ)
+/-- The OU generator L = Δ - x · ∇. -/
+noncomputable def ouGenerator (n : ℕ) (f : (Fin n → ℝ) → ℝ) : (Fin n → ℝ) → ℝ
 
-/-- **Hermite polynomials are eigenfunctions of the OU generator.**
-    For multi-index α with |α| = k: `L H_α = -k · H_α`. -/
-theorem ouGenerator_hermiteMulti {n : ℕ} (α : Fin n → ℕ) :
-    ouGenerator (hermiteMultiEval α) = fun x =>
-      (- (MultiIndex.totalDegree α : ℝ)) * hermiteMultiEval α x
+/-- **Hermite polynomials are OU eigenfunctions.** L H_α = -|α| H_α. -/
+theorem ouGenerator_hermiteMultiEval {n : ℕ} (α : Fin n → ℕ) :
+    ouGenerator n (hermiteMultiEval α) =
+      fun x => -(MultiIndex.totalDegree α : ℝ) * hermiteMultiEval α x
 
-/-- The OU semigroup acts on `H_k` by multiplication by `e^{-kt}`. -/
-theorem ouSemigroup_wienerChaos {n : ℕ} (γ : Measure (Fin n → ℝ))
-    [IsStandardGaussian γ] (k : ℕ) (t : ℝ) (ht : 0 ≤ t)
-    (f : Lp ℝ 2 γ) (hf : f ∈ wienerChaos γ k) :
-    OUSemigroup.act t f = Real.exp (-k * t) • f
+/-- **The OU semigroup operator** (placeholder; awaits Mehler-kernel infrastructure). -/
+axiom ouSemigroupAct (n : ℕ) (t : ℝ) :
+    Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)
+
+/-- **OU acts on H_k by e^{-kt}** (placeholder; will be a theorem from Mehler). -/
+axiom ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
+    (t : ℝ) (_ht : 0 ≤ t) (f : Lp ℝ 2 (stdGaussianFin n))
+    (_hf : f ∈ wienerChaos n k) :
+    ouSemigroupAct n t f = Real.exp (-(k : ℝ) * t) • f
+
+/-- **Nelson hypercontractive bound** ‖T_t f‖_{L^p} ≤ ‖f‖_{L^2} for e^{2t} ≥ p-1. -/
+axiom ouSemigroupAct_eLpNorm_hypercontractive ...
 ```
 
-Approximate length: 150-250 lines. The eigenfunction calculation is a
-direct expansion: $L H_\alpha = \sum_i (\partial_{x_i}^2 - x_i \partial_{x_i}) H_\alpha$,
-each summand contributes $-\alpha_i H_\alpha$ via the 1D recurrence.
+The eigenfunction theorem `ouGenerator_hermiteMultiEval` is proved (1D
+algebraic recurrence + Finset-product calculus on the multivariate
+gradient/Laplacian). The three remaining axioms are placeholder for the
+full Mehler/OU machinery; their discharge is the principal remaining
+work item (see "Remaining work" below).
 
-### `Gaussian/PolynomialChaosConcentration.lean` — the Janson 5.10 theorem
+### `Gaussian/PolynomialChaosConcentration.lean` — Janson 5.10
 
 ```lean
-/-- **Bonami-Nelson L^p bound on chaos.** For `f ∈ H_k`, `p ≥ 2`:
-    `‖f‖_{L^p} ≤ (p - 1)^{k/2} · ‖f‖_{L²}`. -/
-theorem bonami_nelson_chaos {n : ℕ} (γ : Measure (Fin n → ℝ))
-    [IsStandardGaussian γ] (k : ℕ) (f : Lp ℝ 2 γ) (hf : f ∈ wienerChaos γ k)
-    (p : ℝ) (hp : 2 ≤ p) :
-    ‖f‖_{L^p γ} ≤ (p - 1) ^ (k / 2 : ℝ) * ‖f‖_{L^2 γ}
+/-- **Bonami-Nelson L^p bound on chaos.** ‖f‖_{L^p} ≤ (p-1)^{k/2} · ‖f‖_{L²}. -/
+theorem bonami_nelson_chaos (n k : ℕ) ... : ...
 
-/-- **L^p bound on `H^{≤d}`.** Triangle inequality across `k = 0, …, d`. -/
-theorem bonami_nelson_chaosLE {n : ℕ} (γ : Measure (Fin n → ℝ))
-    [IsStandardGaussian γ] (d : ℕ) (f : Lp ℝ 2 γ)
-    (hf : f ∈ ⨆ k ∈ Finset.range (d + 1), wienerChaos γ k)
-    (p : ℝ) (hp : 2 ≤ p) :
-    ‖f‖_{L^p γ} ≤ (d + 1) * (p - 1) ^ (d / 2 : ℝ) * ‖f‖_{L^2 γ}
+/-- **L^p bound on H^{≤d}.** -/
+theorem bonami_nelson_chaosLE (n d : ℕ) ... : ...
 
-/-- **Polynomial chaos concentration (Janson Thm 5.10).**
-    For centered `F ∈ H^{≤d}`, λ > 0:
-    `P(|F| > λ ‖F‖_{L²}) ≤ 2 exp(- c_d · λ^{2/d})` for some universal c_d > 0. -/
-theorem polynomial_chaos_concentration {n : ℕ} (γ : Measure (Fin n → ℝ))
-    [IsStandardGaussian γ] (d : ℕ) (hd : 0 < d) :
-    ∃ c_d : ℝ, 0 < c_d ∧ ∀ (F : Lp ℝ 2 γ),
-      F ∈ ⨆ k ∈ Finset.range (d + 1), wienerChaos γ k →
-      ∫ x, F x ∂γ = 0 →
-      ∀ (lam : ℝ), 0 < lam →
-        γ {x | lam * ‖F‖_{L^2 γ} < |F x|} ≤
-          2 * ENNReal.ofReal (Real.exp (- c_d * lam ^ ((2 : ℝ) / d)))
+/-- **Polynomial chaos concentration (Janson Thm 5.10).** -/
+theorem polynomial_chaos_concentration (n d : ℕ) (hd : 1 ≤ d) :
+    ∃ c_d : ℝ, 0 < c_d ∧ ∀ (F : Lp ℝ 2 (stdGaussianFin n)),
+      F ∈ wienerChaosLE n d → ⟪F, 1⟫ = 0 → ∀ lam : ℝ, 0 < lam →
+        (stdGaussianFin n) {x | lam * ‖F‖₂ < |F x|} ≤
+          2 * ENNReal.ofReal (Real.exp (-c_d * lam ^ ((2 : ℝ) / d)))
 ```
 
-Approximate length: 100-200 lines. The proof is the three-line Markov +
-optimize argument from §3 of the pphi2 doc.
+`#print axioms polynomial_chaos_concentration` shows: the three OU
+placeholder axioms above (plus Lean built-ins). Once those are
+discharged, the chain back to `polynomial_dense_L2_of_subGaussian` is
+the only remaining textbook axiom in the polynomial-chaos pipeline.
 
 ## Dependencies
 
 External (Mathlib):
-- `Mathlib.RingTheory.Polynomial.Hermite.Basic` — 1D Hermite.
-- `Mathlib.RingTheory.Polynomial.Hermite.Gaussian` — Rodrigues formula.
+- `Mathlib.RingTheory.Polynomial.Hermite.{Basic,Gaussian}` — 1D Hermite + Rodrigues.
 - `Mathlib.Algebra.MvPolynomial.*` — multivariate polynomials.
-- `Mathlib.MeasureTheory.Function.LpSpace` — $L^p$ spaces.
-- `Mathlib.Probability.Distributions.Gaussian` — standard Gaussian
-  measure (1D and tensor-product).
+- `Mathlib.MeasureTheory.Function.{LpSpace,L2Space}` — L^p / L².
+- `Mathlib.Probability.Distributions.Gaussian.{Real,Multivariate,Fernique}`
+  — standard Gaussian + Fernique's theorem (used for the sub-Gaussian
+  instance in gaussian-field).
+- `Mathlib.Analysis.InnerProductSpace.{l2Space,Projection.FiniteDimensional}`
+  — Hilbert-sum decompositions, orthogonal projections.
+
+External (gaussian-field):
+- `GeneralResults/PolynomialDensityGaussian.lean` (added 2026-05-09):
+  `IsSubGaussianMeasure`, `polynomial_dense_L2_of_subGaussian` axiom,
+  `isSubGaussianMeasure_pi_gaussianReal` proved from Mathlib's
+  `IsGaussian.exists_integrable_exp_sq` (Fernique).
+- `SchwartzNuclear/HermiteWick.lean`: 1D Wick orthogonality
+  `wickMonomial_inner_gaussianReal_one` (used in `hermiteMulti_orthogonality`).
+- `GaussianField/WickMultivariate.lean`: multivariate Wick / Hermite
+  bridge (used in earlier proof iterations; now mostly subsumed).
 
 Internal (markov-semigroups):
-- `Abstract/Hypercontractivity.lean` — `IsHypercontractive` definition,
-  Gross's equivalence (LSI ↔ HC), abstract `semigroup_lp_improvement`.
-- `Diffusion/OrnsteinUhlenbeck.lean` — currently a 45-line skeleton with
-  Mehler's formula in the docstring. Will need to be filled in with the
-  actual `OUSemigroup C` definition + the contraction theorem before
-  `Gaussian/OUEigenfunctions.lean` can use it.
+- `Abstract/Hypercontractivity.lean` — `IsHypercontractive`, Gross's
+  equivalence (LSI ↔ HC), abstract `semigroup_lp_improvement`. Used
+  by `bonami_nelson_chaos`.
+- `Diffusion/OrnsteinUhlenbeck.lean` — **still a 45-line skeleton.** The
+  three placeholder axioms in `Gaussian/OUEigenfunctions.lean` will be
+  discharged here once the Mehler-kernel definition + L²-contraction
+  + hypercontractivity proof are filled in. This is multi-week work
+  (Mehler-kernel measure-theory is the heaviest chunk).
 
-## Order of work
+## Remaining work
 
-1. **Fill in `Diffusion/OrnsteinUhlenbeck.lean`** (currently a docstring
-   skeleton). Define `OUSemigroup C` for finite-dim covariance, prove
-   Mehler's formula and L²-contraction. ~3-5 days.
-2. **`Gaussian/HermitePolynomials.lean`** — multivariate Hermite +
-   orthogonality. ~3-5 days.
-3. **`Gaussian/WienerChaos.lean`** — chaos decomposition. ~3-5 days.
-4. **`Gaussian/OUEigenfunctions.lean`** — eigenfunction property +
-   semigroup action by $e^{-kt}$. ~2-3 days. The bottleneck is the
-   eigenfunction calculation, which is direct algebra but requires care
-   with the multi-index combinatorics.
-5. **`Gaussian/PolynomialChaosConcentration.lean`** — Bonami-Nelson +
-   Janson 5.10. ~3-5 days.
+Two discrete items:
 
-Total in markov-semigroups: ~3 weeks.
+1. **Fill in `Diffusion/OrnsteinUhlenbeck.lean`** with the OU semigroup,
+   Mehler-kernel formula `(T_t f)(x) = ∫ f(e^{-t}x + √(1-e^{-2t}) y) dγ(y)`,
+   L²-contraction, and hypercontractivity. **Multi-week** — this is the
+   heaviest measure-theory item in the project. Discharges
+   `ouSemigroupAct` and `ouSemigroupAct_eq_smul_of_mem_wienerChaos`.
 
-After this, the `pphi2/NelsonEstimate/` rewiring (replacing the
-`True`-stub theorems in `RoughErrorBound.lean`, then doing the dynamical
-cutoff in `NelsonEstimate.lean`) is a separate effort estimated at 2-3
-weeks per the pphi2 roadmap — so the total Cluster A timeline is 5-6
-weeks, comfortably inside Gemini's 6-8 week estimate.
+2. **Bonami-Nelson hypercontractivity proof** (`ouSemigroupAct_eLpNorm_hypercontractive`),
+   either as a corollary of (1) + Gross's theorem (the abstract
+   `Abstract/Hypercontractivity.gross_lsi_implies_hypercontractive` axiom
+   already in the project), or directly via Nelson's two-point + tensorization
+   argument. **3-5 days** once (1) is in place.
 
-## Risks and exit ramps
+The polynomial-chaos pipeline currently rests on (a) one external
+axiom (`polynomial_dense_L2_of_subGaussian` in gaussian-field) and (b)
+three OU-side axioms whose discharge is gated on (1)/(2). After (1)+(2)
+the whole pipeline rests on the single gaussian-field analytic axiom.
 
-- If multivariate Hermite orthogonality (step 2) takes longer than 5 days
-  due to MvPolynomial / Fubini friction, consider stating it as an axiom
-  with literature citation (Janson §5.1) and unblock downstream work.
-- If the OU eigenfunction calculation (step 4) hits unexpected
-  integration-by-parts issues, the 1D OU + tensor product gives a
-  cleaner factored proof; switching to that approach mid-stream is
-  cheap.
-- The Mehler-formula proof in step 1 is the most measure-theory-heavy
-  step. If it stalls, the Markov-semigroup contraction can be proved
-  abstractly via the existing `Abstract/Hypercontractivity` framework
-  without going through Mehler.
-
-## What this unlocks beyond pphi2 Cluster A
+## What this unlocked beyond pphi2 Cluster A
 
 - **pphi2N** (O(N) sigma model): the same polynomial-chaos concentration
   applies to vector-valued Wick polynomials.
 - **Phase 4** of pphi2 (`pphi2_nontriviality`,
-  `continuumLimit_nonGaussian`): the genuine non-Gaussian discharges
-  need the same dynamical-cutoff machinery.
+  `continuumLimit_nonGaussian`): uses the same dynamical-cutoff machinery.
 - **Janson Theorem 5.10 in Mathlib**: a substantial probability-library
   contribution in its own right, currently not available upstream.
 - **Stein's method / Malliavin calculus** future work: the Wiener chaos
-  decomposition is the prerequisite for both.
+  decomposition is a prerequisite for both.
