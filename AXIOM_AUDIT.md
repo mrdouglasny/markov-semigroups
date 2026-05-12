@@ -92,7 +92,7 @@ Mehler-kernel facts.
 
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `ouSemigroup_preserves_IsCore` | [`Instances/WorkInProgress/Euclidean.lean:488`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L488) | BGL §2.7 (OU smoothing preserves core algebra) | Standard | GR | OU semigroup applied to a smooth-bounded `f` produces another smooth-bounded function. Direct proof: differentiate Mehler integral under integral sign with explicit dominator. Estimated 1-2 weeks. | `Gaussian1D.bakryEmerySpace` (1D BE instance only) |
+| `ouSemigroup_contDiff` | [`Instances/WorkInProgress/Euclidean.lean`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean) | BGL §2.7 (Mehler kernel `C^∞` smoothing) | Standard | GR | Residue of the originally-axiomatized `ouSemigroup_preserves_IsCore` after decomposition (2026-05-12): the bounded parts (`|P_t f|, |(P_t f)'|, |(P_t f)''| ≤ M`) are now proved via `ouSemigroup_preserves_bounds` + new theorems `hasDerivAt_ouSemigroup_C1`, `hasDerivAt_deriv_ouSemigroup`; only the `ContDiff ℝ ⊤` smoothing remains. Full discharge requires Mathlib infrastructure for `ContDiff` of parametric integrals at all orders (Schwartz-class kernel convolution). | `Gaussian1D.bakryEmerySpace` (1D BE instance only, via the now-derived `ouSemigroup_preserves_IsCore` theorem) |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | [`Instances/WorkInProgress/Euclidean.lean:684`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L684) | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) | Standard | GR | Differentiation under the integral with explicit dominator + integration by parts on the OU generator. Estimated 1 week. | `Gaussian1D.bakryEmerySpace` |
 | `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean:943`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L943) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
 
@@ -108,6 +108,17 @@ Mehler-kernel facts.
   γ-invariance (Fubini + `ou_kernel_map`). Additionally,
   `stein_identity_standard` (Stein's identity for the standard Gaussian,
   BGL §1.15) is now also proved, paving the way for further discharges.
+- `ouSemigroup_preserves_IsCore` (2026-05-12) — DECOMPOSED. The bounded
+  parts proved via `ouSemigroup_preserves_bounds` (using the new
+  `hasDerivAt_ouSemigroup_C1` weakened-hypothesis Mehler-derivative and
+  `hasDerivAt_deriv_ouSemigroup` second-order formula). Residual atomic
+  axiom `ouSemigroup_contDiff` is just the `C^∞` smoothing of the
+  Mehler kernel. The previously-axiomatized `ouSemigroup_preserves_IsCore`
+  is now a theorem. Also proved as cleanup: the
+  **Gaussian Dirichlet form identity** `∫ g · L g dγ = -∫ (g')² dγ` for
+  `IsCore g` (`gaussian_dirichlet_form_identity`, BGL §1.6), via Stein
+  applied to `h := g · g'` — bridges `BakryEmerySpace` energy and the
+  L²(γ) generator inner product.
 
 ### Dobrushin-Zegarlinski
 

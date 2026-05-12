@@ -284,14 +284,14 @@ self-audit), and links to the discharge plans.*
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
-| `ouSemigroup_preserves_IsCore` | BGL §2.7 (OU smoothing preserves core algebra) |
+| `ouSemigroup_contDiff` | BGL §2.7 (Mehler kernel `C^∞` smoothing — residue of `preserves_IsCore`) |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) |
 | `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 (Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t})E(f)) |
 
 The three remaining Gaussian1D axioms are concrete-instance bridges to
 the abstract Bakry-Émery layer for the standard Gaussian + OU semigroup
 on ℝ — Mehler-kernel-level facts requiring Mathlib infrastructure
-(parametric ContDiff under the integral, differentiation of `L²` norms,
+(`C^∞`-of-parametric-integrals, differentiation of `L²` norms,
 de Bruijn entropy derivative). The previously-axiomatized
 `ouSemigroup_gradient_decay` (BGL Theorem 5.5.2) is now **PROVED** via
 the new theorem `hasDerivAt_ouSemigroup` (Mehler derivative formula
@@ -300,9 +300,17 @@ Jensen + γ-invariance. Additionally, **Stein's identity** for the
 standard Gaussian (BGL §1.15: `∫ y · g(y) dγ = ∫ g'(y) dγ` for
 bounded C¹ g) is now **PROVED** as `stein_identity_standard` via the
 Gaussian-PDF ODE `pdf'(y) = -y · pdf(y)` + FTC on infinite intervals
-(`integral_of_hasDerivAt_of_tendsto`) + `withDensity` bridge — paving
-the way for future discharge of the remaining OU axioms. All
-originally-introduced axioms were vetted in one pass via Gemini chat
+(`integral_of_hasDerivAt_of_tendsto`) + `withDensity` bridge. The
+**Gaussian Dirichlet form identity** `∫ g · L g dγ = -∫ (g')² dγ`
+(`gaussian_dirichlet_form_identity`, BGL §1.6) follows from Stein
+applied to `h := g · g'`. Finally, `ouSemigroup_preserves_IsCore` was
+**DECOMPOSED** (2026-05-12) — the bounded parts `|P_t f|, |(P_t f)'|,
+|(P_t f)''| ≤ M` are now proved (`ouSemigroup_preserves_bounds`) via a
+generalized Mehler-derivative `hasDerivAt_ouSemigroup_C1` + iterated
+formula `hasDerivAt_deriv_ouSemigroup` (giving `(P_t f)'' = e^{-2t}
+P_t(f'')`); only the residual `ContDiff ⊤` smoothing remains as the
+smaller atomic axiom `ouSemigroup_contDiff`. All originally-introduced
+axioms were vetted in one pass via Gemini chat
 (gemini-3-pro-preview), which flagged a missing `IsCore` hypothesis
 on the Mehler-composition axiom — patched in both the axiom and the
 upstream `BakryEmerySpace.semigroup_add` field. Five of the original
@@ -409,7 +417,7 @@ on concrete inputs. Zero sorries.
 |---|---|---|
 | **A. Mehler eigenfunctions** | `ouSemigroup_const`, `ouSemigroup_id`, `ouSemigroup_hermite_two`, `ouSemigroup_hermite_three` (eigenvalues `1, e^{-t}, e^{-2t}, e^{-3t}` on `H₀, H₁, H₂, H₃`) | none (Mathlib only) |
 | **A. Helpers** | `integral_sq_γ` (= 1), `integral_cube_γ` (= 0), `integrable_cube_γ` | none |
-| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | three Gaussian1D OU axioms (`_preserves_IsCore`, `_l2_sq_hasDerivWithinAt`, `_entropy_sq_decay_bound`) — already counted in Instances/WorkInProgress/Euclidean (`ouSemigroup_gradient_decay` discharged via Mathlib's parametric derivative) |
+| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | three Gaussian1D OU axioms (`_contDiff` (residue of `_preserves_IsCore`), `_l2_sq_hasDerivWithinAt`, `_entropy_sq_decay_bound`) — already counted in Instances/WorkInProgress/Euclidean (`ouSemigroup_gradient_decay` discharged; `preserves_IsCore` decomposed to bounded parts + `contDiff` residue) |
 | **C. Conditional BL → Gaussian Poincaré** | `brascampLieb_recovers_gaussian_poincare` (conditional on a `LogConcaveMeasure ℝ` with `μ = γ`) | none |
 | **C. Gaussian `LogConcaveMeasure` — structural** | `V_gauss = x²/2`, `contDiff_V_gauss`, `hessianBilin_V_gauss` (= `v · w`), `hV_gauss_convex`, `hV_gauss_curvature` (`‖v‖² ≤ Hess V(v,v)`) | none |
 | **C. Gaussian `LogConcaveMeasure` — resolvent fields** | `gaussianLogConcaveMeasure : LogConcaveMeasure ℝ` (built directly, no `Classical.choose`) | four named axioms: `gaussianResolvent`, `gaussianResolvent_ibp`, `gaussianResolvent_ibp_integrable`, `gaussianBochner_identity` (BGL §1.15-1.16: OU resolvent via Lax-Milgram + Stein IBP + Bochner-Weitzenböck) |
