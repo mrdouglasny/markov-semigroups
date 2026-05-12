@@ -357,7 +357,136 @@ lemma hermite_ibp_gaussian (n : ℕ) {F : ℝ → ℝ} (hF : ContDiff ℝ 1 F)
     {M : ℝ} (hF_bd : ∀ y, |F y| ≤ M) (hF'_bd : ∀ y, |deriv F y| ≤ M) :
     ∫ y, hermiteFun n y * deriv F y ∂γ =
       ∫ y, hermiteFun (n + 1) y * F y ∂γ := by
-  sorry
+  -- Setup: basic regularity of the data.
+  have hM_nn : 0 ≤ M := (abs_nonneg _).trans (hF_bd 0)
+  have hF_diff : Differentiable ℝ F := hF.differentiable (by simp)
+  have hF_meas : Measurable F := hF.continuous.measurable
+  have hF'_meas : Measurable (deriv F) := (hF.continuous_deriv (by simp)).measurable
+  have hH_meas : Measurable (hermiteFun n) := hermiteFun_measurable n
+  have hH'_meas : Measurable (hermiteFun (n+1)) := hermiteFun_measurable (n+1)
+  have hpdf_nn : ∀ y, 0 ≤ pdf y := pdf_nonneg
+  -- Derivative of G(z) := hermiteFun n z * F z * pdf z.
+  -- Product rule on (hermiteFun n · pdf) · F using
+  --   (hermiteFun n · pdf)'(y) = -hermiteFun (n+1) y · pdf y  and  F'(y) = deriv F y.
+  have hG_deriv : ∀ y, HasDerivAt (fun z => hermiteFun n z * F z * pdf z)
+      (hermiteFun n y * deriv F y * pdf y -
+        hermiteFun (n + 1) y * F y * pdf y) y := by
+    intro y
+    have hK : HasDerivAt (fun z => hermiteFun n z * pdf z)
+        (-(hermiteFun (n + 1) y) * pdf y) y := hasDerivAt_hermiteFun_mul_pdf n y
+    have hF_at : HasDerivAt F (deriv F y) y := hF_diff.differentiableAt.hasDerivAt
+    have h_prod : HasDerivAt (fun z => hermiteFun n z * pdf z * F z)
+        (-(hermiteFun (n + 1) y) * pdf y * F y +
+          hermiteFun n y * pdf y * deriv F y) y := hK.mul hF_at
+    have h_fun_eq :
+        (fun z => hermiteFun n z * pdf z * F z) =
+        (fun z => hermiteFun n z * F z * pdf z) := by
+      funext z; ring
+    rw [h_fun_eq] at h_prod
+    convert h_prod using 1
+    ring
+  -- Auxiliary: `|hermiteFun k y * pdf y|` is Lebesgue-integrable.
+  have h_int_abs_Hpdf : ∀ k : ℕ,
+      Integrable (fun y => |hermiteFun k y * pdf y|) := fun k =>
+    (integrable_hermiteFun_mul_pdf k).abs
+  -- Tendsto: G → 0 at ±∞. Bound: ‖G y‖ ≤ M · |hermiteFun n y * pdf y|, RHS → 0.
+  have h_M_Hpdf_atTop :
+      Tendsto (fun y => M * |hermiteFun n y * pdf y|) atTop (𝓝 0) := by
+    have h_abs : Tendsto (fun y => |hermiteFun n y * pdf y|) atTop (𝓝 0) := by
+      have := (tendsto_hermiteFun_mul_pdf_atTop n).abs
+      simpa [abs_zero] using this
+    have := h_abs.const_mul M
+    simpa using this
+  have h_M_Hpdf_atBot :
+      Tendsto (fun y => M * |hermiteFun n y * pdf y|) atBot (𝓝 0) := by
+    have h_abs : Tendsto (fun y => |hermiteFun n y * pdf y|) atBot (𝓝 0) := by
+      have := (tendsto_hermiteFun_mul_pdf_atBot n).abs
+      simpa [abs_zero] using this
+    have := h_abs.const_mul M
+    simpa using this
+  have hG_atTop : Tendsto (fun y => hermiteFun n y * F y * pdf y) atTop (𝓝 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    refine squeeze_zero (fun y => norm_nonneg _) (fun y => ?_) h_M_Hpdf_atTop
+    show ‖hermiteFun n y * F y * pdf y‖ ≤ M * |hermiteFun n y * pdf y|
+    have h_abs_eq : |hermiteFun n y * F y * pdf y| =
+        |F y| * |hermiteFun n y * pdf y| := by
+      rw [abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y), abs_mul,
+          abs_of_nonneg (hpdf_nn y)]
+      ring
+    rw [Real.norm_eq_abs, h_abs_eq]
+    exact mul_le_mul_of_nonneg_right (hF_bd y) (abs_nonneg _)
+  have hG_atBot : Tendsto (fun y => hermiteFun n y * F y * pdf y) atBot (𝓝 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    refine squeeze_zero (fun y => norm_nonneg _) (fun y => ?_) h_M_Hpdf_atBot
+    show ‖hermiteFun n y * F y * pdf y‖ ≤ M * |hermiteFun n y * pdf y|
+    have h_abs_eq : |hermiteFun n y * F y * pdf y| =
+        |F y| * |hermiteFun n y * pdf y| := by
+      rw [abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y), abs_mul,
+          abs_of_nonneg (hpdf_nn y)]
+      ring
+    rw [Real.norm_eq_abs, h_abs_eq]
+    exact mul_le_mul_of_nonneg_right (hF_bd y) (abs_nonneg _)
+  -- Integrability of the two pieces of G'.
+  have h_int_HF'pdf :
+      Integrable (fun y => hermiteFun n y * deriv F y * pdf y) := by
+    refine Integrable.mono' ((h_int_abs_Hpdf n).const_mul M)
+      ((hH_meas.mul hF'_meas).mul pdf_measurable |>.aestronglyMeasurable) ?_
+    filter_upwards with y
+    show ‖hermiteFun n y * deriv F y * pdf y‖ ≤ M * |hermiteFun n y * pdf y|
+    have h_abs_eq : |hermiteFun n y * deriv F y * pdf y| =
+        |deriv F y| * |hermiteFun n y * pdf y| := by
+      rw [abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y), abs_mul,
+          abs_of_nonneg (hpdf_nn y)]
+      ring
+    rw [Real.norm_eq_abs, h_abs_eq]
+    exact mul_le_mul_of_nonneg_right (hF'_bd y) (abs_nonneg _)
+  have h_int_HFpdf :
+      Integrable (fun y => hermiteFun (n + 1) y * F y * pdf y) := by
+    refine Integrable.mono' ((h_int_abs_Hpdf (n + 1)).const_mul M)
+      ((hH'_meas.mul hF_meas).mul pdf_measurable |>.aestronglyMeasurable) ?_
+    filter_upwards with y
+    show ‖hermiteFun (n + 1) y * F y * pdf y‖ ≤ M * |hermiteFun (n + 1) y * pdf y|
+    have h_abs_eq : |hermiteFun (n + 1) y * F y * pdf y| =
+        |F y| * |hermiteFun (n + 1) y * pdf y| := by
+      rw [abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y), abs_mul,
+          abs_of_nonneg (hpdf_nn y)]
+      ring
+    rw [Real.norm_eq_abs, h_abs_eq]
+    exact mul_le_mul_of_nonneg_right (hF_bd y) (abs_nonneg _)
+  have h_int_G' :
+      Integrable (fun y => hermiteFun n y * deriv F y * pdf y -
+        hermiteFun (n + 1) y * F y * pdf y) := h_int_HF'pdf.sub h_int_HFpdf
+  -- ∫_ℝ G' = 0 by FTC at both infinities.
+  have h_int_zero :
+      ∫ y, hermiteFun n y * deriv F y * pdf y -
+        hermiteFun (n + 1) y * F y * pdf y = 0 := by
+    have := integral_of_hasDerivAt_of_tendsto hG_deriv h_int_G' hG_atBot hG_atTop
+    simpa using this
+  have h_lebesgue :
+      ∫ y, hermiteFun n y * deriv F y * pdf y =
+        ∫ y, hermiteFun (n + 1) y * F y * pdf y := by
+    have h := h_int_zero
+    rw [integral_sub h_int_HF'pdf h_int_HFpdf] at h
+    linarith
+  -- Convert γ-integrals to Lebesgue via integral_gaussianReal_eq_integral_smul.
+  have h_v_ne : (1 : NNReal) ≠ 0 := ne_of_gt zero_lt_one
+  have h_lhs :
+      ∫ y, hermiteFun n y * deriv F y ∂γ =
+        ∫ y, hermiteFun n y * deriv F y * pdf y := by
+    show ∫ y, hermiteFun n y * deriv F y ∂(gaussianReal (0 : ℝ) (1 : NNReal)) = _
+    rw [integral_gaussianReal_eq_integral_smul h_v_ne]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    show pdf y • (hermiteFun n y * deriv F y) = hermiteFun n y * deriv F y * pdf y
+    rw [smul_eq_mul]; ring
+  have h_rhs :
+      ∫ y, hermiteFun (n + 1) y * F y ∂γ =
+        ∫ y, hermiteFun (n + 1) y * F y * pdf y := by
+    show ∫ y, hermiteFun (n + 1) y * F y ∂(gaussianReal (0 : ℝ) (1 : NNReal)) = _
+    rw [integral_gaussianReal_eq_integral_smul h_v_ne]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    show pdf y • (hermiteFun (n + 1) y * F y) = hermiteFun (n + 1) y * F y * pdf y
+    rw [smul_eq_mul]; ring
+  rw [h_lhs, h_rhs, h_lebesgue]
 
 /-! ## Inductive nth-derivative formula for the OU semigroup
 
