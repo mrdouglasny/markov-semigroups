@@ -478,45 +478,60 @@ theorem gaussian2D_orthogonal_invariance
     _ = Measure.map WithLp.ofLp (Measure.map (WithLp.toLp 2) (γ.prod γ)) := this
     _ = γ.prod γ := hback_right
 
-/-- **`IsCore` is preserved by the OU semigroup (BGL §2.7).**
+/-! ### `IsCore` preservation by `ouSemigroup` (BGL §2.7)
 
-The Mehler integral `P_t f(x) = ∫ f(e^{-t}x + √(1-e^{-2t})y) dγ(y)`
-preserves smoothness (differentiation under the integral) and bounded
-derivatives (the integral of a bounded family is bounded with the same
-bound, and `(P_t f)'(x) = e^{-t} P_t(f')(x)`).
+The original axiom `ouSemigroup_preserves_IsCore` was decomposed (2026-05-12):
+the bounded parts (`|P_t f|, |(P_t f)'|, |(P_t f)''| ≤ M`) are PROVED in
+`ouSemigroup_preserves_bounds` via the Mehler derivative formulas
+`(P_t f)' = e^{-t} P_t(f')` and `(P_t f)'' = e^{-2t} P_t(f'')`. Only the
+`ContDiff ℝ ⊤` smoothing remains as a smaller atomic axiom
+(`ouSemigroup_contDiff`). The combination
+(`ouSemigroup_preserves_IsCore`) is now a theorem, defined below after
+the bound proof. -/
 
-Reference: BGL §2.7.1 (OU semigroup smoothing); standard differentiation
-under the integral against the Gaussian density. -/
-axiom ouSemigroup_preserves_IsCore (t : ℝ) (ht : 0 ≤ t) {f : ℝ → ℝ}
-    (hf : IsCore f) : IsCore (ouSemigroup t f)
+/-- **Smoothing of `ouSemigroup`** (BGL §2.7.1, atomic). The OU semigroup
+applied to a `C^∞` function (or even bounded measurable) produces a
+`C^∞` function in `x` — a consequence of the Mehler kernel's `C^∞`
+regularity. Full discharge requires Mathlib infrastructure for `ContDiff`
+of parametric integrals at all orders (Schwartz-class kernel convolution),
+which is not yet present.
 
-/-- **Mehler derivative formula (BGL §2.7).** PROVED.
+Reference: BGL §2.7.1; the Mehler kernel is `C^∞` in `x` with all
+derivatives integrable against bounded `f`. -/
+axiom ouSemigroup_contDiff (t : ℝ) {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) :
+    ContDiff ℝ ⊤ (ouSemigroup t f)
 
+/-- **Mehler derivative formula, generalized hypothesis.** PROVED.
+
+For any `C¹` `f` with `f` and `deriv f` bounded by `M`,
   `(P_t f)'(x₀) = e^{-t} · P_t(f')(x₀)`.
 
-Differentiation under the Mehler integral via Mathlib's
-`hasDerivAt_integral_of_dominated_loc_of_deriv_le`. -/
-theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀ : ℝ) :
+This weakens `hasDerivAt_ouSemigroup` (which requires `IsCore f`) to just
+need C¹ smoothness + bounded f, f' — enabling iterated application for
+higher-order Mehler derivatives. -/
+theorem hasDerivAt_ouSemigroup_C1 (t : ℝ) {f : ℝ → ℝ}
+    (hf_C1 : ContDiff ℝ 1 f) {M : ℝ}
+    (hf_bd : ∀ x, ‖f x‖ ≤ M) (hf'_bd : ∀ x, ‖deriv f x‖ ≤ M)
+    (x₀ : ℝ) :
     HasDerivAt (ouSemigroup t f)
       (Real.exp (-t) * ouSemigroup t (deriv f) x₀) x₀ := by
   set a := Real.exp (-t)
   set b := Real.sqrt (1 - Real.exp (-2 * t))
   set F : ℝ → ℝ → ℝ := fun x y => f (a * x + b * y)
   set F' : ℝ → ℝ → ℝ := fun x y => a * deriv f (a * x + b * y)
-  obtain ⟨h_smooth, M, hM⟩ := hf
   set bound : ℝ → ℝ := fun _ => |a| * M
   have hs : Set.Ioo (x₀ - 1) (x₀ + 1) ∈ nhds x₀ :=
     Ioo_mem_nhds (by linarith) (by linarith)
-  have hf_meas : Measurable f := h_smooth.continuous.measurable
+  have hf_meas : Measurable f := hf_C1.continuous.measurable
   have hF_meas : ∀ x, AEStronglyMeasurable (F x) γ := by
     intro x
     refine (hf_meas.comp ?_).aestronglyMeasurable
     exact measurable_const.add (measurable_const.mul measurable_id)
   have hF_int : Integrable (F x₀) γ := by
     refine Integrable.mono' (integrable_const M) (hF_meas x₀) ?_
-    filter_upwards with y; exact (hM (a * x₀ + b * y)).1
+    filter_upwards with y; exact hf_bd (a * x₀ + b * y)
   have hf'_meas : Measurable (deriv f) :=
-    (h_smooth.continuous_deriv (by simp)).measurable
+    (hf_C1.continuous_deriv (by simp)).measurable
   have hF'_meas : AEStronglyMeasurable (F' x₀) γ := by
     refine (measurable_const.mul ?_).aestronglyMeasurable
     exact hf'_meas.comp (measurable_const.add (measurable_const.mul measurable_id))
@@ -526,7 +541,7 @@ theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀
     show ‖a * deriv f (a * x + b * y)‖ ≤ |a| * M
     rw [Real.norm_eq_abs, abs_mul]
     have h1 : |deriv f (a * x + b * y)| ≤ M := by
-      rw [← Real.norm_eq_abs]; exact (hM _).2.1
+      rw [← Real.norm_eq_abs]; exact hf'_bd _
     exact mul_le_mul_of_nonneg_left h1 (abs_nonneg a)
   have h_bound_int : Integrable bound γ := integrable_const _
   have h_diff : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
@@ -536,7 +551,7 @@ theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀
     have h_inner : HasDerivAt (fun x => a * x + b * y) a x := by
       simpa using ((hasDerivAt_id x).const_mul a).add_const (b * y)
     have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
-      (h_smooth.differentiable (by simp)).differentiableAt.hasDerivAt
+      (hf_C1.differentiable (by simp)).differentiableAt.hasDerivAt
     have := h_f.comp x h_inner
     simpa [mul_comm a (deriv f _)] using this
   obtain ⟨_, h_deriv⟩ :=
@@ -548,6 +563,187 @@ theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀
     rw [integral_const_mul]; rfl
   rw [← h_lhs_eq, ← h_rhs_eq]
   exact h_deriv
+
+/-- **Mehler derivative formula (BGL §2.7).** PROVED.
+
+  `(P_t f)'(x₀) = e^{-t} · P_t(f')(x₀)`.
+
+Corollary of `hasDerivAt_ouSemigroup_C1` for `IsCore f`. -/
+theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀ : ℝ) :
+    HasDerivAt (ouSemigroup t f)
+      (Real.exp (-t) * ouSemigroup t (deriv f) x₀) x₀ := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  refine hasDerivAt_ouSemigroup_C1 t
+    (h_smooth.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤))
+    (M := M) (fun x => (hM x).1) (fun x => (hM x).2.1) x₀
+
+/-- Pointwise: `deriv (ouSemigroup t f) x = e^{-t} · ouSemigroup t (deriv f) x`. -/
+theorem deriv_ouSemigroup_eq {f : ℝ → ℝ} (hf : IsCore f) (t : ℝ) :
+    deriv (ouSemigroup t f) = fun x => Real.exp (-t) * ouSemigroup t (deriv f) x := by
+  funext x; exact (hasDerivAt_ouSemigroup t hf x).deriv
+
+/-- **Second-order Mehler derivative formula.** PROVED.
+
+  `(P_t f)''(x₀) = e^{-2t} · P_t(f'')(x₀)`.
+
+Iterated application of `hasDerivAt_ouSemigroup_C1`: apply once to `f` (giving
+`(P_t f)' = e^{-t} P_t(f')`), then again to `g := deriv f`. For `IsCore f`,
+`deriv f` is `C^∞` (hence `C¹`) with `‖deriv f‖, ‖deriv (deriv f)‖ ≤ M`,
+so the weakened hypothesis is met. -/
+theorem hasDerivAt_deriv_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀ : ℝ) :
+    HasDerivAt (deriv (ouSemigroup t f))
+      (Real.exp (-2 * t) * ouSemigroup t (deriv (deriv f)) x₀) x₀ := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  -- Apply hasDerivAt_ouSemigroup_C1 to g := deriv f.
+  have hg_C1 : ContDiff ℝ 1 (deriv f) :=
+    (IsCore.contDiff_deriv ⟨h_smooth, M, hM⟩).of_le
+      (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
+  have hg_bd : ∀ x, ‖deriv f x‖ ≤ M := fun x => (hM x).2.1
+  have hg'_bd : ∀ x, ‖deriv (deriv f) x‖ ≤ M := fun x => (hM x).2.2
+  have h_inner : HasDerivAt (ouSemigroup t (deriv f))
+      (Real.exp (-t) * ouSemigroup t (deriv (deriv f)) x₀) x₀ :=
+    hasDerivAt_ouSemigroup_C1 t hg_C1 hg_bd hg'_bd x₀
+  -- deriv (ouSemigroup t f) = fun x => e^{-t} · ouSemigroup t (deriv f) x.
+  rw [deriv_ouSemigroup_eq ⟨h_smooth, M, hM⟩]
+  -- Goal: HasDerivAt (fun x => e^{-t} * P_t(f') x) (e^{-2t} * P_t(f'') x₀) x₀.
+  have h := h_inner.const_mul (Real.exp (-t))
+  -- h : HasDerivAt (fun x => e^{-t} * P_t(f') x) (e^{-t} * (e^{-t} * P_t(f'') x₀)) x₀.
+  convert h using 1
+  -- e^{-2t} * P_t(f'') x₀ = e^{-t} * (e^{-t} * P_t(f'') x₀)
+  rw [show Real.exp (-2 * t) = Real.exp (-t) * Real.exp (-t) from by
+    rw [show (-2 * t : ℝ) = -t + -t from by ring, Real.exp_add]]
+  ring
+
+/-- Pointwise: `deriv (deriv (ouSemigroup t f)) x = e^{-2t} · ouSemigroup t (deriv (deriv f)) x`. -/
+theorem deriv_deriv_ouSemigroup_eq {f : ℝ → ℝ} (hf : IsCore f) (t : ℝ) :
+    deriv (deriv (ouSemigroup t f)) = fun x =>
+      Real.exp (-2 * t) * ouSemigroup t (deriv (deriv f)) x := by
+  funext x; exact (hasDerivAt_deriv_ouSemigroup t hf x).deriv
+
+/-- **The bounded parts of `IsCore` are preserved by `ouSemigroup`.** PROVED.
+
+For `t ≥ 0` and `f` smooth-bounded as in `IsCore f` (parameterized by an
+explicit `M`), `P_t f`, `(P_t f)'`, and `(P_t f)''` are all bounded by the
+same `M`:
+* `|P_t f x| ≤ M` (integral of bounded function on probability measure);
+* `|(P_t f)' x| = |e^{-t} P_t(f') x| ≤ e^{-t} M ≤ M`;
+* `|(P_t f)'' x| = |e^{-2t} P_t(f'') x| ≤ e^{-2t} M ≤ M`.
+
+This proves the bound-related half of `ouSemigroup_preserves_IsCore`. The
+`ContDiff ℝ ⊤` requirement of `IsCore` is the only remaining piece (a
+smaller atomic axiom: the Mehler kernel's `C^∞` smoothing). -/
+theorem ouSemigroup_preserves_bounds {f : ℝ → ℝ}
+    (h_smooth : ContDiff ℝ ⊤ f) {M : ℝ}
+    (hM : ∀ x, ‖f x‖ ≤ M ∧ ‖deriv f x‖ ≤ M ∧ ‖deriv (deriv f) x‖ ≤ M)
+    (t : ℝ) (ht : 0 ≤ t) :
+    ∀ x, ‖ouSemigroup t f x‖ ≤ M ∧
+         ‖deriv (ouSemigroup t f) x‖ ≤ M ∧
+         ‖deriv (deriv (ouSemigroup t f)) x‖ ≤ M := by
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hf_core : IsCore f := ⟨h_smooth, M, hM⟩
+  have h_e_t_le : Real.exp (-t) ≤ 1 :=
+    Real.exp_le_one_iff.mpr (by linarith)
+  have h_e_2t_le : Real.exp (-2 * t) ≤ 1 :=
+    Real.exp_le_one_iff.mpr (by linarith)
+  have h_e_t_nn : 0 ≤ Real.exp (-t) := (Real.exp_pos _).le
+  have h_e_2t_nn : 0 ≤ Real.exp (-2 * t) := (Real.exp_pos _).le
+  intro x
+  refine ⟨?_, ?_, ?_⟩
+  -- |P_t f x| ≤ M.
+  · show ‖ouSemigroup t f x‖ ≤ M
+    rw [Real.norm_eq_abs]
+    have h_int : Integrable (fun y => f (Real.exp (-t) * x +
+        Real.sqrt (1 - Real.exp (-2*t)) * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (h_smooth.continuous.measurable.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact (hM _).1
+    have h_le : ∀ y, |f (Real.exp (-t) * x +
+        Real.sqrt (1 - Real.exp (-2*t)) * y)| ≤ M := fun y => by
+      rw [← Real.norm_eq_abs]; exact (hM _).1
+    show |∫ y, f (Real.exp (-t) * x + Real.sqrt (1 - Real.exp (-2*t)) * y) ∂γ| ≤ M
+    calc |∫ y, f (Real.exp (-t) * x + Real.sqrt (1 - Real.exp (-2*t)) * y) ∂γ|
+        ≤ ∫ y, |f (Real.exp (-t) * x + Real.sqrt (1 - Real.exp (-2*t)) * y)| ∂γ :=
+          abs_integral_le_integral_abs
+      _ ≤ ∫ _, M ∂γ := by
+          refine integral_mono h_int.abs (integrable_const _) ?_
+          intro y; exact h_le y
+      _ = M := by simp
+  -- |(P_t f)' x| = |e^{-t} P_t(f') x| ≤ M.
+  · rw [deriv_ouSemigroup_eq hf_core]
+    show ‖Real.exp (-t) * ouSemigroup t (deriv f) x‖ ≤ M
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg h_e_t_nn]
+    -- |P_t(f') x| ≤ M, then multiply by e^{-t} ≤ 1.
+    have h_int : Integrable (fun y => deriv f (Real.exp (-t) * x +
+        Real.sqrt (1 - Real.exp (-2*t)) * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · have hd_meas : Measurable (deriv f) :=
+          (h_smooth.continuous_deriv (by simp)).measurable
+        exact (hd_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact (hM _).2.1
+    have h_pf'_le : |ouSemigroup t (deriv f) x| ≤ M := by
+      show |∫ y, deriv f (Real.exp (-t) * x +
+        Real.sqrt (1 - Real.exp (-2*t)) * y) ∂γ| ≤ M
+      calc |∫ y, deriv f (Real.exp (-t) * x +
+            Real.sqrt (1 - Real.exp (-2*t)) * y) ∂γ|
+          ≤ ∫ y, |deriv f (Real.exp (-t) * x +
+              Real.sqrt (1 - Real.exp (-2*t)) * y)| ∂γ := abs_integral_le_integral_abs
+        _ ≤ ∫ _, M ∂γ := by
+            refine integral_mono h_int.abs (integrable_const _) ?_
+            intro y
+            show |deriv f (Real.exp (-t) * x +
+              Real.sqrt (1 - Real.exp (-2*t)) * y)| ≤ M
+            rw [← Real.norm_eq_abs]; exact (hM _).2.1
+        _ = M := by simp
+    calc Real.exp (-t) * |ouSemigroup t (deriv f) x|
+        ≤ 1 * M := mul_le_mul h_e_t_le h_pf'_le (abs_nonneg _) (by linarith)
+      _ = M := one_mul _
+  -- |(P_t f)'' x| = |e^{-2t} P_t(f'') x| ≤ M.
+  · rw [deriv_deriv_ouSemigroup_eq hf_core]
+    show ‖Real.exp (-2 * t) * ouSemigroup t (deriv (deriv f)) x‖ ≤ M
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg h_e_2t_nn]
+    have h_int : Integrable (fun y => deriv (deriv f) (Real.exp (-t) * x +
+        Real.sqrt (1 - Real.exp (-2*t)) * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · have hd_meas : Measurable (deriv (deriv f)) := by
+          have h_smooth_d : ContDiff ℝ ⊤ (deriv f) :=
+            IsCore.contDiff_deriv hf_core
+          exact (h_smooth_d.continuous_deriv (by simp)).measurable
+        exact (hd_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact (hM _).2.2
+    have h_pf''_le : |ouSemigroup t (deriv (deriv f)) x| ≤ M := by
+      show |∫ y, deriv (deriv f) (Real.exp (-t) * x +
+        Real.sqrt (1 - Real.exp (-2*t)) * y) ∂γ| ≤ M
+      calc |∫ y, deriv (deriv f) (Real.exp (-t) * x +
+            Real.sqrt (1 - Real.exp (-2*t)) * y) ∂γ|
+          ≤ ∫ y, |deriv (deriv f) (Real.exp (-t) * x +
+              Real.sqrt (1 - Real.exp (-2*t)) * y)| ∂γ := abs_integral_le_integral_abs
+        _ ≤ ∫ _, M ∂γ := by
+            refine integral_mono h_int.abs (integrable_const _) ?_
+            intro y
+            show |deriv (deriv f) (Real.exp (-t) * x +
+              Real.sqrt (1 - Real.exp (-2*t)) * y)| ≤ M
+            rw [← Real.norm_eq_abs]; exact (hM _).2.2
+        _ = M := by simp
+    calc Real.exp (-2 * t) * |ouSemigroup t (deriv (deriv f)) x|
+        ≤ 1 * M := mul_le_mul h_e_2t_le h_pf''_le (abs_nonneg _) (by linarith)
+      _ = M := one_mul _
+
+/-- **OU semigroup preserves `IsCore` (BGL §2.7).** PROVED, modulo the
+smaller atomic axiom `ouSemigroup_contDiff` (the `C^∞` smoothing).
+
+For `t ≥ 0` and `IsCore f`, `P_t f` is `IsCore`:
+* `ContDiff ⊤ (P_t f)`: from the `ouSemigroup_contDiff` axiom.
+* Boundedness of `P_t f`, `(P_t f)'`, `(P_t f)''` by the same `M` as `f`:
+  PROVED in `ouSemigroup_preserves_bounds` via the Mehler derivative
+  formulas `(P_t f)' = e^{-t} P_t(f')` and `(P_t f)'' = e^{-2t} P_t(f'')`. -/
+theorem ouSemigroup_preserves_IsCore (t : ℝ) (ht : 0 ≤ t) {f : ℝ → ℝ}
+    (hf : IsCore f) : IsCore (ouSemigroup t f) := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  refine ⟨ouSemigroup_contDiff t h_smooth, M, ?_⟩
+  exact ouSemigroup_preserves_bounds h_smooth hM t ht
 
 /-- **OU gradient decay (BGL Theorem 5.5.2).** PROVED (was axiom).
 
