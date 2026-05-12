@@ -492,12 +492,24 @@ the bound proof. -/
 /-- **Smoothing of `ouSemigroup`** (BGL §2.7.1, atomic). The OU semigroup
 applied to a `C^∞` function (or even bounded measurable) produces a
 `C^∞` function in `x` — a consequence of the Mehler kernel's `C^∞`
-regularity. Full discharge requires Mathlib infrastructure for `ContDiff`
-of parametric integrals at all orders (Schwartz-class kernel convolution),
-which is not yet present.
+regularity.
 
-Reference: BGL §2.7.1; the Mehler kernel is `C^∞` in `x` with all
-derivatives integrable against bounded `f`. -/
+The discharge path goes through
+`MarkovSemigroups.General.SchwartzConvolution.contDiff_top_convolution_schwartzKernel`,
+which gives `ContDiff ⊤` for convolutions of an integrable-derivative `C^∞`
+kernel against a bounded measurable function. To reduce the Mehler integral
+`∫ y, f(a·x + b·y) ∂γ` to that form requires (for `t > 0`):
+1. Change of variables `u = a·x + b·y` from γ to Lebesgue, giving
+   `∫ u, K_t(a·x − u) · f(u) du` where `K_t(z) = (b√(2π))⁻¹ exp(−z²/(2b²))`
+   is the Mehler kernel density.
+2. Verification that all iterated derivatives of `K_t` are integrable
+   (each is a Hermite polynomial × Gaussian).
+3. Composition with the smooth dilation `x ↦ a·x`.
+
+For `t ≤ 0`: `b = 0` (Real.sqrt of negative is 0; t = 0 gives exact 0),
+so `ouSemigroup t f = f ∘ (exp(−t)·)`, trivially `C^∞`.
+
+Reference: BGL §2.7.1. -/
 axiom ouSemigroup_contDiff (t : ℝ) {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) :
     ContDiff ℝ ⊤ (ouSemigroup t f)
 
