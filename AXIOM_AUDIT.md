@@ -47,10 +47,14 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-11 axioms total. Of these:
+10 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
-- **4 Gaussian1D BGL Ch. 2** axioms — Mehler-kernel-level facts on `(ℝ, γ_1)`
+- **3 Gaussian1D BGL Ch. 2** axioms — Mehler-kernel-level facts on `(ℝ, γ_1)`
+  (`ouSemigroup_gradient_decay` discharged 2026-05-12 via Mathlib's parametric
+  derivative + new `hasDerivAt_ouSemigroup` Mehler-derivative theorem; the
+  standard Gaussian Stein identity is now also proved as
+  `stein_identity_standard`)
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
 
@@ -76,7 +80,7 @@ on 2026-05-10. See that repo for the current home and audit.
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
 
-### Gaussian1D BGL Ch. 2 (4 axioms — Mehler-kernel-level facts on ℝ)
+### Gaussian1D BGL Ch. 2 (3 axioms — Mehler-kernel-level facts on ℝ)
 
 All four were vetted in one pass via Gemini chat (`gemini-3-pro-preview`),
 which flagged a missing `IsCore` hypothesis on the original
@@ -89,17 +93,21 @@ Mehler-kernel facts.
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
 | `ouSemigroup_preserves_IsCore` | [`Instances/WorkInProgress/Euclidean.lean:488`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L488) | BGL §2.7 (OU smoothing preserves core algebra) | Standard | GR | OU semigroup applied to a smooth-bounded `f` produces another smooth-bounded function. Direct proof: differentiate Mehler integral under integral sign with explicit dominator. Estimated 1-2 weeks. | `Gaussian1D.bakryEmerySpace` (1D BE instance only) |
-| `ouSemigroup_gradient_decay` | [`Instances/WorkInProgress/Euclidean.lean:503`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L503) | BGL Theorem 5.5.2 (`∫(P_t f')² ≤ e^{-2t} ∫(f')²`) | Standard | GR | The pointwise commutation `(P_t f)' = e^{-t} P_t(f')` (Mehler) + L²-contraction. Direct proof: chain rule under the Mehler integral + Jensen. Multi-week (the Mehler-derivative DCT is the heaviest part). | `Gaussian1D.bakryEmerySpace` |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | [`Instances/WorkInProgress/Euclidean.lean:684`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L684) | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) | Standard | GR | Differentiation under the integral with explicit dominator + integration by parts on the OU generator. Estimated 1 week. | `Gaussian1D.bakryEmerySpace` |
 | `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean:943`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L943) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
 
-**Five originally axiomatized 1D facts were reduced to theorems** (now
-proved) via the existing four:
+**Six originally axiomatized 1D facts were reduced to theorems**:
 - `ouSemigroup_l2_decay_bound` (FTC + gradient decay)
 - `ouSemigroup_ergodic` (double DCT on Mehler integrand)
 - `ouSemigroup_entropy_sq_ergodic` (DCT for `s log s` + compactness)
 - `ouSemigroup_compose` (Gaussian convolution via `gaussianReal_add_gaussianReal_of_indepFun`)
 - `gaussian2D_orthogonal_invariance` (proved by Codex via `stdGaussian_map` + `map_pi_eq_stdGaussian` through the `EuclideanSpace ℝ (Fin 2) ≃ₗᵢ WithLp 2 (ℝ × ℝ)` isometry)
+- `ouSemigroup_gradient_decay` (2026-05-12) — proved via the new theorem
+  `hasDerivAt_ouSemigroup` (Mehler-derivative formula via Mathlib's
+  `hasDerivAt_integral_of_dominated_loc_of_deriv_le`) + Jensen +
+  γ-invariance (Fubini + `ou_kernel_map`). Additionally,
+  `stein_identity_standard` (Stein's identity for the standard Gaussian,
+  BGL §1.15) is now also proved, paving the way for further discharges.
 
 ### Dobrushin-Zegarlinski
 
