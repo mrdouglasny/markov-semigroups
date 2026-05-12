@@ -141,34 +141,201 @@ lemma hasDerivAt_hermiteFun_mul_pdf (n : ℕ) (y : ℝ) :
 
 /-! ## Decay and integrability of `hermiteFun n · pdf` -/
 
-/-- `|y|^n · pdf(y) → 0` at `+∞`. Uses `exp(-y²/2) ≤ exp(-y)` for `y ≥ 2`
+/-- `|y|^n · pdf(y) → 0` at `+∞`. Uses `exp(-y²/2) ≤ exp(-y/2)` for `y ≥ 1`
 plus `tendsto_pow_mul_exp_neg_atTop_nhds_zero`. -/
 lemma tendsto_pow_mul_pdf_atTop (n : ℕ) :
     Tendsto (fun y : ℝ => y ^ n * pdf y) atTop (𝓝 0) := by
-  sorry
+  -- Step 1: y^n * exp(-y/2) tends to 0 as y → ∞, via composition with `y/2`.
+  have hhalf : Tendsto (fun y : ℝ => y / 2) atTop atTop :=
+    tendsto_id.atTop_div_const (by norm_num : (0 : ℝ) < 2)
+  have hpow_exp : Tendsto (fun y : ℝ => y ^ n * Real.exp (-(y / 2))) atTop (𝓝 0) := by
+    have h1 : Tendsto (fun u : ℝ => u ^ n * Real.exp (-u)) atTop (𝓝 0) :=
+      tendsto_pow_mul_exp_neg_atTop_nhds_zero n
+    have h2 : Tendsto (fun y : ℝ => (y / 2) ^ n * Real.exp (-(y / 2))) atTop (𝓝 0) :=
+      h1.comp hhalf
+    have h3 : Tendsto (fun y : ℝ => (2 : ℝ) ^ n * ((y / 2) ^ n * Real.exp (-(y / 2))))
+        atTop (𝓝 ((2 : ℝ) ^ n * 0)) :=
+      tendsto_const_nhds.mul h2
+    rw [mul_zero] at h3
+    refine h3.congr' ?_
+    filter_upwards with y
+    have h2ne : (2 : ℝ) ^ n ≠ 0 := pow_ne_zero _ (by norm_num : (2 : ℝ) ≠ 0)
+    rw [div_pow]
+    field_simp
+  -- Step 2: multiply by constant (√(2π))⁻¹.
+  set c : ℝ := (Real.sqrt (2 * π))⁻¹ with hc_def
+  have hc_nonneg : 0 ≤ c := by
+    have : 0 ≤ Real.sqrt (2 * π) := Real.sqrt_nonneg _
+    positivity
+  have hconst : Tendsto (fun y : ℝ => c * (y ^ n * Real.exp (-(y / 2)))) atTop
+      (𝓝 (c * 0)) := tendsto_const_nhds.mul hpow_exp
+  rw [mul_zero] at hconst
+  -- Step 3: For y ≥ 1, 0 ≤ y^n * pdf y ≤ c * y^n * exp(-y/2). Use squeeze.
+  refine squeeze_zero' (f := fun y : ℝ => y ^ n * pdf y)
+    (g := fun y : ℝ => c * (y ^ n * Real.exp (-(y / 2)))) ?_ ?_ hconst
+  · filter_upwards [Filter.eventually_ge_atTop (0 : ℝ)] with y hy
+    exact mul_nonneg (pow_nonneg hy n) (pdf_nonneg y)
+  · filter_upwards [Filter.eventually_ge_atTop (1 : ℝ)] with y hy
+    have hy_pos : 0 ≤ y := le_trans zero_le_one hy
+    have hyn_nonneg : 0 ≤ y ^ n := pow_nonneg hy_pos n
+    -- pdf y = c * exp(-y²/2)
+    have hpdf_eq : pdf y = c * Real.exp (-(y ^ 2) / 2) := by
+      show gaussianPDFReal 0 1 y = c * Real.exp (-(y ^ 2) / 2)
+      unfold gaussianPDFReal
+      simp [hc_def]
+    -- y² ≥ y for y ≥ 1
+    have hy_sq : y ≤ y ^ 2 := by
+      have h : y * 1 ≤ y * y := mul_le_mul_of_nonneg_left hy hy_pos
+      simpa [pow_two] using h
+    -- exp(-y²/2) ≤ exp(-y/2)
+    have hexp_le : Real.exp (-(y ^ 2) / 2) ≤ Real.exp (-(y / 2)) := by
+      apply Real.exp_le_exp.mpr
+      have h_neg : -(y ^ 2) ≤ -y := by linarith
+      linarith
+    rw [hpdf_eq]
+    calc y ^ n * (c * Real.exp (-(y ^ 2) / 2))
+        = c * (y ^ n * Real.exp (-(y ^ 2) / 2)) := by ring
+      _ ≤ c * (y ^ n * Real.exp (-(y / 2))) := by
+          apply mul_le_mul_of_nonneg_left _ hc_nonneg
+          exact mul_le_mul_of_nonneg_left hexp_le hyn_nonneg
+
+/-- `pdf` is even: `pdf(-y) = pdf(y)`. -/
+private lemma pdf_neg (y : ℝ) : pdf (-y) = pdf y := by
+  show gaussianPDFReal 0 1 (-y) = gaussianPDFReal 0 1 y
+  unfold gaussianPDFReal
+  simp
 
 /-- `|y|^n · pdf(y) → 0` at `-∞`. Reduce to `atTop` via `y ↦ -y`. -/
 lemma tendsto_pow_mul_pdf_atBot (n : ℕ) :
     Tendsto (fun y : ℝ => y ^ n * pdf y) atBot (𝓝 0) := by
-  sorry
+  -- Substitute y ↦ -y. `(-y)^n * pdf(-y) = (-1)^n * y^n * pdf y`.
+  have h_top : Tendsto (fun y : ℝ => y ^ n * pdf y) atTop (𝓝 0) :=
+    tendsto_pow_mul_pdf_atTop n
+  -- Composed with Neg.neg : ℝ → ℝ which takes atBot to atTop.
+  have hneg : Tendsto (fun y : ℝ => -y) atBot atTop := tendsto_neg_atBot_atTop
+  have h_comp : Tendsto (fun y : ℝ => (-y) ^ n * pdf (-y)) atBot (𝓝 0) :=
+    h_top.comp hneg
+  -- (-y)^n * pdf(-y) = (-1)^n * (y^n * pdf y)
+  have hrewrite : ∀ y : ℝ, (-y) ^ n * pdf (-y) = (-1) ^ n * (y ^ n * pdf y) := by
+    intro y; rw [pdf_neg, neg_pow]; ring
+  have h_comp' : Tendsto (fun y : ℝ => (-1 : ℝ) ^ n * (y ^ n * pdf y)) atBot (𝓝 0) := by
+    refine h_comp.congr ?_
+    intro y; exact hrewrite y
+  -- Multiply by (-1)^n to recover y^n * pdf y.
+  have h_const : Tendsto (fun y : ℝ => (-1 : ℝ) ^ n * ((-1) ^ n * (y ^ n * pdf y)))
+      atBot (𝓝 ((-1 : ℝ) ^ n * 0)) :=
+    tendsto_const_nhds.mul h_comp'
+  rw [mul_zero] at h_const
+  refine h_const.congr ?_
+  intro y
+  rw [← mul_assoc, ← pow_add, ← two_mul]
+  have : ((-1 : ℝ)) ^ (2 * n) = 1 := by
+    rw [pow_mul]; simp
+  rw [this, one_mul]
 
-/-- Every Hermite polynomial × pdf tends to zero at `±∞`. -/
+/-- Polynomial expansion: `hermiteFun n y = ∑ i ∈ range (deg+1), c_i * y^i`,
+where `c_i := ((hermite n).coeff i : ℝ)`. -/
+private lemma hermiteFun_eq_sum (n : ℕ) (y : ℝ) :
+    hermiteFun n y =
+      ∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+        ((hermite n).coeff i : ℝ) * y ^ i := by
+  unfold hermiteFun
+  rw [aeval_eq_sum_range (R := ℤ) (S := ℝ) (p := hermite n) y]
+  apply Finset.sum_congr rfl
+  intros i _
+  rw [Algebra.smul_def]
+  simp
+
+/-- Every Hermite polynomial × pdf tends to zero at `+∞`. -/
 lemma tendsto_hermiteFun_mul_pdf_atTop (n : ℕ) :
     Tendsto (fun y : ℝ => hermiteFun n y * pdf y) atTop (𝓝 0) := by
-  sorry
+  have h_sum_tendsto : Tendsto
+      (fun y : ℝ => ∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+          ((hermite n).coeff i : ℝ) * (y ^ i * pdf y))
+      atTop (𝓝 (∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+          ((hermite n).coeff i : ℝ) * (0 : ℝ))) := by
+    refine tendsto_finset_sum _ (fun i _ => ?_)
+    exact tendsto_const_nhds.mul (tendsto_pow_mul_pdf_atTop i)
+  have hzero : (∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+      ((hermite n).coeff i : ℝ) * (0 : ℝ)) = 0 := by simp
+  rw [hzero] at h_sum_tendsto
+  refine h_sum_tendsto.congr ?_
+  intro y
+  rw [hermiteFun_eq_sum, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intros; ring
 
 lemma tendsto_hermiteFun_mul_pdf_atBot (n : ℕ) :
     Tendsto (fun y : ℝ => hermiteFun n y * pdf y) atBot (𝓝 0) := by
-  sorry
+  have h_sum_tendsto : Tendsto
+      (fun y : ℝ => ∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+          ((hermite n).coeff i : ℝ) * (y ^ i * pdf y))
+      atBot (𝓝 (∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+          ((hermite n).coeff i : ℝ) * (0 : ℝ))) := by
+    refine tendsto_finset_sum _ (fun i _ => ?_)
+    exact tendsto_const_nhds.mul (tendsto_pow_mul_pdf_atBot i)
+  have hzero : (∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+      ((hermite n).coeff i : ℝ) * (0 : ℝ)) = 0 := by simp
+  rw [hzero] at h_sum_tendsto
+  refine h_sum_tendsto.congr ?_
+  intro y
+  rw [hermiteFun_eq_sum, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intros; ring
+
+/-- Each monomial `y^i` is γ-integrable. -/
+private lemma integrable_pow_gamma (i : ℕ) : Integrable (fun y : ℝ => y ^ i) γ := by
+  rcases Nat.eq_zero_or_pos i with hi | hi
+  · subst hi
+    simp only [pow_zero]
+    exact integrable_const _
+  -- For i ≥ 1, use MemLp id i and integrable_norm_pow.
+  have hmem : MemLp (id : ℝ → ℝ) (i : NNReal) γ :=
+    memLp_id_gaussianReal (μ := (0 : ℝ)) (v := (1 : NNReal)) (i : NNReal)
+  have h_int_norm : Integrable (fun y : ℝ => ‖y‖ ^ i) γ :=
+    hmem.integrable_norm_pow (p := i) hi.ne'
+  -- |y^i| = ‖y‖^i, so y^i is integrable.
+  have h_meas : AEStronglyMeasurable (fun y : ℝ => y ^ i) γ :=
+    (continuous_pow i).aestronglyMeasurable
+  refine (integrable_norm_iff h_meas).mp ?_
+  refine h_int_norm.congr ?_
+  refine Filter.Eventually.of_forall (fun y => ?_)
+  simp only [norm_pow]
+
+/-- `hermiteFun n` is γ-integrable. -/
+lemma integrable_hermiteFun_gamma (n : ℕ) : Integrable (hermiteFun n) γ := by
+  -- hermiteFun n y = ∑ i, c_i * y^i. Each y^i is integrable; sum of integrables is integrable.
+  have h_rewrite : (hermiteFun n) =
+      fun y => ∑ i ∈ Finset.range ((hermite n).natDegree + 1),
+        ((hermite n).coeff i : ℝ) * y ^ i := by
+    ext y; exact hermiteFun_eq_sum n y
+  rw [h_rewrite]
+  apply integrable_finset_sum
+  intros i _
+  exact (integrable_pow_gamma i).const_mul _
 
 /-- `hermiteFun n` is Lebesgue × pdf-integrable. -/
 lemma integrable_hermiteFun_mul_pdf (n : ℕ) :
     Integrable (fun y => hermiteFun n y * pdf y) := by
-  sorry
-
-/-- `hermiteFun n` is γ-integrable. -/
-lemma integrable_hermiteFun_gamma (n : ℕ) : Integrable (hermiteFun n) γ := by
-  sorry
+  -- Use: Integrable f γ ↔ Integrable (fun y => pdf y * f y) volume, then multiplication commutes.
+  have h_gamma : Integrable (hermiteFun n) γ := integrable_hermiteFun_gamma n
+  -- γ = volume.withDensity (gaussianPDF 0 1)
+  have hγ_eq : (γ : Measure ℝ) = (volume : Measure ℝ).withDensity (gaussianPDF 0 1) := by
+    show gaussianReal 0 1 = _
+    have h1ne : ((1 : NNReal)) ≠ 0 := one_ne_zero
+    exact gaussianReal_of_var_ne_zero _ h1ne
+  rw [hγ_eq] at h_gamma
+  rw [integrable_withDensity_iff_integrable_smul'
+    (measurable_gaussianPDF _ _) (Filter.Eventually.of_forall fun _ => gaussianPDF_lt_top)] at h_gamma
+  refine h_gamma.congr ?_
+  refine Filter.Eventually.of_forall (fun y => ?_)
+  show (gaussianPDF 0 1 y).toReal • hermiteFun n y = hermiteFun n y * pdf y
+  rw [smul_eq_mul, mul_comm]
+  congr 1
+  -- pdf y = (gaussianPDF 0 1 y).toReal
+  show (ENNReal.ofReal (gaussianPDFReal 0 1 y)).toReal = pdf y
+  rw [ENNReal.toReal_ofReal (gaussianPDFReal_nonneg _ _ _)]
+  rfl
 
 /-! ## Hermite integration by parts against the Gaussian -/
 
