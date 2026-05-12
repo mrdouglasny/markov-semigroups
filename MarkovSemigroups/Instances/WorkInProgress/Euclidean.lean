@@ -2660,6 +2660,74 @@ theorem hasDerivAt_l2sq_ouSemigroup_pos (t₀ : ℝ) (ht₀ : 0 < t₀)
   rw [h_int_F'_eq] at h_deriv
   exact h_deriv
 
+/-! ## Boundary case at t = 0 (residue)
+
+The full `ouSemigroup_l2_sq_hasDerivWithinAt` (BGL Proposition 4.7.1) is now
+provable for `t > 0` (`hasDerivAt_l2sq_ouSemigroup_pos`) but the right-derivative
+at `t = 0` requires more delicate analysis: the parametric-derivative bound
+`b'(t) = e^{-2t}/b(t)` blows up at `t = 0`, so we cannot directly apply
+Mathlib's parametric derivative on a neighborhood of `0`.
+
+A discharge route exists via MVT + continuity of `φ'` at `0+`: take the limit
+of `(φ(t) - φ(0))/t = (1/t) ∫₀^t φ'(τ) dτ` as `t → 0+`, where `φ'(τ) →
+-2 ∫(f')² dγ` (continuity via DCT on the Mehler integral). Substantial extra
+machinery (~200 lines). For now, we isolate the boundary case as a smaller
+atomic axiom. -/
+
+/-- **Boundary case `t = 0` for the L²-norm derivative.** The right-derivative
+of `s ↦ ∫(P_s f)² dγ` at `s = 0` equals `-2 ∫(f')² dγ`.
+
+A direct consequence of the heat equation + Dirichlet form identity once
+`φ` is shown to be `C¹` at `t = 0` (via DCT on the Mehler integral
+continuity). Standalone smaller atomic axiom; smaller residue of the
+original `ouSemigroup_l2_sq_hasDerivWithinAt` axiom.
+
+Reference: BGL Proposition 4.7.1 boundary case. -/
+axiom ouSemigroup_l2sq_hasDerivWithinAt_zero {f : ℝ → ℝ} (hf : IsCore f) :
+    HasDerivWithinAt (fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ)
+      (-2 * ∫ x, (deriv f x) ^ 2 ∂γ) (Ici 0) 0
+
+/-- **`ouSemigroup_l2_sq_hasDerivWithinAt` (BGL Prop 4.7.1).** PROVED, modulo
+the smaller atomic axiom `ouSemigroup_l2sq_hasDerivWithinAt_zero` for the
+`t = 0` boundary case.
+
+For `t ≥ 0` and `IsCore f`,
+  `d/ds (∫ (P_s f)² dγ) |_{s=t}_{(Ici 0)} = -2 · ∫ Γ(P_t f, P_t f) dγ`.
+
+PROOF. Case `t > 0`: from `hasDerivAt_l2sq_ouSemigroup_pos` (heat equation +
+Dirichlet form via Stein). Case `t = 0`: from
+`ouSemigroup_l2sq_hasDerivWithinAt_zero`, after substituting `P_0 f = f`. -/
+theorem ouSemigroup_l2_sq_hasDerivWithinAt_proved (f : ℝ → ℝ) (t : ℝ) (ht : 0 ≤ t)
+    (hf : IsCore f) :
+    HasDerivWithinAt (fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ)
+      (-2 * ∫ x, ouGamma (ouSemigroup t f) (ouSemigroup t f) x ∂γ) (Ici 0) t := by
+  rcases eq_or_lt_of_le ht with rfl | ht_pos
+  · -- t = 0 case: P_0 f = f, so Γ(P_0 f, P_0 f) = (deriv f)².
+    have h_p0 : ouSemigroup 0 f = f := by
+      ext x
+      simp only [ouSemigroup, neg_zero, Real.exp_zero, mul_zero, sub_self,
+        Real.sqrt_zero, zero_mul, add_zero, one_mul]
+      simp [integral_const]
+    have h_gamma_eq : ∫ x, ouGamma (ouSemigroup 0 f) (ouSemigroup 0 f) x ∂γ =
+        ∫ x, (deriv f x) ^ 2 ∂γ := by
+      rw [h_p0]
+      refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+      show deriv f x * deriv f x = (deriv f x) ^ 2
+      ring
+    rw [h_gamma_eq]
+    exact ouSemigroup_l2sq_hasDerivWithinAt_zero hf
+  · -- t > 0 case: convert HasDerivAt to HasDerivWithinAt.
+    have h_pos := hasDerivAt_l2sq_ouSemigroup_pos t ht_pos hf
+    have h_gamma_eq :
+        ∫ x, ouGamma (ouSemigroup t f) (ouSemigroup t f) x ∂γ =
+        ∫ x, (deriv (ouSemigroup t f) x) ^ 2 ∂γ := by
+      refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+      show deriv (ouSemigroup t f) x * deriv (ouSemigroup t f) x =
+        (deriv (ouSemigroup t f) x) ^ 2
+      ring
+    rw [h_gamma_eq]
+    exact h_pos.hasDerivWithinAt
+
 end Gaussian1D
 
 end
