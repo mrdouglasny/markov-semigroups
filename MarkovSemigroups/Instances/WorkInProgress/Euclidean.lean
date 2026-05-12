@@ -1874,6 +1874,148 @@ theorem stein_identity_standard {g : ℝ → ℝ} (hg : ContDiff ℝ 1 g)
     rw [smul_eq_mul]; ring
   rw [h_γ_y_g, h_γ_g', h_lebesgue]
 
+/-! ## Gaussian Dirichlet form identity (BGL §1.6) — consequence of Stein
+
+PROVED. The Gaussian integration-by-parts identity for the OU generator:
+`∫ g · (L g) dγ = -∫ (g')² dγ` where `L g = g'' - x · g'`.
+
+This is the bridge that turns the abstract `BakryEmerySpace` Dirichlet
+energy `E(g, g) = ∫ Γ(g, g) dγ` into the generator-side
+`-⟨g, L g⟩_{L²(γ)}` form needed for the `l2_sq_hasDerivWithinAt` and
+`entropy_sq_decay_bound` discharges. -/
+
+/-- **Stein consequence: IBP for `x · g · g'`.** For `IsCore g`,
+`∫ x · g(x) · g'(x) dγ = ∫ ((g')² + g · g'') dγ`.
+
+Apply Stein to `h := g · g'`. Under `IsCore g`, both `h` and `h' = (g')² + g·g''`
+are bounded (by `M²` and `2M²` respectively), so Stein gives
+`∫ y · h(y) dγ = ∫ h'(y) dγ`. -/
+theorem gaussian_ibp_x_g_deriv_g {g : ℝ → ℝ} (hg : IsCore g) :
+    ∫ x, x * g x * deriv g x ∂γ =
+      ∫ x, (deriv g x) ^ 2 + g x * deriv (deriv g) x ∂γ := by
+  obtain ⟨h_smooth, M, hM⟩ := hg
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hg_diff : Differentiable ℝ g := h_smooth.differentiable (by simp)
+  have hg' : ContDiff ℝ ⊤ (deriv g) :=
+    IsCore.contDiff_deriv ⟨h_smooth, M, hM⟩
+  have hg'_diff : Differentiable ℝ (deriv g) := hg'.differentiable (by simp)
+  set h : ℝ → ℝ := fun y => g y * deriv g y with hh_def
+  have hh_C1 : ContDiff ℝ 1 h :=
+    (h_smooth.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)).mul
+      (hg'.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤))
+  have hh_bd : ∀ x, |h x| ≤ M ^ 2 := by
+    intro x
+    show |g x * deriv g x| ≤ M ^ 2
+    rw [abs_mul]
+    have h1 : |g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).1
+    have h2 : |deriv g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).2.1
+    calc |g x| * |deriv g x| ≤ M * M := mul_le_mul h1 h2 (abs_nonneg _) hM_nn
+      _ = M ^ 2 := by ring
+  have hh_deriv_eq : ∀ y,
+      deriv h y = (deriv g y) ^ 2 + g y * deriv (deriv g) y := by
+    intro y
+    show deriv (fun z => g z * deriv g z) y = _
+    rw [deriv_fun_mul (hg_diff.differentiableAt) (hg'_diff.differentiableAt)]
+    ring
+  have hh'_bd : ∀ x, |deriv h x| ≤ 2 * M ^ 2 := by
+    intro x
+    rw [hh_deriv_eq x]
+    show |(deriv g x) ^ 2 + g x * deriv (deriv g) x| ≤ 2 * M ^ 2
+    have h1 : |deriv g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).2.1
+    have h2 : |g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).1
+    have h3 : |deriv (deriv g) x| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact (hM x).2.2
+    have hsq : (deriv g x) ^ 2 ≤ M ^ 2 := by
+      have heq : (deriv g x) ^ 2 = |deriv g x| ^ 2 := by rw [sq_abs]
+      rw [heq]; exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+    have hsq_nn : (0 : ℝ) ≤ (deriv g x) ^ 2 := sq_nonneg _
+    calc |(deriv g x) ^ 2 + g x * deriv (deriv g) x|
+        ≤ |(deriv g x) ^ 2| + |g x * deriv (deriv g) x| := abs_add_le _ _
+      _ = (deriv g x) ^ 2 + |g x * deriv (deriv g) x| := by rw [abs_of_nonneg hsq_nn]
+      _ = (deriv g x) ^ 2 + |g x| * |deriv (deriv g) x| := by rw [abs_mul]
+      _ ≤ M ^ 2 + M * M := by
+          apply add_le_add hsq
+          exact mul_le_mul h2 h3 (abs_nonneg _) hM_nn
+      _ = 2 * M ^ 2 := by ring
+  have hh_bd' : ∀ x, |h x| ≤ 2 * M ^ 2 := fun x => by
+    calc |h x| ≤ M ^ 2 := hh_bd x
+      _ ≤ 2 * M ^ 2 := by linarith [sq_nonneg M]
+  have h_stein : ∫ y, y * h y ∂γ = ∫ y, deriv h y ∂γ :=
+    stein_identity_standard hh_C1 hh_bd' hh'_bd
+  have hlhs : (fun y => y * h y) = (fun y => y * g y * deriv g y) := by
+    funext y; show y * (g y * deriv g y) = y * g y * deriv g y; ring
+  rw [hlhs] at h_stein
+  have hrhs : (deriv h : ℝ → ℝ) =
+      (fun y => (deriv g y) ^ 2 + g y * deriv (deriv g) y) := by
+    funext y; exact hh_deriv_eq y
+  rw [hrhs] at h_stein
+  exact h_stein
+
+/-- **Gaussian Dirichlet form identity (BGL §1.6).** PROVED.
+
+For `IsCore g`, with `L g = g'' - x · g'` the OU generator,
+  `∫ g · (L g) dγ = -∫ (g')² dγ`.
+
+PROOF: split as `∫ g · g'' dγ - ∫ x · g · g' dγ`. By
+`gaussian_ibp_x_g_deriv_g`, `∫ x · g · g' dγ = ∫ (g')² dγ + ∫ g · g'' dγ`.
+Substituting cancels the `∫ g · g''` terms, leaving `-∫ (g')² dγ`. -/
+theorem gaussian_dirichlet_form_identity {g : ℝ → ℝ} (hg : IsCore g) :
+    ∫ x, g x * (deriv (deriv g) x - x * deriv g x) ∂γ =
+      -∫ x, (deriv g x) ^ 2 ∂γ := by
+  obtain ⟨h_smooth, M, hM⟩ := hg
+  have hg_core : IsCore g := ⟨h_smooth, M, hM⟩
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hg_meas : Measurable g := h_smooth.continuous.measurable
+  have hg' : ContDiff ℝ ⊤ (deriv g) := IsCore.contDiff_deriv hg_core
+  have hg'_meas : Measurable (deriv g) := hg'.continuous.measurable
+  have hg''_meas : Measurable (deriv (deriv g)) :=
+    (hg'.continuous_deriv (by simp)).measurable
+  have h_ibp := gaussian_ibp_x_g_deriv_g hg_core
+  have h_int_gg'' : Integrable (fun x => g x * deriv (deriv g) x) γ := by
+    refine Integrable.mono' (integrable_const (M^2))
+      ((hg_meas.mul hg''_meas).aestronglyMeasurable) ?_
+    filter_upwards with x
+    show ‖g x * deriv (deriv g) x‖ ≤ M ^ 2
+    rw [Real.norm_eq_abs, abs_mul]
+    have h1 : |g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).1
+    have h2 : |deriv (deriv g) x| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact (hM x).2.2
+    calc |g x| * |deriv (deriv g) x|
+        ≤ M * M := mul_le_mul h1 h2 (abs_nonneg _) hM_nn
+      _ = M ^ 2 := by ring
+  have h_int_g'sq : Integrable (fun x => (deriv g x) ^ 2) γ := by
+    refine Integrable.mono' (integrable_const (M^2))
+      ((hg'_meas.pow_const 2).aestronglyMeasurable) ?_
+    filter_upwards with x
+    show ‖(deriv g x) ^ 2‖ ≤ M ^ 2
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    have h1 : |deriv g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).2.1
+    have heq : (deriv g x) ^ 2 = |deriv g x| ^ 2 := by rw [sq_abs]
+    rw [heq]; exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+  have h_split_eq :
+      (fun x => g x * (deriv (deriv g) x - x * deriv g x)) =
+      (fun x => g x * deriv (deriv g) x - x * g x * deriv g x) := by
+    funext x; ring
+  rw [h_split_eq]
+  have h_id_int : Integrable (fun x : ℝ => x) γ :=
+    (memLp_id_gaussianReal 1).integrable le_rfl
+  have h_int_xgg' : Integrable (fun x => x * g x * deriv g x) γ := by
+    refine Integrable.mono' (h_id_int.abs.const_mul (M^2))
+      (((measurable_id.mul hg_meas).mul hg'_meas).aestronglyMeasurable) ?_
+    filter_upwards with x
+    show ‖x * g x * deriv g x‖ ≤ M^2 * |x|
+    rw [Real.norm_eq_abs, abs_mul, abs_mul]
+    have h1 : |g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).1
+    have h2 : |deriv g x| ≤ M := by rw [← Real.norm_eq_abs]; exact (hM x).2.1
+    calc |x| * |g x| * |deriv g x|
+        ≤ |x| * M * M := by
+          apply mul_le_mul _ h2 (abs_nonneg _) (mul_nonneg (abs_nonneg _) hM_nn)
+          exact mul_le_mul_of_nonneg_left h1 (abs_nonneg _)
+      _ = M^2 * |x| := by ring
+  rw [integral_sub h_int_gg'' h_int_xgg', h_ibp,
+      integral_add h_int_g'sq h_int_gg'']
+  ring
+
 end Gaussian1D
 
 end
