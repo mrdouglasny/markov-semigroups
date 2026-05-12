@@ -2070,6 +2070,304 @@ theorem stein_identity_standard {g : ℝ → ℝ} (hg : ContDiff ℝ 1 g)
     rw [smul_eq_mul]; ring
   rw [h_γ_y_g, h_γ_g', h_lebesgue]
 
+/-! ## Heat equation for the OU semigroup (BGL §2.7)
+
+PROVED for `t > 0`. The OU semigroup satisfies `∂_t P_t f = L(P_t f)` where
+`L g = g'' - x · g'` is the OU generator. Foundational for the
+`l2_sq_hasDerivWithinAt` discharge. -/
+
+/-- For `τ > 0`, `b(τ) := √(1 - e^{-2τ})` has derivative `e^{-2τ}/b(τ)`. -/
+theorem hasDerivAt_b (τ : ℝ) (hτ : 0 < τ) :
+    HasDerivAt (fun s => Real.sqrt (1 - Real.exp (-2 * s)))
+      (Real.exp (-2 * τ) / Real.sqrt (1 - Real.exp (-2 * τ))) τ := by
+  have hu_pos : 0 < 1 - Real.exp (-2 * τ) := by
+    have : Real.exp (-2 * τ) < 1 :=
+      Real.exp_lt_one_iff.mpr (by linarith)
+    linarith
+  have h_lin : HasDerivAt (fun s : ℝ => -2 * s) (-2 : ℝ) τ := by
+    simpa using (hasDerivAt_id τ).const_mul (-2)
+  have h_exp : HasDerivAt (fun s : ℝ => Real.exp (-2 * s))
+      (Real.exp (-2 * τ) * (-2)) τ := h_lin.exp
+  have h_u : HasDerivAt (fun s : ℝ => 1 - Real.exp (-2 * s))
+      (2 * Real.exp (-2 * τ)) τ := by
+    have := (hasDerivAt_const τ (1 : ℝ)).sub h_exp
+    convert this using 1; ring
+  have h_sqrt := h_u.sqrt hu_pos.ne'
+  convert h_sqrt using 1
+  rw [mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0)]
+
+/-- **Heat equation for the OU semigroup.** PROVED for `t₀ > 0`.
+
+For `t₀ > 0` and `IsCore f`,
+  `∂_τ (P_τ f)(x) |_{τ=t₀} = (P_{t₀} f)''(x) - x · (P_{t₀} f)'(x) = L(P_{t₀} f)(x)`.
+
+PROOF. Apply Mathlib's parametric derivative in `τ` to the Mehler integral
+on a neighborhood of `t₀` contained in `(0, ∞)` (so `b(τ)` stays bounded
+below by `b(t₀/2) > 0`). The chain rule gives the pointwise τ-derivative
+`f'(α(τ) x + b(τ) y) · (-e^{-τ} x + b'(τ) y)`. After integrating against γ:
+* `-e^{-τ} x · P_τ(f')(x) = -x · (P_τ f)'(x)` (Mehler derivative).
+* `b'(τ) · ∫ y · f'(...) dγ = b'(τ) · b(τ) · P_τ(f'')(x)` (Stein on the
+  inner integrand) = `e^{-2τ} · P_τ(f'')(x) = (P_τ f)''(x)` (second-order
+  Mehler derivative). -/
+theorem hasDerivAt_t_ouSemigroup (t₀ : ℝ) (ht₀ : 0 < t₀)
+    {f : ℝ → ℝ} (hf : IsCore f) (x : ℝ) :
+    HasDerivAt (fun τ => ouSemigroup τ f x)
+      (deriv (deriv (ouSemigroup t₀ f)) x - x * deriv (ouSemigroup t₀ f) x) t₀ := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hf_core : IsCore f := ⟨h_smooth, M, hM⟩
+  set ε : ℝ := t₀ / 2 with hε_def
+  have hε_pos : 0 < ε := half_pos ht₀
+  have hε_lt : ε < t₀ := half_lt_self ht₀
+  have h_nbhd : Set.Ioo ε (t₀ + 1) ∈ nhds t₀ := Ioo_mem_nhds hε_lt (by linarith)
+  set b_lo : ℝ := Real.sqrt (1 - Real.exp (-2 * ε))
+  have hb_lo_pos : 0 < b_lo := by
+    apply Real.sqrt_pos.mpr
+    have : Real.exp (-2 * ε) < 1 :=
+      Real.exp_lt_one_iff.mpr (by linarith)
+    linarith
+  have h_b_τ_ge : ∀ τ ∈ Set.Ioo ε (t₀ + 1),
+      b_lo ≤ Real.sqrt (1 - Real.exp (-2 * τ)) := by
+    intro τ hτ
+    apply Real.sqrt_le_sqrt
+    have h_exp : Real.exp (-2 * τ) ≤ Real.exp (-2 * ε) :=
+      Real.exp_le_exp.mpr (by linarith [hτ.1])
+    linarith
+  set F : ℝ → ℝ → ℝ := fun τ y =>
+    f (Real.exp (-τ) * x + Real.sqrt (1 - Real.exp (-2 * τ)) * y)
+  set F' : ℝ → ℝ → ℝ := fun τ y =>
+    deriv f (Real.exp (-τ) * x + Real.sqrt (1 - Real.exp (-2 * τ)) * y) *
+      (-Real.exp (-τ) * x + (Real.exp (-2 * τ) /
+        Real.sqrt (1 - Real.exp (-2 * τ))) * y)
+  set bound : ℝ → ℝ := fun y => M * (|x| + (1 / b_lo) * |y|)
+  have h_id_int : Integrable (fun y : ℝ => y) γ :=
+    (memLp_id_gaussianReal 1).integrable le_rfl
+  have h_bound_int : Integrable bound γ := by
+    have : bound = (fun y => M * |x| + M * ((1 / b_lo) * |y|)) := by
+      funext y; ring
+    rw [this]
+    refine Integrable.add (integrable_const _) ?_
+    have : (fun y : ℝ => M * ((1 / b_lo) * |y|)) =
+        (fun y => (M * (1 / b_lo)) * |y|) := by funext y; ring
+    rw [this]
+    exact h_id_int.abs.const_mul _
+  have hf_meas : Measurable f := h_smooth.continuous.measurable
+  have hf'_meas : Measurable (deriv f) :=
+    (h_smooth.continuous_deriv (by simp)).measurable
+  have hF_meas : ∀ τ, AEStronglyMeasurable (F τ) γ := fun τ => by
+    refine (hf_meas.comp ?_).aestronglyMeasurable
+    exact (measurable_const).add (measurable_const.mul measurable_id)
+  have hF_int : Integrable (F t₀) γ := by
+    refine Integrable.mono' (integrable_const M) (hF_meas t₀) ?_
+    filter_upwards with y; exact (hM _).1
+  have hF'_meas : AEStronglyMeasurable (F' t₀) γ := by
+    refine ((hf'_meas.comp ?_).mul ?_).aestronglyMeasurable
+    · exact (measurable_const).add (measurable_const.mul measurable_id)
+    · exact ((measurable_const).add (measurable_const.mul measurable_id))
+  have h_bd : ∀ᵐ y ∂γ, ∀ τ ∈ Set.Ioo ε (t₀ + 1), ‖F' τ y‖ ≤ bound y := by
+    filter_upwards with y τ hτ
+    show ‖deriv f (Real.exp (-τ) * x + Real.sqrt (1 - Real.exp (-2 * τ)) * y) *
+      (-Real.exp (-τ) * x + (Real.exp (-2 * τ) /
+        Real.sqrt (1 - Real.exp (-2 * τ))) * y)‖ ≤ M * (|x| + (1 / b_lo) * |y|)
+    rw [Real.norm_eq_abs, abs_mul]
+    have h_f'_abs : |deriv f (Real.exp (-τ) * x +
+        Real.sqrt (1 - Real.exp (-2 * τ)) * y)| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact (hM _).2.1
+    have h_b_pos : 0 < Real.sqrt (1 - Real.exp (-2 * τ)) := by
+      apply Real.sqrt_pos.mpr
+      have h_exp : Real.exp (-2 * τ) < 1 :=
+        Real.exp_lt_one_iff.mpr (by linarith [hτ.1])
+      linarith
+    have h_b_lo : b_lo ≤ Real.sqrt (1 - Real.exp (-2 * τ)) := h_b_τ_ge τ hτ
+    have h_e_neg_t_le : Real.exp (-τ) ≤ 1 :=
+      Real.exp_le_one_iff.mpr (by linarith [hτ.1])
+    have h_e_neg_2t_le : Real.exp (-2 * τ) ≤ 1 :=
+      Real.exp_le_one_iff.mpr (by linarith [hτ.1])
+    have h_e_neg_t_nn : 0 ≤ Real.exp (-τ) := (Real.exp_pos _).le
+    have h_e_neg_2t_nn : 0 ≤ Real.exp (-2 * τ) := (Real.exp_pos _).le
+    have h_factor_abs :
+        |-Real.exp (-τ) * x + (Real.exp (-2 * τ) /
+          Real.sqrt (1 - Real.exp (-2 * τ))) * y| ≤ |x| + (1 / b_lo) * |y| := by
+      calc |-Real.exp (-τ) * x + (Real.exp (-2 * τ) /
+              Real.sqrt (1 - Real.exp (-2 * τ))) * y|
+          ≤ |-Real.exp (-τ) * x| + |(Real.exp (-2 * τ) /
+              Real.sqrt (1 - Real.exp (-2 * τ))) * y| := abs_add_le _ _
+        _ = Real.exp (-τ) * |x| + (Real.exp (-2 * τ) /
+              Real.sqrt (1 - Real.exp (-2 * τ))) * |y| := by
+            rw [abs_mul, abs_mul, abs_neg, abs_of_nonneg h_e_neg_t_nn,
+                abs_of_nonneg (div_nonneg h_e_neg_2t_nn h_b_pos.le)]
+        _ ≤ 1 * |x| + (1 / b_lo) * |y| := by
+            apply add_le_add
+            · exact mul_le_mul_of_nonneg_right h_e_neg_t_le (abs_nonneg _)
+            · apply mul_le_mul_of_nonneg_right _ (abs_nonneg _)
+              rw [div_le_div_iff₀ h_b_pos hb_lo_pos]
+              calc Real.exp (-2 * τ) * b_lo
+                  ≤ 1 * b_lo := mul_le_mul_of_nonneg_right h_e_neg_2t_le hb_lo_pos.le
+                _ = b_lo := one_mul _
+                _ ≤ Real.sqrt (1 - Real.exp (-2 * τ)) := h_b_lo
+                _ = 1 * Real.sqrt (1 - Real.exp (-2 * τ)) := (one_mul _).symm
+        _ = |x| + (1 / b_lo) * |y| := by ring
+    exact mul_le_mul h_f'_abs h_factor_abs (abs_nonneg _) hM_nn
+  have h_diff : ∀ᵐ y ∂γ, ∀ τ ∈ Set.Ioo ε (t₀ + 1),
+      HasDerivAt (fun s => F s y) (F' τ y) τ := by
+    filter_upwards with y τ hτ
+    have h_α : HasDerivAt (fun s : ℝ => Real.exp (-s) * x)
+        (-Real.exp (-τ) * x) τ := by
+      have h1 : HasDerivAt (fun s : ℝ => -s) (-1 : ℝ) τ := by
+        simpa using (hasDerivAt_id τ).neg
+      have h2 : HasDerivAt (fun s : ℝ => Real.exp (-s))
+          (Real.exp (-τ) * (-1)) τ := h1.exp
+      have h3 : HasDerivAt (fun s : ℝ => Real.exp (-s) * x)
+          (Real.exp (-τ) * (-1) * x) τ := h2.mul_const x
+      have heq : -Real.exp (-τ) * x = Real.exp (-τ) * (-1) * x := by ring
+      rw [heq]; exact h3
+    have h_b' : HasDerivAt (fun s : ℝ => Real.sqrt (1 - Real.exp (-2 * s)) * y)
+        ((Real.exp (-2 * τ) / Real.sqrt (1 - Real.exp (-2 * τ))) * y) τ :=
+      (hasDerivAt_b τ (by linarith [hτ.1])).mul_const y
+    have h_arg : HasDerivAt (fun s : ℝ => Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y)
+        (-Real.exp (-τ) * x + (Real.exp (-2 * τ) /
+          Real.sqrt (1 - Real.exp (-2 * τ))) * y) τ := h_α.add h_b'
+    have h_f_diff : HasDerivAt f
+        (deriv f (Real.exp (-τ) * x +
+          Real.sqrt (1 - Real.exp (-2 * τ)) * y))
+        (Real.exp (-τ) * x +
+          Real.sqrt (1 - Real.exp (-2 * τ)) * y) :=
+      (h_smooth.differentiable (by simp)).differentiableAt.hasDerivAt
+    exact h_f_diff.comp τ h_arg
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le h_nbhd
+      (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bd h_bound_int h_diff
+  have h_lhs : (fun τ => ∫ y, F τ y ∂γ) = fun τ => ouSemigroup τ f x := rfl
+  rw [h_lhs] at h_deriv
+  set a₀ := Real.exp (-t₀)
+  set b₀ := Real.sqrt (1 - Real.exp (-2 * t₀))
+  have hb₀_pos : 0 < b₀ := by
+    apply Real.sqrt_pos.mpr
+    have : Real.exp (-2 * t₀) < 1 :=
+      Real.exp_lt_one_iff.mpr (by linarith)
+    linarith
+  have hb₀_le_one : b₀ ≤ 1 := by
+    show Real.sqrt (1 - Real.exp (-2 * t₀)) ≤ 1
+    rw [Real.sqrt_le_one]
+    have : 0 ≤ Real.exp (-2 * t₀) := (Real.exp_pos _).le
+    linarith
+  have h_F'_eq : ∀ y,
+      F' t₀ y = -a₀ * x * deriv f (a₀ * x + b₀ * y) +
+                (Real.exp (-2 * t₀) / b₀) * y * deriv f (a₀ * x + b₀ * y) := by
+    intro y
+    show deriv f (a₀ * x + b₀ * y) *
+      (-a₀ * x + (Real.exp (-2 * t₀) / b₀) * y) =
+      -a₀ * x * deriv f (a₀ * x + b₀ * y) +
+                (Real.exp (-2 * t₀) / b₀) * y * deriv f (a₀ * x + b₀ * y)
+    ring
+  set g : ℝ → ℝ := fun y => deriv f (a₀ * x + b₀ * y)
+  have hg_C1 : ContDiff ℝ 1 g := by
+    have h_d : ContDiff ℝ 1 (deriv f) :=
+      (IsCore.contDiff_deriv hf_core).of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
+    have h_inner : ContDiff ℝ 1 (fun y => a₀ * x + b₀ * y) := by
+      have h1 : ContDiff ℝ 1 (fun y : ℝ => b₀ * y) := contDiff_const.mul contDiff_id
+      exact contDiff_const.add h1
+    exact h_d.comp h_inner
+  have hg_bd : ∀ y, ‖g y‖ ≤ M := fun y => (hM _).2.1
+  have hg'_eq : ∀ y, deriv g y = b₀ * deriv (deriv f) (a₀ * x + b₀ * y) := by
+    intro y
+    show deriv (fun z => deriv f (a₀ * x + b₀ * z)) y =
+      b₀ * deriv (deriv f) (a₀ * x + b₀ * y)
+    have h_inner : HasDerivAt (fun z : ℝ => a₀ * x + b₀ * z) b₀ y := by
+      have h1 : HasDerivAt (fun _ : ℝ => a₀ * x) (0 : ℝ) y := hasDerivAt_const y _
+      have h2 : HasDerivAt (fun z : ℝ => b₀ * z) b₀ y := by
+        simpa using (hasDerivAt_id y).const_mul b₀
+      have h3 : HasDerivAt (fun z : ℝ => a₀ * x + b₀ * z) (0 + b₀) y := h1.add h2
+      simpa using h3
+    have h_outer : HasDerivAt (deriv f) (deriv (deriv f) (a₀ * x + b₀ * y))
+        (a₀ * x + b₀ * y) :=
+      ((IsCore.contDiff_deriv hf_core).differentiable
+        (by simp)).differentiableAt.hasDerivAt
+    have := h_outer.comp y h_inner
+    simpa [mul_comm (deriv (deriv f) _)] using this.deriv
+  have hg'_bd : ∀ y, ‖deriv g y‖ ≤ M := fun y => by
+    rw [hg'_eq y]
+    show |b₀ * deriv (deriv f) (a₀ * x + b₀ * y)| ≤ M
+    rw [abs_mul]
+    have h1 : |b₀| ≤ 1 := by rw [abs_of_nonneg hb₀_pos.le]; exact hb₀_le_one
+    have h2 : |deriv (deriv f) (a₀ * x + b₀ * y)| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact (hM _).2.2
+    calc |b₀| * |deriv (deriv f) (a₀ * x + b₀ * y)|
+        ≤ 1 * M := mul_le_mul h1 h2 (abs_nonneg _) (by linarith)
+      _ = M := one_mul _
+  have h_stein_g : ∫ y, y * g y ∂γ = ∫ y, deriv g y ∂γ :=
+    stein_identity_standard hg_C1 hg_bd hg'_bd
+  have h_int_g'_eq : ∫ y, deriv g y ∂γ = b₀ * ouSemigroup t₀ (deriv (deriv f)) x := by
+    rw [show (fun y => deriv g y) = (fun y => b₀ * deriv (deriv f) (a₀ * x + b₀ * y))
+      from by funext y; exact hg'_eq y]
+    rw [integral_const_mul]; rfl
+  have h_stein_apply : ∫ y, y * deriv f (a₀ * x + b₀ * y) ∂γ =
+      b₀ * ouSemigroup t₀ (deriv (deriv f)) x := by
+    rw [h_stein_g, h_int_g'_eq]
+  have h_part1_int : Integrable
+      (fun y => -a₀ * x * deriv f (a₀ * x + b₀ * y)) γ := by
+    refine Integrable.const_mul ?_ _
+    refine Integrable.mono' (integrable_const M) ?_ ?_
+    · exact ((hf'_meas.comp
+        ((measurable_const).add (measurable_const.mul measurable_id))))
+        |>.aestronglyMeasurable
+    · filter_upwards with y; exact (hM _).2.1
+  have h_part2_int : Integrable
+      (fun y => (Real.exp (-2 * t₀) / b₀) * y * deriv f (a₀ * x + b₀ * y)) γ := by
+    refine Integrable.mono' ((h_id_int.abs).const_mul ((Real.exp (-2 * t₀) / b₀) * M)) ?_ ?_
+    · exact (((measurable_const.mul measurable_id).mul
+        (hf'_meas.comp ((measurable_const).add (measurable_const.mul measurable_id)))))
+        |>.aestronglyMeasurable
+    · filter_upwards with y
+      have h_e_2t0_nn : 0 ≤ Real.exp (-2 * t₀) := (Real.exp_pos _).le
+      have h_coeff_nn : 0 ≤ Real.exp (-2 * t₀) / b₀ :=
+        div_nonneg h_e_2t0_nn hb₀_pos.le
+      show ‖(Real.exp (-2 * t₀) / b₀) * y * deriv f (a₀ * x + b₀ * y)‖ ≤
+        Real.exp (-2 * t₀) / b₀ * M * |y|
+      rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_of_nonneg h_coeff_nn]
+      have h_f'_abs : |deriv f (a₀ * x + b₀ * y)| ≤ M := by
+        rw [← Real.norm_eq_abs]; exact (hM _).2.1
+      calc Real.exp (-2 * t₀) / b₀ * |y| * |deriv f (a₀ * x + b₀ * y)|
+          ≤ Real.exp (-2 * t₀) / b₀ * |y| * M := by
+            apply mul_le_mul_of_nonneg_left h_f'_abs
+            exact mul_nonneg h_coeff_nn (abs_nonneg _)
+        _ = Real.exp (-2 * t₀) / b₀ * M * |y| := by ring
+  have h_int_F'_eq : ∫ y, F' t₀ y ∂γ =
+      -a₀ * x * ouSemigroup t₀ (deriv f) x +
+      Real.exp (-2 * t₀) * ouSemigroup t₀ (deriv (deriv f)) x := by
+    rw [show (fun y => F' t₀ y) =
+        (fun y => -a₀ * x * deriv f (a₀ * x + b₀ * y) +
+                 (Real.exp (-2 * t₀) / b₀) * y * deriv f (a₀ * x + b₀ * y)) from by
+      funext y; exact h_F'_eq y]
+    rw [integral_add h_part1_int h_part2_int]
+    rw [show (fun y => -a₀ * x * deriv f (a₀ * x + b₀ * y)) =
+        (fun y => (-a₀ * x) * deriv f (a₀ * x + b₀ * y)) from rfl]
+    rw [integral_const_mul]
+    have h_part2_rewrite : (fun y => (Real.exp (-2 * t₀) / b₀) * y *
+        deriv f (a₀ * x + b₀ * y)) =
+        (fun y => (Real.exp (-2 * t₀) / b₀) * (y * deriv f (a₀ * x + b₀ * y))) := by
+      funext y; ring
+    rw [h_part2_rewrite, integral_const_mul, h_stein_apply]
+    have h_coeff : Real.exp (-2 * t₀) / b₀ * (b₀ * ouSemigroup t₀ (deriv (deriv f)) x) =
+        Real.exp (-2 * t₀) * ouSemigroup t₀ (deriv (deriv f)) x := by
+      have hb_ne : b₀ ≠ 0 := hb₀_pos.ne'
+      field_simp
+    rw [h_coeff]; rfl
+  rw [h_int_F'_eq] at h_deriv
+  have h_target_eq :
+      deriv (deriv (ouSemigroup t₀ f)) x - x * deriv (ouSemigroup t₀ f) x =
+      -a₀ * x * ouSemigroup t₀ (deriv f) x +
+      Real.exp (-2 * t₀) * ouSemigroup t₀ (deriv (deriv f)) x := by
+    rw [deriv_deriv_ouSemigroup_eq hf_core, deriv_ouSemigroup_eq hf_core]
+    show Real.exp (-2 * t₀) * ouSemigroup t₀ (deriv (deriv f)) x -
+         x * (Real.exp (-t₀) * ouSemigroup t₀ (deriv f) x) =
+         -Real.exp (-t₀) * x * ouSemigroup t₀ (deriv f) x +
+         Real.exp (-2 * t₀) * ouSemigroup t₀ (deriv (deriv f)) x
+    ring
+  rw [h_target_eq]
+  exact h_deriv
+
 /-! ## Gaussian Dirichlet form identity (BGL §1.6) — consequence of Stein
 
 PROVED. The Gaussian integration-by-parts identity for the OU generator:
