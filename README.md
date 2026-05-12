@@ -400,7 +400,7 @@ strict thermodynamic-limit route.
   (DCT for `s log s` + compactness), and `ouSemigroup_compose`
   (Gaussian convolution arithmetic).
 
-### Validation tests (Instances/WorkInProgress/EuclideanTests.lean)
+### Verification / validation tests (Instances/WorkInProgress/EuclideanTests.lean)
 
 Test theorems exercising the `Gaussian1D` `BakryEmerySpace ℝ` instance
 on concrete inputs. Zero sorries.
@@ -415,7 +415,7 @@ on concrete inputs. Zero sorries.
 | **C. Gaussian `LogConcaveMeasure` — resolvent fields** | `gaussianLogConcaveMeasure : LogConcaveMeasure ℝ` (built directly, no `Classical.choose`) | four named axioms: `gaussianResolvent`, `gaussianResolvent_ibp`, `gaussianResolvent_ibp_integrable`, `gaussianBochner_identity` (BGL §1.15-1.16: OU resolvent via Lax-Milgram + Stein IBP + Bochner-Weitzenböck) |
 | **C. Unconditional BL → Gaussian Poincaré** | `gaussian_brascampLieb_poincare` (`Var_γ(f) ≤ ∫‖f'‖² dγ` for `C¹` `f`) | the four resolvent axioms above |
 
-**Validation summary.** Set A confirms that the Mehler integral
+**Verification summary.** Set A confirms that the Mehler integral
 `ouSemigroup` evaluates to the textbook eigenvalues on the first four
 Hermite polynomials — operationally verifying it really is the Mehler
 kernel, without invoking any of the four atomic OU axioms. Set B
