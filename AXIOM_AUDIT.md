@@ -47,14 +47,16 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-10 axioms total. Of these:
+9 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
-- **3 Gaussian1D BGL Ch. 2** axioms — Mehler-kernel-level facts on `(ℝ, γ_1)`
-  (`ouSemigroup_gradient_decay` discharged 2026-05-12 via Mathlib's parametric
-  derivative + new `hasDerivAt_ouSemigroup` Mehler-derivative theorem; the
-  standard Gaussian Stein identity is now also proved as
-  `stein_identity_standard`)
+- **2 Gaussian1D BGL Ch. 2** axioms — Mehler-kernel-level facts on `(ℝ, γ_1)`
+  (`ouSemigroup_gradient_decay`, `ouSemigroup_preserves_IsCore`,
+  `ouSemigroup_l2_sq_hasDerivWithinAt`, plus its `t = 0` boundary residue
+  all discharged via Stein's identity + Mehler heat equation + Gaussian
+  Dirichlet form identity + DCT-based boundary analysis; only
+  `ouSemigroup_contDiff` (Mehler kernel `C^∞` smoothing) and
+  `ouSemigroup_entropy_sq_decay_bound` remain)
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
 
@@ -80,7 +82,7 @@ on 2026-05-10. See that repo for the current home and audit.
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
 
-### Gaussian1D BGL Ch. 2 (3 axioms — Mehler-kernel-level facts on ℝ)
+### Gaussian1D BGL Ch. 2 (2 axioms — Mehler-kernel-level facts on ℝ)
 
 All four were vetted in one pass via Gemini chat (`gemini-3-pro-preview`),
 which flagged a missing `IsCore` hypothesis on the original
@@ -93,7 +95,6 @@ Mehler-kernel facts.
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
 | `ouSemigroup_contDiff` | [`Instances/WorkInProgress/Euclidean.lean`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean) | BGL §2.7 (Mehler kernel `C^∞` smoothing) | Standard | GR | Residue of the originally-axiomatized `ouSemigroup_preserves_IsCore` after decomposition (2026-05-12): the bounded parts (`|P_t f|, |(P_t f)'|, |(P_t f)''| ≤ M`) are now proved via `ouSemigroup_preserves_bounds` + new theorems `hasDerivAt_ouSemigroup_C1`, `hasDerivAt_deriv_ouSemigroup`; only the `ContDiff ℝ ⊤` smoothing remains. Full discharge requires Mathlib infrastructure for `ContDiff` of parametric integrals at all orders (Schwartz-class kernel convolution). | `Gaussian1D.bakryEmerySpace` (1D BE instance only, via the now-derived `ouSemigroup_preserves_IsCore` theorem) |
-| `ouSemigroup_l2sq_hasDerivWithinAt_zero` | [`Instances/WorkInProgress/EuclideanStein.lean`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanStein.lean) | BGL Proposition 4.7.1 boundary case at `t = 0` only | Standard | GR | Residue (2026-05-12) of the originally-axiomatized `ouSemigroup_l2_sq_hasDerivWithinAt`. The general case `t > 0` is now PROVED (`hasDerivAt_l2sq_ouSemigroup_pos`) via heat equation + parametric derivative + Gaussian Dirichlet form identity via Stein. Only the `t = 0` right-derivative remains: the parametric-derivative bound `b'(t) = e^{-2t}/√(1-e^{-2t})` blows up at `0`, requiring an MVT/DCT continuity argument (~200 lines). | `Gaussian1D.bakryEmerySpace` (via `ouSemigroup_l2_sq_hasDerivWithinAt_proved` in `EuclideanStein.lean`) |
 | `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean:943`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L943) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
 
 **Six originally axiomatized 1D facts were reduced to theorems**:
@@ -119,18 +120,19 @@ Mehler-kernel facts.
   `IsCore g` (`gaussian_dirichlet_form_identity`, BGL §1.6), via Stein
   applied to `h := g · g'` — bridges `BakryEmerySpace` energy and the
   L²(γ) generator inner product.
-- `ouSemigroup_l2_sq_hasDerivWithinAt` (2026-05-12) — DECOMPOSED. The
-  `t > 0` case proved (`hasDerivAt_l2sq_ouSemigroup_pos` in
-  `EuclideanStein.lean`) via the new theorems:
-  `stein_identity_standard` (BGL §1.15), `hasDerivAt_t_ouSemigroup`
-  (heat equation `∂_t P_t f = L(P_t f)` for `t > 0`),
-  `gaussian_dirichlet_form_identity` (BGL §1.6), and Mathlib's
-  `hasDerivAt_integral_of_dominated_loc_of_deriv_le`. Residual atomic
-  axiom `ouSemigroup_l2sq_hasDerivWithinAt_zero` is just the `t = 0`
-  boundary case where `b'(t) → ∞`. The original
-  `ouSemigroup_l2_sq_hasDerivWithinAt` is now a theorem
-  (`ouSemigroup_l2_sq_hasDerivWithinAt_proved` in `EuclideanStein.lean`)
-  and the `bakryEmerySpace` instance is rewired through it.
+- `ouSemigroup_l2_sq_hasDerivWithinAt` (2026-05-12) — FULLY DISCHARGED.
+  The `t > 0` case proved via `hasDerivAt_l2sq_ouSemigroup_pos`
+  (heat equation `hasDerivAt_t_ouSemigroup` + Mathlib's parametric
+  derivative + Gaussian Dirichlet form identity via Stein). The `t = 0`
+  boundary case (initially isolated as the residue axiom
+  `ouSemigroup_l2sq_hasDerivWithinAt_zero`) is now also proved
+  (`ouSemigroup_l2sq_hasDerivWithinAt_zero` is now a theorem in
+  `EuclideanStein.lean`) via Mathlib's `hasDerivWithinAt_Ici_of_tendsto_deriv`
+  combined with DCT-based pointwise/integral continuity of `P_s f` and
+  `(P_s f')` at `s = 0+`. All proofs live in `EuclideanStein.lean`. The
+  `bakryEmerySpace` instance and `ouSemigroup_l2_decay_bound` now route
+  through these theorems, depending only on `ouSemigroup_contDiff` (and
+  `ouSemigroup_entropy_sq_decay_bound`).
 
 ### Dobrushin-Zegarlinski
 

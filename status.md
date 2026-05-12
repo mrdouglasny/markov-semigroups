@@ -144,7 +144,7 @@ Neumann decay is interleaved.
 - `Γ_leibniz` — Leibniz/diffusion property fails for jump processes
 - `semigroup_entropy_sq_decay_bound` — consequence of Leibniz failure
 
-### Instances/WorkInProgress/Euclidean.lean + EuclideanStein.lean (0 sorry's, 3 axioms)
+### Instances/WorkInProgress/Euclidean.lean + EuclideanStein.lean (0 sorry's, 2 axioms)
 The previously-flagged 9 sorries (Lean-infrastructure gaps for
 Mehler-kernel facts) were converted to nine BGL Ch. 2 textbook axioms
 in one pass with Gemini vetting (see "Instances/WorkInProgress/Euclidean"

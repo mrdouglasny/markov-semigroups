@@ -47,8 +47,9 @@ residue.
 -/
 
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import Mathlib.Analysis.Calculus.FDeriv.Extend
 
-open MeasureTheory ProbabilityTheory Real Filter Set
+open MeasureTheory ProbabilityTheory Real Filter Set Topology
 
 noncomputable section
 
@@ -835,32 +836,199 @@ theorem hasDerivAt_l2sq_ouSemigroup_pos (t₀ : ℝ) (ht₀ : 0 < t₀)
   rw [h_int_F'_eq] at h_deriv
   exact h_deriv
 
-/-! ## Boundary case at t = 0 (residue)
+/-! ## Boundary case at t = 0 — PROVED via DCT + Mathlib's
+`hasDerivWithinAt_Ici_of_tendsto_deriv`
 
-The full `ouSemigroup_l2_sq_hasDerivWithinAt` (BGL Proposition 4.7.1) is now
-provable for `t > 0` (`hasDerivAt_l2sq_ouSemigroup_pos`) but the right-derivative
-at `t = 0` requires more delicate analysis: the parametric-derivative bound
-`b'(t) = e^{-2t}/b(t)` blows up at `t = 0`, so we cannot directly apply
-Mathlib's parametric derivative on a neighborhood of `0`.
+The right-derivative at `t = 0` of `s ↦ ∫(P_s f)² dγ`. The parametric-derivative
+bound `b'(t) = e^{-2t}/b(t)` blows up at `t = 0`, so the proof can't directly
+use Mathlib's parametric derivative on a neighborhood of `0`. Instead we apply
+Mathlib's `hasDerivWithinAt_Ici_of_tendsto_deriv`: φ is differentiable on
+`Ioi 0` (from `hasDerivAt_l2sq_ouSemigroup_pos`), continuous at `0` (from
+generic DCT — `tendsto_l2sq_atZero_general` below), and `deriv φ s → -2 ∫(f')² dγ`
+as `s → 0+` (from DCT applied to `(P_s f')² → (f')²`, plus
+`e^{-2s} → 1` and the Mehler derivative formula). -/
 
-A discharge route exists via MVT + continuity of `φ'` at `0+`: take the limit
-of `(φ(t) - φ(0))/t = (1/t) ∫₀^t φ'(τ) dτ` as `t → 0+`, where `φ'(τ) →
--2 ∫(f')² dγ` (continuity via DCT on the Mehler integral). Substantial extra
-machinery (~200 lines). For now, we isolate the boundary case as a smaller
-atomic axiom. -/
+/-- **Continuity of `s ↦ P_s g x` at `s = 0`** for bounded continuous `g`,
+via DCT on the inner Mehler integrand `f' (α(s)x + b(s)y) → f'(x)`. -/
+private theorem tendsto_ouSemigroup_pointwise_atZero
+    {g : ℝ → ℝ} (hg_cont : Continuous g) {M_g : ℝ} (hg_bd : ∀ y, |g y| ≤ M_g) (x : ℝ) :
+    Tendsto (fun s => ouSemigroup s g x) (𝓝[Ici 0] 0) (𝓝 (g x)) := by
+  have h_rewrite : (fun s : ℝ => ouSemigroup s g x) =
+      fun s => ∫ y, g (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ := rfl
+  rw [h_rewrite]
+  have h_target : g x = ∫ _y : ℝ, g x ∂γ := by simp
+  rw [h_target]
+  refine tendsto_integral_filter_of_dominated_convergence (fun _ => M_g) ?_ ?_
+    (integrable_const _) ?_
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    exact (hg_cont.comp ((continuous_const.mul continuous_const).add
+      (continuous_const.mul continuous_id))).aestronglyMeasurable
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    filter_upwards with y
+    show ‖g (Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)‖ ≤ M_g
+    rw [Real.norm_eq_abs]
+    exact hg_bd _
+  · filter_upwards with y
+    have h_arg : Tendsto (fun s : ℝ =>
+        Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)
+        (𝓝[Ici 0] 0) (𝓝 x) := by
+      have h_cont : ContinuousAt (fun s : ℝ =>
+          Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y) 0 := by
+        fun_prop
+      have h := h_cont.tendsto
+      have h_val : Real.exp (-(0 : ℝ)) * x + Real.sqrt (1 - Real.exp (-2 * 0)) * y = x := by
+        simp
+      rw [h_val] at h
+      exact h.mono_left nhdsWithin_le_nhds
+    exact hg_cont.continuousAt.tendsto.comp h_arg
 
-/-- **Boundary case `t = 0` for the L²-norm derivative.** The right-derivative
-of `s ↦ ∫(P_s f)² dγ` at `s = 0` equals `-2 ∫(f')² dγ`.
+/-- **`s ↦ ∫(P_s g)² dγ` is continuous at `s = 0`** for bounded continuous `g`. -/
+private theorem tendsto_l2sq_atZero_general
+    {g : ℝ → ℝ} (hg_cont : Continuous g) {M_g : ℝ} (hg_bd : ∀ y, |g y| ≤ M_g) :
+    Tendsto (fun s => ∫ x, (ouSemigroup s g x) ^ 2 ∂γ)
+      (𝓝[Ici 0] 0)
+      (𝓝 (∫ x, (g x) ^ 2 ∂γ)) := by
+  have hM_g_nn : 0 ≤ M_g := (abs_nonneg _).trans (hg_bd 0)
+  have hPg_meas : ∀ s, Measurable (ouSemigroup s g) := fun s => by
+    show Measurable fun x => ∫ y, g (Real.exp (-s) * x +
+      Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ
+    apply StronglyMeasurable.measurable
+    have h_inner : StronglyMeasurable
+        (fun p : ℝ × ℝ => g (Real.exp (-s) * p.1 +
+          Real.sqrt (1 - Real.exp (-2 * s)) * p.2)) :=
+      (hg_cont.comp ((continuous_const.mul continuous_fst).add
+        (continuous_const.mul continuous_snd))).stronglyMeasurable
+    exact h_inner.integral_prod_right' (ν := γ)
+  refine tendsto_integral_filter_of_dominated_convergence (fun _ => M_g ^ 2) ?_ ?_
+    (integrable_const _) ?_
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    exact ((hPg_meas s).pow_const 2).aestronglyMeasurable
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    filter_upwards with x
+    show ‖(ouSemigroup s g x) ^ 2‖ ≤ M_g ^ 2
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    have h_int : Integrable (fun y => g (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y)) γ := by
+      refine Integrable.mono' (integrable_const M_g) ?_ ?_
+      · exact (hg_cont.comp ((continuous_const.add
+          (continuous_const.mul continuous_id)))).aestronglyMeasurable
+      · filter_upwards with y
+        show ‖g (Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)‖ ≤ M_g
+        rw [Real.norm_eq_abs]; exact hg_bd _
+    have h_ps_le : |ouSemigroup s g x| ≤ M_g := by
+      show |∫ y, g (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ| ≤ M_g
+      calc |∫ y, g (Real.exp (-s) * x +
+            Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ|
+          ≤ ∫ y, |g (Real.exp (-s) * x +
+              Real.sqrt (1 - Real.exp (-2 * s)) * y)| ∂γ := abs_integral_le_integral_abs
+        _ ≤ ∫ _, M_g ∂γ := by
+            refine integral_mono h_int.abs (integrable_const _) ?_
+            intro y; show |g _| ≤ M_g; exact hg_bd _
+        _ = M_g := by simp
+    have h_sq : (ouSemigroup s g x) ^ 2 = |ouSemigroup s g x| ^ 2 := by rw [sq_abs]
+    rw [h_sq]
+    exact pow_le_pow_left₀ (abs_nonneg _) h_ps_le 2
+  · filter_upwards with x
+    have h_inner := tendsto_ouSemigroup_pointwise_atZero hg_cont hg_bd x
+    have h_sq : Continuous (fun u : ℝ => u ^ 2) := by fun_prop
+    exact h_sq.continuousAt.tendsto.comp h_inner
 
-A direct consequence of the heat equation + Dirichlet form identity once
-`φ` is shown to be `C¹` at `t = 0` (via DCT on the Mehler integral
-continuity). Standalone smaller atomic axiom; smaller residue of the
-original `ouSemigroup_l2_sq_hasDerivWithinAt` axiom.
+/-- **Boundary case `t = 0` for the L²-norm derivative.** PROVED.
 
-Reference: BGL Proposition 4.7.1 boundary case. -/
-axiom ouSemigroup_l2sq_hasDerivWithinAt_zero {f : ℝ → ℝ} (hf : IsCore f) :
+The right-derivative of `s ↦ ∫(P_s f)² dγ` at `s = 0` equals `-2 ∫(f')² dγ`.
+
+PROOF: Apply Mathlib's `hasDerivWithinAt_Ici_of_tendsto_deriv`:
+* φ differentiable on `Ioi 0` (from `hasDerivAt_l2sq_ouSemigroup_pos`).
+* φ continuous at `0` (from `tendsto_l2sq_atZero_general` applied to `f`).
+* `deriv φ s → -2 ∫(f')² dγ` as `s → 0+` (from `tendsto_l2sq_atZero_general`
+  applied to `deriv f` + `e^{-2s} → 1` + Mehler derivative formula
+  `(P_s f)' = e^{-s} P_s(f')`). -/
+theorem ouSemigroup_l2sq_hasDerivWithinAt_zero {f : ℝ → ℝ} (hf : IsCore f) :
     HasDerivWithinAt (fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ)
-      (-2 * ∫ x, (deriv f x) ^ 2 ∂γ) (Ici 0) 0
+      (-2 * ∫ x, (deriv f x) ^ 2 ∂γ) (Ici 0) 0 := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  have hf_core : IsCore f := ⟨h_smooth, M, hM⟩
+  set φ : ℝ → ℝ := fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ
+  set L : ℝ := -2 * ∫ x, (deriv f x) ^ 2 ∂γ
+  refine hasDerivWithinAt_Ici_of_tendsto_deriv (s := Ioi 0)
+    (f := φ) (e := L) (a := 0) ?_ ?_ self_mem_nhdsWithin ?_
+  · intro t ht
+    exact (hasDerivAt_l2sq_ouSemigroup_pos t ht hf_core).differentiableAt.differentiableWithinAt
+  · -- ContinuousWithinAt φ (Ioi 0) 0.
+    have hf_cont : Continuous f := h_smooth.continuous
+    have hf_bd : ∀ y, |f y| ≤ M := fun y => by
+      rw [← Real.norm_eq_abs]; exact (hM y).1
+    have h := tendsto_l2sq_atZero_general hf_cont hf_bd
+    have h_p0 : φ 0 = ∫ x, (f x) ^ 2 ∂γ := by
+      show ∫ x, (ouSemigroup 0 f x) ^ 2 ∂γ = ∫ x, (f x) ^ 2 ∂γ
+      have h_zero : ouSemigroup 0 f = f := by
+        ext x
+        simp only [ouSemigroup, neg_zero, Real.exp_zero, mul_zero, sub_self,
+          Real.sqrt_zero, zero_mul, add_zero, one_mul]
+        simp [integral_const]
+      rw [h_zero]
+    show ContinuousWithinAt φ (Ioi 0) 0
+    rw [ContinuousWithinAt, h_p0]
+    exact h.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+  · -- Tendsto (deriv φ) (𝓝[>] 0) (𝓝 L).
+    have hf'_cont : Continuous (deriv f) := h_smooth.continuous_deriv (by simp)
+    have hf'_bd : ∀ y, |deriv f y| ≤ M := fun y => by
+      rw [← Real.norm_eq_abs]; exact (hM y).2.1
+    have h_int_lim : Tendsto (fun s => ∫ x, (ouSemigroup s (deriv f) x) ^ 2 ∂γ)
+        (𝓝[Ici 0] 0) (𝓝 (∫ x, (deriv f x) ^ 2 ∂γ)) :=
+      tendsto_l2sq_atZero_general hf'_cont hf'_bd
+    have h_e_lim : Tendsto (fun s : ℝ => Real.exp (-2 * s)) (𝓝 0) (𝓝 1) := by
+      have h_cont : Continuous (fun s : ℝ => Real.exp (-2 * s)) := by fun_prop
+      have := h_cont.continuousAt.tendsto (x := (0 : ℝ))
+      simpa using this
+    have h_e_lim_nbhd : Tendsto (fun s : ℝ => Real.exp (-2 * s))
+        (𝓝[Ici 0] 0) (𝓝 1) :=
+      h_e_lim.mono_left nhdsWithin_le_nhds
+    have h_prod := h_e_lim_nbhd.mul h_int_lim
+    have h_combo : Tendsto (fun s => -2 * (Real.exp (-2 * s) *
+        ∫ x, (ouSemigroup s (deriv f) x) ^ 2 ∂γ))
+        (𝓝[Ici 0] 0) (𝓝 L) := by
+      have h := h_prod.const_mul (-2 : ℝ)
+      have h_target : (-2 : ℝ) * (1 * ∫ x, (deriv f x) ^ 2 ∂γ) = L := by
+        show (-2 : ℝ) * (1 * ∫ x, (deriv f x) ^ 2 ∂γ) =
+          -2 * ∫ x, (deriv f x) ^ 2 ∂γ
+        ring
+      rw [h_target] at h
+      exact h
+    have h_deriv_eq : ∀ s > 0, deriv φ s =
+        -2 * (Real.exp (-2 * s) * ∫ x, (ouSemigroup s (deriv f) x) ^ 2 ∂γ) := by
+      intro s hs
+      have h_pos : HasDerivAt φ (-2 * ∫ x,
+          (deriv (ouSemigroup s f) x) ^ 2 ∂γ) s :=
+        hasDerivAt_l2sq_ouSemigroup_pos s hs hf_core
+      rw [h_pos.deriv]
+      have h_mehler : ∀ x, deriv (ouSemigroup s f) x =
+          Real.exp (-s) * ouSemigroup s (deriv f) x := by
+        intro x
+        exact congrFun (deriv_ouSemigroup_eq hf_core s) x
+      have hi : ∫ x, (deriv (ouSemigroup s f) x) ^ 2 ∂γ =
+          Real.exp (-2 * s) * ∫ x, (ouSemigroup s (deriv f) x) ^ 2 ∂γ := by
+        have hrw : (fun x => (deriv (ouSemigroup s f) x) ^ 2) =
+            (fun x => Real.exp (-2 * s) * (ouSemigroup s (deriv f) x) ^ 2) := by
+          funext x
+          rw [h_mehler x]
+          show (Real.exp (-s) * ouSemigroup s (deriv f) x) ^ 2 =
+            Real.exp (-2 * s) * (ouSemigroup s (deriv f) x) ^ 2
+          rw [mul_pow]
+          congr 1
+          show Real.exp (-s) ^ 2 = Real.exp (-2 * s)
+          rw [show (-2 * s : ℝ) = -s + -s from by ring, Real.exp_add]; ring
+        rw [hrw, integral_const_mul]
+      rw [hi]
+    have h_combo' : Tendsto (fun s => -2 * (Real.exp (-2 * s) *
+        ∫ x, (ouSemigroup s (deriv f) x) ^ 2 ∂γ))
+        (𝓝[Ioi 0] 0) (𝓝 L) :=
+      h_combo.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+    refine h_combo'.congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with s hs
+    exact (h_deriv_eq s hs).symm
 
 /-- **`ouSemigroup_l2_sq_hasDerivWithinAt` (BGL Prop 4.7.1).** PROVED, modulo
 the smaller atomic axiom `ouSemigroup_l2sq_hasDerivWithinAt_zero` for the
