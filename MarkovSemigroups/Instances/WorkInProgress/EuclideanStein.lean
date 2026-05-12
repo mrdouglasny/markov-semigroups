@@ -903,6 +903,451 @@ theorem ouSemigroup_l2_sq_hasDerivWithinAt_proved (f : ℝ → ℝ) (t : ℝ) (h
     rw [h_gamma_eq]
     exact h_pos.hasDerivWithinAt
 
+
+
+/-- **Integrated L² gradient decay — DERIVED from the atomic axioms.**
+
+  ∫ f² dγ − ∫ (P_t f)² dγ ≤ (1 − e^{-2t}) · E(f, f).
+
+Proof: by `ouSemigroup_l2_sq_hasDerivWithinAt`,
+`d/ds ∫(P_s f)² dγ = -2 ∫ Γ(P_s f, P_s f) dγ ≥ -2 e^{-2s} · E(f)` (the
+last inequality from `ouSemigroup_gradient_decay`). The FTC inequality
+`integral_le_sub_of_hasDeriv_right_of_le` then gives
+`∫₀ᵗ -2 e^{-2s} E(f) ds ≤ ∫(P_t f)² - ∫f²`, and `∫₀ᵗ -2 e^{-2s} ds = e^{-2t} - 1`,
+which rearranges to the claim.
+
+This was previously a textbook axiom; it is now reduced to the atomic
+five (`gradient_decay`, `l2_sq_hasDerivWithinAt`, `preserves_IsCore`).
+
+Reference: BGL Proposition 4.7.1 integrated form. -/
+theorem ouSemigroup_l2_decay_bound (f : ℝ → ℝ) (t : ℝ) (ht : 0 ≤ t)
+    (hf : IsCore f) :
+    ∫ x, (f x) ^ 2 ∂γ - ∫ x, (ouSemigroup t f x) ^ 2 ∂γ ≤
+      (1 - Real.exp (-2 * 1 * t)) / 1 * ouEnergy f f := by
+  set Ef : ℝ := ouEnergy f f with hEf_def
+  set g : ℝ → ℝ := fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ with hg_def
+  set φ : ℝ → ℝ := fun s => -2 * Real.exp (-2 * s) * Ef with hφ_def
+  -- Step 1: HasDerivWithinAt g (g'(s)) (Ici 0) s for each s ≥ 0.
+  have hderiv : ∀ s, 0 ≤ s →
+      HasDerivWithinAt g
+        (-2 * ∫ x, ouGamma (ouSemigroup s f) (ouSemigroup s f) x ∂γ) (Ici 0) s := by
+    intro s hs
+    exact ouSemigroup_l2_sq_hasDerivWithinAt_proved f s hs hf
+  -- Step 2: ContinuousOn g (Icc 0 t).
+  have hg_cont : ContinuousOn g (Set.Icc 0 t) := by
+    intro s hs
+    have h := (hderiv s hs.1).continuousWithinAt
+    exact h.mono (fun x hx => hx.1)
+  -- Step 3: Right derivative on Ioo 0 t.
+  have hderiv_open : ∀ s ∈ Set.Ioo 0 t,
+      HasDerivWithinAt g
+        (-2 * ∫ x, ouGamma (ouSemigroup s f) (ouSemigroup s f) x ∂γ) (Ioi s) s := by
+    intro s hs
+    exact (hderiv s hs.1.le).mono (fun x hx => hs.1.le.trans hx.le)
+  -- Step 4: φ s ≤ g'(s) on Ioo 0 t (from gradient_decay).
+  have hφg' : ∀ s ∈ Set.Ioo 0 t,
+      φ s ≤ -2 * ∫ x, ouGamma (ouSemigroup s f) (ouSemigroup s f) x ∂γ := by
+    intro s hs
+    have hgrad := ouSemigroup_gradient_decay f s hs.1.le hf
+    -- hgrad: ∫ deriv(P_s f) * deriv(P_s f) ≤ exp(-2*1*s) * ∫ deriv f * deriv f
+    -- ouGamma f g x = deriv f x * deriv g x; ouEnergy f f = ∫ deriv f * deriv f
+    have hgrad' : ∫ x, ouGamma (ouSemigroup s f) (ouSemigroup s f) x ∂γ ≤
+        Real.exp (-2 * s) * Ef := by
+      have he : Real.exp (-2 * 1 * s) = Real.exp (-2 * s) := by
+        congr 1; ring
+      rw [hEf_def]; simp only [ouEnergy, ouGamma]; rw [← he]; exact hgrad
+    have h := mul_le_mul_of_nonneg_left hgrad' (by norm_num : (0:ℝ) ≤ 2)
+    show -2 * Real.exp (-2 * s) * Ef ≤ -2 * _
+    linarith
+  -- Step 5: φ continuous, hence integrable on Icc 0 t.
+  have hφ_cont : Continuous φ := by
+    show Continuous (fun s => -2 * Real.exp (-2 * s) * Ef)
+    fun_prop
+  have hφ_int : MeasureTheory.IntegrableOn φ (Set.Icc 0 t) :=
+    hφ_cont.continuousOn.integrableOn_Icc
+  -- Step 6: FTC inequality: ∫₀ᵗ φ ≤ g(t) - g(0).
+  have hFTC : ∫ s in (0)..t, φ s ≤ g t - g 0 :=
+    intervalIntegral.integral_le_sub_of_hasDeriv_right_of_le ht hg_cont
+      hderiv_open hφ_int hφg'
+  -- Step 7: Compute ∫₀ᵗ -2·exp(-2s)·Ef ds = Ef · (exp(-2t) - 1).
+  have hderiv_exp : ∀ s : ℝ,
+      HasDerivAt (fun u : ℝ => Real.exp (-2 * u)) (-2 * Real.exp (-2 * s)) s := by
+    intro s
+    have h1 : HasDerivAt (fun u : ℝ => -2 * u) (-2 : ℝ) s := by
+      simpa using (hasDerivAt_id s).const_mul (-2 : ℝ)
+    -- chain rule: d/ds[exp(-2s)] = exp(-2s) * (-2)
+    have h2 : HasDerivAt (fun u : ℝ => Real.exp (-2 * u))
+        (Real.exp (-2 * s) * (-2)) s :=
+      (Real.hasDerivAt_exp (-2 * s)).comp s h1
+    simpa [mul_comm] using h2
+  have hintExp : ∫ s in (0)..t, -2 * Real.exp (-2 * s) =
+      Real.exp (-2 * t) - Real.exp (-2 * 0) := by
+    have := intervalIntegral.integral_eq_sub_of_hasDerivAt
+      (f := fun u => Real.exp (-2 * u))
+      (f' := fun u => -2 * Real.exp (-2 * u))
+      (a := 0) (b := t) (fun s _ => hderiv_exp s)
+      ((continuous_const.mul (Real.continuous_exp.comp
+        (continuous_const.mul continuous_id))).intervalIntegrable 0 t)
+    exact this
+  have hintφ : ∫ s in (0)..t, φ s = Ef * (Real.exp (-2 * t) - 1) := by
+    show ∫ s in (0)..t, -2 * Real.exp (-2 * s) * Ef = Ef * (Real.exp (-2 * t) - 1)
+    have hrw : (fun s => -2 * Real.exp (-2 * s) * Ef) =
+        (fun s => -2 * Real.exp (-2 * s)) * (fun _ => Ef) := by
+      ext s; rfl
+    rw [show (fun s => -2 * Real.exp (-2 * s) * Ef) =
+        (fun s => (-2 * Real.exp (-2 * s)) * Ef) from rfl]
+    rw [intervalIntegral.integral_mul_const, hintExp]
+    have : Real.exp (-2 * 0) = 1 := by simp
+    rw [this, mul_comm]
+  -- Step 8: Connect g(0) with ∫f². Since ouSemigroup 0 f = f.
+  have hg0 : g 0 = ∫ x, (f x) ^ 2 ∂γ := by
+    show ∫ x, (ouSemigroup 0 f x) ^ 2 ∂γ = ∫ x, (f x) ^ 2 ∂γ
+    -- ouSemigroup 0 f x = ∫ y, f(e^0 x + √(1-e^0) y) dγ = ∫ y, f(x) dγ = f(x)
+    have h_zero : ouSemigroup 0 f = f := by
+      ext x
+      simp only [ouSemigroup, neg_zero, Real.exp_zero, mul_zero, sub_self,
+        Real.sqrt_zero, zero_mul, add_zero, one_mul]
+      simp [integral_const]
+    rw [h_zero]
+  -- Step 9: assemble.
+  rw [show g t = ∫ x, (ouSemigroup t f x) ^ 2 ∂γ from rfl] at hFTC
+  rw [hg0, hintφ] at hFTC
+  -- hFTC: Ef * (exp(-2t) - 1) ≤ ∫(P_t f)² - ∫f²
+  -- Want: ∫f² - ∫(P_t f)² ≤ (1 - exp(-2*1*t)) / 1 * Ef
+  have he : Real.exp (-2 * 1 * t) = Real.exp (-2 * t) := by congr 1; ring
+  rw [he]
+  linarith
+
+/-! ## BakryEmerySpace instance -/
+
+/-- The BakryEmerySpace instance for ℝ with standard Gaussian and OU semigroup. -/
+@[reducible]
+def bakryEmerySpace : BakryEmerySpace ℝ where
+  toDirichletSpace := dirichletSpace
+  Γ := ouGamma
+  Γ_symm := fun f g => by ext x; simp only [ouGamma]; ring
+  Γ_nonneg := fun f x => by simp only [ouGamma]; exact mul_self_nonneg _
+  energy_eq_integral_Γ := fun f g => by
+    simp only [ouGamma]; rfl
+  IsCore_mul := by
+    rintro f g hf hg
+    obtain ⟨hf_smooth, Mf, hfM⟩ := hf
+    obtain ⟨hg_smooth, Mg, hgM⟩ := hg
+    refine ⟨hf_smooth.mul hg_smooth, ⟨Mf * Mg + 2 * (Mf * Mg) + Mf * Mg, fun x => ?_⟩⟩
+    -- derivatives:
+    have hf_core : IsCore f := ⟨hf_smooth, Mf, hfM⟩
+    have hg_core : IsCore g := ⟨hg_smooth, Mg, hgM⟩
+    have hdf := hf_core.differentiable
+    have hdg := hg_core.differentiable
+    have hdf' := hf_core.differentiable_deriv
+    have hdg' := hg_core.differentiable_deriv
+    -- (fg)' = f'g + fg'
+    have h1 : ∀ y, deriv (f * g) y = deriv f y * g y + f y * deriv g y := fun y =>
+      deriv_mul (hdf y) (hdg y)
+    have h2 : deriv (f * g) = fun y => deriv f y * g y + f y * deriv g y := by
+      ext y; exact h1 y
+    -- (fg)'' = f''g + 2 f'g' + fg''
+    have h3 : deriv (deriv (f * g)) x =
+        deriv (deriv f) x * g x + deriv f x * deriv g x +
+        (deriv f x * deriv g x + f x * deriv (deriv g) x) := by
+      rw [h2]
+      have hA : DifferentiableAt ℝ (fun y => deriv f y * g y) x :=
+        (hdf' x).mul (hdg x)
+      have hB : DifferentiableAt ℝ (fun y => f y * deriv g y) x :=
+        (hdf x).mul (hdg' x)
+      rw [deriv_fun_add hA hB]
+      congr 1
+      · exact deriv_fun_mul (hdf' x) (hdg x)
+      · exact deriv_fun_mul (hdf x) (hdg' x)
+    -- norm bounds
+    have hMf_nn : 0 ≤ Mf := (norm_nonneg _).trans (hfM 0).1
+    have hMg_nn : 0 ≤ Mg := (norm_nonneg _).trans (hgM 0).1
+    refine ⟨?_, ?_, ?_⟩
+    · -- ‖(f*g) x‖ ≤ Mf*Mg + 2(Mf*Mg) + Mf*Mg
+      show ‖f x * g x‖ ≤ Mf * Mg + 2 * (Mf * Mg) + Mf * Mg
+      have : ‖f x * g x‖ ≤ Mf * Mg := by
+        rw [norm_mul]
+        exact mul_le_mul (hfM x).1 (hgM x).1 (norm_nonneg _) hMf_nn
+      nlinarith
+    · -- ‖(fg)' x‖ ≤ total
+      rw [h1]
+      have h_le : ‖deriv f x * g x + f x * deriv g x‖ ≤ Mf * Mg + Mf * Mg := by
+        calc ‖deriv f x * g x + f x * deriv g x‖
+            ≤ ‖deriv f x * g x‖ + ‖f x * deriv g x‖ := norm_add_le _ _
+          _ = ‖deriv f x‖ * ‖g x‖ + ‖f x‖ * ‖deriv g x‖ := by rw [norm_mul, norm_mul]
+          _ ≤ Mf * Mg + Mf * Mg := by
+              gcongr
+              · exact (hfM x).2.1
+              · exact (hgM x).1
+              · exact (hfM x).1
+              · exact (hgM x).2.1
+      nlinarith
+    · -- ‖(fg)'' x‖ ≤ total
+      rw [h3]
+      have h_le : ‖deriv (deriv f) x * g x + deriv f x * deriv g x +
+            (deriv f x * deriv g x + f x * deriv (deriv g) x)‖
+          ≤ Mf * Mg + 2 * (Mf * Mg) + Mf * Mg := by
+        have e1 : ‖deriv (deriv f) x * g x‖ ≤ Mf * Mg := by
+          rw [norm_mul]; exact mul_le_mul (hfM x).2.2 (hgM x).1 (norm_nonneg _) hMf_nn
+        have e2 : ‖deriv f x * deriv g x‖ ≤ Mf * Mg := by
+          rw [norm_mul]; exact mul_le_mul (hfM x).2.1 (hgM x).2.1 (norm_nonneg _) hMf_nn
+        have e3 : ‖f x * deriv (deriv g) x‖ ≤ Mf * Mg := by
+          rw [norm_mul]; exact mul_le_mul (hfM x).1 (hgM x).2.2 (norm_nonneg _) hMf_nn
+        calc ‖deriv (deriv f) x * g x + deriv f x * deriv g x +
+                (deriv f x * deriv g x + f x * deriv (deriv g) x)‖
+            ≤ ‖deriv (deriv f) x * g x‖ + ‖deriv f x * deriv g x‖ +
+                (‖deriv f x * deriv g x‖ + ‖f x * deriv (deriv g) x‖) := by
+              exact (norm_add_le _ _).trans (add_le_add (norm_add_le _ _) (norm_add_le _ _))
+          _ ≤ Mf * Mg + Mf * Mg + (Mf * Mg + Mf * Mg) := by
+              gcongr
+          _ = Mf * Mg + 2 * (Mf * Mg) + Mf * Mg := by ring
+      exact h_le
+  IsCore_semigroup := fun t ht _ hf => ouSemigroup_preserves_IsCore t ht hf
+  Γ_leibniz := fun f g h hf hg _ x => by
+    simp only [ouGamma]
+    -- deriv(fg) = deriv f * g + f * deriv g
+    have hdf : DifferentiableAt ℝ f x := hf.differentiable.differentiableAt
+    have hdg : DifferentiableAt ℝ g x := hg.differentiable.differentiableAt
+    have : deriv (f * g) x = deriv f x * g x + f x * deriv g x := deriv_mul hdf hdg
+    rw [this]; ring
+  Γ_const := fun c f => by
+    ext x; simp only [ouGamma, deriv_const, Pi.zero_apply]; ring
+  semigroup := ouSemigroup
+  ρ := 1
+  hρ := one_pos
+  gradient_decay := fun f t ht hf => by
+    -- ouGamma f g x = deriv f x * deriv g x; ouEnergy = ∫ deriv f * deriv g dγ
+    show ∫ x, ouGamma (ouSemigroup t f) (ouSemigroup t f) x ∂γ ≤
+        Real.exp (-2 * 1 * t) * ∫ x, ouGamma f f x ∂γ
+    simpa [ouGamma] using ouSemigroup_gradient_decay f t ht hf
+  semigroup_zero := fun f => by
+    ext x
+    simp only [ouSemigroup, neg_zero, exp_zero, mul_zero, sub_self, sqrt_zero,
+               zero_mul, add_zero, one_mul]
+    simp [integral_const]
+  semigroup_add := fun s t _ hs ht hf => ouSemigroup_compose s t hs ht hf
+  semigroup_contraction := fun f t ht hf_core => by
+    -- Jensen + kernel change of variables. Let φ(x,y) = ax+by where
+    -- a = e^{-t}, b = √(1-e^{-2t}). Then:
+    --   (P_t f x)² = (∫_y f(ax+by) dγ)² ≤ ∫_y f(ax+by)² dγ   (Jensen for x²)
+    -- integrate in x, use ou_kernel_map with f²:
+    --   ∫_x ∫_y f(ax+by)² dγ dγ = ∫_p f(φ p)² d(γ⊗γ) = ∫ f² dγ
+    set a := exp (-t)
+    set b := sqrt (1 - exp (-2 * t))
+    set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+    have hφ : Measurable φ := Measurable.add
+      (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+    have hmap := ou_kernel_map t ht
+    have hf_meas : Measurable f := hf_core.measurable
+    have hf_cont : Continuous f := hf_core.continuous
+    obtain ⟨M, hM⟩ := hf_core.bounded
+    -- integrability of f² under γ
+    have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+    have hf2_int : Integrable (fun x => f x ^ 2) γ := by
+      refine Integrable.mono' (integrable_const (M^2))
+        ((hf_meas.pow_const 2).aemeasurable.aestronglyMeasurable) ?_
+      refine Filter.Eventually.of_forall (fun x => ?_)
+      have h1 : |f x| ≤ M := by rw [← Real.norm_eq_abs]; exact hM x
+      have h2 : (f x)^2 ≤ M^2 := by
+        have : |f x|^2 ≤ M^2 := by nlinarith [abs_nonneg (f x)]
+        rwa [sq_abs] at this
+      rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+      have : ‖M^2‖ = M^2 := by rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+      linarith
+    -- f² composed with φ is integrable on γ⊗γ
+    have hf2_φ_int : Integrable (fun p => (f (φ p))^2) (γ.prod γ) := by
+      have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
+      have hf2_aesm : AEStronglyMeasurable (fun x => f x ^ 2) ((γ.prod γ).map φ) := by
+        rw [hmap]; exact (hf_meas.pow_const 2).aestronglyMeasurable
+      have hf2_int' : Integrable (fun x => f x ^ 2) ((γ.prod γ).map φ) := by
+        rw [hmap]; exact hf2_int
+      exact (integrable_map_measure hf2_aesm hφ.aemeasurable).mp hf2_int'
+    -- φ_x : y ↦ f(ax+by). For each x, integrable on γ; its square too.
+    have hfφ_int : ∀ x, Integrable (fun y => f (a * x + b * y)) γ := by
+      intro x
+      -- bounded by M, measurable
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hf_meas.comp (measurable_const.add (measurable_const.mul measurable_id')))
+          |>.aestronglyMeasurable
+      · exact Filter.Eventually.of_forall (fun y => (hM (a*x + b*y)))
+    -- Jensen: for convex g = (·)², probability measure γ, integrable f:
+    -- g(∫ f dγ) ≤ ∫ g∘f dγ
+    have h_convex : ConvexOn ℝ Set.univ (fun x : ℝ => x^2) :=
+      Even.convexOn_pow (Nat.even_iff.mpr rfl)
+    have h_cont : ContinuousOn (fun x : ℝ => x^2) Set.univ :=
+      (continuous_pow 2).continuousOn
+    have h_closed : IsClosed (Set.univ : Set ℝ) := isClosed_univ
+    -- For each x, apply Jensen to y ↦ f(ax+by).
+    have hJensen : ∀ x, (∫ y, f (a*x + b*y) ∂γ)^2 ≤ ∫ y, (f (a*x + b*y))^2 ∂γ := by
+      intro x
+      have hfφ_aesm : ∀ᵐ y ∂γ, f (a*x + b*y) ∈ (Set.univ : Set ℝ) :=
+        Filter.Eventually.of_forall (fun y => Set.mem_univ _)
+      have hfφ2_int : Integrable (fun y => (f (a*x + b*y))^2) γ := by
+        refine Integrable.mono' (integrable_const (M^2)) ?_ ?_
+        · exact ((hf_meas.comp (measurable_const.add (measurable_const.mul measurable_id')))
+            |>.pow_const 2).aestronglyMeasurable
+        · refine Filter.Eventually.of_forall (fun y => ?_)
+          have hnn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+          rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+          have h1 : |f (a*x + b*y)| ≤ M := by
+            rw [← Real.norm_eq_abs]; exact hM (a*x + b*y)
+          have h2 : (f (a*x + b*y))^2 ≤ M^2 := by
+            have : |f (a*x + b*y)|^2 ≤ M^2 := by nlinarith [abs_nonneg (f (a*x + b*y))]
+            rwa [sq_abs] at this
+          have : ‖M^2‖ = M^2 := by rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+          linarith
+      exact ConvexOn.map_integral_le h_convex h_cont h_closed hfφ_aesm (hfφ_int x) hfφ2_int
+    -- now integrate
+    show ∫ x, (ouSemigroup t f x) ^ 2 ∂γ ≤ ∫ x, (f x) ^ 2 ∂γ
+    simp only [ouSemigroup]
+    calc ∫ x, (∫ y, f (a * x + b * y) ∂γ) ^ 2 ∂γ
+        ≤ ∫ x, ∫ y, (f (a*x + b*y))^2 ∂γ ∂γ := by
+          apply integral_mono_of_nonneg
+          · exact Filter.Eventually.of_forall (fun x => sq_nonneg _)
+          · -- integrability of the RHS: x ↦ ∫ y, (f(ax+by))² dγ
+            exact hf2_φ_int.integral_prod_left
+          · exact Filter.Eventually.of_forall hJensen
+      _ = ∫ p, (f (φ p))^2 ∂(γ.prod γ) := (integral_prod _ hf2_φ_int).symm
+      _ = ∫ x, (f x)^2 ∂γ := by
+          -- ∫ f² d((γ⊗γ).map φ) = ∫ f² dγ by ou_kernel_map
+          have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
+          exact hlaw.integral_comp (hf_meas.pow_const 2).aestronglyMeasurable
+  semigroup_mean := fun f t ht hf_core => by
+    -- Unfold to get γ explicitly
+    show ∫ x, ouSemigroup t f x ∂γ = ∫ x, f x ∂γ
+    simp only [ouSemigroup]
+    -- Goal: ∫ x, (∫ y, f(e^{-t}x + √(1-e^{-2t})y) dγ(y)) dγ(x) = ∫ f dγ
+    set a := exp (-t)
+    set b := sqrt (1 - exp (-2 * t))
+    set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+    have hφ : Measurable φ := Measurable.add
+      (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+    have hmap := ou_kernel_map t ht
+    have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
+    -- Under IsCore, f is AEStronglyMeasurable and Integrable.
+    have hf : AEStronglyMeasurable f γ :=
+      hf_core.stronglyMeasurable.aestronglyMeasurable
+    have hint : Integrable f γ := hf_core.integrable
+    have hcomp : ∫ p, f (φ p) ∂(γ.prod γ) = ∫ x, f x ∂γ :=
+      hlaw.integral_comp hf
+    rw [← hcomp]
+    have hasm' : AEStronglyMeasurable f ((γ.prod γ).map φ) := by rwa [hmap]
+    have hint' : Integrable f ((γ.prod γ).map φ) := by rwa [hmap]
+    have hfφ : Integrable (f ∘ φ) (γ.prod γ) :=
+      (integrable_map_measure hasm' hφ.aemeasurable).mp hint'
+    -- Goal: ∫ x, (∫ y, f(φ(x,y)) dγ) dγ = ∫ p, f(φ p) d(γ.prod γ)
+    exact (integral_prod (f ∘ φ) hfφ).symm
+  semigroup_selfAdjoint := fun f g t ht hf hg => by
+    -- Goal: ∫ (P_t f)(x) · g(x) dγ(x) = ∫ f(x) · (P_t g)(x) dγ(x)
+    -- Strategy: Fubini + reflection T(x,y) = (ax+by, bx-ay) preserves γ⊗γ
+    show ∫ x, ouSemigroup t f x * g x ∂γ = ∫ x, f x * ouSemigroup t g x ∂γ
+    simp only [ouSemigroup]
+    set a := exp (-t)
+    set b := sqrt (1 - exp (-2 * t))
+    set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+    have hφ : Measurable φ := Measurable.add
+      (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+    have hmap := ou_kernel_map t ht
+    have hab : a ^ 2 + b ^ 2 = 1 := by
+      simp only [a, b]; rw [sq_sqrt (one_sub_exp_nonneg t ht), sq, ← exp_add]; ring
+    -- Both sides by Fubini become product integrals:
+    -- LHS = ∫ f(φ p) · g(p.1) d(γ⊗γ)
+    -- RHS = ∫ f(p.1) · g(φ p) d(γ⊗γ)
+    -- Integrability
+    obtain ⟨Mf, hMf⟩ := hf.bounded
+    obtain ⟨Mg, hMg⟩ := hg.bounded
+    -- All our functions are bounded and measurable on γ⊗γ (probability measure)
+    -- so integrability follows from Integrable.mono' (integrable_const _) ...
+    have hfφ_int : Integrable (fun p => f (φ p)) (γ.prod γ) :=
+      Integrable.mono' (integrable_const Mf)
+        ((hf.measurable.comp hφ).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => hMf (φ p))
+    have hgφ_int : Integrable (fun p => g (φ p)) (γ.prod γ) :=
+      Integrable.mono' (integrable_const Mg)
+        ((hg.measurable.comp hφ).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => hMg (φ p))
+    have hf_fst_int : Integrable (fun p : ℝ × ℝ => f p.1) (γ.prod γ) :=
+      Integrable.mono' (integrable_const Mf)
+        ((hf.measurable.comp measurable_fst).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => hMf p.1)
+    have hMf_nn : 0 ≤ Mf := le_trans (norm_nonneg _) (hMf 0)
+    have hMg_nn : 0 ≤ Mg := le_trans (norm_nonneg _) (hMg 0)
+    -- f(φ p) · g(p.1) is integrable (bounded by Mf * Mg)
+    have hfg1_int : Integrable (fun p : ℝ × ℝ => f (φ p) * g p.1) (γ.prod γ) :=
+      Integrable.mono' (integrable_const (Mf * Mg))
+        (((hf.measurable.comp hφ).mul (hg.measurable.comp measurable_fst)).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => by
+          rw [norm_mul]; exact mul_le_mul (hMf _) (hMg _) (norm_nonneg _) hMf_nn)
+    -- f(p.1) · g(φ p) is integrable (bounded by Mf * Mg)
+    have hfg2_int : Integrable (fun p : ℝ × ℝ => f p.1 * g (φ p)) (γ.prod γ) :=
+      Integrable.mono' (integrable_const (Mf * Mg))
+        (((hf.measurable.comp measurable_fst).mul (hg.measurable.comp hφ)).aestronglyMeasurable)
+        (Filter.Eventually.of_forall fun p => by
+          rw [norm_mul]; exact mul_le_mul (hMf _) (hMg _) (norm_nonneg _) hMf_nn)
+    -- Fubini: convert iterated → product
+    -- LHS = ∫ x, (∫ y, f(ax+by) dγ) * g x dγ = ∫ p, f(φ p) * g(p.1) d(γ⊗γ)
+    have hLHS : ∫ x, (∫ y, f (a*x + b*y) ∂γ) * g x ∂γ =
+        ∫ p, f (φ p) * g p.1 ∂(γ.prod γ) := by
+      -- integral_prod gives: ∫ p, h p d(γ⊗γ) = ∫ x, ∫ y, h(x,y) dγ dγ
+      -- The RHS of integral_prod for our function is:
+      --   ∫ x, (∫ y, f(a*x + b*y) * g x dγ) dγ
+      -- We need to pull g x out of the inner integral to get:
+      --   ∫ x, (∫ y, f(a*x + b*y) dγ) * g x dγ
+      have h1 : ∫ p, f (φ p) * g p.1 ∂(γ.prod γ) =
+          ∫ x, (∫ y, f (a * x + b * y) * g x ∂γ) ∂γ :=
+        integral_prod _ hfg1_int
+      rw [h1]; congr 1; ext x
+      rw [integral_mul_const]
+    -- RHS = ∫ x, f x * (∫ y, g(ax+by) dγ) dγ = ∫ p, f(p.1) * g(φ p) d(γ⊗γ)
+    have hRHS : ∫ x, f x * (∫ y, g (a*x + b*y) ∂γ) ∂γ =
+        ∫ p, f p.1 * g (φ p) ∂(γ.prod γ) := by
+      have h1 : ∫ p, f p.1 * g (φ p) ∂(γ.prod γ) =
+          ∫ x, (∫ y, f x * g (a * x + b * y) ∂γ) ∂γ :=
+        integral_prod _ hfg2_int
+      rw [h1]; congr 1; ext x
+      rw [integral_const_mul]
+    rw [hLHS, hRHS]
+    -- Now apply the reflection T(x,y) = (ax+by, bx-ay) to the LHS
+    -- T preserves γ⊗γ (orthogonal with a²+b² = 1)
+    -- and sends f(φ p)·g(p.1) to f(p.1)·g(φ p)
+    set T : ℝ × ℝ → ℝ × ℝ := fun p => (a * p.1 + b * p.2, b * p.1 - a * p.2)
+    -- T sends fst to φ: (T p).1 = a*p.1 + b*p.2 = φ p
+    -- T sends φ to fst: φ(T p) = a(a*p.1+b*p.2) + b(b*p.1-a*p.2) = (a²+b²)p.1 = p.1
+    have hT_φ_to_fst : ∀ p : ℝ × ℝ, φ (T p) = p.1 := by
+      intro p; simp only [φ, T]
+      have : a * (a * p.1 + b * p.2) + b * (b * p.1 - a * p.2) =
+          (a ^ 2 + b ^ 2) * p.1 := by ring
+      rw [this, hab, one_mul]
+    have hT_fst_to_φ : ∀ p : ℝ × ℝ, (T p).1 = φ p := fun p => rfl
+    -- T preserves γ⊗γ — orthogonal invariance of the 2D standard Gaussian.
+    have hT_preserves : (γ.prod γ).map T = γ.prod γ :=
+      gaussian2D_orthogonal_invariance a b hab
+    -- Change variables: ∫ h d(γ⊗γ) = ∫ h∘T d(γ⊗γ)
+    have hT_meas : Measurable T := by
+      apply Measurable.prod
+      · exact (measurable_const.mul measurable_fst).add (measurable_const.mul measurable_snd)
+      · exact (measurable_const.mul measurable_fst).sub (measurable_const.mul measurable_snd)
+    -- ∫ h ∘ T d(γ⊗γ) = ∫ h d((γ⊗γ).map T) = ∫ h d(γ⊗γ)
+    -- So we rewrite the LHS: ∫ f(φ p) * g(p.1) d(γ⊗γ) = ∫ f(φ(T p)) * g((T p).1) d(γ⊗γ)
+    -- Then use hT_φ_to_fst and hT_fst_to_φ to get the RHS
+    have hfg1_aesm_map : AEStronglyMeasurable (fun p => f (φ p) * g p.1)
+        ((γ.prod γ).map T) := by rw [hT_preserves]; exact hfg1_int.aestronglyMeasurable
+    calc ∫ p, f (φ p) * g p.1 ∂(γ.prod γ)
+        = ∫ p, f (φ (T p)) * g (T p).1 ∂(γ.prod γ) := by
+          conv_lhs => rw [← hT_preserves]
+          exact integral_map hT_meas.aemeasurable hfg1_aesm_map
+      _ = ∫ p, f p.1 * g (φ p) ∂(γ.prod γ) := by
+          congr 1; ext p; rw [hT_φ_to_fst, hT_fst_to_φ]
+  semigroup_l2_decay_bound := fun f t ht hf =>
+    ouSemigroup_l2_decay_bound f t ht hf
+  semigroup_l2_sq_hasDerivWithinAt := fun f t ht hf => by
+    -- ouGamma f g x = deriv f x * deriv g x (matches axiom statement).
+    have h := ouSemigroup_l2_sq_hasDerivWithinAt_proved f t ht hf
+    simpa [ouGamma] using h
+  semigroup_ergodic := fun f hf => ouSemigroup_ergodic f hf
+  semigroup_entropy_sq_decay_bound := fun f t ht hf =>
+    ouSemigroup_entropy_sq_decay_bound f t ht hf
+  semigroup_entropy_sq_ergodic := fun f hf => ouSemigroup_entropy_sq_ergodic f hf
 end Gaussian1D
 
 end

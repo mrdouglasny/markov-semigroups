@@ -285,7 +285,7 @@ self-audit), and links to the discharge plans.*
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
 | `ouSemigroup_contDiff` | BGL §2.7 (Mehler kernel `C^∞` smoothing — residue of `preserves_IsCore`) |
-| `ouSemigroup_l2_sq_hasDerivWithinAt` | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) |
+| `ouSemigroup_l2sq_hasDerivWithinAt_zero` | BGL Proposition 4.7.1 boundary at `t = 0` only (residue of `l2_sq_hasDerivWithinAt`) |
 | `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 (Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t})E(f)) |
 
 The three remaining Gaussian1D axioms are concrete-instance bridges to
@@ -417,7 +417,7 @@ on concrete inputs. Zero sorries.
 |---|---|---|
 | **A. Mehler eigenfunctions** | `ouSemigroup_const`, `ouSemigroup_id`, `ouSemigroup_hermite_two`, `ouSemigroup_hermite_three` (eigenvalues `1, e^{-t}, e^{-2t}, e^{-3t}` on `H₀, H₁, H₂, H₃`) | none (Mathlib only) |
 | **A. Helpers** | `integral_sq_γ` (= 1), `integral_cube_γ` (= 0), `integrable_cube_γ` | none |
-| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | three Gaussian1D OU axioms (`_contDiff` (residue of `_preserves_IsCore`), `_l2_sq_hasDerivWithinAt`, `_entropy_sq_decay_bound`) — already counted in Instances/WorkInProgress/Euclidean (`ouSemigroup_gradient_decay` discharged; `preserves_IsCore` decomposed to bounded parts + `contDiff` residue) |
+| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | three smaller residue axioms: `ouSemigroup_contDiff`, `ouSemigroup_l2sq_hasDerivWithinAt_zero`, `ouSemigroup_entropy_sq_decay_bound` (the `bakryEmerySpace` instance now lives in `EuclideanStein.lean` and routes through `ouSemigroup_l2_sq_hasDerivWithinAt_proved`) |
 | **C. Conditional BL → Gaussian Poincaré** | `brascampLieb_recovers_gaussian_poincare` (conditional on a `LogConcaveMeasure ℝ` with `μ = γ`) | none |
 | **C. Gaussian `LogConcaveMeasure` — structural** | `V_gauss = x²/2`, `contDiff_V_gauss`, `hessianBilin_V_gauss` (= `v · w`), `hV_gauss_convex`, `hV_gauss_curvature` (`‖v‖² ≤ Hess V(v,v)`) | none |
 | **C. Gaussian `LogConcaveMeasure` — resolvent fields** | `gaussianLogConcaveMeasure : LogConcaveMeasure ℝ` (built directly, no `Classical.choose`) | four named axioms: `gaussianResolvent`, `gaussianResolvent_ibp`, `gaussianResolvent_ibp_integrable`, `gaussianBochner_identity` (BGL §1.15-1.16: OU resolvent via Lax-Milgram + Stein IBP + Bochner-Weitzenböck) |

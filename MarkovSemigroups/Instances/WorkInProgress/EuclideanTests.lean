@@ -30,6 +30,7 @@ C. A *conditional* coherence check: assuming a `LogConcaveMeasure ℝ`
 -/
 
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanStein
 import MarkovSemigroups.Instances.BrascampLieb
 
 open MeasureTheory ProbabilityTheory Filter Set Real

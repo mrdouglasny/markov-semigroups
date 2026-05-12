@@ -93,7 +93,7 @@ Mehler-kernel facts.
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
 | `ouSemigroup_contDiff` | [`Instances/WorkInProgress/Euclidean.lean`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean) | BGL §2.7 (Mehler kernel `C^∞` smoothing) | Standard | GR | Residue of the originally-axiomatized `ouSemigroup_preserves_IsCore` after decomposition (2026-05-12): the bounded parts (`|P_t f|, |(P_t f)'|, |(P_t f)''| ≤ M`) are now proved via `ouSemigroup_preserves_bounds` + new theorems `hasDerivAt_ouSemigroup_C1`, `hasDerivAt_deriv_ouSemigroup`; only the `ContDiff ℝ ⊤` smoothing remains. Full discharge requires Mathlib infrastructure for `ContDiff` of parametric integrals at all orders (Schwartz-class kernel convolution). | `Gaussian1D.bakryEmerySpace` (1D BE instance only, via the now-derived `ouSemigroup_preserves_IsCore` theorem) |
-| `ouSemigroup_l2_sq_hasDerivWithinAt` | [`Instances/WorkInProgress/Euclidean.lean:684`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L684) | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) | Standard | GR | Differentiation under the integral with explicit dominator + integration by parts on the OU generator. Estimated 1 week. | `Gaussian1D.bakryEmerySpace` |
+| `ouSemigroup_l2sq_hasDerivWithinAt_zero` | [`Instances/WorkInProgress/EuclideanStein.lean`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanStein.lean) | BGL Proposition 4.7.1 boundary case at `t = 0` only | Standard | GR | Residue (2026-05-12) of the originally-axiomatized `ouSemigroup_l2_sq_hasDerivWithinAt`. The general case `t > 0` is now PROVED (`hasDerivAt_l2sq_ouSemigroup_pos`) via heat equation + parametric derivative + Gaussian Dirichlet form identity via Stein. Only the `t = 0` right-derivative remains: the parametric-derivative bound `b'(t) = e^{-2t}/√(1-e^{-2t})` blows up at `0`, requiring an MVT/DCT continuity argument (~200 lines). | `Gaussian1D.bakryEmerySpace` (via `ouSemigroup_l2_sq_hasDerivWithinAt_proved` in `EuclideanStein.lean`) |
 | `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean:943`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L943) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
 
 **Six originally axiomatized 1D facts were reduced to theorems**:
@@ -119,6 +119,18 @@ Mehler-kernel facts.
   `IsCore g` (`gaussian_dirichlet_form_identity`, BGL §1.6), via Stein
   applied to `h := g · g'` — bridges `BakryEmerySpace` energy and the
   L²(γ) generator inner product.
+- `ouSemigroup_l2_sq_hasDerivWithinAt` (2026-05-12) — DECOMPOSED. The
+  `t > 0` case proved (`hasDerivAt_l2sq_ouSemigroup_pos` in
+  `EuclideanStein.lean`) via the new theorems:
+  `stein_identity_standard` (BGL §1.15), `hasDerivAt_t_ouSemigroup`
+  (heat equation `∂_t P_t f = L(P_t f)` for `t > 0`),
+  `gaussian_dirichlet_form_identity` (BGL §1.6), and Mathlib's
+  `hasDerivAt_integral_of_dominated_loc_of_deriv_le`. Residual atomic
+  axiom `ouSemigroup_l2sq_hasDerivWithinAt_zero` is just the `t = 0`
+  boundary case where `b'(t) → ∞`. The original
+  `ouSemigroup_l2_sq_hasDerivWithinAt` is now a theorem
+  (`ouSemigroup_l2_sq_hasDerivWithinAt_proved` in `EuclideanStein.lean`)
+  and the `bakryEmerySpace` instance is rewired through it.
 
 ### Dobrushin-Zegarlinski
 
