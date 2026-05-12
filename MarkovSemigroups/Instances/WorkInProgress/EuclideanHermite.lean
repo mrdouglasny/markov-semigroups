@@ -521,7 +521,213 @@ theorem iteratedDeriv_ouSemigroup_pos (t : ℝ) (ht : 0 < t)
     iteratedDeriv n (ouSemigroup t f) =
       fun x => (Real.exp (-t) / Real.sqrt (1 - Real.exp (-2 * t))) ^ n *
         hermiteMehlerIntegral t n f x := by
-  sorry
+  -- Setup: abbreviations a = exp(-t), b = sqrt(1 - exp(-2t)).
+  set a : ℝ := Real.exp (-t) with ha_def
+  set b : ℝ := Real.sqrt (1 - Real.exp (-2 * t)) with hb_def
+  -- Bounds on a, b.
+  have ha_pos : 0 < a := Real.exp_pos _
+  have ha_nn : 0 ≤ a := ha_pos.le
+  have h_exp_neg_two_t_lt : Real.exp (-2 * t) < 1 := by
+    apply Real.exp_lt_one_iff.mpr; linarith
+  have h_one_sub_pos : 0 < 1 - Real.exp (-2 * t) := by linarith
+  have h_one_sub_le_one : 1 - Real.exp (-2 * t) ≤ 1 := by
+    have : 0 < Real.exp (-2 * t) := Real.exp_pos _
+    linarith
+  have hb_pos : 0 < b := Real.sqrt_pos.mpr h_one_sub_pos
+  have hb_nn : 0 ≤ b := hb_pos.le
+  have hb_ne : b ≠ 0 := ne_of_gt hb_pos
+  have hb_le_one : b ≤ 1 := by
+    rw [show (1 : ℝ) = Real.sqrt 1 from by simp]
+    exact Real.sqrt_le_sqrt h_one_sub_le_one
+  have hb_abs : |b| = b := abs_of_pos hb_pos
+  have ha_abs : |a| = a := abs_of_pos ha_pos
+  -- M nonneg.
+  have hM_nn : 0 ≤ M := (abs_nonneg _).trans (hf_bd 0)
+  -- Basic regularity of f.
+  have hf_C1 : ContDiff ℝ 1 f := hf.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
+  have hf_diff : Differentiable ℝ f := hf.differentiable (by simp)
+  have hf_meas : Measurable f := hf.continuous.measurable
+  have hf'_meas : Measurable (deriv f) :=
+    (hf_C1.continuous_deriv (by simp)).measurable
+  -- Differentiability of `fun y => f (a*x + b*y)` for each x.
+  have hf_xy_diff : ∀ x y, HasDerivAt (fun y => f (a * x + b * y))
+      (b * deriv f (a * x + b * y)) y := by
+    intro x y
+    have h_inner : HasDerivAt (fun y => a * x + b * y) b y := by
+      simpa using (((hasDerivAt_id y).const_mul b)).const_add (a * x)
+    have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
+      hf_diff.differentiableAt.hasDerivAt
+    have := h_f.comp y h_inner
+    simpa [mul_comm b (deriv f _)] using this
+  have hf_xy_contDiff : ∀ x, ContDiff ℝ 1 (fun y => f (a * x + b * y)) := by
+    intro x
+    have h_inner : ContDiff ℝ 1 (fun y : ℝ => a * x + b * y) :=
+      contDiff_const.add (contDiff_const.mul contDiff_id)
+    exact hf_C1.comp h_inner
+  -- Helper: deriv in y of `fun y => f (a*x + b*y)` equals `b * deriv f (a*x + b*y)`.
+  have hf_xy_deriv_eq : ∀ x y,
+      deriv (fun y => f (a * x + b * y)) y = b * deriv f (a * x + b * y) :=
+    fun x y => (hf_xy_diff x y).deriv
+  -- The key derivative-under-the-integral helper.
+  have hMehler_deriv : ∀ (n : ℕ) (x : ℝ),
+      HasDerivAt (hermiteMehlerIntegral t n f)
+        ((a / b) * hermiteMehlerIntegral t (n + 1) f x) x := by
+    intro n x₀
+    -- Set up the parametric integral.
+    set F : ℝ → ℝ → ℝ := fun x y => hermiteFun n y * f (a * x + b * y) with hF_def
+    set F' : ℝ → ℝ → ℝ :=
+      fun x y => hermiteFun n y * (a * deriv f (a * x + b * y)) with hF'_def
+    set bound : ℝ → ℝ := fun y => |hermiteFun n y| * (a * M) with hbound_def
+    have hs : Set.Ioo (x₀ - 1) (x₀ + 1) ∈ nhds x₀ :=
+      Ioo_mem_nhds (by linarith) (by linarith)
+    -- Measurability.
+    have hH_meas : Measurable (hermiteFun n) := hermiteFun_measurable n
+    have hF_meas : ∀ x, AEStronglyMeasurable (F x) γ := by
+      intro x
+      have h1 : Measurable (fun y => f (a * x + b * y)) :=
+        hf_meas.comp (measurable_const.add (measurable_const.mul measurable_id))
+      exact (hH_meas.mul h1).aestronglyMeasurable
+    -- Integrability of F x₀.
+    have hF_int : Integrable (F x₀) γ := by
+      refine Integrable.mono'
+        ((integrable_hermiteFun_gamma n).abs.const_mul M) (hF_meas x₀) ?_
+      filter_upwards with y
+      show ‖hermiteFun n y * f (a * x₀ + b * y)‖ ≤ M * |hermiteFun n y|
+      rw [Real.norm_eq_abs, abs_mul]
+      rw [mul_comm M _]
+      exact mul_le_mul_of_nonneg_left (hf_bd _) (abs_nonneg _)
+    -- Measurability of F' x₀.
+    have hF'_meas : AEStronglyMeasurable (F' x₀) γ := by
+      have h1 : Measurable (fun y => deriv f (a * x₀ + b * y)) :=
+        hf'_meas.comp (measurable_const.add (measurable_const.mul measurable_id))
+      exact (hH_meas.mul (measurable_const.mul h1)).aestronglyMeasurable
+    -- Bound on F'.
+    have h_bound : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
+        ‖F' x y‖ ≤ bound y := by
+      filter_upwards with y x _
+      show ‖hermiteFun n y * (a * deriv f (a * x + b * y))‖
+        ≤ |hermiteFun n y| * (a * M)
+      rw [Real.norm_eq_abs, abs_mul, abs_mul, ha_abs]
+      have h1 : |deriv f (a * x + b * y)| ≤ M := hf'_bd _
+      have ha_M_nn : 0 ≤ a * M := mul_nonneg ha_nn hM_nn
+      have h_inner : a * |deriv f (a * x + b * y)| ≤ a * M :=
+        mul_le_mul_of_nonneg_left h1 ha_nn
+      exact mul_le_mul_of_nonneg_left h_inner (abs_nonneg _)
+    -- Integrability of the bound.
+    have h_bound_int : Integrable bound γ := by
+      show Integrable (fun y => |hermiteFun n y| * (a * M)) γ
+      exact (integrable_hermiteFun_gamma n).abs.mul_const _
+    -- Differentiability.
+    have h_diff : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
+        HasDerivAt (F · y) (F' x y) x := by
+      filter_upwards with y x _
+      show HasDerivAt (fun x => hermiteFun n y * f (a * x + b * y))
+        (hermiteFun n y * (a * deriv f (a * x + b * y))) x
+      -- Inner: HasDerivAt (fun x => a * x + b * y) a x
+      have h_inner : HasDerivAt (fun x => a * x + b * y) a x := by
+        simpa using ((hasDerivAt_id x).const_mul a).add_const (b * y)
+      have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
+        hf_diff.differentiableAt.hasDerivAt
+      have h_comp : HasDerivAt (fun x => f (a * x + b * y))
+          (deriv f (a * x + b * y) * a) x := h_f.comp x h_inner
+      have h_mul := h_comp.const_mul (hermiteFun n y)
+      simpa [mul_comm a (deriv f _), mul_assoc] using h_mul
+    -- Apply parametric differentiation.
+    obtain ⟨_, h_deriv⟩ :=
+      hasDerivAt_integral_of_dominated_loc_of_deriv_le hs
+        (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bound h_bound_int h_diff
+    -- h_deriv : HasDerivAt (fun x => ∫ y, F x y ∂γ) (∫ y, F' x₀ y ∂γ) x₀.
+    -- LHS = hermiteMehlerIntegral t n f.
+    have h_lhs_eq : (fun x => ∫ y, F x y ∂γ) = hermiteMehlerIntegral t n f := by
+      funext x; rfl
+    -- Now apply Hermite IBP to convert the RHS.
+    -- For fixed x₀, let G(y) := f (a*x₀ + b*y); apply hermite_ibp_gaussian.
+    set Gx : ℝ → ℝ := fun y => f (a * x₀ + b * y) with hGx_def
+    have hGx_C1 : ContDiff ℝ 1 Gx := hf_xy_contDiff x₀
+    have hGx_bd : ∀ y, |Gx y| ≤ M := fun y => hf_bd _
+    have hGx_deriv_eq : ∀ y, deriv Gx y = b * deriv f (a * x₀ + b * y) :=
+      fun y => hf_xy_deriv_eq x₀ y
+    have hGx'_bd : ∀ y, |deriv Gx y| ≤ M := by
+      intro y
+      rw [hGx_deriv_eq, abs_mul, hb_abs]
+      have h1 : |deriv f (a * x₀ + b * y)| ≤ M := hf'_bd _
+      have : b * |deriv f (a * x₀ + b * y)| ≤ b * M :=
+        mul_le_mul_of_nonneg_left h1 hb_nn
+      have hbM_le : b * M ≤ 1 * M := mul_le_mul_of_nonneg_right hb_le_one hM_nn
+      rw [one_mul] at hbM_le
+      linarith
+    -- Hermite IBP: ∫ H_n y * deriv Gx y dγ = ∫ H_{n+1} y * Gx y dγ.
+    have h_ibp := hermite_ibp_gaussian n hGx_C1 hGx_bd hGx'_bd
+    -- Substitute deriv Gx y = b * deriv f (a * x₀ + b * y).
+    have h_lhs_ibp :
+        ∫ y, hermiteFun n y * deriv Gx y ∂γ =
+          b * ∫ y, hermiteFun n y * deriv f (a * x₀ + b * y) ∂γ := by
+      have h_step1 : ∫ y, hermiteFun n y * deriv Gx y ∂γ =
+          ∫ y, b * (hermiteFun n y * deriv f (a * x₀ + b * y)) ∂γ := by
+        refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+        show hermiteFun n y * deriv Gx y =
+          b * (hermiteFun n y * deriv f (a * x₀ + b * y))
+        rw [hGx_deriv_eq]; ring
+      rw [h_step1, integral_const_mul]
+    have h_rhs_ibp : ∫ y, hermiteFun (n + 1) y * Gx y ∂γ =
+        hermiteMehlerIntegral t (n + 1) f x₀ := rfl
+    -- So b * ∫ H_n * f' = hermiteMehlerIntegral t (n+1) f x₀.
+    have h_key :
+        b * ∫ y, hermiteFun n y * deriv f (a * x₀ + b * y) ∂γ =
+          hermiteMehlerIntegral t (n + 1) f x₀ := by
+      rw [← h_lhs_ibp, h_ibp, h_rhs_ibp]
+    -- Now compute ∫ y, F' x₀ y ∂γ.
+    have h_F'_int :
+        ∫ y, F' x₀ y ∂γ = a * ∫ y, hermiteFun n y * deriv f (a * x₀ + b * y) ∂γ := by
+      show ∫ y, hermiteFun n y * (a * deriv f (a * x₀ + b * y)) ∂γ = _
+      have h_step1 :
+          ∫ y, hermiteFun n y * (a * deriv f (a * x₀ + b * y)) ∂γ =
+          ∫ y, a * (hermiteFun n y * deriv f (a * x₀ + b * y)) ∂γ := by
+        refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+        ring
+      rw [h_step1, integral_const_mul]
+    -- Combine: ∫ F' = a * (1/b) * hermiteMehlerIntegral t (n+1) f x₀ = (a/b) * (...)
+    have h_final_eq :
+        ∫ y, F' x₀ y ∂γ = (a / b) * hermiteMehlerIntegral t (n + 1) f x₀ := by
+      rw [h_F'_int]
+      have h_subst : ∫ y, hermiteFun n y * deriv f (a * x₀ + b * y) ∂γ =
+          b⁻¹ * hermiteMehlerIntegral t (n + 1) f x₀ := by
+        have h := h_key
+        have h' : b⁻¹ * (b * ∫ y, hermiteFun n y * deriv f (a * x₀ + b * y) ∂γ) =
+            b⁻¹ * hermiteMehlerIntegral t (n + 1) f x₀ := by rw [h]
+        rw [← mul_assoc, inv_mul_cancel₀ hb_ne, one_mul] at h'
+        exact h'
+      rw [h_subst, div_eq_mul_inv]
+      ring
+    rw [h_lhs_eq, h_final_eq] at h_deriv
+    exact h_deriv
+  -- Induction on n.
+  induction n with
+  | zero =>
+    funext x
+    rw [iteratedDeriv_zero]
+    show ouSemigroup t f x =
+      (a / b) ^ 0 * hermiteMehlerIntegral t 0 f x
+    rw [pow_zero, one_mul]
+    show ouSemigroup t f x = ∫ y, hermiteFun 0 y * f (a * x + b * y) ∂γ
+    show (∫ y, f (Real.exp (-t) * x + Real.sqrt (1 - Real.exp (-2 * t)) * y) ∂γ)
+      = ∫ y, hermiteFun 0 y * f (a * x + b * y) ∂γ
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    rw [hermiteFun_zero]
+    show f (Real.exp (-t) * x + Real.sqrt (1 - Real.exp (-2 * t)) * y) =
+      1 * f (a * x + b * y)
+    rw [one_mul]
+  | succ n ih =>
+    rw [iteratedDeriv_succ, ih]
+    funext x
+    -- Goal: deriv (fun x => (a/b)^n * hermiteMehlerIntegral t n f x) x =
+    --   (a/b)^(n+1) * hermiteMehlerIntegral t (n+1) f x
+    have h_deriv_at : HasDerivAt
+        (fun x => (a / b) ^ n * hermiteMehlerIntegral t n f x)
+        ((a / b) ^ n * ((a / b) * hermiteMehlerIntegral t (n + 1) f x)) x :=
+      (hMehler_deriv n x).const_mul ((a / b) ^ n)
+    rw [h_deriv_at.deriv]
+    ring
 
 /-! ## `ContDiff ⊤` conclusion -/
 
