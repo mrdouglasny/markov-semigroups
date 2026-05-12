@@ -2510,6 +2510,156 @@ theorem gaussian_dirichlet_form_identity {g : ℝ → ℝ} (hg : IsCore g) :
       integral_add h_int_g'sq h_int_gg'']
   ring
 
+/-! ## L²-norm derivative for the OU semigroup (BGL Prop 4.7.1)
+
+PROVED for `t > 0` (combines heat equation + parametric derivative +
+Gaussian Dirichlet form identity). The `t = 0` boundary case is the
+residue of the former axiom `ouSemigroup_l2_sq_hasDerivWithinAt`. -/
+
+/-- **L²-norm derivative for the OU semigroup (BGL Prop 4.7.1).** PROVED for `t > 0`.
+
+For `t₀ > 0` and `IsCore f`,
+  `d/ds (∫ (P_s f)² dγ) |_{s=t₀} = -2 · ∫ ((P_{t₀} f)')² dγ`.
+
+PROOF. Apply Mathlib's parametric derivative to `∫ x, (P_s f x)² ∂γ(x)`
+in `s` on a neighborhood of `t₀` contained in `(0, ∞)`. The pointwise
+time-derivative is `2 · (P_s f x) · ∂_s(P_s f x) = 2 · (P_s f x) · L(P_s f)(x)`
+by the heat equation. Integrating, by the Gaussian Dirichlet form identity
+`∫ g · L g dγ = -∫(g')² dγ` for `IsCore g`,
+`∫ 2 (P_s f) · L(P_s f) dγ = -2 ∫ ((P_s f)')² dγ`. -/
+theorem hasDerivAt_l2sq_ouSemigroup_pos (t₀ : ℝ) (ht₀ : 0 < t₀)
+    {f : ℝ → ℝ} (hf : IsCore f) :
+    HasDerivAt (fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ)
+      (-2 * ∫ x, (deriv (ouSemigroup t₀ f) x) ^ 2 ∂γ) t₀ := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hf_core : IsCore f := ⟨h_smooth, M, hM⟩
+  set ε : ℝ := t₀ / 2 with hε_def
+  have hε_pos : 0 < ε := half_pos ht₀
+  have hε_lt : ε < t₀ := half_lt_self ht₀
+  have h_nbhd : Set.Ioo ε (t₀ + 1) ∈ nhds t₀ := Ioo_mem_nhds hε_lt (by linarith)
+  set F : ℝ → ℝ → ℝ := fun s x => (ouSemigroup s f x) ^ 2
+  set F' : ℝ → ℝ → ℝ := fun s x => 2 * ouSemigroup s f x *
+    (deriv (deriv (ouSemigroup s f)) x - x * deriv (ouSemigroup s f) x)
+  set bound : ℝ → ℝ := fun x => 2 * M ^ 2 * (1 + |x|)
+  have h_id_int : Integrable (fun x : ℝ => x) γ :=
+    (memLp_id_gaussianReal 1).integrable le_rfl
+  have h_bound_int : Integrable bound γ := by
+    have hb_eq : bound = (fun x => 2 * M ^ 2 + 2 * M ^ 2 * |x|) := by
+      funext x; ring
+    rw [hb_eq]
+    exact (integrable_const _).add (h_id_int.abs.const_mul _)
+  have h_bounds : ∀ s, 0 ≤ s → ∀ x,
+      ‖ouSemigroup s f x‖ ≤ M ∧
+      ‖deriv (ouSemigroup s f) x‖ ≤ M ∧
+      ‖deriv (deriv (ouSemigroup s f)) x‖ ≤ M :=
+    fun s hs x => ouSemigroup_preserves_bounds h_smooth hM s hs x
+  have hPsf_meas : ∀ s, 0 ≤ s → Measurable (ouSemigroup s f) := fun s hs => by
+    have h_core : IsCore (ouSemigroup s f) := ouSemigroup_preserves_IsCore s hs hf_core
+    exact h_core.measurable
+  have hF_meas : ∀ s ∈ Set.Ioo ε (t₀ + 1), AEStronglyMeasurable (F s) γ := by
+    intro s hs
+    have hs_pos : 0 < s := lt_of_lt_of_le hε_pos hs.1.le
+    have h_meas := hPsf_meas s hs_pos.le
+    exact (h_meas.pow_const 2).aestronglyMeasurable
+  have hF_int : Integrable (F t₀) γ := by
+    refine Integrable.mono' (integrable_const (M ^ 2)) (hF_meas t₀
+      ⟨hε_lt, by linarith⟩) ?_
+    filter_upwards with x
+    show ‖(ouSemigroup t₀ f x) ^ 2‖ ≤ M ^ 2
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    have h1 : |ouSemigroup t₀ f x| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact (h_bounds t₀ ht₀.le x).1
+    have heq : (ouSemigroup t₀ f x) ^ 2 = |ouSemigroup t₀ f x| ^ 2 := by rw [sq_abs]
+    rw [heq]; exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+  have hF'_meas : AEStronglyMeasurable (F' t₀) γ := by
+    have h_core_t₀ : IsCore (ouSemigroup t₀ f) :=
+      ouSemigroup_preserves_IsCore t₀ ht₀.le hf_core
+    have h_meas_t₀ : Measurable (ouSemigroup t₀ f) := h_core_t₀.measurable
+    have h_smooth_t₀_d : ContDiff ℝ ⊤ (deriv (ouSemigroup t₀ f)) :=
+      IsCore.contDiff_deriv h_core_t₀
+    have h_meas_t₀' : Measurable (deriv (ouSemigroup t₀ f)) :=
+      h_smooth_t₀_d.continuous.measurable
+    have h_meas_t₀'' : Measurable (deriv (deriv (ouSemigroup t₀ f))) :=
+      (h_smooth_t₀_d.continuous_deriv (by simp)).measurable
+    refine ((measurable_const.mul h_meas_t₀).mul ?_).aestronglyMeasurable
+    exact h_meas_t₀''.sub (measurable_id.mul h_meas_t₀')
+  have h_bd : ∀ᵐ x ∂γ, ∀ s ∈ Set.Ioo ε (t₀ + 1), ‖F' s x‖ ≤ bound x := by
+    filter_upwards with x s hs
+    show ‖2 * ouSemigroup s f x *
+        (deriv (deriv (ouSemigroup s f)) x - x * deriv (ouSemigroup s f) x)‖ ≤
+      2 * M ^ 2 * (1 + |x|)
+    have hs_pos : 0 ≤ s := (lt_of_lt_of_le hε_pos hs.1.le).le
+    obtain ⟨h_ps_bd, h_dps_bd, h_ddps_bd⟩ := h_bounds s hs_pos x
+    rw [Real.norm_eq_abs, abs_mul, abs_mul]
+    have h_ps : |ouSemigroup s f x| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact h_ps_bd
+    have h_dps : |deriv (ouSemigroup s f) x| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact h_dps_bd
+    have h_ddps : |deriv (deriv (ouSemigroup s f)) x| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact h_ddps_bd
+    have h_L : |deriv (deriv (ouSemigroup s f)) x -
+        x * deriv (ouSemigroup s f) x| ≤ M * (1 + |x|) := by
+      calc |deriv (deriv (ouSemigroup s f)) x - x * deriv (ouSemigroup s f) x|
+          ≤ |deriv (deriv (ouSemigroup s f)) x| +
+            |x * deriv (ouSemigroup s f) x| := by
+            rw [sub_eq_add_neg]
+            exact (abs_add_le _ _).trans (by rw [abs_neg])
+        _ = |deriv (deriv (ouSemigroup s f)) x| + |x| * |deriv (ouSemigroup s f) x| := by
+            rw [abs_mul]
+        _ ≤ M + |x| * M := by
+            apply add_le_add h_ddps
+            exact mul_le_mul_of_nonneg_left h_dps (abs_nonneg _)
+        _ = M * (1 + |x|) := by ring
+    have h_2_nn : (0 : ℝ) ≤ 2 := by norm_num
+    have h_2M_nn : (0 : ℝ) ≤ 2 * M := mul_nonneg h_2_nn hM_nn
+    calc |2| * |ouSemigroup s f x| *
+          |deriv (deriv (ouSemigroup s f)) x - x * deriv (ouSemigroup s f) x|
+        ≤ 2 * M * (M * (1 + |x|)) := by
+          rw [abs_of_nonneg h_2_nn]
+          apply mul_le_mul _ h_L (abs_nonneg _) h_2M_nn
+          exact mul_le_mul_of_nonneg_left h_ps h_2_nn
+      _ = 2 * M ^ 2 * (1 + |x|) := by ring
+  have h_diff : ∀ᵐ x ∂γ, ∀ s ∈ Set.Ioo ε (t₀ + 1),
+      HasDerivAt (fun τ => F τ x) (F' s x) s := by
+    filter_upwards with x s hs
+    have hs_pos : 0 < s := lt_of_lt_of_le hε_pos hs.1.le
+    show HasDerivAt (fun τ => (ouSemigroup τ f x) ^ 2)
+      (2 * ouSemigroup s f x *
+        (deriv (deriv (ouSemigroup s f)) x - x * deriv (ouSemigroup s f) x)) s
+    have h_heat : HasDerivAt (fun τ => ouSemigroup τ f x)
+        (deriv (deriv (ouSemigroup s f)) x - x * deriv (ouSemigroup s f) x) s :=
+      hasDerivAt_t_ouSemigroup s hs_pos hf_core x
+    have h_sq : HasDerivAt (fun u : ℝ => u ^ 2) (2 * ouSemigroup s f x)
+        (ouSemigroup s f x) := by
+      simpa using hasDerivAt_pow 2 (ouSemigroup s f x)
+    have := h_sq.comp s h_heat
+    convert this using 1
+  have hF_meas_ev : ∀ᶠ s in nhds t₀, AEStronglyMeasurable (F s) γ :=
+    Filter.eventually_of_mem h_nbhd hF_meas
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le h_nbhd
+      hF_meas_ev hF_int hF'_meas h_bd h_bound_int h_diff
+  have h_lhs : (fun s => ∫ x, F s x ∂γ) = fun s => ∫ x, (ouSemigroup s f x) ^ 2 ∂γ := rfl
+  rw [h_lhs] at h_deriv
+  have h_core_t₀ : IsCore (ouSemigroup t₀ f) :=
+    ouSemigroup_preserves_IsCore t₀ ht₀.le hf_core
+  have h_dirichlet := gaussian_dirichlet_form_identity h_core_t₀
+  have h_int_F'_eq : ∫ x, F' t₀ x ∂γ =
+      -2 * ∫ x, (deriv (ouSemigroup t₀ f) x) ^ 2 ∂γ := by
+    show ∫ x, 2 * ouSemigroup t₀ f x *
+        (deriv (deriv (ouSemigroup t₀ f)) x - x * deriv (ouSemigroup t₀ f) x) ∂γ =
+      -2 * ∫ x, (deriv (ouSemigroup t₀ f) x) ^ 2 ∂γ
+    have hrw : (fun x => 2 * ouSemigroup t₀ f x *
+        (deriv (deriv (ouSemigroup t₀ f)) x - x * deriv (ouSemigroup t₀ f) x)) =
+      (fun x => 2 * (ouSemigroup t₀ f x *
+        (deriv (deriv (ouSemigroup t₀ f)) x - x * deriv (ouSemigroup t₀ f) x))) := by
+      funext x; ring
+    rw [hrw, integral_const_mul, h_dirichlet]
+    ring
+  rw [h_int_F'_eq] at h_deriv
+  exact h_deriv
+
 end Gaussian1D
 
 end
