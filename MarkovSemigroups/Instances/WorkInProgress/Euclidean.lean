@@ -40,6 +40,8 @@ import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.Probability.Independence.Basic
 import Mathlib.Analysis.Convex.Integral
 import Mathlib.Analysis.Convex.Mul
+import Mathlib.Analysis.Calculus.ParametricIntegral
+import Mathlib.MeasureTheory.Integral.IntegralEqImproper
 
 open MeasureTheory Filter Set Real ProbabilityTheory
 
@@ -488,22 +490,220 @@ under the integral against the Gaussian density. -/
 axiom ouSemigroup_preserves_IsCore (t : ℝ) (ht : 0 ≤ t) {f : ℝ → ℝ}
     (hf : IsCore f) : IsCore (ouSemigroup t f)
 
-/-- **OU gradient decay (BGL Theorem 5.5.2).**
+/-- **Mehler derivative formula (BGL §2.7).** PROVED.
+
+  `(P_t f)'(x₀) = e^{-t} · P_t(f')(x₀)`.
+
+Differentiation under the Mehler integral via Mathlib's
+`hasDerivAt_integral_of_dominated_loc_of_deriv_le`. -/
+theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀ : ℝ) :
+    HasDerivAt (ouSemigroup t f)
+      (Real.exp (-t) * ouSemigroup t (deriv f) x₀) x₀ := by
+  set a := Real.exp (-t)
+  set b := Real.sqrt (1 - Real.exp (-2 * t))
+  set F : ℝ → ℝ → ℝ := fun x y => f (a * x + b * y)
+  set F' : ℝ → ℝ → ℝ := fun x y => a * deriv f (a * x + b * y)
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  set bound : ℝ → ℝ := fun _ => |a| * M
+  have hs : Set.Ioo (x₀ - 1) (x₀ + 1) ∈ nhds x₀ :=
+    Ioo_mem_nhds (by linarith) (by linarith)
+  have hf_meas : Measurable f := h_smooth.continuous.measurable
+  have hF_meas : ∀ x, AEStronglyMeasurable (F x) γ := by
+    intro x
+    refine (hf_meas.comp ?_).aestronglyMeasurable
+    exact measurable_const.add (measurable_const.mul measurable_id)
+  have hF_int : Integrable (F x₀) γ := by
+    refine Integrable.mono' (integrable_const M) (hF_meas x₀) ?_
+    filter_upwards with y; exact (hM (a * x₀ + b * y)).1
+  have hf'_meas : Measurable (deriv f) :=
+    (h_smooth.continuous_deriv (by simp)).measurable
+  have hF'_meas : AEStronglyMeasurable (F' x₀) γ := by
+    refine (measurable_const.mul ?_).aestronglyMeasurable
+    exact hf'_meas.comp (measurable_const.add (measurable_const.mul measurable_id))
+  have h_bound : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
+      ‖F' x y‖ ≤ bound y := by
+    filter_upwards with y x _
+    show ‖a * deriv f (a * x + b * y)‖ ≤ |a| * M
+    rw [Real.norm_eq_abs, abs_mul]
+    have h1 : |deriv f (a * x + b * y)| ≤ M := by
+      rw [← Real.norm_eq_abs]; exact (hM _).2.1
+    exact mul_le_mul_of_nonneg_left h1 (abs_nonneg a)
+  have h_bound_int : Integrable bound γ := integrable_const _
+  have h_diff : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
+      HasDerivAt (F · y) (F' x y) x := by
+    filter_upwards with y x _
+    show HasDerivAt (fun x => f (a * x + b * y)) (a * deriv f (a * x + b * y)) x
+    have h_inner : HasDerivAt (fun x => a * x + b * y) a x := by
+      simpa using ((hasDerivAt_id x).const_mul a).add_const (b * y)
+    have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
+      (h_smooth.differentiable (by simp)).differentiableAt.hasDerivAt
+    have := h_f.comp x h_inner
+    simpa [mul_comm a (deriv f _)] using this
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le hs
+      (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bound h_bound_int h_diff
+  have h_lhs_eq : (fun x => ∫ y, F x y ∂γ) = ouSemigroup t f := rfl
+  have h_rhs_eq : ∫ y, F' x₀ y ∂γ = Real.exp (-t) * ouSemigroup t (deriv f) x₀ := by
+    show ∫ y, a * deriv f (a * x₀ + b * y) ∂γ = a * ouSemigroup t (deriv f) x₀
+    rw [integral_const_mul]; rfl
+  rw [← h_lhs_eq, ← h_rhs_eq]
+  exact h_deriv
+
+/-- **OU gradient decay (BGL Theorem 5.5.2).** PROVED (was axiom).
 
   ∫ ((P_t f)')² dγ ≤ e^{-2t} ∫ (f')² dγ.
 
-Proof sketch: by Mehler's formula and differentiation under the integral,
-`(P_t f)'(x) = e^{-t} ∫ f'(e^{-t}x + √(1-e^{-2t})y) dγ(y) = e^{-t} P_t(f')(x)`.
-Then Jensen's inequality on the convex function `s ↦ s²` gives
-`(P_t f)'(x)² ≤ e^{-2t} P_t((f')²)(x)`, and integrating over `γ` together
-with `P_t`-invariance of `γ` yields the claim.
-
-Reference: BGL Theorem 5.5.2; equivalent to Bakry–Émery curvature `ρ = 1`
-of the standard Gaussian. -/
-axiom ouSemigroup_gradient_decay (f : ℝ → ℝ) (t : ℝ) (ht : 0 ≤ t)
+Proof: by `hasDerivAt_ouSemigroup`, `(P_t f)'(x) = e^{-t} P_t(f')(x)`.
+Jensen on probability measure `γ`: `(P_t f' x)² ≤ P_t((f')²) x`.
+Integrating against `γ` and using γ-invariance of `P_t` (Fubini +
+`ou_kernel_map`): `∫ P_t((f')²) dγ = ∫(f')² dγ`. -/
+theorem ouSemigroup_gradient_decay (f : ℝ → ℝ) (t : ℝ) (ht : 0 ≤ t)
     (hf : IsCore f) :
     ∫ x, deriv (ouSemigroup t f) x * deriv (ouSemigroup t f) x ∂γ ≤
-      Real.exp (-2 * 1 * t) * ∫ x, deriv f x * deriv f x ∂γ
+      Real.exp (-2 * 1 * t) * ∫ x, deriv f x * deriv f x ∂γ := by
+  set a := Real.exp (-t)
+  set b := Real.sqrt (1 - Real.exp (-2 * t))
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  have hf_core : IsCore f := ⟨h_smooth, M, hM⟩
+  have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+  have ha_sq : a ^ 2 = Real.exp (-2 * 1 * t) := by
+    show Real.exp (-t) ^ 2 = Real.exp (-2 * 1 * t)
+    rw [show (-2 * 1 * t : ℝ) = -t + -t from by ring, Real.exp_add]; ring
+  have hf'_meas : Measurable (deriv f) :=
+    (h_smooth.continuous_deriv (by simp)).measurable
+  have hf'_bd : ∀ x, ‖deriv f x‖ ≤ M := fun x => (hM x).2.1
+  have hf'sq_meas : Measurable (fun y => deriv f y ^ 2) := hf'_meas.pow_const 2
+  -- Mehler derivative pointwise.
+  have h_deriv : ∀ x,
+      deriv (ouSemigroup t f) x = a * ouSemigroup t (deriv f) x :=
+    fun x => (hasDerivAt_ouSemigroup t hf_core x).deriv
+  -- Pointwise Jensen.
+  have h_jensen : ∀ x,
+      (ouSemigroup t (deriv f) x) ^ 2 ≤
+        ouSemigroup t (fun y => deriv f y ^ 2) x := by
+    intro x
+    show (∫ y, deriv f (a * x + b * y) ∂γ) ^ 2 ≤
+         ∫ y, deriv f (a * x + b * y) ^ 2 ∂γ
+    have h_conv : ConvexOn ℝ Set.univ (fun s : ℝ => s ^ 2) :=
+      Even.convexOn_pow (Nat.even_iff.mpr rfl)
+    have h_cont : ContinuousOn (fun s : ℝ => s ^ 2) Set.univ :=
+      (continuous_pow 2).continuousOn
+    have h_closed : IsClosed (Set.univ : Set ℝ) := isClosed_univ
+    have h_aem : ∀ᵐ y ∂γ, deriv f (a * x + b * y) ∈ (Set.univ : Set ℝ) :=
+      Filter.Eventually.of_forall (fun _ => Set.mem_univ _)
+    have h_inner_int : Integrable (fun y => deriv f (a * x + b * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hf'_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id)))
+          |>.aestronglyMeasurable
+      · filter_upwards with y; exact hf'_bd _
+    have h_inner_sq_int :
+        Integrable (fun y => (deriv f (a * x + b * y)) ^ 2) γ := by
+      refine Integrable.mono' (integrable_const (M^2)) ?_ ?_
+      · exact ((hf'_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).pow_const 2)
+          |>.aestronglyMeasurable
+      · filter_upwards with y
+        rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+        have h1 : |deriv f (a*x + b*y)| ≤ M := by
+          rw [← Real.norm_eq_abs]; exact hf'_bd _
+        have : (deriv f (a*x + b*y)) ^ 2 = |deriv f (a*x + b*y)| ^ 2 := by
+          rw [sq_abs]
+        rw [this]
+        exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+    exact ConvexOn.map_integral_le h_conv h_cont h_closed h_aem h_inner_int h_inner_sq_int
+  -- Pointwise bound combining h_deriv + h_jensen.
+  have h_ptwise : ∀ x,
+      deriv (ouSemigroup t f) x * deriv (ouSemigroup t f) x ≤
+        a ^ 2 * ouSemigroup t (fun y => deriv f y ^ 2) x := by
+    intro x
+    rw [h_deriv, ← sq]
+    show (a * ouSemigroup t (deriv f) x) ^ 2 ≤
+        a ^ 2 * ouSemigroup t (fun y => deriv f y ^ 2) x
+    rw [mul_pow]
+    exact mul_le_mul_of_nonneg_left (h_jensen x) (sq_nonneg _)
+  -- γ-invariance: ∫ P_t((f')²) dγ = ∫ (f')² dγ.
+  have h_inv : ∫ x, ouSemigroup t (fun y => deriv f y ^ 2) x ∂γ =
+      ∫ y, deriv f y ^ 2 ∂γ := by
+    set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+    have hφ_meas : Measurable φ := Measurable.add
+      (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+    have hmap := ou_kernel_map t ht
+    have hf'sq_φ_int : Integrable (fun p => (deriv f (φ p)) ^ 2) (γ.prod γ) := by
+      refine Integrable.mono' (integrable_const (M^2))
+        ((hf'sq_meas.comp hφ_meas).aestronglyMeasurable) ?_
+      filter_upwards with p
+      rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+      have h1 : |deriv f (φ p)| ≤ M := by rw [← Real.norm_eq_abs]; exact hf'_bd _
+      have : (deriv f (φ p)) ^ 2 = |deriv f (φ p)| ^ 2 := by rw [sq_abs]
+      rw [this]
+      exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+    have h_fubini :
+        ∫ x, (∫ y, (deriv f (a*x + b*y)) ^ 2 ∂γ) ∂γ =
+          ∫ p, (deriv f (φ p)) ^ 2 ∂(γ.prod γ) :=
+      (integral_prod _ hf'sq_φ_int).symm
+    have h_law : HasLaw φ γ (γ.prod γ) := ⟨hφ_meas.aemeasurable, hmap⟩
+    have h_push : ∫ p, (deriv f (φ p)) ^ 2 ∂(γ.prod γ) =
+        ∫ z, (deriv f z) ^ 2 ∂γ :=
+      h_law.integral_comp hf'sq_meas.aestronglyMeasurable
+    show ∫ x, (∫ y, (deriv f (a*x + b*y)) ^ 2 ∂γ) ∂γ = ∫ y, deriv f y ^ 2 ∂γ
+    rw [h_fubini, h_push]
+  -- Assemble: integrate the pointwise bound, then apply γ-invariance.
+  calc ∫ x, deriv (ouSemigroup t f) x * deriv (ouSemigroup t f) x ∂γ
+      ≤ ∫ x, a ^ 2 * ouSemigroup t (fun y => deriv f y ^ 2) x ∂γ := by
+        apply integral_mono_of_nonneg
+        · filter_upwards with x; exact mul_self_nonneg _
+        · refine Integrable.mono' (integrable_const (a^2 * M^2)) ?_ ?_
+          · have hgφ_sm : StronglyMeasurable
+                (fun p : ℝ × ℝ => (deriv f (a * p.1 + b * p.2)) ^ 2) :=
+              (hf'sq_meas.comp ((measurable_const.mul measurable_fst).add
+                (measurable_const.mul measurable_snd))).stronglyMeasurable
+            have h_sm : StronglyMeasurable
+                (fun x => ouSemigroup t (fun y => deriv f y ^ 2) x) := by
+              show StronglyMeasurable fun x => ∫ y, (deriv f (a*x + b*y)) ^ 2 ∂γ
+              exact hgφ_sm.integral_prod_right' (ν := γ)
+            exact (stronglyMeasurable_const.mul h_sm).aestronglyMeasurable
+          · filter_upwards with x
+            have h_inner_le : ∀ y : ℝ, (deriv f (a*x + b*y)) ^ 2 ≤ M^2 := by
+              intro y
+              have h1 : |deriv f (a*x + b*y)| ≤ M := by
+                rw [← Real.norm_eq_abs]; exact hf'_bd _
+              have : (deriv f (a*x + b*y)) ^ 2 = |deriv f (a*x + b*y)| ^ 2 := by
+                rw [sq_abs]
+              rw [this]
+              exact pow_le_pow_left₀ (abs_nonneg _) h1 2
+            have h_inner_int : Integrable
+                (fun y => (deriv f (a*x + b*y)) ^ 2) γ := by
+              refine Integrable.mono' (integrable_const (M^2)) ?_ ?_
+              · exact ((hf'_meas.comp
+                  (measurable_const.add (measurable_const.mul measurable_id))).pow_const 2)
+                  |>.aestronglyMeasurable
+              · filter_upwards with y
+                rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+                exact h_inner_le _
+            have h_bound : ouSemigroup t (fun y => deriv f y ^ 2) x ≤ M^2 := by
+              show ∫ y, (deriv f (a*x + b*y)) ^ 2 ∂γ ≤ M^2
+              calc ∫ y, (deriv f (a*x + b*y)) ^ 2 ∂γ
+                  ≤ ∫ _, (M^2 : ℝ) ∂γ :=
+                    integral_mono h_inner_int (integrable_const _) (fun y => h_inner_le _)
+                _ = M^2 := by simp
+            have h_nn : 0 ≤ ouSemigroup t (fun y => deriv f y ^ 2) x := by
+              show 0 ≤ ∫ y, (deriv f (a*x + b*y)) ^ 2 ∂γ
+              exact integral_nonneg (fun y => sq_nonneg _)
+            have h_target_nn : 0 ≤ a^2 * ouSemigroup t (fun y => deriv f y ^ 2) x :=
+              mul_nonneg (sq_nonneg _) h_nn
+            rw [Real.norm_eq_abs, abs_of_nonneg h_target_nn]
+            exact mul_le_mul_of_nonneg_left h_bound (sq_nonneg _)
+        · exact Filter.Eventually.of_forall h_ptwise
+    _ = a ^ 2 * ∫ x, ouSemigroup t (fun y => deriv f y ^ 2) x ∂γ := by
+        rw [integral_const_mul]
+    _ = a ^ 2 * ∫ y, deriv f y ^ 2 ∂γ := by rw [h_inv]
+    _ = Real.exp (-2 * 1 * t) * ∫ x, deriv f x * deriv f x ∂γ := by
+        rw [ha_sq]
+        congr 1
+        refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+        show deriv f y ^ 2 = deriv f y * deriv f y
+        ring
 
 /-- **OU semigroup composition (Mehler kernel arithmetic, BGL §2.7.1).**
 
@@ -1482,6 +1682,197 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
   semigroup_entropy_sq_decay_bound := fun f t ht hf =>
     ouSemigroup_entropy_sq_decay_bound f t ht hf
   semigroup_entropy_sq_ergodic := fun f hf => ouSemigroup_entropy_sq_ergodic f hf
+
+/-! ## Stein's identity for the standard Gaussian (BGL §1.15)
+
+PROVED. Foundational Gaussian integration-by-parts identity. -/
+
+/-- The standard Gaussian PDF satisfies the ODE `pdf'(y) = -y · pdf(y)`. -/
+theorem hasDerivAt_gaussianPDF_standard (y : ℝ) :
+    HasDerivAt (gaussianPDFReal 0 1) (-y * gaussianPDFReal 0 1 y) y := by
+  unfold gaussianPDFReal
+  simp only [NNReal.coe_one, mul_one, sub_zero]
+  have hsq : HasDerivAt (fun x : ℝ => -(x ^ 2) / 2) (-y) y := by
+    have h₁ : HasDerivAt (fun x : ℝ => x ^ 2) (2 * y) y := by
+      simpa using hasDerivAt_pow 2 y
+    have h₃ : HasDerivAt (fun x : ℝ => -(x^2) / 2) (-(2 * y) / 2) y :=
+      h₁.neg.div_const 2
+    convert h₃ using 1; ring
+  have hexp : HasDerivAt (fun x : ℝ => Real.exp (-(x^2) / 2))
+      (Real.exp (-(y^2) / 2) * (-y)) y := hsq.exp
+  have hpdf : HasDerivAt (fun x : ℝ => (√(2 * π))⁻¹ * Real.exp (-(x^2) / 2))
+      ((√(2 * π))⁻¹ * (Real.exp (-(y^2) / 2) * (-y))) y := hexp.const_mul _
+  convert hpdf using 1; ring
+
+private theorem tendsto_neg_sq_div_two_atTop :
+    Tendsto (fun y : ℝ => -(y^2)/2) atTop atBot := by
+  have h1 : Tendsto (fun y : ℝ => y^2) atTop atTop :=
+    tendsto_pow_atTop (by norm_num : (2 : ℕ) ≠ 0)
+  exact Tendsto.atBot_div_const (by norm_num : (0 : ℝ) < 2)
+    (tendsto_neg_atTop_atBot.comp h1)
+
+private theorem tendsto_neg_sq_div_two_atBot :
+    Tendsto (fun y : ℝ => -(y^2)/2) atBot atBot := by
+  have h1 : Tendsto (fun y : ℝ => y^2) atBot atTop := by
+    have h0 : Tendsto (fun y : ℝ => y^2) atTop atTop :=
+      tendsto_pow_atTop (by norm_num : (2 : ℕ) ≠ 0)
+    refine (h0.comp tendsto_neg_atBot_atTop).congr ?_
+    intro y; show (-y)^2 = y^2; ring
+  exact Tendsto.atBot_div_const (by norm_num : (0 : ℝ) < 2)
+    (tendsto_neg_atTop_atBot.comp h1)
+
+/-- The standard Gaussian PDF tends to zero at `+∞`. -/
+theorem gaussianPDF_tendsto_atTop :
+    Tendsto (gaussianPDFReal 0 1) atTop (nhds 0) := by
+  have h_exp : Tendsto (fun y : ℝ => Real.exp (-(y^2)/2)) atTop (nhds 0) :=
+    Real.tendsto_exp_atBot.comp tendsto_neg_sq_div_two_atTop
+  have h := h_exp.const_mul ((√(2 * π))⁻¹)
+  have heq : (fun y : ℝ => (√(2 * π))⁻¹ * Real.exp (-(y^2)/2)) = gaussianPDFReal 0 1 := by
+    funext y; simp [gaussianPDFReal]
+  rw [heq] at h
+  simpa using h
+
+/-- The standard Gaussian PDF tends to zero at `-∞`. -/
+theorem gaussianPDF_tendsto_atBot :
+    Tendsto (gaussianPDFReal 0 1) atBot (nhds 0) := by
+  have h_exp : Tendsto (fun y : ℝ => Real.exp (-(y^2)/2)) atBot (nhds 0) :=
+    Real.tendsto_exp_atBot.comp tendsto_neg_sq_div_two_atBot
+  have h := h_exp.const_mul ((√(2 * π))⁻¹)
+  have heq : (fun y : ℝ => (√(2 * π))⁻¹ * Real.exp (-(y^2)/2)) = gaussianPDFReal 0 1 := by
+    funext y; simp [gaussianPDFReal]
+  rw [heq] at h
+  simpa using h
+
+/-- `(y · pdf y)` is Lebesgue-integrable — equivalent to `Integrable id` on γ. -/
+theorem integrable_id_mul_gaussianPDF :
+    Integrable (fun y : ℝ => y * gaussianPDFReal 0 1 y) := by
+  have h_id_int : Integrable (fun y : ℝ => y) γ :=
+    (memLp_id_gaussianReal 1).integrable le_rfl
+  have h_v_ne_0 : (1 : NNReal) ≠ 0 := ne_of_gt zero_lt_one
+  have hγ_eq : (γ : Measure ℝ) = volume.withDensity (gaussianPDF 0 1) := by
+    show gaussianReal (0 : ℝ) (1 : NNReal) = volume.withDensity (gaussianPDF 0 1)
+    exact gaussianReal_of_var_ne_zero 0 h_v_ne_0
+  rw [hγ_eq] at h_id_int
+  have h_lt : ∀ᵐ x ∂(volume : Measure ℝ), gaussianPDF 0 1 x < ⊤ :=
+    ae_of_all _ (fun _ => gaussianPDF_lt_top)
+  have h := (integrable_withDensity_iff_integrable_smul' (μ := volume)
+    (measurable_gaussianPDF 0 1) h_lt (g := fun y : ℝ => y)).mp h_id_int
+  have heq : (fun y : ℝ => (gaussianPDF 0 1 y).toReal • y) =
+      (fun y => y * gaussianPDFReal 0 1 y) := by
+    funext y
+    show (gaussianPDF 0 1 y).toReal * y = y * gaussianPDFReal 0 1 y
+    simp [gaussianPDF, ENNReal.toReal_ofReal (gaussianPDFReal_nonneg _ _ _), mul_comm]
+  rw [heq] at h; exact h
+
+/-- `(|y| · pdf y)` is Lebesgue-integrable. -/
+theorem integrable_abs_mul_gaussianPDF :
+    Integrable (fun y : ℝ => |y| * gaussianPDFReal 0 1 y) := by
+  refine Integrable.mono' integrable_id_mul_gaussianPDF.abs
+    ((measurable_id.abs.mul (measurable_gaussianPDFReal _ _)).aestronglyMeasurable) ?_
+  filter_upwards with y
+  rw [Real.norm_eq_abs, abs_mul, abs_abs,
+      abs_of_nonneg (gaussianPDFReal_nonneg _ _ _),
+      abs_mul, abs_of_nonneg (gaussianPDFReal_nonneg _ _ _)]
+
+/-- **Stein's identity** for the standard Gaussian.
+
+For `C¹` functions `g` with bounded `g` and `g'`,
+  `∫ y · g(y) dγ = ∫ g'(y) dγ`.
+
+PROOF: Let `F(y) := -g(y) · pdf(y)`. Using `pdf'(y) = -y · pdf(y)`,
+  `F'(y) = y · g(y) · pdf(y) − g'(y) · pdf(y)`.
+Since `|F(y)| ≤ M · pdf(y) → 0` at `±∞`, `F → 0` at both infinities.
+By FTC on infinite intervals (`integral_of_hasDerivAt_of_tendsto`),
+`∫_ℝ F'(y) dy = 0`. Convert γ-integrals to Lebesgue via
+`integral_gaussianReal_eq_integral_smul`.
+
+Reference: BGL §1.15. -/
+theorem stein_identity_standard {g : ℝ → ℝ} (hg : ContDiff ℝ 1 g)
+    {M : ℝ} (hg_bd : ∀ x, |g x| ≤ M) (hg'_bd : ∀ x, |deriv g x| ≤ M) :
+    ∫ y, y * g y ∂γ = ∫ y, deriv g y ∂γ := by
+  set pdf : ℝ → ℝ := gaussianPDFReal 0 1 with hpdf_def
+  have hM_nn : 0 ≤ M := (abs_nonneg _).trans (hg_bd 0)
+  have hpdf_nn : ∀ y, 0 ≤ pdf y := fun y => gaussianPDFReal_nonneg _ _ _
+  have hpdf_meas : Measurable pdf := measurable_gaussianPDFReal _ _
+  have hg_diff : Differentiable ℝ g := hg.differentiable (by simp)
+  have hg_meas : Measurable g := hg.continuous.measurable
+  have hg'_meas : Measurable (deriv g) := (hg.continuous_deriv (by simp)).measurable
+  -- F(y) := -g(y) · pdf(y), F'(y) = y · g(y) · pdf(y) − g'(y) · pdf(y).
+  have hF_deriv : ∀ y, HasDerivAt (fun z => -g z * pdf z)
+      (y * g y * pdf y - deriv g y * pdf y) y := by
+    intro y
+    have h1 : HasDerivAt g (deriv g y) y := hg_diff.differentiableAt.hasDerivAt
+    have h2 : HasDerivAt pdf (-y * pdf y) y := hasDerivAt_gaussianPDF_standard y
+    have h3 : HasDerivAt (fun z => g z * pdf z)
+        (deriv g y * pdf y + g y * (-y * pdf y)) y := h1.mul h2
+    have h4 : HasDerivAt (fun z => -(g z * pdf z))
+        (-(deriv g y * pdf y + g y * (-y * pdf y))) y := h3.neg
+    have h5 : (fun z => -(g z * pdf z)) = (fun z => -g z * pdf z) := by
+      funext z; ring
+    rw [h5] at h4
+    convert h4 using 1; ring
+  -- F → 0 at ±∞ since |F| ≤ M · pdf and pdf → 0.
+  have h_M_pdf_atTop : Tendsto (fun y => M * pdf y) atTop (nhds 0) := by
+    have := gaussianPDF_tendsto_atTop.const_mul M
+    simpa using this
+  have h_M_pdf_atBot : Tendsto (fun y => M * pdf y) atBot (nhds 0) := by
+    have := gaussianPDF_tendsto_atBot.const_mul M
+    simpa using this
+  have hF_atTop : Tendsto (fun y => -g y * pdf y) atTop (nhds 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    refine squeeze_zero (fun y => norm_nonneg _) (fun y => ?_) h_M_pdf_atTop
+    show ‖-g y * pdf y‖ ≤ M * pdf y
+    rw [Real.norm_eq_abs, abs_mul, abs_neg, abs_of_nonneg (hpdf_nn y)]
+    exact mul_le_mul (hg_bd y) le_rfl (hpdf_nn y) hM_nn
+  have hF_atBot : Tendsto (fun y => -g y * pdf y) atBot (nhds 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    refine squeeze_zero (fun y => norm_nonneg _) (fun y => ?_) h_M_pdf_atBot
+    show ‖-g y * pdf y‖ ≤ M * pdf y
+    rw [Real.norm_eq_abs, abs_mul, abs_neg, abs_of_nonneg (hpdf_nn y)]
+    exact mul_le_mul (hg_bd y) le_rfl (hpdf_nn y) hM_nn
+  -- Integrability of F' and component pieces.
+  have h_pdf_int : Integrable pdf := integrable_gaussianPDFReal _ _
+  have h_int_y_g_pdf : Integrable (fun y => y * g y * pdf y) := by
+    refine Integrable.mono' (integrable_abs_mul_gaussianPDF.const_mul M)
+      ((measurable_id.mul hg_meas).mul hpdf_meas |>.aestronglyMeasurable) ?_
+    filter_upwards with y
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    calc |y| * |g y| * pdf y
+        ≤ |y| * M * pdf y := by
+          apply mul_le_mul_of_nonneg_right _ (hpdf_nn _)
+          exact mul_le_mul_of_nonneg_left (hg_bd y) (abs_nonneg _)
+      _ = M * (|y| * pdf y) := by ring
+  have h_int_g'_pdf : Integrable (fun y => deriv g y * pdf y) := by
+    refine Integrable.mono' (h_pdf_int.const_mul M)
+      (hg'_meas.mul hpdf_meas |>.aestronglyMeasurable) ?_
+    filter_upwards with y
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    exact mul_le_mul_of_nonneg_right (hg'_bd y) (hpdf_nn y)
+  have h_F'_int : Integrable (fun y => y * g y * pdf y - deriv g y * pdf y) :=
+    h_int_y_g_pdf.sub h_int_g'_pdf
+  -- ∫_ℝ F' = 0 by FTC at both infinities.
+  have h_int_F' : ∫ y, y * g y * pdf y - deriv g y * pdf y = 0 := by
+    have := integral_of_hasDerivAt_of_tendsto hF_deriv h_F'_int hF_atBot hF_atTop
+    simpa using this
+  have h_lebesgue : ∫ y, y * g y * pdf y = ∫ y, deriv g y * pdf y := by
+    have h := h_int_F'
+    rw [integral_sub h_int_y_g_pdf h_int_g'_pdf] at h
+    linarith
+  -- Convert γ-integrals to Lebesgue via withDensity.
+  have h_v_ne : (1 : NNReal) ≠ 0 := ne_of_gt zero_lt_one
+  have h_γ_y_g : ∫ y, y * g y ∂γ = ∫ y, y * g y * pdf y := by
+    show ∫ y, y * g y ∂(gaussianReal (0 : ℝ) (1 : NNReal)) = _
+    rw [integral_gaussianReal_eq_integral_smul h_v_ne]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    show pdf y • (y * g y) = y * g y * pdf y
+    rw [smul_eq_mul]; ring
+  have h_γ_g' : ∫ y, deriv g y ∂γ = ∫ y, deriv g y * pdf y := by
+    show ∫ y, deriv g y ∂(gaussianReal (0 : ℝ) (1 : NNReal)) = _
+    rw [integral_gaussianReal_eq_integral_smul h_v_ne]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    show pdf y • deriv g y = deriv g y * pdf y
+    rw [smul_eq_mul]; ring
+  rw [h_γ_y_g, h_γ_g', h_lebesgue]
 
 end Gaussian1D
 
