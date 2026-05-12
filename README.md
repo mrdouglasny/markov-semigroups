@@ -267,7 +267,7 @@ see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 4 Gaussian1D = 11 total)
+### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 3 Gaussian1D = 10 total)
 
 *See [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md) for the per-axiom
 vetting verdicts (Standard / Likely correct / Placeholder / etc.),
@@ -285,16 +285,24 @@ self-audit), and links to the discharge plans.*
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
 | `ouSemigroup_preserves_IsCore` | BGL §2.7 (OU smoothing preserves core algebra) |
-| `ouSemigroup_gradient_decay` | BGL Theorem 5.5.2 (∫(P_t f')² ≤ e^{-2t} ∫(f')²) |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | BGL Proposition 4.7.1 (`d/dt ‖P_t f‖²₂ = -2 E(P_t f)`) |
 | `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 (Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t})E(f)) |
 
-The four Gaussian1D axioms are concrete-instance bridges to the
-abstract Bakry-Émery layer for the standard Gaussian + OU semigroup
-on ℝ — atomic Mehler-kernel-level facts (differentiation under the
-Gaussian integral) and the entropy derivative bridge, all currently
-absent from Mathlib at the required generality. All nine originally
-introduced were vetted in one pass via Gemini chat
+The three remaining Gaussian1D axioms are concrete-instance bridges to
+the abstract Bakry-Émery layer for the standard Gaussian + OU semigroup
+on ℝ — Mehler-kernel-level facts requiring Mathlib infrastructure
+(parametric ContDiff under the integral, differentiation of `L²` norms,
+de Bruijn entropy derivative). The previously-axiomatized
+`ouSemigroup_gradient_decay` (BGL Theorem 5.5.2) is now **PROVED** via
+the new theorem `hasDerivAt_ouSemigroup` (Mehler derivative formula
+via Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le`) +
+Jensen + γ-invariance. Additionally, **Stein's identity** for the
+standard Gaussian (BGL §1.15: `∫ y · g(y) dγ = ∫ g'(y) dγ` for
+bounded C¹ g) is now **PROVED** as `stein_identity_standard` via the
+Gaussian-PDF ODE `pdf'(y) = -y · pdf(y)` + FTC on infinite intervals
+(`integral_of_hasDerivAt_of_tendsto`) + `withDensity` bridge — paving
+the way for future discharge of the remaining OU axioms. All
+originally-introduced axioms were vetted in one pass via Gemini chat
 (gemini-3-pro-preview), which flagged a missing `IsCore` hypothesis
 on the Mehler-composition axiom — patched in both the axiom and the
 upstream `BakryEmerySpace.semigroup_add` field. Five of the original
@@ -391,6 +399,35 @@ strict thermodynamic-limit route.
   `ouSemigroup_ergodic` (double DCT), `ouSemigroup_entropy_sq_ergodic`
   (DCT for `s log s` + compactness), and `ouSemigroup_compose`
   (Gaussian convolution arithmetic).
+
+### Validation tests (Instances/WorkInProgress/EuclideanTests.lean)
+
+Test theorems exercising the `Gaussian1D` `BakryEmerySpace ℝ` instance
+on concrete inputs. Zero sorries.
+
+| Set | Theorem | Axioms |
+|---|---|---|
+| **A. Mehler eigenfunctions** | `ouSemigroup_const`, `ouSemigroup_id`, `ouSemigroup_hermite_two`, `ouSemigroup_hermite_three` (eigenvalues `1, e^{-t}, e^{-2t}, e^{-3t}` on `H₀, H₁, H₂, H₃`) | none (Mathlib only) |
+| **A. Helpers** | `integral_sq_γ` (= 1), `integral_cube_γ` (= 0), `integrable_cube_γ` | none |
+| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | three Gaussian1D OU axioms (`_preserves_IsCore`, `_l2_sq_hasDerivWithinAt`, `_entropy_sq_decay_bound`) — already counted in Instances/WorkInProgress/Euclidean (`ouSemigroup_gradient_decay` discharged via Mathlib's parametric derivative) |
+| **C. Conditional BL → Gaussian Poincaré** | `brascampLieb_recovers_gaussian_poincare` (conditional on a `LogConcaveMeasure ℝ` with `μ = γ`) | none |
+| **C. Gaussian `LogConcaveMeasure` — structural** | `V_gauss = x²/2`, `contDiff_V_gauss`, `hessianBilin_V_gauss` (= `v · w`), `hV_gauss_convex`, `hV_gauss_curvature` (`‖v‖² ≤ Hess V(v,v)`) | none |
+| **C. Gaussian `LogConcaveMeasure` — resolvent fields** | `gaussianLogConcaveMeasure : LogConcaveMeasure ℝ` (built directly, no `Classical.choose`) | four named axioms: `gaussianResolvent`, `gaussianResolvent_ibp`, `gaussianResolvent_ibp_integrable`, `gaussianBochner_identity` (BGL §1.15-1.16: OU resolvent via Lax-Milgram + Stein IBP + Bochner-Weitzenböck) |
+| **C. Unconditional BL → Gaussian Poincaré** | `gaussian_brascampLieb_poincare` (`Var_γ(f) ≤ ∫‖f'‖² dγ` for `C¹` `f`) | the four resolvent axioms above |
+
+**Validation summary.** Set A confirms that the Mehler integral
+`ouSemigroup` evaluates to the textbook eigenvalues on the first four
+Hermite polynomials — operationally verifying it really is the Mehler
+kernel, without invoking any of the four atomic OU axioms. Set B
+confirms the abstract `satisfiesPoincare` / `variance_decay` theorems
+plug correctly into the concrete instance with `ρ = 1`. Set C confirms
+that the Brascamp-Lieb route to Gaussian Poincaré with `ρ = 1` agrees
+with the Bakry-Émery route on the same constant. The Gaussian
+`LogConcaveMeasure ℝ` is now built constructively in its structural
+fields (`V = x²/2`, computed 1D Hessian, convexity, curvature ρ = 1);
+only the OU-resolvent ingredients (Lax-Milgram + Stein IBP +
+Bochner-Weitzenböck) remain as four named textbook axioms with
+BGL §1.15-1.16 citations.
 
 ### TV coupling (Coupling/)
 

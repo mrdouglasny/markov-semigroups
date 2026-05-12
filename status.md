@@ -90,7 +90,7 @@ entropy-derivative identity).
 |---|---|---|---|
 | `gaussian2D_orthogonal_invariance` | BGL §1.10.1 (rotation invariance of 2D standard Gaussian) | **Theorem** — proved via Codex (GPT-5.4): bridges `γ.prod γ` to `stdGaussian (WithLp 2 (ℝ × ℝ))` through the `EuclideanSpace ℝ (Fin 2) ≃ₗᵢ WithLp 2 (ℝ × ℝ)` isometry, applies Mathlib's `map_pi_eq_stdGaussian` to identify pushforward of `Measure.pi γ` with `stdGaussian (EuclideanSpace ℝ (Fin 2))`, then `stdGaussian_map` for the linear-isometric-equivalence invariance, finally unwraps via `WithLp.toLp / ofLp`. | (proved) |
 | `ouSemigroup_preserves_IsCore` | BGL §2.7 (OU smoothing) | Atomic axiom (`P_t f, (P_t f)', (P_t f)''` bounded by `M, e^{-t}M, e^{-2t}M ≤ M`). | GR (vetted: Standard) |
-| `ouSemigroup_gradient_decay` | BGL Theorem 5.5.2 | Atomic axiom (`∫(P_t f)'² dγ ≤ e^{-2t} ∫(f')² dγ` via Mehler + Jensen + Fubini). | GR (vetted: Standard) |
+| `ouSemigroup_gradient_decay` | BGL Theorem 5.5.2 | **Theorem** — proved from new theorem `hasDerivAt_ouSemigroup` (Mehler derivative via Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le`) + pointwise Jensen + Fubini/`ou_kernel_map` for γ-invariance. | (proved) |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | BGL Proposition 4.7.1 | Atomic axiom (differentiation under integral against the Gaussian density). | GR (vetted: Standard) |
 | `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 / §5.5 | Atomic axiom (would require new entropy-derivative atomic axiom — de Bruijn identity — to reduce; deferred). | GR (vetted: Standard, constant verified) |
 | `ouSemigroup_compose` | BGL §2.7.1 (Mehler kernel arithmetic) | **Theorem** — proved via Gaussian-convolution arithmetic: both sides of `P_{s+t} f = P_s(P_t f)` equal `∫ f(e^{-(s+t)}x + w) dN(0, b_{s+t}²)(w)`. Uses `gaussianReal_add_gaussianReal_of_indepFun` + `gaussianReal_const_mul` + `HasLaw` + Fubini. (Patched at axiom stage: `IsCore f` hypothesis added per Gemini soundness review.) | (proved; Flagged → Patched → Standard at axiom stage) |
@@ -144,7 +144,7 @@ Neumann decay is interleaved.
 - `Γ_leibniz` — Leibniz/diffusion property fails for jump processes
 - `semigroup_entropy_sq_decay_bound` — consequence of Leibniz failure
 
-### Instances/WorkInProgress/Euclidean.lean (0 sorry's, 4 axioms)
+### Instances/WorkInProgress/Euclidean.lean (0 sorry's, 3 axioms)
 The previously-flagged 9 sorries (Lean-infrastructure gaps for
 Mehler-kernel facts) were converted to nine BGL Ch. 2 textbook axioms
 in one pass with Gemini vetting (see "Instances/WorkInProgress/Euclidean"
