@@ -23,7 +23,7 @@ noncomputable section
 
 namespace GaussianFin
 
-open scoped BigOperators
+open scoped BigOperators ContDiff
 
 variable {n : ℕ}
 
@@ -306,7 +306,9 @@ theorem IsCoreFin.section_isCore {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f
     Gaussian1D.IsCore (coordSection i x f) := by
   obtain ⟨hf_smooth, M, hM⟩ := hf
   have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
-  refine ⟨section_contDiff hf_smooth i x, ⟨M, fun s => ?_⟩⟩
+  have hsection : ContDiff ℝ ∞ (coordSection i x f) := by
+    exact (section_contDiff hf_smooth i x).of_le le_top
+  refine ⟨hsection, ⟨M, fun s => ?_⟩⟩
   refine ⟨?_, ?_, ?_⟩
   · simpa [coordSection] using (hM (Function.update x i s)).1
   · rw [section_deriv hf_smooth i x]
