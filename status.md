@@ -1,4 +1,4 @@
-**12 axioms. 2 sorry's total**, all quarantined in
+**11 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
 jump processes — validates that the diffusion axiom is a real
 constraint). The Euclidean (Gaussian1D) instance previously held 9
@@ -25,6 +25,20 @@ Cauchy-Schwarz on the Mehler probability kernel, A2 (de Bruijn for
 bilinear Dirichlet form identity, and A2-boundary via A2 interior +
 DCT-based continuity. The entire Gaussian1D + General/OU chain is
 **axiom-free**.
+
+**2026-05-13: Multivariate Gaussian BE-instance landed (Stage N1).**
+The new `stdGaussianFin.bakryEmerySpace n : BakryEmerySpace (Fin n → ℝ)`
+in `Instances/WorkInProgress/EuclideanFin.lean` (commit `8ed9e52`,
+~2850 lines, 0 sorries) carries 3 textbook axioms — all
+gemini-3.1-pro-preview vetted **Standard**, all tensor-lift analogues
+of the proved 1D BE chain:
+- `ouSemigroupFin_l2_sq_hasDerivWithinAt` (BGL Prop 4.7.1, multivariate
+  de Bruijn-style L²-derivative identity)
+- `ouSemigroupFin_preserves_IsCore` (BGL §2.7.1 + §3, Mehler smoothing
+  preservation)
+- `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, entropy decay)
+
+Total project axiom count went from 8 to 11 with the N1 merge.
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
 Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
