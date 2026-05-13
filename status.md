@@ -83,9 +83,10 @@ Discharges:
 - `ouSemigroup_contDiff` (2026-05-12, Path C — see
   `EuclideanHermite.lean`).
 - `ouSemigroup_entropy_sq_decay_bound` (2026-05-12) discharged via the
-  A1+A2 decomposition: three atomic Bakry-Émery building-block axioms
-  (Fisher info decay + de Bruijn identity, both for `t > 0` and
-  boundary `t = 0+`) in
+  A1+A2 decomposition. A1 (`ouSemigroup_fisher_info_decay`) was proved
+  the same day via Cauchy-Schwarz on the Mehler probability kernel;
+  A2 (de Bruijn for `t > 0`) and its boundary `t = 0+` remain as
+  atomic axioms in
   `MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined
   with ε-regularization `g_ε := f² + ε`, FTC inequality, and DCT in
   `Instances/WorkInProgress/EuclideanEntropyDecay.lean`. The
@@ -163,9 +164,12 @@ FTC inequality (l2_decay_bound), double-DCT on the Mehler integrand
 `map_pi_eq_stdGaussian` chain via the `EuclideanSpace ℝ (Fin 2) ≃ₗᵢ
 WithLp 2 (ℝ × ℝ)` isometry (gaussian2D_orthogonal_invariance, proved
 by Codex). The last remaining `ouSemigroup_entropy_sq_decay_bound`
-was discharged on 2026-05-12 via the A1+A2 decomposition: three atomic
-Bakry-Émery building-block axioms (Fisher info decay + de Bruijn at
-`t > 0` + de Bruijn at `t = 0+`) in
+was discharged on 2026-05-12 via the A1+A2 decomposition. Of the
+three initial atomic Bakry-Émery axioms, A1
+(`ouSemigroup_fisher_info_decay`, Fisher info decay) was proved the
+same day via Cauchy-Schwarz on the Mehler probability kernel; the two
+remaining de Bruijn-identity axioms (A2 at `t > 0` + boundary at
+`t = 0+`) live in
 `MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined with
 ε-regularization + FTC + DCT in
 `Instances/WorkInProgress/EuclideanEntropyDecay.lean`.
