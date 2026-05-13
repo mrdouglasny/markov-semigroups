@@ -19,11 +19,14 @@ five early discharges
 Hermite IBP in `EuclideanHermite.lean`), and
 `ouSemigroup_entropy_sq_decay_bound` (A1+A2 decomposition in
 `EuclideanEntropyDecay.lean`). Net: **Gaussian1D concrete instance is
-axiom-free**; 2 atomic Bakry-Émery de Bruijn-identity axioms live in
-`MarkovSemigroups/General/OUEntropyDecomposition.lean` and are reusable
-across future BakryEmerySpace instances. (The third atomic building
-block, `ouSemigroup_fisher_info_decay`, was proved on 2026-05-12 via
-Cauchy-Schwarz on the Mehler probability kernel.)
+axiom-free**; 1 atomic Bakry-Émery de Bruijn identity (for `t > 0`)
+lives in `MarkovSemigroups/General/OUEntropyDecomposition.lean` and is
+reusable across future BakryEmerySpace instances. (The two sibling
+building blocks, `ouSemigroup_fisher_info_decay` and the boundary
+`hasDerivWithinAt_entropy_ouSemigroup_zero`, were proved on 2026-05-12:
+A1 via Cauchy-Schwarz on the Mehler probability kernel; A2-boundary
+via A2 interior + DCT-based continuity + Mathlib's
+`hasDerivWithinAt_Ici_of_tendsto_deriv`.)
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
 Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
@@ -83,11 +86,10 @@ Discharges:
 - `ouSemigroup_contDiff` (2026-05-12, Path C — see
   `EuclideanHermite.lean`).
 - `ouSemigroup_entropy_sq_decay_bound` (2026-05-12) discharged via the
-  A1+A2 decomposition. A1 (`ouSemigroup_fisher_info_decay`) was proved
-  the same day via Cauchy-Schwarz on the Mehler probability kernel;
-  A2 (de Bruijn for `t > 0`) and its boundary `t = 0+` remain as
-  atomic axioms in
-  `MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined
+  A1+A2 decomposition. A1 (`ouSemigroup_fisher_info_decay`) and the
+  A2-boundary `t = 0+` version were proved the same day; only A2 for
+  `t > 0` (the interior de Bruijn identity) remains as an atomic axiom
+  in `MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined
   with ε-regularization `g_ε := f² + ε`, FTC inequality, and DCT in
   `Instances/WorkInProgress/EuclideanEntropyDecay.lean`. The
   `bakryEmerySpace` instance was relocated to that file as part of
@@ -166,10 +168,10 @@ WithLp 2 (ℝ × ℝ)` isometry (gaussian2D_orthogonal_invariance, proved
 by Codex). The last remaining `ouSemigroup_entropy_sq_decay_bound`
 was discharged on 2026-05-12 via the A1+A2 decomposition. Of the
 three initial atomic Bakry-Émery axioms, A1
-(`ouSemigroup_fisher_info_decay`, Fisher info decay) was proved the
-same day via Cauchy-Schwarz on the Mehler probability kernel; the two
-remaining de Bruijn-identity axioms (A2 at `t > 0` + boundary at
-`t = 0+`) live in
+(`ouSemigroup_fisher_info_decay`, Fisher info decay) and the
+A2-boundary (`hasDerivWithinAt_entropy_ouSemigroup_zero` at `t = 0+`)
+were both proved the same day. Only A2 (de Bruijn for `t > 0`) remains
+as an atomic axiom in
 `MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined with
 ε-regularization + FTC + DCT in
 `Instances/WorkInProgress/EuclideanEntropyDecay.lean`.

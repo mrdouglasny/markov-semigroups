@@ -47,20 +47,18 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-9 axioms total. Of these:
+8 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
-- **2 General/OU diffusion** axioms — atomic Bakry-Émery de Bruijn
-  identities in `MarkovSemigroups/General/OUEntropyDecomposition.lean`:
-  `hasDerivAt_entropy_ouSemigroup` (A2: de Bruijn identity for `t > 0`)
-  and `hasDerivWithinAt_entropy_ouSemigroup_zero` (A2 at `t = 0+`).
-  These (together with the now-proved Fisher info decay A1) replaced
-  the former broad `ouSemigroup_entropy_sq_decay_bound` axiom
-  (2026-05-12); they remain abstract enough to be reusable for any
-  future BakryEmerySpace instance. The Gaussian1D concrete instance
-  is **axiom-free**. **A1** (`ouSemigroup_fisher_info_decay`) was
-  discharged as a theorem on 2026-05-12 via the Cauchy-Schwarz argument
-  on the Mehler probability kernel.
+- **1 General/OU diffusion** axiom — the de Bruijn identity for `t > 0`
+  in `MarkovSemigroups/General/OUEntropyDecomposition.lean`:
+  `hasDerivAt_entropy_ouSemigroup` (A2). It's abstract enough to be
+  reusable for any future BakryEmerySpace instance. The Gaussian1D
+  concrete instance is **axiom-free**. **A1**
+  (`ouSemigroup_fisher_info_decay`) was discharged on 2026-05-12 via
+  Cauchy-Schwarz on the Mehler probability kernel. **A2-boundary**
+  (`hasDerivWithinAt_entropy_ouSemigroup_zero`) was discharged on
+  2026-05-12 from A2 + DCT-based continuity at `t = 0+`.
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
 
@@ -94,29 +92,32 @@ on 2026-05-10. See that repo for the current home and audit.
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
 
-### General/OU diffusion (2 atomic axioms — de Bruijn identities)
+### General/OU diffusion (1 atomic axiom — de Bruijn identity for t > 0)
 
-The two remaining axioms in
-[`MarkovSemigroups/General/OUEntropyDecomposition.lean`](../MarkovSemigroups/General/OUEntropyDecomposition.lean)
-together with the proved `ouSemigroup_fisher_info_decay` discharge
-the former `ouSemigroup_entropy_sq_decay_bound` axiom (BGL Theorem
-5.5.2) — see `Instances/WorkInProgress/EuclideanEntropyDecay.lean`
-for the proof `ouSemigroup_entropy_sq_decay_bound_proved`.
+The single remaining axiom in
+[`MarkovSemigroups/General/OUEntropyDecomposition.lean`](../MarkovSemigroups/General/OUEntropyDecomposition.lean),
+together with the proved `ouSemigroup_fisher_info_decay` and
+`hasDerivWithinAt_entropy_ouSemigroup_zero`, discharges the former
+`ouSemigroup_entropy_sq_decay_bound` axiom (BGL Theorem 5.5.2) — see
+`Instances/WorkInProgress/EuclideanEntropyDecay.lean` for the proof
+`ouSemigroup_entropy_sq_decay_bound_proved`.
 
 | Axiom | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|
 | `hasDerivAt_entropy_ouSemigroup` | BGL §5.5 (de Bruijn identity for `t > 0`) | Standard | GR (gemini-3.1-pro-preview 2026-05-12) | Bilinear Dirichlet form identity (1D IBP from Gaussian-density ODE) + parametric differentiation. Expected ~300-500 lines. | `Gaussian1D.bakryEmerySpace` (via `EuclideanEntropyDecay.lean`) |
-| `hasDerivWithinAt_entropy_ouSemigroup_zero` | BGL §5.5 (de Bruijn at `t = 0+`) | Standard | GR (gemini-3.1-pro-preview 2026-05-12) | FTC + DCT: `lim_{t↘0} I(P_t g) = I(g)`. Provable from the t > 0 version + continuity. Expected ~80-150 lines. | `Gaussian1D.bakryEmerySpace` (via `EuclideanEntropyDecay.lean`) |
 
-**Proved (2026-05-12):** `ouSemigroup_fisher_info_decay` (A1, BGL
-Proposition 5.5.2) — Cauchy-Schwarz on the Mehler probability kernel
-applied with `A := g'/√g, B := √g` (so `A·B = g'`, `A² = (g')²/g`,
-`B² = g`) gives the pointwise bound `(P_t g'(x))² ≤ P_t((g')²/g)(x) ·
-P_t g(x)`. Combined with the Mehler derivative formula
-`(P_t g)' = e^{-t} P_t g'` and divided by `P_t g ≥ ε > 0`, then
-integrated against γ + γ-invariance via `ou_kernel_map`. ~400 lines
-including a Cauchy-Schwarz helper for `γ` (polynomial-discriminant
-proof, ~58 lines).
+**Proved (2026-05-12):**
+* `ouSemigroup_fisher_info_decay` (A1, BGL Proposition 5.5.2) —
+  Cauchy-Schwarz on the Mehler probability kernel applied with
+  `A := g'/√g, B := √g` gives `(P_t g'(x))² ≤ P_t((g')²/g)(x) · P_t g(x)`.
+  Combined with the Mehler derivative formula `(P_t g)' = e^{-t} P_t g'`
+  and divided by `P_t g ≥ ε > 0`, then integrated against γ +
+  γ-invariance via `ou_kernel_map`. ~400 lines including a
+  polynomial-discriminant Cauchy-Schwarz helper for `γ`.
+* `hasDerivWithinAt_entropy_ouSemigroup_zero` (A2 at `t = 0+`) —
+  derived from A2 (`t > 0` interior version) + DCT-based continuity
+  of the entropy and Fisher info at `s = 0+` + Mathlib's
+  `hasDerivWithinAt_Ici_of_tendsto_deriv`. ~330 lines.
 
 ### Gaussian1D BGL Ch. 2 (0 axioms — instance is axiom-free)
 
