@@ -47,13 +47,26 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-8 axioms total. Of these:
+11 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **1 Stroock-Varopoulos** axiom — intermediate-step lemma for Gross,
   added 2026-05-13 as a vetted atomic textbook bridge
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
+- **3 GaussianFin** axioms (merged to main 2026-05-13, commit `8ed9e52`)
+  — multivariate Gaussian BE-instance primitives, all gemini-3.1-pro-preview
+  vetted **Standard**, all tensor-lift analogues of historical 1D primitives
+  that were already discharged in `Gaussian1D`:
+  - `ouSemigroupFin_l2_sq_hasDerivWithinAt` (de Bruijn-style L²-derivative
+    identity, BGL Prop 4.7.1)
+  - `ouSemigroupFin_preserves_IsCore` (Mehler smoothing preservation,
+    BGL §2.7.1 + §3)
+  - `ouSemigroupFin_entropy_sq_decay_bound` (entropy decay for `f²`,
+    BGL Thm 5.5.2)
+  Sub-stage N1 of the OU hypercontractivity discharge is complete;
+  Stages N2 + N3 (gaussian-hilbert wire-in to discharge
+  `ouSemigroupAct_eLpNorm_hypercontractive`) in progress.
 
 **The entire Gaussian1D / OU chain is now axiom-free.** All BGL Ch. 2
 and §5.5 facts have been discharged. The general-purpose
@@ -207,6 +220,38 @@ See "Reduced to theorems" below.
   theorem directly. Net: 1 broad Gaussian1D axiom replaced by 3
   focused atomic axioms in `General/` (reusable for any future
   BakryEmerySpace instance); Gaussian1D itself is axiom-free.
+
+### GaussianFin BGL Ch. 2 (multivariate Gaussian BE-instance work-in-progress)
+
+The multivariate analogue of `Gaussian1D` on `(Fin n → ℝ, γ_n)` lives
+in `Instances/WorkInProgress/EuclideanFin.lean` (merged to main
+2026-05-13, commit `8ed9e52`). The complete BE-instance
+`stdGaussianFin.bakryEmerySpace n : BakryEmerySpace (Fin n → ℝ)`
+(EuclideanFin.lean:2814) has all 22 BE fields filled.
+`#print axioms stdGaussianFin.bakryEmerySpace` shows the closure is
+exactly `[propext, Classical.choice, Quot.sound,
+ouSemigroupFin_l2_sq_hasDerivWithinAt, ouSemigroupFin_preserves_IsCore,
+ouSemigroupFin_entropy_sq_decay_bound]` — no spurious dependencies.
+
+The supporting proved theorems (`ouSemigroupFin_zero/mean/contraction/
+selfAdjoint/compose`, `ouSemigroupFin_gradient_decay`,
+`ouSemigroupFin_ergodic`, `ouSemigroupFin_entropy_sq_ergodic`,
+`ouSemigroupFin_l2_decay_bound`, `fderiv_ouSemigroupFin_eq`,
+`contDiffOne_ouSemigroupFin`, kernel-pushforward infrastructure
+`mixCLM/rotCLM/ou_kernel_map_fin/charFunDual_γFin`, the sectionwise
+Stein identity, and the N1.4 derivative-bridge / N1.5 infrastructure)
+land in the same file (~2850 lines, 0 sorries, 3 axioms total).
+
+The `IsCoreFin` definition was harmonized to `ContDiff ℝ ∞` (matching
+`Gaussian1D.IsCore`) in commit `6bf390b` to enable the smoothing-axiom
+vetting. The harmonization was build-stable; no upstream callers
+required adaptation beyond the rename.
+
+| Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
+|---|---|---|---|---|---|---|
+| `ouSemigroupFin_l2_sq_hasDerivWithinAt` | [`Instances/WorkInProgress/EuclideanFin.lean:2643`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanFin.lean#L2643) | Bakry-Gentil-Ledoux *Analysis and Geometry of Markov Diffusion Operators* (Springer 2014), Proposition 4.7.1 | Standard | DT, GR (gemini-2.5-pro deep-think 2026-05-13 + gemini-3.1-pro-preview re-vet 2026-05-13; both passes confirmed type-correctness, hypothesis sufficiency, non-vacuity, correct strength, and discharge plan feasibility; 3.1-pro added the nuance that `IsCoreFin` closure under the semigroup is not needed for the statement because Lean integrals are total and `ouSemigroupFin_preserves_core_bounds` already gives the required integrability) | Multivariate de Bruijn-style derivative identity `d/ds \|_{s=t} ∫ (P_s f)² dγ_n = -2 · ∫ Γ_n(P_t f, P_t f) dγ_n`. Discharge plan: Fubini lift through `ouSemigroupFin_insertNth_eq` and `integral_γFin_succAbove`; differentiate per-coordinate via the proved 1D fact `Gaussian1D.bakryEmerySpace.semigroup_l2_sq_hasDerivWithinAt`; recombine by linearity of derivative. The strategy is the tensor lift through Fubini of the already-discharged 1D theorem (1D was historically axiomatized in `Euclidean.lean:684` and proved in commit `00cd52b` via the A2 de Bruijn decomposition + boundary `t = 0` discharge). | Consumed by `ouSemigroupFin_l2_decay_bound` (derived theorem in `EuclideanFin.lean`) and the multivariate `BakryEmerySpace (Fin n → ℝ)` wrap (N1.6). Downstream consumer in gaussian-hilbert: `ouSemigroupAct_eLpNorm_hypercontractive` discharge via Gross-LSI-implies-HC route. |
+| `ouSemigroupFin_preserves_IsCore` | [`Instances/WorkInProgress/EuclideanFin.lean:2771`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanFin.lean#L2771) | Bakry-Gentil-Ledoux §2.7.1 + §3 (heat-kernel smoothing); 1D analogue historically axiomatized at `Euclidean.lean:488` and proved in commit `890e022` (Path C Hermite IBP) | Standard | GR (gemini-3.1-pro-preview 2026-05-13: initial verdict **Flagged** on `ContDiff ⊤` (real-analytic) vs `ContDiff ∞` (C^∞) mismatch; codex harmonized `IsCoreFin` to `ContDiff ℝ ∞` in commit `6bf390b`, after which verdict upgrades to **Standard**. Mathematical note: codex's "missing mixed-derivative control" intuition was incorrect — pure-partial bounds suffice because the multivariate Mehler semigroup is a tensor product (`∂_i² P_t f = e^{-2t} · P_t (∂_i² f)`); mixed partials are needed for `Γ_2` later, not for `IsCoreFin` preservation.) | The OU semigroup preserves the multivariate test-function core `IsCoreFin`. Discharge route per 3.1-pro: change of variables on the Mehler integral, `(P_t f)(x) = ∫ f(z) · ρ_t(x, z) dz` with `ρ_t(x, z)` the shifted Gaussian density (C^∞ in `x`); apply `ContDiff.integral` to push derivatives onto the kernel rather than `f`. Deliberately avoids the multi-index Hermite-IBP route (which is notoriously hard in Lean4 due to `iteratedFDeriv`'s symmetric-multilinear formulation). | The `IsCore_semigroup` field of the BE-instance wrap `stdGaussianFin.bakryEmerySpace` (`EuclideanFin.lean:2824`). Downstream: same as for the other two GaussianFin axioms — eventual gaussian-hilbert `ouSemigroupAct_eLpNorm_hypercontractive` discharge. |
+| `ouSemigroupFin_entropy_sq_decay_bound` | [`Instances/WorkInProgress/EuclideanFin.lean:2799`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanFin.lean#L2799) | Bakry-Gentil-Ledoux Theorem 5.5.2 / BGL §5.5 (1D analogue was historically axiomatized at `Euclidean.lean:943` and proved in commit `1b3f797` via A1+A2 decomposition) | Standard | GR (gemini-3.1-pro-preview 2026-05-13: statement `Ent_{γ_n}(f²) − Ent_{γ_n}(P_t(f²)) ≤ 2(1 − e^{−2t}) · ouEnergyFin f f` confirmed with correct sign and factor; the factor `2(1 − e^{−2t})` arises from integrating the Fisher-info decay `d/ds Ent(P_s f²) ≥ −4 e^{−2s} E(f, f)` from 0 to t; `IsCoreFin` sufficient because `f²` is bounded so `f² log f²` is γ_n-integrable; ε-regularization handles `f² = 0`) | Multivariate entropy decay for `f²` under the OU semigroup. **Corrected discharge plan** (3.1-pro flagged): the naive `Ent_{γ_n}(g) = E_{γ_¬i}[Ent_{γ_i}(g(·, x_¬i))]` chain rule is *not* an equality — the macroscopic term `Ent_{¬i}(E_i[g])` doesn't vanish. The correct route is a **telescoping argument**: peel one Mehler factor `P_t^{(k)}` at a time and use γ_k-invariance `E_k[P_t^{(k)} h] = E_k[h]` to make the macroscopic terms cancel across the *difference* `Ent(h) − Ent(P_t^{(k)} h)`, then telescope over k and sum the 1D bounds. Per-step uses the proved 1D `Gaussian1D.bakryEmerySpace.semigroup_entropy_sq_decay_bound`. | The `semigroup_entropy_sq_decay_bound` field of the BE-instance wrap. Downstream: same as for the other two GaussianFin axioms — eventual gaussian-hilbert `ouSemigroupAct_eLpNorm_hypercontractive` discharge. |
 
 ### Dobrushin-Zegarlinski
 
