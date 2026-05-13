@@ -12,6 +12,8 @@ import MarkovSemigroups.Instances.WorkInProgress.Euclidean
 import Mathlib.Analysis.Calculus.ContDiff.FiniteDimension
 import Mathlib.Analysis.Calculus.Deriv.Pi
 import Mathlib.Analysis.Calculus.FDeriv.Mul
+import Mathlib.Analysis.Calculus.LineDeriv.Basic
+import Mathlib.Analysis.Calculus.Rademacher
 import Mathlib.Analysis.Normed.Operator.Prod
 import Mathlib.MeasureTheory.Constructions.Pi
 import Mathlib.MeasureTheory.Integral.Pi
@@ -150,6 +152,300 @@ theorem section_secondDeriv {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
   rw [section_deriv hf.contDiff i x]
   exact (partialDeriv_update_hasDerivAt hf i x s).deriv
 
+theorem sum_smul_single (v : Fin n → ℝ) :
+    (∑ i : Fin n, v i • (Pi.single i (1 : ℝ) : Fin n → ℝ)) = v := by
+  ext j
+  simp [Pi.single_apply]
+
+theorem fderiv_apply_eq_sum_partial {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ⊤ f)
+    (x v : Fin n → ℝ) :
+    fderiv ℝ f x v = ∑ i : Fin n, v i * partialDeriv i f x := by
+  have hdiff : DifferentiableAt ℝ f x := (hf.differentiable (by simp)).differentiableAt
+  calc
+    fderiv ℝ f x v = (fderiv ℝ f x) (∑ i : Fin n, v i • (Pi.single i (1 : ℝ) : Fin n → ℝ)) := by
+      rw [sum_smul_single]
+    _ = ∑ i : Fin n, (fderiv ℝ f x) (v i • (Pi.single i (1 : ℝ) : Fin n → ℝ)) := by
+      rw [map_sum]
+    _ = ∑ i : Fin n, v i * partialDeriv i f x := by
+      refine Finset.sum_congr rfl ?_
+      intro i hi
+      rw [ContinuousLinearMap.map_smul]
+      simp [partialDeriv, smul_eq_mul]
+
+theorem IsCoreFin.exists_lipschitzWith {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
+    ∃ C : NNReal, LipschitzWith C f := by
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+  refine ⟨⟨n * M, by positivity⟩, ?_⟩
+  refine lipschitzWith_of_nnnorm_fderiv_le (hf_smooth.differentiable (by simp)) ?_
+  intro x
+  have hbound : ‖fderiv ℝ f x‖ ≤ n * M := by
+    refine ContinuousLinearMap.opNorm_le_bound _ (by positivity) ?_
+    intro v
+    have hcoord : ∀ i : Fin n, ‖v i‖ ≤ ‖v‖ := by
+      intro i
+      exact norm_le_pi_norm v i
+    have hvsum : ∑ i : Fin n, ‖v i‖ ≤ n * ‖v‖ := by
+      calc
+        ∑ i : Fin n, ‖v i‖ ≤ ∑ i : Fin n, ‖v‖ := by
+          refine Finset.sum_le_sum ?_
+          intro i hi
+          exact hcoord i
+        _ = n * ‖v‖ := by simp [nsmul_eq_mul]
+    calc
+      ‖fderiv ℝ f x v‖ = ‖∑ i : Fin n, v i * partialDeriv i f x‖ := by
+        rw [fderiv_apply_eq_sum_partial hf_smooth]
+      _ ≤ ∑ i : Fin n, ‖v i * partialDeriv i f x‖ := by
+            simpa using (norm_sum_le Finset.univ (fun i : Fin n => v i * partialDeriv i f x))
+      _ = ∑ i : Fin n, ‖v i‖ * ‖partialDeriv i f x‖ := by
+            congr with i
+            rw [norm_mul]
+      _ ≤ ∑ i : Fin n, ‖v i‖ * M := by
+            refine Finset.sum_le_sum ?_
+            intro i hi
+            gcongr
+            exact (hM x).2.1 i
+      _ = (∑ i : Fin n, ‖v i‖) * M := by rw [Finset.sum_mul]
+      _ ≤ (n * ‖v‖) * M := by
+            exact mul_le_mul_of_nonneg_right hvsum hM_nn
+      _ = (n * M) * ‖v‖ := by ring
+  exact_mod_cast hbound
+
+theorem hasLineDerivAt_ouSemigroupFin
+    (t : ℝ) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (x v : Fin n → ℝ) :
+    HasLineDerivAt ℝ (ouSemigroupFin t f)
+      (exp (-t) * ∫ y, ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t x y) ∂γFin n) x v := by
+  set a := exp (-t)
+  set b := sqrt (1 - exp (-2 * t))
+  set F : ℝ → (Fin n → ℝ) → ℝ := fun s y => f (ouShiftFin t (x + s • v) y)
+  set F' : ℝ → (Fin n → ℝ) → ℝ := fun s y =>
+    a * ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t (x + s • v) y)
+  have hs : Set.Ioo (-1 : ℝ) 1 ∈ nhds (0 : ℝ) :=
+    Ioo_mem_nhds (by linarith) zero_lt_one
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  have hF_meas : ∀ s, AEStronglyMeasurable (F s) (γFin n) := by
+    intro s
+    have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t (x + s • v) y) := by
+      continuity
+    exact ((hf_smooth.continuous.comp hcont_shift).measurable.aestronglyMeasurable)
+  have hF_int : Integrable (F 0) (γFin n) := by
+    refine Integrable.mono' (integrable_const M) (hF_meas 0) ?_
+    refine Filter.Eventually.of_forall ?_
+    intro y
+    simpa [F, a, b] using (hM (ouShiftFin t x y)).1
+  have hF'_meas : AEStronglyMeasurable (F' 0) (γFin n) := by
+    have hmeas_term : ∀ i : Fin n,
+        Measurable (fun y : Fin n → ℝ => v i * partialDeriv i f (ouShiftFin t x y)) := by
+      intro i
+      have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      exact measurable_const.mul (((hf_core.partial_continuous i).comp hcont_shift).measurable)
+    have hmeas_sum : Measurable (fun y : Fin n → ℝ =>
+        ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t x y)) :=
+      Finset.measurable_sum Finset.univ (fun i _ => hmeas_term i)
+    simpa [F', a] using (measurable_const.mul hmeas_sum).aestronglyMeasurable
+  have h_bound_int : Integrable (fun _ : Fin n → ℝ => |a| * (n * M * ‖v‖)) (γFin n) :=
+    integrable_const _
+  have h_bound :
+      ∀ᵐ y ∂γFin n, ∀ s ∈ Set.Ioo (-1 : ℝ) 1,
+        ‖F' s y‖ ≤ |a| * (n * M * ‖v‖) := by
+    refine Filter.Eventually.of_forall ?_
+    intro y s hs_mem
+    have hvsum : ∑ i : Fin n, ‖v i‖ ≤ n * ‖v‖ := by
+      calc
+        ∑ i : Fin n, ‖v i‖ ≤ ∑ i : Fin n, ‖v‖ := by
+          refine Finset.sum_le_sum ?_
+          intro i hi
+          exact norm_le_pi_norm v i
+        _ = n * ‖v‖ := by simp [nsmul_eq_mul]
+    have hsum :
+        ‖∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t (x + s • v) y)‖ ≤ n * M * ‖v‖ := by
+      calc
+        ‖∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t (x + s • v) y)‖
+            ≤ ∑ i : Fin n, ‖v i * partialDeriv i f (ouShiftFin t (x + s • v) y)‖ := by
+                simpa using
+                  (norm_sum_le Finset.univ
+                    (fun i : Fin n => v i * partialDeriv i f (ouShiftFin t (x + s • v) y)))
+        _ = ∑ i : Fin n, ‖v i‖ * ‖partialDeriv i f (ouShiftFin t (x + s • v) y)‖ := by
+              congr with i
+              rw [norm_mul]
+        _ ≤ ∑ i : Fin n, ‖v i‖ * M := by
+              refine Finset.sum_le_sum ?_
+              intro i hi
+              gcongr
+              exact (hM (ouShiftFin t (x + s • v) y)).2.1 i
+        _ = (∑ i : Fin n, ‖v i‖) * M := by rw [Finset.sum_mul]
+        _ ≤ (n * ‖v‖) * M := by
+              exact mul_le_mul_of_nonneg_right hvsum ((norm_nonneg _).trans (hM 0).1)
+        _ = n * M * ‖v‖ := by ring
+    show ‖a * ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t (x + s • v) y)‖ ≤
+        |a| * (n * M * ‖v‖)
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul_of_nonneg_left hsum (abs_nonneg a)
+  have h_diff :
+      ∀ᵐ y ∂γFin n, ∀ s ∈ Set.Ioo (-1 : ℝ) 1, HasDerivAt (F · y) (F' s y) s := by
+    refine Filter.Eventually.of_forall ?_
+    intro y s hs_mem
+    have h_inner :
+        HasDerivAt (fun u : ℝ => ouShiftFin t (x + u • v) y) (a • v) s := by
+      set z : Fin n → ℝ := ouShiftFin t x y
+      have h_eq :
+          (fun u : ℝ => ouShiftFin t (x + u • v) y) = fun u => z + u • (a • v) := by
+        funext u
+        ext j
+        simp [ouShiftFin, z, a, Pi.smul_apply, smul_eq_mul]
+        ring
+      have hraw : HasDerivAt (fun u : ℝ => z + u • (a • v)) (a • v) s := by
+        simpa using (((hasDerivAt_id s).smul_const (a • v)).const_add z)
+      simpa [h_eq] using hraw
+    have h_f :
+        HasFDerivAt f (fderiv ℝ f (ouShiftFin t (x + s • v) y))
+          (ouShiftFin t (x + s • v) y) :=
+      ((hf_smooth.differentiable (by simp)).differentiableAt).hasFDerivAt
+    have h_comp := h_f.comp_hasDerivAt s h_inner
+    have htarget :
+        (fderiv ℝ f (ouShiftFin t (x + s • v) y)) (a • v) =
+          a * ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t (x + s • v) y) := by
+      rw [fderiv_apply_eq_sum_partial hf_smooth (ouShiftFin t (x + s • v) y) (a • v)]
+      simp [a, Finset.mul_sum, smul_eq_mul]
+      ring
+    simpa [F, F', htarget] using h_comp
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le hs
+      (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bound h_bound_int h_diff
+  have h_lhs : (fun s => ∫ y, F s y ∂γFin n) = fun s => ouSemigroupFin t f (x + s • v) := rfl
+  have h_rhs :
+      ∫ y, F' 0 y ∂γFin n =
+        exp (-t) * ∫ y, ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t x y) ∂γFin n := by
+    have hF0 :
+        (fun y => F' 0 y) =
+          (fun y => a * ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t x y)) := by
+      funext y
+      simp [F', a]
+    rw [hF0, integral_const_mul]
+  simpa [HasLineDerivAt, h_lhs, h_rhs]
+    using h_deriv
+
+theorem ouSemigroupFin_exists_lipschitzWith
+    (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
+    ∃ C : NNReal, LipschitzWith C (ouSemigroupFin t f) := by
+  obtain ⟨C, hC⟩ := hf.exists_lipschitzWith
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hf_cont : Continuous f := hf_core.continuous
+  refine ⟨C, LipschitzWith.of_dist_le_mul ?_⟩
+  intro x x'
+  have hsec_int : ∀ x₀ : Fin n → ℝ, Integrable (fun y => f (ouShiftFin t x₀ y)) (γFin n) := by
+    intro x₀
+    refine Integrable.mono' (integrable_const M) ?_ ?_
+    · have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x₀ y) := by
+        continuity
+      exact ((hf_cont.comp hcont_shift).measurable.aestronglyMeasurable)
+    · exact Filter.Eventually.of_forall (fun y => (hM (ouShiftFin t x₀ y)).1)
+  have hdiff_int :
+      Integrable (fun y => f (ouShiftFin t x y) - f (ouShiftFin t x' y)) (γFin n) := by
+    refine Integrable.mono' (integrable_const (2 * M)) ?_ ?_
+    · have hcontx : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by continuity
+      have hcontx' : Continuous (fun y : Fin n → ℝ => ouShiftFin t x' y) := by continuity
+      exact (((hf_cont.comp hcontx).sub (hf_cont.comp hcontx')).measurable.aestronglyMeasurable)
+    · refine Filter.Eventually.of_forall ?_
+      intro y
+      calc
+        ‖f (ouShiftFin t x y) - f (ouShiftFin t x' y)‖
+            ≤ ‖f (ouShiftFin t x y)‖ + ‖f (ouShiftFin t x' y)‖ := norm_sub_le _ _
+        _ ≤ M + M := add_le_add (hM (ouShiftFin t x y)).1 (hM (ouShiftFin t x' y)).1
+        _ = 2 * M := by ring
+  have hpoint :
+      ∀ y : Fin n → ℝ,
+        ‖f (ouShiftFin t x y) - f (ouShiftFin t x' y)‖ ≤ (C : ℝ) * ‖x - x'‖ := by
+    intro y
+    set a := exp (-t)
+    have ha_le_one : |a| ≤ 1 := by
+      rw [abs_of_nonneg (exp_pos (-t)).le]
+      exact Real.exp_le_one_iff.mpr (by linarith)
+    have hshift : ouShiftFin t x y - ouShiftFin t x' y = a • (x - x') := by
+      ext i
+      simp [ouShiftFin, a, Pi.smul_apply, smul_eq_mul]
+      ring
+    have hmul : |a| * ‖x - x'‖ ≤ ‖x - x'‖ := by
+      have hxnn : 0 ≤ ‖x - x'‖ := norm_nonneg _
+      nlinarith
+    calc
+      ‖f (ouShiftFin t x y) - f (ouShiftFin t x' y)‖
+          ≤ (C : ℝ) * ‖ouShiftFin t x y - ouShiftFin t x' y‖ := hC.norm_sub_le _ _
+      _ = (C : ℝ) * ‖a • (x - x')‖ := by rw [hshift]
+      _ = (C : ℝ) * (|a| * ‖x - x'‖) := by rw [norm_smul, Real.norm_eq_abs]
+      _ ≤ (C : ℝ) * ‖x - x'‖ := by
+            gcongr
+  have hsub :
+      ouSemigroupFin t f x - ouSemigroupFin t f x' =
+        ∫ y, f (ouShiftFin t x y) - f (ouShiftFin t x' y) ∂γFin n := by
+    unfold ouSemigroupFin
+    rw [integral_sub (hsec_int x) (hsec_int x')]
+  calc
+    dist (ouSemigroupFin t f x) (ouSemigroupFin t f x')
+        = ‖∫ y, f (ouShiftFin t x y) - f (ouShiftFin t x' y) ∂γFin n‖ := by
+            rw [dist_eq_norm, hsub]
+    _ ≤ ∫ y, ‖f (ouShiftFin t x y) - f (ouShiftFin t x' y)‖ ∂γFin n := norm_integral_le_integral_norm _
+    _ ≤ ∫ _y, (C : ℝ) * ‖x - x'‖ ∂γFin n := by
+          apply integral_mono_of_nonneg
+          · exact Filter.Eventually.of_forall (fun _ => norm_nonneg _)
+          · exact integrable_const _
+          · exact Filter.Eventually.of_forall hpoint
+    _ = (C : ℝ) * dist x x' := by
+          rw [integral_const, dist_eq_norm]
+          simp
+
+theorem hasFDerivAt_ouSemigroupFin
+    (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (x : Fin n → ℝ) :
+    HasFDerivAt (ouSemigroupFin t f)
+      (∑ i : Fin n,
+        (exp (-t) * ouSemigroupFin t (partialDeriv i f) x) •
+          (ContinuousLinearMap.proj i : (Fin n → ℝ) →L[ℝ] ℝ)) x := by
+  obtain ⟨C, hC⟩ := ouSemigroupFin_exists_lipschitzWith (n := n) t ht hf
+  have hf_core : IsCoreFin f := hf
+  let L : (Fin n → ℝ) →L[ℝ] ℝ :=
+    ∑ i : Fin n, (exp (-t) * ouSemigroupFin t (partialDeriv i f) x) •
+      (ContinuousLinearMap.proj i : (Fin n → ℝ) →L[ℝ] ℝ)
+  refine hC.hasFDerivAt_of_hasLineDerivAt_of_closure (s := Set.univ) ?_ ?_
+  · simpa using (subset_univ (sphere (0 : Fin n → ℝ) 1))
+  · intro v hv
+    have hint_term : ∀ i : Fin n,
+        Integrable (fun y : Fin n → ℝ => v i * partialDeriv i f (ouShiftFin t x y)) (γFin n) := by
+      intro i
+      obtain ⟨_, M, hM⟩ := hf
+      have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      refine Integrable.mono' (integrable_const (‖v i‖ * M))
+        ((measurable_const.mul ((hf_core.partial_continuous i).comp hcont_shift).measurable).aestronglyMeasurable) ?_
+      refine Filter.Eventually.of_forall ?_
+      intro y
+      rw [norm_mul]
+      gcongr
+      exact (hM (ouShiftFin t x y)).2.1 i
+    have hline := hasLineDerivAt_ouSemigroupFin (n := n) t hf x v
+    convert hline using 1
+    calc
+      L v = ∑ i : Fin n, (exp (-t) * ouSemigroupFin t (partialDeriv i f) x) * v i := by
+        simp [L, mul_comm]
+      _ = exp (-t) * ∑ i : Fin n, v i * ouSemigroupFin t (partialDeriv i f) x := by
+          rw [Finset.mul_sum]
+          refine Finset.sum_congr rfl ?_
+          intro i hi
+          ring
+      _ = exp (-t) *
+            ∑ i : Fin n, v i * ∫ y, partialDeriv i f (ouShiftFin t x y) ∂γFin n := by
+              simp [ouSemigroupFin]
+      _ = exp (-t) *
+            ∑ i : Fin n, ∫ y, v i * partialDeriv i f (ouShiftFin t x y) ∂γFin n := by
+              congr 2 with i
+              rw [← integral_const_mul]
+      _ = exp (-t) *
+            ∫ y, ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t x y) ∂γFin n := by
+              rw [integral_finset_sum Finset.univ (fun i _ => hint_term i)]
+
 theorem hasDerivAt_coordSection_ouSemigroupFin_C1
     (t : ℝ) {f : (Fin n → ℝ) → ℝ} (hf_C1 : ContDiff ℝ 1 f)
     (i : Fin n) {M : ℝ} (hM0 : ∀ x, ‖f x‖ ≤ M) (hM1 : ∀ x, ‖partialDeriv i f x‖ ≤ M)
@@ -256,6 +552,25 @@ theorem hasDerivAt_coordSection_ouSemigroupFin_C1
     rw [integral_const_mul]
     rfl
   simpa [h_lhs, h_rhs, a] using h_deriv
+
+theorem partialDeriv_ouSemigroupFin_eq
+    (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
+    (i : Fin n) :
+    partialDeriv i (ouSemigroupFin t f) =
+      fun x => exp (-t) * ouSemigroupFin t (partialDeriv i f) x := by
+  funext x
+  rw [partialDeriv, (hasFDerivAt_ouSemigroupFin (n := n) t ht hf x).fderiv]
+  have hsum :
+      (∑ j : Fin n,
+        ((exp (-t) * ouSemigroupFin t (partialDeriv j f) x) •
+          (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)) (Pi.single i (1 : ℝ))) =
+      exp (-t) * ouSemigroupFin t (partialDeriv i f) x := by
+    rw [Finset.sum_eq_single i]
+    · simp [ContinuousLinearMap.proj_apply]
+    · intro j _ hji
+      simp [ContinuousLinearMap.proj_apply, Pi.single_apply, hji]
+    · simp [ContinuousLinearMap.proj_apply]
+  simpa using hsum
 
 theorem section_deriv_ouSemigroupFin_eq {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
     (t : ℝ) (i : Fin n) (x : Fin n → ℝ) :
@@ -1367,5 +1682,250 @@ theorem ouSemigroupFin_zero (f : (Fin n → ℝ) → ℝ) :
     simp [ouShiftFin]
   rw [ouSemigroupFin, hconst, integral_const]
   simp
+
+theorem stronglyMeasurable_ouSemigroupFin (t : ℝ) {g : (Fin n → ℝ) → ℝ}
+    (hg_meas : Measurable g) :
+    StronglyMeasurable (ouSemigroupFin t g) := by
+  set a := exp (-t)
+  set b := sqrt (1 - exp (-2 * t))
+  have hmix_sm : StronglyMeasurable
+      (fun p : (Fin n → ℝ) × (Fin n → ℝ) => g (mixCLM (n := n) a b p)) :=
+    (hg_meas.comp (mixCLM (n := n) a b).continuous.measurable).stronglyMeasurable
+  have hEq :
+      (fun x => ouSemigroupFin t g x) =
+        fun x => ∫ y, g (mixCLM (n := n) a b (x, y)) ∂γFin n := by
+    funext x
+    have hxy :
+        (fun y : Fin n → ℝ => g (ouShiftFin t x y)) =
+          fun y : Fin n → ℝ => g (mixCLM (n := n) a b (x, y)) := by
+      funext y
+      have harg : ouShiftFin t x y = mixCLM (n := n) a b (x, y) := by
+        ext i
+        simp [ouShiftFin, mixCLM_apply, a, b]
+      exact congrArg g harg
+    simp [ouSemigroupFin, hxy]
+  simpa [hEq] using hmix_sm.integral_prod_right' (ν := γFin n)
+
+theorem integrable_of_bound {g : (Fin n → ℝ) → ℝ} {M : ℝ}
+    (hg_meas : Measurable g) (hM : ∀ x, ‖g x‖ ≤ M) :
+    Integrable g (γFin n) := by
+  refine Integrable.mono' (integrable_const M) hg_meas.aemeasurable.aestronglyMeasurable ?_
+  exact Filter.Eventually.of_forall hM
+
+theorem norm_ouSemigroupFin_le_of_bound (t : ℝ) {g : (Fin n → ℝ) → ℝ}
+    (hg_meas : Measurable g) {M : ℝ} (hM : ∀ x, ‖g x‖ ≤ M) (x : Fin n → ℝ) :
+    ‖ouSemigroupFin t g x‖ ≤ M := by
+  have hsec_int : Integrable (fun y : Fin n → ℝ => g (ouShiftFin t x y)) (γFin n) := by
+    have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+      continuity
+    refine integrable_of_bound (M := M)
+      ((hg_meas.comp hcont_shift.measurable)) ?_
+    intro y
+    exact hM (ouShiftFin t x y)
+  calc
+    ‖ouSemigroupFin t g x‖ = ‖∫ y, g (ouShiftFin t x y) ∂γFin n‖ := rfl
+    _ ≤ ∫ y, ‖g (ouShiftFin t x y)‖ ∂γFin n := norm_integral_le_integral_norm _
+    _ ≤ ∫ _y : Fin n → ℝ, M ∂γFin n := by
+          apply integral_mono_of_nonneg
+          · exact Filter.Eventually.of_forall (fun _ => norm_nonneg _)
+          · exact integrable_const M
+          · exact Filter.Eventually.of_forall (fun y => hM (ouShiftFin t x y))
+    _ = M := by simp
+
+  theorem sq_ouSemigroupFin_le_ouSemigroupFin_sq (t : ℝ) {g : (Fin n → ℝ) → ℝ}
+    (hg_meas : Measurable g) {M : ℝ} (hM : ∀ x, ‖g x‖ ≤ M) (x : Fin n → ℝ) :
+    (ouSemigroupFin t g x) ^ 2 ≤ ouSemigroupFin t (fun y => g y ^ 2) x := by
+  have h_shift_meas : Measurable (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+    have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+      continuity
+    exact hcont_shift.measurable
+  have h_inner_int :
+      Integrable (fun y : Fin n → ℝ => g (ouShiftFin t x y)) (γFin n) := by
+    refine integrable_of_bound (M := M) (hg_meas.comp h_shift_meas) ?_
+    intro y
+    exact hM (ouShiftFin t x y)
+  have h_inner_sq_int :
+      Integrable (fun y : Fin n → ℝ => g (ouShiftFin t x y) ^ 2) (γFin n) := by
+    refine integrable_of_bound (M := M ^ 2) ((hg_meas.comp h_shift_meas).pow_const 2) ?_
+    intro y
+    rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+    have h1 : |g (ouShiftFin t x y)| ≤ M := by
+      rw [← Real.norm_eq_abs]
+      exact hM (ouShiftFin t x y)
+    have h2 : (g (ouShiftFin t x y)) ^ 2 ≤ M ^ 2 := by
+      have : |g (ouShiftFin t x y)| ^ 2 ≤ M ^ 2 :=
+        pow_le_pow_left₀ (abs_nonneg _) h1 2
+      rwa [sq_abs] at this
+    exact h2
+  have h_conv : ConvexOn ℝ Set.univ (fun s : ℝ => s ^ 2) :=
+    Even.convexOn_pow (Nat.even_iff.mpr rfl)
+  have h_cont : ContinuousOn (fun s : ℝ => s ^ 2) Set.univ := (continuous_pow 2).continuousOn
+  have h_closed : IsClosed (Set.univ : Set ℝ) := isClosed_univ
+  have h_aem :
+      ∀ᵐ y ∂γFin n, g (ouShiftFin t x y) ∈ (Set.univ : Set ℝ) :=
+    Filter.Eventually.of_forall (fun _ => Set.mem_univ _)
+  simpa [ouSemigroupFin] using
+    ConvexOn.map_integral_le h_conv h_cont h_closed h_aem h_inner_int h_inner_sq_int
+
+theorem ouSemigroupFin_integral_eq_of_bound (t : ℝ) (ht : 0 ≤ t)
+    {g : (Fin n → ℝ) → ℝ} (hg_meas : Measurable g) {M : ℝ} (hM : ∀ x, ‖g x‖ ≤ M) :
+    ∫ x, ouSemigroupFin t g x ∂γFin n = ∫ x, g x ∂γFin n := by
+  set a := exp (-t)
+  set b := sqrt (1 - exp (-2 * t))
+  have hmap : ((γFin n).prod (γFin n)).map (mixCLM (n := n) a b) = γFin n := by
+    simpa [a, b] using ou_kernel_map_fin (n := n) t ht
+  have hg_int : Integrable g (γFin n) := integrable_of_bound hg_meas hM
+  have hg_map_sm : AEStronglyMeasurable g
+      (((γFin n).prod (γFin n)).map (mixCLM (n := n) a b)) := by
+    simpa [hmap] using hg_meas.aemeasurable.aestronglyMeasurable
+  have hg_map_int : Integrable g (((γFin n).prod (γFin n)).map (mixCLM (n := n) a b)) := by
+    simpa [hmap] using hg_int
+  have hcomp :
+      ∫ p, g (mixCLM (n := n) a b p) ∂((γFin n).prod (γFin n)) = ∫ x, g x ∂γFin n := by
+    simpa [hmap] using
+      (integral_map (f := g) (Measurable.aemeasurable (by fun_prop)) hg_map_sm).symm
+  have hmix_int : Integrable (g ∘ mixCLM (n := n) a b) ((γFin n).prod (γFin n)) :=
+    (integrable_map_measure hg_map_sm (Measurable.aemeasurable (by fun_prop))).mp hg_map_int
+  have hprod :
+      ∫ x, ∫ y, g (mixCLM (n := n) a b (x, y)) ∂γFin n ∂γFin n =
+        ∫ p, g (mixCLM (n := n) a b p) ∂((γFin n).prod (γFin n)) := by
+    simpa using (integral_prod (f := g ∘ mixCLM (n := n) a b) hmix_int).symm
+  have hiter :
+      (∫ x, ouSemigroupFin t g x ∂γFin n) =
+        ∫ x, ∫ y, g (mixCLM (n := n) a b (x, y)) ∂γFin n ∂γFin n := by
+    unfold ouSemigroupFin
+    refine integral_congr_ae ?_
+    refine Filter.Eventually.of_forall ?_
+    intro x
+    have hxy :
+        (fun y : Fin n → ℝ => g (ouShiftFin t x y)) =
+          fun y : Fin n → ℝ => g (mixCLM (n := n) a b (x, y)) := by
+      funext y
+      have harg : ouShiftFin t x y = mixCLM (n := n) a b (x, y) := by
+        ext i
+        simp [ouShiftFin, mixCLM_apply, a, b]
+      exact congrArg g harg
+    simp [hxy]
+  rw [hiter, hprod]
+  exact hcomp
+
+theorem ouSemigroupFin_gradient_decay (f : (Fin n → ℝ) → ℝ) (t : ℝ) (ht : 0 ≤ t)
+    (hf : IsCoreFin f) :
+    ∫ x, ouGammaFin (ouSemigroupFin t f) (ouSemigroupFin t f) x ∂γFin n ≤
+      exp (-2 * t) * ∫ x, ouGammaFin f f x ∂γFin n := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hΓ_meas : Measurable (ouGammaFin f f) := by
+    unfold ouGammaFin
+    refine Finset.measurable_sum _ ?_
+    intro i hi
+    exact (hf_core.partial_measurable i).mul (hf_core.partial_measurable i)
+  have hΓ_bound : ∀ x, ‖ouGammaFin f f x‖ ≤ n * M ^ 2 := by
+    intro x
+    rw [Real.norm_eq_abs, abs_of_nonneg (ouGammaFin_nonneg (f := f) x)]
+    unfold ouGammaFin
+    calc
+      ∑ i : Fin n, partialDeriv i f x * partialDeriv i f x
+          ≤ ∑ i : Fin n, M ^ 2 := by
+              refine Finset.sum_le_sum ?_
+              intro i hi
+              have h1 : |partialDeriv i f x| ≤ M := by
+                rw [← Real.norm_eq_abs]
+                exact (hM x).2.1 i
+              have h2 : (partialDeriv i f x) ^ 2 ≤ M ^ 2 := by
+                have : |partialDeriv i f x| ^ 2 ≤ M ^ 2 := pow_le_pow_left₀ (abs_nonneg _) h1 2
+                rwa [sq_abs] at this
+              simpa [pow_two] using h2
+      _ = n * M ^ 2 := by simp [nsmul_eq_mul]
+  have hpt :
+      ∀ x, ouGammaFin (ouSemigroupFin t f) (ouSemigroupFin t f) x ≤
+        exp (-2 * t) * ouSemigroupFin t (ouGammaFin f f) x := by
+    intro x
+    have h_terms :
+        ∀ i : Fin n,
+          partialDeriv i (ouSemigroupFin t f) x * partialDeriv i (ouSemigroupFin t f) x ≤
+            exp (-2 * t) *
+              ouSemigroupFin t (fun y => partialDeriv i f y * partialDeriv i f y) x := by
+      intro i
+      have hj :=
+        sq_ouSemigroupFin_le_ouSemigroupFin_sq (n := n) t
+          (g := partialDeriv i f) (hg_meas := hf_core.partial_measurable i)
+          (hM := fun y => (hM y).2.1 i) x
+      rw [partialDeriv_ouSemigroupFin_eq (n := n) t ht hf_core i]
+      calc
+        (exp (-t) * ouSemigroupFin t (partialDeriv i f) x) *
+            (exp (-t) * ouSemigroupFin t (partialDeriv i f) x)
+          = exp (-2 * t) * (ouSemigroupFin t (partialDeriv i f) x) ^ 2 := by
+              rw [show exp (-2 * t) = exp (-t) * exp (-t) by
+                rw [show (-2 * t : ℝ) = -t + -t by ring, exp_add]]
+              ring
+        _ ≤ exp (-2 * t) * ouSemigroupFin t (fun y => partialDeriv i f y ^ 2) x := by
+              exact mul_le_mul_of_nonneg_left hj (exp_nonneg _)
+        _ = exp (-2 * t) *
+              ouSemigroupFin t (fun y => partialDeriv i f y * partialDeriv i f y) x := by
+              congr 2
+              ext y
+              ring
+    have h_sum_int :
+        ∀ i : Fin n,
+          Integrable
+            (fun y : Fin n → ℝ =>
+              partialDeriv i f (ouShiftFin t x y) * partialDeriv i f (ouShiftFin t x y)) (γFin n) := by
+      intro i
+      have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      refine integrable_of_bound (M := M ^ 2)
+        (((hf_core.partial_measurable i).comp hcont_shift.measurable).mul
+          ((hf_core.partial_measurable i).comp hcont_shift.measurable)) ?_
+      intro y
+      rw [norm_mul]
+      have hi : ‖partialDeriv i f (ouShiftFin t x y)‖ ≤ M := (hM (ouShiftFin t x y)).2.1 i
+      have hsq : ‖partialDeriv i f (ouShiftFin t x y)‖ * ‖partialDeriv i f (ouShiftFin t x y)‖
+          ≤ M * M := mul_le_mul hi hi (norm_nonneg _) hM_nn
+      simpa [sq] using hsq
+    unfold ouGammaFin
+    calc
+      ∑ i : Fin n, partialDeriv i (ouSemigroupFin t f) x * partialDeriv i (ouSemigroupFin t f) x
+        ≤ ∑ i : Fin n,
+            exp (-2 * t) * ouSemigroupFin t (fun y => partialDeriv i f y * partialDeriv i f y) x := by
+              exact Finset.sum_le_sum (fun i _ => h_terms i)
+      _ = exp (-2 * t) *
+            ∑ i : Fin n, ouSemigroupFin t (fun y => partialDeriv i f y * partialDeriv i f y) x := by
+              rw [Finset.mul_sum]
+      _ = exp (-2 * t) * ouSemigroupFin t (ouGammaFin f f) x := by
+            congr 1
+            calc
+              ∑ i : Fin n, ouSemigroupFin t (fun y => partialDeriv i f y * partialDeriv i f y) x
+                  = ∑ i : Fin n,
+                      ∫ y, partialDeriv i f (ouShiftFin t x y) * partialDeriv i f (ouShiftFin t x y)
+                        ∂γFin n := by
+                          simp [ouSemigroupFin]
+              _ = ∫ y,
+                    ∑ i : Fin n,
+                      partialDeriv i f (ouShiftFin t x y) * partialDeriv i f (ouShiftFin t x y)
+                    ∂γFin n := by
+                        rw [integral_finset_sum Finset.univ (fun i _ => h_sum_int i)]
+              _ = ouSemigroupFin t (ouGammaFin f f) x := by
+                    simp [ouSemigroupFin, ouGammaFin]
+  have hupper_int :
+      Integrable (fun x => exp (-2 * t) * ouSemigroupFin t (ouGammaFin f f) x) (γFin n) := by
+    refine integrable_of_bound (M := exp (-2 * t) * (n * M ^ 2))
+      ((stronglyMeasurable_ouSemigroupFin (n := n) t hΓ_meas).measurable.const_mul _) ?_
+    intro x
+    rw [norm_mul, Real.norm_eq_abs, abs_of_nonneg (exp_nonneg _)]
+    exact mul_le_mul_of_nonneg_left
+      (norm_ouSemigroupFin_le_of_bound (n := n) t hΓ_meas hΓ_bound x) (exp_nonneg _)
+  have h_inv :=
+    ouSemigroupFin_integral_eq_of_bound (n := n) t ht hΓ_meas hΓ_bound
+  calc
+    ∫ x, ouGammaFin (ouSemigroupFin t f) (ouSemigroupFin t f) x ∂γFin n
+      ≤ ∫ x, exp (-2 * t) * ouSemigroupFin t (ouGammaFin f f) x ∂γFin n := by
+          apply integral_mono_of_nonneg
+          · exact Filter.Eventually.of_forall (fun x => ouGammaFin_nonneg (f := ouSemigroupFin t f) x)
+          · exact hupper_int
+          · exact Filter.Eventually.of_forall hpt
+    _ = exp (-2 * t) * ∫ x, ouGammaFin f f x ∂γFin n := by
+          rw [integral_const_mul, h_inv]
 
 end GaussianFin
