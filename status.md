@@ -8,18 +8,21 @@ arithmetic); these were converted to nine textbook axioms with full
 BGL Ch. 2 / Gross 1975 citations after a Gemini soundness review
 (gemini-3-pro-preview) which flagged one missing `IsCore` hypothesis
 on the Mehler-composition axiom (now patched in both the axiom and
-the corresponding `BakryEmerySpace.semigroup_add` field). Eight of the original nine were subsequently **reduced to
-theorems**: the five early discharges
+the corresponding `BakryEmerySpace.semigroup_add` field). All nine
+original Gaussian1D axioms have been **reduced to theorems**: the
+five early discharges
 (`ouSemigroup_l2_decay_bound`, `ouSemigroup_ergodic`,
 `ouSemigroup_entropy_sq_ergodic`, `ouSemigroup_compose`,
 `gaussian2D_orthogonal_invariance`), plus 2026-05-12 discharges of
-`ouSemigroup_gradient_decay` (via `hasDerivAt_ouSemigroup` + Jensen
-+ γ-invariance), `ouSemigroup_l2_sq_hasDerivWithinAt` (heat equation
-+ Gaussian Dirichlet form identity + DCT-based boundary), and
+`ouSemigroup_gradient_decay`, `ouSemigroup_l2_sq_hasDerivWithinAt`,
 `ouSemigroup_preserves_IsCore` / `ouSemigroup_contDiff` (Path C
-Hermite IBP discharge in `EuclideanHermite.lean`). Net: **1 atomic
-axiom** remaining in Gaussian1D (`ouSemigroup_entropy_sq_decay_bound`,
-the de Bruijn entropy-derivative identity).
+Hermite IBP in `EuclideanHermite.lean`), and
+`ouSemigroup_entropy_sq_decay_bound` (A1+A2 decomposition in
+`EuclideanEntropyDecay.lean`). Net: **Gaussian1D concrete instance is
+axiom-free**; 3 atomic Bakry-Émery building-block axioms (Fisher info
+decay + de Bruijn identity) live in
+`MarkovSemigroups/General/OUEntropyDecomposition.lean` and are reusable
+across future BakryEmerySpace instances.
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
 Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
@@ -34,7 +37,7 @@ BrascampLieb, Torus, GFFIdentification).
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
-| Instances/WorkInProgress/Euclidean | 1 | 0 | 4 | Standard Gaussian / OU (axioms = BGL Ch. 2 textbook bridges, GR-vetted; `l2_decay_bound`, `ergodic`, `entropy_sq_ergodic`, `compose`, `gaussian2D_orthogonal_invariance` reduced to theorems from the atomic four) |
+| Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance is **axiom-free**; the 3 atomic Bakry-Émery axioms (Fisher info decay + de Bruijn identity) live in `MarkovSemigroups/General/OUEntropyDecomposition.lean`. All 9 original Mehler-kernel axioms discharged. |
 | Matrix/ | 4 | 0 | 2 | Heat kernel, Trotter, diamagnetic inequality |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
 | Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
@@ -60,15 +63,13 @@ BrascampLieb, Torus, GFFIdentification).
 
 ### Instances/WorkInProgress/Euclidean (Gaussian1D / OU semigroup, BGL Ch. 2)
 
-**One remaining textbook axiom** (`ouSemigroup_entropy_sq_decay_bound`)
-packaging the de Bruijn entropy-derivative identity for the standard
-Gaussian Bakry-Émery instance. Hypotheses use the local
-`IsCore f := ContDiff ℝ ∞ f ∧ ‖f‖, ‖f'‖, ‖f''‖ uniformly bounded`
+**Concrete instance is now axiom-free.** All 9 originally-axiomatized
+Mehler-kernel-level facts have been discharged. Hypotheses use the
+local `IsCore f := ContDiff ℝ ∞ f ∧ ‖f‖, ‖f'‖, ‖f''‖ uniformly bounded`
 (refactored 2026-05-12 from `ContDiff ℝ ⊤` after recognizing that
 `⊤ : WithTop ℕ∞` is analyticity in current Mathlib, not C^∞).
 
-**Eight of the nine originally-axiomatized Mehler-kernel-level facts
-have been proved.** The discharges:
+Discharges:
 - `ouSemigroup_compose`, `ouSemigroup_l2_decay_bound`,
   `ouSemigroup_ergodic`, `ouSemigroup_entropy_sq_ergodic`,
   `gaussian2D_orthogonal_invariance` (proved 2025/early 2026).
@@ -80,9 +81,15 @@ have been proved.** The discharges:
   Hermite IBP discharge in `EuclideanHermite.lean`).
 - `ouSemigroup_contDiff` (2026-05-12, Path C — see
   `EuclideanHermite.lean`).
-
-The remaining `ouSemigroup_entropy_sq_decay_bound` would require a new
-atomic axiom (de Bruijn entropy-derivative identity) to reduce; deferred.
+- `ouSemigroup_entropy_sq_decay_bound` (2026-05-12) discharged via the
+  A1+A2 decomposition: three atomic Bakry-Émery building-block axioms
+  (Fisher info decay + de Bruijn identity, both for `t > 0` and
+  boundary `t = 0+`) in
+  `MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined
+  with ε-regularization `g_ε := f² + ε`, FTC inequality, and DCT in
+  `Instances/WorkInProgress/EuclideanEntropyDecay.lean`. The
+  `bakryEmerySpace` instance was relocated to that file as part of
+  the discharge.
 
 | Axiom / Theorem | Reference | Status | Sources |
 |---|---|---|---|
@@ -90,7 +97,7 @@ atomic axiom (de Bruijn entropy-derivative identity) to reduce; deferred.
 | `ouSemigroup_preserves_IsCore` | BGL §2.7 (OU smoothing) | **Theorem** (decomposed 2026-05-12, then fully discharged): bounded parts via `ouSemigroup_preserves_bounds` + `hasDerivAt_ouSemigroup_C1` + `hasDerivAt_deriv_ouSemigroup`; C^∞ smoothing via Path C (Hermite IBP) in `EuclideanHermite.lean` — `ouSemigroup_contDiff_bounded` proves `(P_t f)^{(n)}(x) = (a/b)^n · ∫ H_n(y) · f(a·x + b·y) dγ` by induction + `hermite_ibp_gaussian` + `contDiff_of_differentiable_iteratedDeriv`. `IsCore` refactored from `ContDiff ℝ ⊤` (analytic in current Mathlib) to `ContDiff ℝ ∞` (C^∞). Theorem and its supporting `ouSemigroup_contDiff_bounded` are in `EuclideanHermite.lean`. | (proved, axiom-free) |
 | `ouSemigroup_gradient_decay` | BGL Theorem 5.5.2 | **Theorem** — proved from new theorem `hasDerivAt_ouSemigroup` (Mehler derivative via Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le`) + pointwise Jensen + Fubini/`ou_kernel_map` for γ-invariance. | (proved) |
 | `ouSemigroup_l2_sq_hasDerivWithinAt` | BGL Proposition 4.7.1 | **Theorem** (2026-05-12) — fully discharged in `EuclideanStein.lean` via heat equation `hasDerivAt_t_ouSemigroup` + Gaussian Dirichlet form identity (Stein-based) + `hasDerivWithinAt_Ici_of_tendsto_deriv` for the `t = 0+` boundary, with DCT-based pointwise/integral continuity. | (proved) |
-| `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 / §5.5 | Atomic axiom (would require new entropy-derivative atomic axiom — de Bruijn identity — to reduce; deferred). | GR (vetted: Standard, constant verified) |
+| `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 / §5.5 | **Theorem** (2026-05-12) — discharged via A1+A2 decomposition in `EuclideanEntropyDecay.lean`. Three atomic Bakry-Émery building-block axioms (Fisher info decay `I(P_t g) ≤ e^{-2t} I(g)`, de Bruijn `(d/dt) H(P_t g) = -I(P_t g)`, and its `t = 0+` boundary version) in `General/OUEntropyDecomposition.lean` are vetted Standard by `gemini-3.1-pro-preview` and reusable for any future BakryEmerySpace instance. The proof composes them via ε-regularization `g_ε := f² + ε` + FTC + DCT for `ε → 0` limit. | (proved); 3 focused atomic sub-axioms in `General/` |
 | `ouSemigroup_compose` | BGL §2.7.1 (Mehler kernel arithmetic) | **Theorem** — proved via Gaussian-convolution arithmetic: both sides of `P_{s+t} f = P_s(P_t f)` equal `∫ f(e^{-(s+t)}x + w) dN(0, b_{s+t}²)(w)`. Uses `gaussianReal_add_gaussianReal_of_indepFun` + `gaussianReal_const_mul` + `HasLaw` + Fubini. (Patched at axiom stage: `IsCore f` hypothesis added per Gemini soundness review.) | (proved; Flagged → Patched → Standard at axiom stage) |
 | `ouSemigroup_l2_decay_bound` | BGL Proposition 4.7.1 | **Theorem** — proved from `gradient_decay` + `l2_sq_hasDerivWithinAt` + FTC inequality (`integral_le_sub_of_hasDeriv_right_of_le`). | (proved) |
 | `ouSemigroup_ergodic` | BGL Proposition 4.2.1 | **Theorem** — proved via double DCT on the Mehler integrand: `P_t f(x) → ∫f` for each `x` (inner DCT) → `(P_t f)² → (∫f)²` → `∫(P_t f)² → (∫f)²` (outer DCT). | (proved) |
@@ -154,10 +161,13 @@ FTC inequality (l2_decay_bound), double-DCT on the Mehler integrand
 (entropy_sq_ergodic), and Mathlib's `stdGaussian_map` /
 `map_pi_eq_stdGaussian` chain via the `EuclideanSpace ℝ (Fin 2) ≃ₗᵢ
 WithLp 2 (ℝ × ℝ)` isometry (gaussian2D_orthogonal_invariance, proved
-by Codex). The single remaining axiom
-`ouSemigroup_entropy_sq_decay_bound` is the de Bruijn entropy-derivative
-identity; reducing it requires introducing a new atomic axiom or
-substantial Fisher-information-derivative infrastructure.
+by Codex). The last remaining `ouSemigroup_entropy_sq_decay_bound`
+was discharged on 2026-05-12 via the A1+A2 decomposition: three atomic
+Bakry-Émery building-block axioms (Fisher info decay + de Bruijn at
+`t > 0` + de Bruijn at `t = 0+`) in
+`MarkovSemigroups/General/OUEntropyDecomposition.lean`, combined with
+ε-regularization + FTC + DCT in
+`Instances/WorkInProgress/EuclideanEntropyDecay.lean`.
 
 ### Dobrushin/ (0 sorry's)
 Complete: Specification, Uniqueness (with bridge hypothesis for

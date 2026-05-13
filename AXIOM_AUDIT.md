@@ -47,18 +47,29 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-8 axioms total. Of these:
+10 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
-- **1 Gaussian1D BGL Ch. 2** axiom — `ouSemigroup_entropy_sq_decay_bound`
-  is the last remaining Mehler-kernel-level fact on `(ℝ, γ_1)`. The
-  `ouSemigroup_contDiff` axiom was **discharged 2026-05-12** via the
-  Hermite integration-by-parts identity (Path C) — see
-  `Instances/WorkInProgress/EuclideanHermite.lean` for
-  `ouSemigroup_contDiff_bounded` and the relocated
-  `ouSemigroup_preserves_IsCore`.
+- **3 General/OU diffusion** axioms — atomic Bakry-Émery building
+  blocks in `MarkovSemigroups/General/OUEntropyDecomposition.lean`:
+  `ouSemigroup_fisher_info_decay` (A1: `I(P_t g) ≤ e^{-2t} I(g)`),
+  `hasDerivAt_entropy_ouSemigroup` (A2: de Bruijn identity), and
+  `hasDerivWithinAt_entropy_ouSemigroup_zero` (A2 at `t = 0+`).
+  These replaced the former broad `ouSemigroup_entropy_sq_decay_bound`
+  axiom (2026-05-12); they're abstract enough to be reusable for any
+  future BakryEmerySpace instance, individually vetted (Standard verdict
+  by gemini-3.1-pro-preview), and individually dischargeable. The
+  Gaussian1D concrete instance is now itself **axiom-free**.
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
+
+**Discharged axioms** (Gaussian1D, was 9 + 2 atomic; now 0 atomic axioms
+in the concrete instance):
+* All 9 original Gaussian1D axioms (`ouSemigroup_*`) — see "Reduced to
+  theorems" sections below for the discharge details.
+* The 2 atomic Mehler-kernel axioms (`ouSemigroup_contDiff` via Path C
+  Hermite IBP, `ouSemigroup_entropy_sq_decay_bound` via Path A1+A2
+  decomposition).
 
 The Wiener-chaos / multivariate-Hermite cluster (3 OU placeholder
 axioms + 1 external `polynomial_dense_L2_of_subGaussian`, plus the
@@ -82,11 +93,28 @@ on 2026-05-10. See that repo for the current home and audit.
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
 
-### Gaussian1D BGL Ch. 2 (1 axiom — Mehler-kernel-level facts on ℝ)
+### General/OU diffusion (3 atomic axioms — Bakry-Émery building blocks)
 
-| Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
-|---|---|---|---|---|---|---|
-| `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
+These three axioms live in
+[`MarkovSemigroups/General/OUEntropyDecomposition.lean`](../MarkovSemigroups/General/OUEntropyDecomposition.lean).
+Together they discharge the former `ouSemigroup_entropy_sq_decay_bound`
+axiom (BGL Theorem 5.5.2) — see
+`Instances/WorkInProgress/EuclideanEntropyDecay.lean` for the proof
+`ouSemigroup_entropy_sq_decay_bound_proved`.
+
+| Axiom | Reference | Rating | Vetting | Strategy / Plan | Consumers |
+|---|---|---|---|---|---|
+| `ouSemigroup_fisher_info_decay` | BGL Proposition 5.5.2 (`I(P_t g) ≤ e^{-2t} I(g)`); Bakry-Émery 1985 | Standard | GR (gemini-3.1-pro-preview 2026-05-12) | Cauchy-Schwarz on the Mehler probability kernel + `(P_t g)' = e^{-t} P_t g'` (already proved) + γ-invariance. Expected ~150-250 lines. | `Gaussian1D.bakryEmerySpace` (via `EuclideanEntropyDecay.lean`) |
+| `hasDerivAt_entropy_ouSemigroup` | BGL §5.5 (de Bruijn identity for `t > 0`) | Standard | GR (gemini-3.1-pro-preview 2026-05-12) | Bilinear Dirichlet form identity (1D IBP from Gaussian-density ODE) + parametric differentiation. Expected ~300-500 lines. | `Gaussian1D.bakryEmerySpace` (via `EuclideanEntropyDecay.lean`) |
+| `hasDerivWithinAt_entropy_ouSemigroup_zero` | BGL §5.5 (de Bruijn at `t = 0+`) | Standard | GR (gemini-3.1-pro-preview 2026-05-12) | FTC + DCT: `lim_{t↘0} I(P_t g) = I(g)`. Provable from the t > 0 version + continuity. Expected ~80-150 lines. | `Gaussian1D.bakryEmerySpace` (via `EuclideanEntropyDecay.lean`) |
+
+### Gaussian1D BGL Ch. 2 (0 axioms — instance is axiom-free)
+
+All originally-axiomatized Mehler-kernel-level facts are now proved.
+The two atomic textbook bridges remaining (`ouSemigroup_contDiff` and
+`ouSemigroup_entropy_sq_decay_bound`) have been **discharged** via
+Path C (Hermite IBP) and the A1+A2 decomposition above, respectively.
+See "Reduced to theorems" below.
 
 **Six originally axiomatized 1D facts were reduced to theorems**:
 - `ouSemigroup_l2_decay_bound` (FTC + gradient decay)
@@ -135,6 +163,20 @@ on 2026-05-10. See that repo for the current home and audit.
   has been C^∞ smoothing. The new theorem
   `ouSemigroup_contDiff_bounded` and the relocated
   `ouSemigroup_preserves_IsCore` are in `EuclideanHermite.lean`.
+- `ouSemigroup_entropy_sq_decay_bound` (2026-05-12) — FULLY DISCHARGED
+  via decomposition into 3 atomic axioms in
+  `MarkovSemigroups/General/OUEntropyDecomposition.lean`:
+  `ouSemigroup_fisher_info_decay` (A1), `hasDerivAt_entropy_ouSemigroup`
+  (A2), and `hasDerivWithinAt_entropy_ouSemigroup_zero` (A2-boundary).
+  The proof (`ouSemigroup_entropy_sq_decay_bound_proved` in
+  `Instances/WorkInProgress/EuclideanEntropyDecay.lean`, ~550 lines)
+  composes these via the ε-regularization `g_ε := f² + ε`, FTC inequality,
+  and DCT for the `ε → 0` limit. The `bakryEmerySpace` instance was
+  relocated to `EuclideanEntropyDecay.lean` (from `EuclideanStein.lean`)
+  so its `semigroup_entropy_sq_decay_bound` field can call the proved
+  theorem directly. Net: 1 broad Gaussian1D axiom replaced by 3
+  focused atomic axioms in `General/` (reusable for any future
+  BakryEmerySpace instance); Gaussian1D itself is axiom-free.
 
 ### Dobrushin-Zegarlinski
 

@@ -266,7 +266,7 @@ uses them will see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 1 Gaussian1D = 8 total)
+### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 3 General/OU = 10 total)
 
 *See [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md) for the per-axiom
 vetting verdicts (Standard / Likely correct / Placeholder / etc.),
@@ -283,11 +283,21 @@ self-audit), and links to the discharge plans.*
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
-| `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 (Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t})E(f)) |
+| `ouSemigroup_fisher_info_decay` | BGL Proposition 5.5.2 (Fisher info decay `I(P_t g) ≤ e^{-2t} I(g)`) |
+| `hasDerivAt_entropy_ouSemigroup` | BGL §5.5 (de Bruijn identity, `t > 0`) |
+| `hasDerivWithinAt_entropy_ouSemigroup_zero` | BGL §5.5 (de Bruijn at `t = 0+`) |
 
-The single remaining Gaussian1D axiom is a concrete-instance bridge to
-the abstract Bakry-Émery layer for the standard Gaussian + OU semigroup
-on ℝ — a Mehler-kernel-level fact (de Bruijn entropy derivative).
+The Gaussian1D concrete instance is now **axiom-free**: all original
+Mehler-kernel-level facts have been proved. The three new
+`General/OU` atomic axioms listed above are abstract Bakry-Émery
+building blocks (Fisher info decay + de Bruijn identity), placed in
+`MarkovSemigroups/General/OUEntropyDecomposition.lean` so they're
+reusable for any future BakryEmerySpace instance — not just the
+standard Gaussian on ℝ. Each was independently vetted by
+`gemini-3.1-pro-preview` (verdict: Standard, 2026-05-12). The original
+`ouSemigroup_entropy_sq_decay_bound` axiom was discharged via these
+three plus the ε-regularization `g_ε := f² + ε`, FTC inequality, and
+DCT — see `Instances/WorkInProgress/EuclideanEntropyDecay.lean`.
 The previously-axiomatized `ouSemigroup_gradient_decay` (BGL Theorem
 5.5.2) is now **PROVED** via the new theorem `hasDerivAt_ouSemigroup`
 (Mehler derivative formula via Mathlib's
@@ -364,7 +374,7 @@ only on Lean's three standard axioms `propext`, `Classical.choice`,
 | `cov_entrywise_bound_of_zegarlinski` | `cov_entrywise_decay_nn` (`DobrushinZegarlinski/EntrywiseCovariance.lean`, the proven exponential-decay corollary `\|Cov(σ_x, σ_y)\| ≤ α^{d(x,y)} / (c·(1-α))` for nearest-neighbor finite-range V); declared for pphi2N's `HSData.AdmitsThimbleLocal` |
 | `herbst_mgf_bound` | `lipschitz_concentration_of_lsi` (proven theorem, `Abstract/Concentration.lean`, derived from this axiom + Mathlib's Chernoff `measure_ge_le_exp_mul_mgf`); `lipschitz_concentration_left_of_lsi` and `lipschitz_concentration_two_sided_of_lsi` (proven, by reflection / union bound); `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi` (proven `L^p` moment bounds); `lipschitz_concentration_of_zegarlinski` + left-tail + two-sided + Mathlib bridge + `MemLp` (`DobrushinZegarlinski/Concentration.lean`, all composing with the global LSI from the Zegarlinski hypothesis) |
 | `poincare_of_lsi` | `variance_lipschitz_le_of_lsi` (proven `Var(F) ≤ L²/c` via Mathlib's `norm_fderiv_le_of_lipschitz`); `variance_lipschitz_le_of_zegarlinski` (proven Zegarlinski composition `Var ≤ L²/(c·(1-α))`). Declared for spectral-gap-style fluctuation bounds |
-| `ouSemigroup_entropy_sq_decay_bound` (1 axiom) | `Gaussian1D.bakryEmerySpace` (proven `BakryEmerySpace ℝ` instance, `Instances/WorkInProgress/Euclidean.lean`); not consumed transitively by any theorem outside that file. Surfaces in `#print axioms` only on theorems that explicitly invoke the Gaussian1D instance (the abstract `BakryEmerySpace` theory in `Diffusion/CarreDuChamp.lean` is itself axiom-free) |
+| `ouSemigroup_fisher_info_decay`, `hasDerivAt_entropy_ouSemigroup`, `hasDerivWithinAt_entropy_ouSemigroup_zero` (3 axioms in `General/OUEntropyDecomposition.lean`) | `Gaussian1D.bakryEmerySpace` (proven `BakryEmerySpace ℝ` instance, now in `Instances/WorkInProgress/EuclideanEntropyDecay.lean`); not consumed transitively by any theorem outside that file. Surface in `#print axioms` only on theorems that explicitly invoke the Gaussian1D instance (the abstract `BakryEmerySpace` theory in `Diffusion/CarreDuChamp.lean` is itself axiom-free). These three are abstract atomic Bakry-Émery building blocks (Fisher info decay + de Bruijn identity), reusable for any future BakryEmerySpace instance. |
 
 **DZ-layer axiom audit (verified `#print axioms` 2026-05-01):** the
 proven content of `DobrushinZegarlinski/` — `AbstractInfluenceMatrix`
@@ -423,7 +433,7 @@ on concrete inputs. Zero sorries.
 |---|---|---|
 | **A. Mehler eigenfunctions** | `ouSemigroup_const`, `ouSemigroup_id`, `ouSemigroup_hermite_two`, `ouSemigroup_hermite_three` (eigenvalues `1, e^{-t}, e^{-2t}, e^{-3t}` on `H₀, H₁, H₂, H₃`) | none (Mathlib only) |
 | **A. Helpers** | `integral_sq_γ` (= 1), `integral_cube_γ` (= 0), `integrable_cube_γ` | none |
-| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | one atomic axiom: `ouSemigroup_entropy_sq_decay_bound`. (The full BGL Proposition 4.7.1 chain is now proved end-to-end in `EuclideanStein.lean` via Stein's identity + Mehler heat equation + Dirichlet form + DCT-based boundary discharge. `ouSemigroup_contDiff` was discharged 2026-05-12 via Hermite IBP — see `EuclideanHermite.lean`.) |
+| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | the 3 atomic Bakry-Émery building-block axioms in `General/OUEntropyDecomposition.lean` (Fisher info decay + de Bruijn identity); the previous broad `ouSemigroup_entropy_sq_decay_bound` was discharged from these via FTC + ε-regularization. The full BGL Proposition 4.7.1 chain is now proved end-to-end (`ouSemigroup_contDiff` via Hermite IBP in `EuclideanHermite.lean`, the entropy decay via the decomposition above in `EuclideanEntropyDecay.lean`). |
 | **C. Conditional BL → Gaussian Poincaré** | `brascampLieb_recovers_gaussian_poincare` (conditional on a `LogConcaveMeasure ℝ` with `μ = γ`) | none |
 | **C. Gaussian `LogConcaveMeasure` — structural** | `V_gauss = x²/2`, `contDiff_V_gauss`, `hessianBilin_V_gauss` (= `v · w`), `hV_gauss_convex`, `hV_gauss_curvature` (`‖v‖² ≤ Hess V(v,v)`) | none |
 | **C. Gaussian `LogConcaveMeasure` — resolvent fields** | `gaussianLogConcaveMeasure : LogConcaveMeasure ℝ` (built directly, no `Classical.choose`) | four named axioms: `gaussianResolvent`, `gaussianResolvent_ibp`, `gaussianResolvent_ibp_integrable`, `gaussianBochner_identity` (BGL §1.15-1.16: OU resolvent via Lax-Milgram + Stein IBP + Bochner-Weitzenböck) |
