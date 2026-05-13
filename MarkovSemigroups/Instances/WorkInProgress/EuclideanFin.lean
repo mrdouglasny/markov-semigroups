@@ -709,6 +709,16 @@ theorem hasFDerivAt_ouSemigroupFin
             ∫ y, ∑ i : Fin n, v i * partialDeriv i f (ouShiftFin t x y) ∂γFin n := by
               rw [integral_finset_sum Finset.univ (fun i _ => hint_term i)]
 
+theorem fderiv_ouSemigroupFin_eq
+    (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
+    fderiv ℝ (ouSemigroupFin t f) =
+      fun x =>
+        ∑ i : Fin n,
+          (exp (-t) * ouSemigroupFin t (partialDeriv i f) x) •
+            (ContinuousLinearMap.proj i : (Fin n → ℝ) →L[ℝ] ℝ) := by
+  funext x
+  exact (hasFDerivAt_ouSemigroupFin (n := n) t ht hf x).fderiv
+
 theorem hasDerivAt_coordSection_ouSemigroupFin_C1
     (t : ℝ) {f : (Fin n → ℝ) → ℝ} (hf_C1 : ContDiff ℝ 1 f)
     (i : Fin n) {M : ℝ} (hM0 : ∀ x, ‖f x‖ ≤ M) (hM1 : ∀ x, ‖partialDeriv i f x‖ ≤ M)
@@ -899,6 +909,21 @@ theorem IsCoreFin.integrable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
   obtain ⟨M, hM⟩ := hf.bound_exists
   refine Integrable.mono' (integrable_const M) hf.stronglyMeasurable.aestronglyMeasurable ?_
   exact Filter.Eventually.of_forall hM
+
+theorem integrable_abs_eval_γFin (i : Fin n) :
+    Integrable (fun x : Fin n → ℝ => |x i|) (γFin n) := by
+  have heval : MeasurePreserving (Function.eval i) (γFin n) Gaussian1D.γ := by
+    simpa [γFin] using
+      (MeasureTheory.measurePreserving_eval (μ := fun _ : Fin n => Gaussian1D.γ) i)
+  simpa [Function.comp, Function.eval] using
+    heval.integrable_comp_of_integrable (((memLp_id_gaussianReal 1).integrable le_rfl).abs)
+
+theorem integrable_sum_abs_γFin :
+    Integrable (fun x : Fin n → ℝ => ∑ i : Fin n, |x i|) (γFin n) := by
+  simpa using
+    (integrable_finset_sum (s := Finset.univ)
+      (f := fun i (x : Fin n → ℝ) => |x i|)
+      (fun i _ => integrable_abs_eval_γFin (n := n) i))
 
 theorem IsCoreFin.integrable_partial_mul {f g : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) (hg : IsCoreFin g) (i : Fin n) :
@@ -1991,6 +2016,30 @@ theorem norm_ouSemigroupFin_le_of_bound (t : ℝ) {g : (Fin n → ℝ) → ℝ}
           · exact Filter.Eventually.of_forall (fun y => hM (ouShiftFin t x y))
     _ = M := by simp
 
+theorem continuous_ouSemigroupFin_of_bound (t : ℝ) {g : (Fin n → ℝ) → ℝ}
+    (hg_cont : Continuous g) {M : ℝ} (hM : ∀ x, ‖g x‖ ≤ M) :
+    Continuous (ouSemigroupFin t g) := by
+  rw [continuous_iff_continuousAt]
+  intro x
+  show Tendsto (fun x' => ∫ y, g (ouShiftFin t x' y) ∂γFin n) (nhds x)
+    (nhds (∫ y, g (ouShiftFin t x y) ∂γFin n))
+  refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+    (fun _ => M) ?_ ?_ (integrable_const M) ?_
+  · filter_upwards with x'
+    have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x' y) := by
+      continuity
+    exact (hg_cont.comp hshift).aestronglyMeasurable
+  · filter_upwards with x'
+    filter_upwards with y
+    exact hM (ouShiftFin t x' y)
+  · filter_upwards with y
+    have h_arg : Tendsto (fun x' : Fin n → ℝ => ouShiftFin t x' y) (nhds x)
+        (nhds (ouShiftFin t x y)) := by
+      have hcont : Continuous (fun x' : Fin n → ℝ => ouShiftFin t x' y) := by
+        continuity
+      exact hcont.tendsto x
+    exact (hg_cont.tendsto _).comp h_arg
+
 theorem ouSemigroupFin_preserves_bound (t : ℝ) {f : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) :
     ∃ M : ℝ, ∀ x, ‖ouSemigroupFin t f x‖ ≤ M := by
@@ -2017,6 +2066,48 @@ theorem partialDeriv_ouSemigroupFin_preserves_bound (t : ℝ) (ht : 0 ≤ t)
           have hexp_le : exp (-t) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
           have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
           nlinarith
+
+theorem continuous_partialDeriv_ouSemigroupFin (t : ℝ) (ht : 0 ≤ t)
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) :
+    Continuous (partialDeriv i (ouSemigroupFin t f)) := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  have hEq := partialDeriv_ouSemigroupFin_eq (n := n) t ht hf_core i
+  rw [hEq]
+  exact continuous_const.mul
+    (continuous_ouSemigroupFin_of_bound (n := n) t (hf_core.partial_continuous i)
+      (fun x => (hM x).2.1 i))
+
+theorem contDiffOne_ouSemigroupFin
+    (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
+    ContDiff ℝ 1 (ouSemigroupFin t f) := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  rw [contDiff_one_iff_fderiv]
+  refine ⟨?_, ?_⟩
+  · intro x
+    exact (hasFDerivAt_ouSemigroupFin (n := n) t ht hf_core x).differentiableAt
+  · rw [show Continuous (fderiv ℝ (ouSemigroupFin t f)) ↔
+        ContDiff ℝ 0 (fderiv ℝ (ouSemigroupFin t f)) by
+          simpa using (contDiff_zero : ContDiff ℝ 0 (fderiv ℝ (ouSemigroupFin t f)) ↔
+            Continuous (fderiv ℝ (ouSemigroupFin t f)))]
+    rw [contDiff_clm_apply_iff
+      (𝕜 := ℝ) (D := Fin n → ℝ) (E := Fin n → ℝ) (F := ℝ)
+      (f := fderiv ℝ (ouSemigroupFin t f))]
+    intro y
+    refine contDiff_zero.2 ?_
+    have hEq :
+        (fun x => fderiv ℝ (ouSemigroupFin t f) x y) =
+          fun x => ∑ i : Fin n, exp (-t) * ouSemigroupFin t (partialDeriv i f) x * y i := by
+      funext x
+      rw [fderiv_ouSemigroupFin_eq (n := n) t ht hf_core]
+      simp [ContinuousLinearMap.proj_apply]
+    rw [hEq]
+    refine continuous_finset_sum _ ?_
+    intro i hi
+    exact ((continuous_const.mul
+      (continuous_ouSemigroupFin_of_bound (n := n) t (hf_core.partial_continuous i)
+        (fun x => (hM x).2.1 i))).mul continuous_const)
 
 theorem section_secondDeriv_ouSemigroupFin_preserves_bound (t : ℝ) (ht : 0 ≤ t)
     {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) (x : Fin n → ℝ) :
@@ -2355,4 +2446,277 @@ theorem ouSemigroupFin_ergodic (f : (Fin n → ℝ) → ℝ) (hf : IsCoreFin f) 
   have := h_outer.sub_const (Ef ^ 2)
   simpa [hEf_def] using this
 
+theorem ouSemigroupFin_entropy_sq_ergodic (f : (Fin n → ℝ) → ℝ) (hf : IsCoreFin f) :
+    Tendsto
+      (fun t => DirichletSpace.entropy (ds := dirichletSpaceFin (n := n))
+        (ouSemigroupFin t (fun x => f x * f x))) atTop (nhds 0) := by
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+  have hf_cont : Continuous f := hf.continuous
+  have hf_meas : Measurable f := hf.measurable
+  set g : (Fin n → ℝ) → ℝ := fun x => f x * f x with hg_def
+  have hg_cont : Continuous g := hf_cont.mul hf_cont
+  have hg_meas : Measurable g := hg_cont.measurable
+  have hg_nn : ∀ x, 0 ≤ g x := fun x => mul_self_nonneg _
+  have hg_bdd : ∀ x, g x ≤ M ^ 2 := by
+    intro x
+    have h1 : |f x| ≤ M := by
+      rw [← Real.norm_eq_abs]
+      exact hM x
+    have h2 : (f x) ^ 2 ≤ M ^ 2 := by
+      have : |f x| ^ 2 ≤ M ^ 2 := by
+        nlinarith [abs_nonneg (f x)]
+      rwa [sq_abs] at this
+    show f x * f x ≤ M ^ 2
+    have : f x * f x = (f x) ^ 2 := by ring
+    linarith
+  set Eg : ℝ := ∫ y, g y ∂γFin n with hEg_def
+  have h_exp_neg_atTop : Tendsto (fun t : ℝ => Real.exp (-t)) atTop (nhds 0) :=
+    Real.tendsto_exp_atBot.comp tendsto_neg_atTop_atBot
+  have h_exp_neg2_atTop : Tendsto (fun t : ℝ => Real.exp (-2 * t)) atTop (nhds 0) := by
+    have h_neg2t : Tendsto (fun t : ℝ => -2 * t) atTop atBot := by
+      refine Filter.tendsto_atBot.mpr ?_
+      intro B
+      rw [Filter.eventually_atTop]
+      refine ⟨max 1 ((1 - B) / 2), ?_⟩
+      intro t ht
+      have h1 : (1 - B) / 2 ≤ t := (le_max_right _ _).trans ht
+      linarith
+    exact Real.tendsto_exp_atBot.comp h_neg2t
+  have h_b_atTop : Tendsto (fun t : ℝ => Real.sqrt (1 - Real.exp (-2 * t))) atTop (nhds 1) := by
+    have h_inner : Tendsto (fun t : ℝ => 1 - Real.exp (-2 * t)) atTop (nhds 1) := by
+      simpa using Filter.Tendsto.const_sub 1 h_exp_neg2_atTop
+    simpa using h_inner.sqrt
+  have h_ptwise : ∀ x, Tendsto (fun t => ouSemigroupFin t g x) atTop (nhds Eg) := by
+    intro x
+    show Tendsto
+      (fun t => ∫ y, g (ouShiftFin t x y) ∂γFin n)
+      atTop (nhds (∫ y, g y ∂γFin n))
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => M ^ 2) ?_ ?_ (integrable_const _) ?_
+    · filter_upwards with t
+      have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      exact (hg_meas.comp hshift.measurable).aestronglyMeasurable
+    · filter_upwards with t
+      filter_upwards with y
+      rw [Real.norm_eq_abs, abs_of_nonneg (hg_nn _)]
+      exact hg_bdd _
+    · filter_upwards with y
+      have h_arg : Tendsto (fun t : ℝ => ouShiftFin t x y) atTop (nhds y) := by
+        have h1 : Tendsto (fun t : ℝ => Real.exp (-t) • x) atTop (nhds 0) := by
+          simpa [Pi.zero_apply] using h_exp_neg_atTop.smul_const x
+        have h2 : Tendsto
+            (fun t : ℝ => Real.sqrt (1 - Real.exp (-2 * t)) • y) atTop (nhds y) := by
+          simpa using h_b_atTop.smul_const y
+        have := h1.add h2
+        have h_eq :
+            (fun t : ℝ => ouShiftFin t x y) =
+              fun t : ℝ => Real.exp (-t) • x + Real.sqrt (1 - Real.exp (-2 * t)) • y := by
+          funext t
+          ext i
+          simp [ouShiftFin, Pi.add_apply, Pi.smul_apply]
+        simpa [h_eq, one_smul] using this
+      exact (hg_cont.tendsto y).comp h_arg
+  have h_Ptg_bdd : ∀ x t, 0 ≤ ouSemigroupFin t g x ∧ ouSemigroupFin t g x ≤ M ^ 2 := by
+    intro x t
+    have hint : Integrable (fun y => g (ouShiftFin t x y)) (γFin n) := by
+      refine Integrable.mono' (integrable_const (M ^ 2)) ?_ ?_
+      · have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+          continuity
+        exact (hg_meas.comp hshift.measurable).aestronglyMeasurable
+      · filter_upwards with y
+        rw [Real.norm_eq_abs, abs_of_nonneg (hg_nn _)]
+        exact hg_bdd _
+    refine ⟨?_, ?_⟩
+    · exact integral_nonneg (fun y => hg_nn _)
+    · calc
+        ∫ y, g (ouShiftFin t x y) ∂γFin n
+            ≤ ∫ _y : Fin n → ℝ, M ^ 2 ∂γFin n := by
+                exact integral_mono hint (integrable_const _) (fun y => hg_bdd _)
+        _ = M ^ 2 := by simp
+  have hM2_nn : (0 : ℝ) ≤ M ^ 2 := sq_nonneg M
+  obtain ⟨B, hB⟩ : ∃ B, ∀ s ∈ Set.Icc (0 : ℝ) (M ^ 2), |s * Real.log s| ≤ B := by
+    have h_compact : IsCompact (Set.Icc (0 : ℝ) (M ^ 2)) := isCompact_Icc
+    have h_cont_abs : Continuous (fun s => |s * Real.log s|) :=
+      Real.continuous_mul_log.abs
+    have h_im_compact : IsCompact ((fun s => |s * Real.log s|) '' Set.Icc 0 (M ^ 2)) :=
+      h_compact.image h_cont_abs
+    obtain ⟨B, hB⟩ := h_im_compact.bddAbove
+    refine ⟨B, fun s hs => ?_⟩
+    exact hB ⟨s, hs, rfl⟩
+  have h_outer_log :
+      Tendsto (fun t => ∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n)
+        atTop (nhds (Eg * Real.log Eg)) := by
+    have h_target : Eg * Real.log Eg = ∫ _x, Eg * Real.log Eg ∂γFin n := by simp
+    rw [h_target]
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => B) ?_ ?_ (integrable_const _) ?_
+    · filter_upwards with t
+      have hPtg_sm : MeasureTheory.StronglyMeasurable (ouSemigroupFin t g) :=
+        stronglyMeasurable_ouSemigroupFin (n := n) t hg_meas
+      have h_log_meas : Measurable (fun x => Real.log (ouSemigroupFin t g x)) :=
+        Real.measurable_log.comp hPtg_sm.measurable
+      exact (hPtg_sm.measurable.mul h_log_meas).aestronglyMeasurable
+    · filter_upwards with t
+      filter_upwards with x
+      rw [Real.norm_eq_abs]
+      exact hB (ouSemigroupFin t g x) ⟨(h_Ptg_bdd x t).1, (h_Ptg_bdd x t).2⟩
+    · filter_upwards with x
+      have h_cont_pt : ContinuousAt (fun s => s * Real.log s) Eg :=
+        Real.continuous_mul_log.continuousAt
+      exact h_cont_pt.tendsto.comp (h_ptwise x)
+  have h_mean : ∀ t, 0 ≤ t → ∫ x, ouSemigroupFin t g x ∂γFin n = ∫ x, g x ∂γFin n := by
+    intro t ht
+    refine ouSemigroupFin_integral_eq_of_bound (n := n) (M := M ^ 2) t ht hg_meas ?_
+    intro x
+    rw [Real.norm_eq_abs, abs_of_nonneg (hg_nn x)]
+    exact hg_bdd x
+  have h_entropy_eq : ∀ t, 0 ≤ t →
+      DirichletSpace.entropy (ds := dirichletSpaceFin (n := n)) (ouSemigroupFin t g) =
+        (∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n) -
+          Eg * Real.log Eg := by
+    intro t ht
+    show
+      (∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n) -
+        (∫ x, ouSemigroupFin t g x ∂γFin n) * Real.log (∫ x, ouSemigroupFin t g x ∂γFin n) =
+      (∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n) -
+        Eg * Real.log Eg
+    rw [h_mean t ht]
+  have h_diff : Tendsto
+      (fun t =>
+        (∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n) -
+          Eg * Real.log Eg) atTop (nhds 0) := by
+    simpa using h_outer_log.sub_const (Eg * Real.log Eg)
+  have h_eq_eventually :
+      (fun t => DirichletSpace.entropy (ds := dirichletSpaceFin (n := n))
+        (ouSemigroupFin t (fun x => f x * f x))) =ᶠ[atTop]
+      (fun t =>
+        (∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n) -
+          Eg * Real.log Eg) := by
+    filter_upwards [Filter.eventually_ge_atTop (0 : ℝ)] with t ht
+    simpa [g, hg_def] using h_entropy_eq t ht
+  exact Tendsto.congr' h_eq_eventually.symm h_diff
+
+/-! ### N1.5 textbook axiom: multivariate de Bruijn-style L²-derivative identity
+
+The next BE-instance field is the de Bruijn-style derivative identity
+`d/ds |_{s = t} ∫ (P_s f)² dγ_n = -2 · ∫ Γ_n(P_t f, P_t f) dγ_n`. The
+historical 1D analogue (`Gaussian1D.ouSemigroup_l2_sq_hasDerivWithinAt`)
+was an axiom for several months before being fully discharged. The
+multivariate analogue is the natural Fubini lift of that proved 1D
+fact, but the lift requires careful coordinate-wise differentiation
+under iterated integrals which we have not yet formalized. Axiomatized
+here pending a future Fubini-lift discharge. -/
+
+/-- **Multivariate de Bruijn-style L²-derivative identity (BGL Prop 4.7.1, n-dim Gaussian case).**
+
+For every `IsCoreFin` test function `f` and every `t ≥ 0`,
+`d/ds |_{s = t} ∫ (P_s f)² dγ_n = -2 · ∫ Γ_n(P_t f, P_t f) dγ_n`,
+where the derivative is the right-derivative on `Set.Ici 0` and
+`P_t = ouSemigroupFin t`, `Γ_n = ouGammaFin`.
+
+**Reference:** Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
+Diffusion Operators*, Springer 2014, Proposition 4.7.1.
+
+**Vetting:** Dual verdict **Standard / Likely correct**. First pass
+gemini-2.5-pro deep-think 2026-05-13; second pass gemini-3.1-pro-preview
+2026-05-13 (the top-tier vetting model). Both passes confirmed
+type-correctness, hypothesis sufficiency, non-vacuity, correct
+strength (analogous to the historical 1D primitive), and discharge
+plan feasibility. 3.1-pro added the nuance that the `IsCoreFin`
+closure gap (`ContDiff ⊤` preservation under the semigroup is not
+yet a theorem) is harmless for this statement: Lean integrals are
+total (evaluate to 0 if non-integrable) and
+`ouSemigroupFin_preserves_core_bounds` already gives the
+integrability needed. Both first and second partials contract under
+the Mehler semigroup (`‖∇ P_t f‖_∞ ≤ e^{-t}‖∇ f‖_∞`), so
+`x · ∇ P_t f` is square-integrable against `γ_n` even without full
+`ContDiff ⊤` preservation.
+
+**Discharge plan:** Fubini lift through `ouSemigroupFin_insertNth_eq`
+and `integral_γFin_succAbove`; differentiate per-coordinate via the
+proved 1D fact `Gaussian1D.bakryEmerySpace.semigroup_l2_sq_hasDerivWithinAt`;
+recombine by linearity of derivative. Use dominated convergence to
+justify the swap of `∂/∫`. The strategy is the tensor lift through
+Fubini of the already-discharged 1D theorem. -/
+axiom ouSemigroupFin_l2_sq_hasDerivWithinAt {n : ℕ}
+    (f : (Fin n → ℝ) → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : IsCoreFin f) :
+    HasDerivWithinAt
+      (fun s => ∫ x, (ouSemigroupFin s f x) ^ 2 ∂γFin n)
+      (-2 * ∫ x, ouGammaFin (ouSemigroupFin t f) (ouSemigroupFin t f) x ∂γFin n)
+      (Set.Ici 0) t
+
+/-- **Integrated multivariate L² decay (BGL Prop. 4.7.1, n-dim Gaussian case).**
+
+For every `IsCoreFin` test function `f` and every `t ≥ 0`,
+`∫ f² dγ_n - ∫ (P_t f)² dγ_n ≤ (1 - e^{-2t}) E_n(f,f)`.
+
+Derived from the de Bruijn-style derivative identity
+`ouSemigroupFin_l2_sq_hasDerivWithinAt` and the proved gradient decay
+`ouSemigroupFin_gradient_decay` by integrating the differential inequality
+on `[0,t]`. -/
+theorem ouSemigroupFin_l2_decay_bound {n : ℕ}
+    (f : (Fin n → ℝ) → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : IsCoreFin f) :
+    ∫ x, (f x) ^ 2 ∂γFin n - ∫ x, (ouSemigroupFin t f x) ^ 2 ∂γFin n ≤
+      (1 - Real.exp (-2 * t)) * ouEnergyFin f f := by
+  set Ef : ℝ := ouEnergyFin f f with hEf_def
+  set g : ℝ → ℝ := fun s => ∫ x, (ouSemigroupFin s f x) ^ 2 ∂γFin n with hg_def
+  set φ : ℝ → ℝ := fun s => -2 * Real.exp (-2 * s) * Ef with hφ_def
+  have hderiv : ∀ s, 0 ≤ s →
+      HasDerivWithinAt g
+        (-2 * ∫ x, ouGammaFin (ouSemigroupFin s f) (ouSemigroupFin s f) x ∂γFin n) (Ici 0) s := by
+    intro s hs
+    exact ouSemigroupFin_l2_sq_hasDerivWithinAt f s hs hf
+  have hg_cont : ContinuousOn g (Set.Icc 0 t) := by
+    intro s hs
+    have h := (hderiv s hs.1).continuousWithinAt
+    exact h.mono (fun x hx => hx.1)
+  have hderiv_open : ∀ s ∈ Set.Ioo 0 t,
+      HasDerivWithinAt g
+        (-2 * ∫ x, ouGammaFin (ouSemigroupFin s f) (ouSemigroupFin s f) x ∂γFin n) (Ioi s) s := by
+    intro s hs
+    exact (hderiv s hs.1.le).mono (fun x hx => hs.1.le.trans hx.le)
+  have hφg' : ∀ s ∈ Set.Ioo 0 t,
+      φ s ≤ -2 * ∫ x, ouGammaFin (ouSemigroupFin s f) (ouSemigroupFin s f) x ∂γFin n := by
+    intro s hs
+    have hgrad := ouSemigroupFin_gradient_decay f s hs.1.le hf
+    have hgrad' : ∫ x, ouGammaFin (ouSemigroupFin s f) (ouSemigroupFin s f) x ∂γFin n ≤
+        Real.exp (-2 * s) * Ef := by
+      rw [hEf_def]
+      exact hgrad
+    have h := mul_le_mul_of_nonneg_left hgrad' (by norm_num : (0 : ℝ) ≤ 2)
+    show -2 * Real.exp (-2 * s) * Ef ≤ -2 * _
+    linarith
+  have hφ_cont : Continuous φ := by
+    show Continuous (fun s => -2 * Real.exp (-2 * s) * Ef)
+    fun_prop
+  have hφ_int : MeasureTheory.IntegrableOn φ (Set.Icc 0 t) :=
+    hφ_cont.continuousOn.integrableOn_Icc
+  have hFTC : ∫ s in (0)..t, φ s ≤ g t - g 0 :=
+    intervalIntegral.integral_le_sub_of_hasDeriv_right_of_le ht hg_cont
+      hderiv_open hφ_int hφg'
+  have hderiv_exp : ∀ s : ℝ,
+      HasDerivAt (fun u : ℝ => Real.exp (-2 * u)) (-2 * Real.exp (-2 * s)) s := by
+    intro s
+    have h1 : HasDerivAt (fun u : ℝ => -2 * u) (-2 : ℝ) s := by
+      simpa using (hasDerivAt_id s).const_mul (-2 : ℝ)
+    have h2 : HasDerivAt (fun u : ℝ => Real.exp (-2 * u))
+        (Real.exp (-2 * s) * (-2)) s :=
+      (Real.hasDerivAt_exp (-2 * s)).comp s h1
+    simpa [mul_comm] using h2
+  have hintExp : ∫ s in (0)..t, -2 * Real.exp (-2 * s) =
+      Real.exp (-2 * t) - Real.exp (-2 * 0) := by
+    have := intervalIntegral.integral_eq_sub_of_hasDerivAt
+      (f := fun u => Real.exp (-2 * u))
+      (f' := fun u => -2 * Real.exp (-2 * u))
+      (a := 0) (b := t) (fun s _ => hderiv_exp s)
+      ((continuous_const.mul (Real.continuous_exp.comp
+        (continuous_const.mul continuous_id))).intervalIntegrable 0 t)
+    exact this
+  have hintφ : ∫ s in (0)..t, φ s = Ef * (Real.exp (-2 * t) - 1) := by
+    show ∫ s in (0)..t, -2 * Real.exp (-2 * s) * Ef = Ef * (Real.exp (-2 * t) - 1)
+    rw [show (fun s => -2 * Real.exp (-2 * s) * Ef) =
+        (fun s => (-2 * Real.exp (-2 * s)) * Ef) from rfl]
+    rw [intervalIntegral.integral_mul_const, hintExp]
 end GaussianFin
