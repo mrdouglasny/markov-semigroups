@@ -17,6 +17,27 @@ See `README.md` for the current proved-results listing and
 original development plan — kept for historical context; current
 state is what README/status say.
 
+## Plans and history
+
+Active multi-step planning docs go in [`plans/`](plans/) — see
+[`plans/README.md`](plans/README.md) for the index of currently
+active plans.
+
+When a plan completes:
+1. Move the plan file to [`plans/archive/`](plans/archive/).
+2. Add a structured entry to [`plans/history.md`](plans/history.md)
+   with:
+   * Date completed.
+   * Commits delivering the work.
+   * Resources used (wall-clock time, lines of code, subagents
+     dispatched, Gemini vetting calls).
+   * Outcome (what landed, deviations from plan if any).
+   * Lessons learned — patterns worth repeating or traps to avoid.
+
+The history log is the canonical place to look up "how long did X
+take" or "what was the proof pattern for Y" when scoping a new
+project.
+
 ## Build
 
 ```bash

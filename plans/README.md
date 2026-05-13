@@ -11,9 +11,10 @@ Each plan should:
   (`gaussian-hilbert`, `pphi2`, `pphi2N`, `lgt`, Codex branches).
 - Track **status** at the top of the doc.
 
-When a plan is complete, move it to `archive/` and update its status
-header. Add a one-line note in `archive/README.md` (create if needed)
-linking back to the relevant commits.
+When a plan is complete, move it to `archive/`, update its status
+header, and add a structured entry to [`history.md`](history.md)
+recording resources used (time, lines, subagents, vetting calls) and
+lessons learned.
 
 ## Active plans
 
@@ -22,3 +23,11 @@ linking back to the relevant commits.
   `gaussian_hypercontractivity_continuum`, via Gaussian1D + multivariate
   OU Gross discharge. 6 phases internal to
   `markov-semigroups`/`gaussian-hilbert`, ~1900–3200 lines, 6–9 weeks.
+
+## History
+
+[`history.md`](history.md) — chronological log of completed
+substantial work, with commits, resources, outcomes, and lessons
+learned. Includes back-filled entries for major 2026-05-12 / 13
+discharges (Path C Hermite IBP, entropy decay decomposition,
+A1/A2/A2-boundary, bundled Gross refactor, S–V axiom).
