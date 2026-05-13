@@ -264,13 +264,18 @@ the structure carries an explicit Markov kernel; currently
 
 ## Vetting status
 
-**Likely correct, revision applied** (gemini-3.1-pro-preview vetted
-2026-05-13). Original draft required `f ≥ ε > 0`, which gemini flagged
-as potentially vacuous on infinite-measure spaces (only the zero
-function is uniformly bounded below in `L²`). For `p ≥ 2` the powers
-are `C¹` at 0, so `f ≥ 0` is the right hypothesis; revision applied.
-Constant `4(p−1)/p²` confirmed; direction `≤` confirmed; inequality
-holds at general symmetric-Markov level (no diffusion needed). -/
+**Standard** (gemini-3.1-pro-preview, two-pass vetting 2026-05-13):
+* First pass: "Needs Revision" — original draft required
+  `f ≥ ε > 0`, flagged as potentially vacuous on infinite-measure
+  spaces (no `L²` function is uniformly bounded below). Revision:
+  for `p ≥ 2` the powers `x ↦ x^{p/2}` and `x ↦ x^{p−1}` are `C¹`
+  on `[0, ∞)` (since `p/2, p−1 ≥ 1`), so `f ≥ 0` suffices.
+* Second pass: "Standard" — revised version confirmed correct.
+  Lean's `0 ^ q = 0` for `q ≥ 1` handles `f(x) = 0` cleanly.
+  Edge cases: `p = 2` gives equality `E(f, f) ≤ E(f, f)`; `f ≡ 0`
+  gives `0 ≤ 0`. Constant `4(p − 1) / p²` and direction `≤`
+  confirmed. Inequality holds at general symmetric-Markov level
+  (no diffusion property needed). -/
 axiom stroock_varopoulos {X : Type*} [MeasurableSpace X]
     (D : DirichletMarkovSemigroup X) (p : ℝ) (hp : 2 ≤ p)
     (f : X → ℝ) (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)

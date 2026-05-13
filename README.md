@@ -278,7 +278,7 @@ self-audit), and links to the discharge plans.*
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 (now on bundled `DirichletMarkovSemigroup`) |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 (now on bundled `DirichletMarkovSemigroup`) |
-| `stroock_varopoulos` | BGL Prop 1.7.1 (intermediate-step lemma for Gross; vetted Likely-correct by gemini-3.1-pro 2026-05-13) |
+| `stroock_varopoulos` | BGL Prop 1.7.1 (intermediate-step lemma for Gross; **Standard** by gemini-3.1-pro two-pass 2026-05-13) |
 | `diamagnetic_resolvent` | Diamagnetic inequality (assembles 5 steps) |
 | `zegarlinski_lsi_inequality` | Otto-Reznikoff (2007) J. Funct. Anal. 243 Thm 1; Zegarlinski (1996) CMP 175; BGL §5.7.5 |
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
