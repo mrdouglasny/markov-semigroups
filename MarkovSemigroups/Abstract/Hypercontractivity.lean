@@ -202,6 +202,84 @@ def IsHypercontractive (D : DirichletMarkovSemigroup X) (ρ : ℝ) : Prop :=
 
 end DirichletMarkovSemigroup
 
+/-! ## Stroock–Varopoulos inequality (intermediate-step lemma) -/
+
+/-- **Stroock–Varopoulos inequality.** AXIOM
+(vetting-required textbook bridge).
+
+For a `DirichletMarkovSemigroup` `D`, any nonnegative `f ∈ D.IsCore`,
+any `p ≥ 2`, and assuming `f^{p/2}` and `f^{p-1}` lie in the core:
+
+  `(4(p − 1) / p²) · E(f^{p/2}, f^{p/2}) ≤ E(f, f^{p−1})`.
+
+In operator form (using `E(f, g) = -⟨f, Lg⟩`):
+  `-⟨f^{p−1}, Lf⟩ ≥ (4(p − 1) / p²) · ⟨-L(f^{p/2}), f^{p/2}⟩`.
+
+This is the key intermediate-step lemma in Gross's proof that LSI
+implies hypercontractivity. Combined with LSI applied to `f^{p/2}`
+(and the chain rule for `(d/dt) ‖P_t f‖_p^p`), it closes the
+differential inequality `(d/dt) ‖P_t f‖_{q(t)} ≤ 0` along the path
+`q(t) = 1 + (p − 1) · e^{2ρt}`.
+
+## On the hypotheses
+
+* For `p ≥ 2`, both `x ↦ x^{p/2}` and `x ↦ x^{p−1}` are `C¹` on
+  `[0, ∞)`, so `f ≥ 0` (no uniform `ε`-bound needed) suffices to
+  make the powers smooth. Using `f ≥ 0` rather than `f ≥ ε > 0`
+  avoids vacuous-hypothesis pitfalls on infinite-measure spaces
+  where `L²(μ)` excludes uniformly-positive functions.
+* `IsCore` closure under the power maps `t ↦ t^q` is not built into
+  `DirichletMarkovSemigroup` (concrete instances typically have the
+  core closed under smooth compositions; we don't enforce that
+  abstractly). So we add `D.IsCore (f^{p/2})` and `D.IsCore (f^{p−1})`
+  as explicit hypotheses of the axiom.
+* The inequality holds for **all** symmetric Markov semigroups, not
+  just diffusions. Diffusions give equality at `p = 2`; the bound
+  as stated is general.
+
+## Discharge plan (sketch)
+
+Standard textbook proof avoids the generator entirely. Build the
+inequality from the pointwise algebraic fact
+  `(a − b)(a^{p−1} − b^{p−1}) ≥ (4(p − 1)/p²) · (a^{p/2} − b^{p/2})²`
+for `a, b ≥ 0` (elementary calculus, real-variable convexity), then
+integrate against the symmetric Markov kernel
+`k_t(x, dy) dμ(x)` representing `⟨g, h − P_t h⟩` for any pair
+`(g, h)`, and finally divide by `t` and take `t ↘ 0` using
+`energy_eq_deriv`.
+
+Moderate-to-high Lean effort: the integral-kernel representation of
+`⟨g, h − P_t h⟩` may need to be assumed (or proved separately if
+the structure carries an explicit Markov kernel; currently
+`DirichletMarkovSemigroup` carries `P_t` as a bare operator).
+
+## References
+
+* Stroock, *Logarithmic Sobolev inequalities for Gibbs states*, in
+  *Dirichlet Forms (Varenna 1992)*, Lecture Notes in Math. 1563.
+* Varopoulos, "Hardy-Littlewood theory for semigroups," J. Funct.
+  Anal. 63 (1985).
+* Bakry-Gentil-Ledoux, *Analysis and Geometry of Markov Diffusion
+  Operators*, §1.7 / Proposition 1.7.1.
+
+## Vetting status
+
+**Likely correct, revision applied** (gemini-3.1-pro-preview vetted
+2026-05-13). Original draft required `f ≥ ε > 0`, which gemini flagged
+as potentially vacuous on infinite-measure spaces (only the zero
+function is uniformly bounded below in `L²`). For `p ≥ 2` the powers
+are `C¹` at 0, so `f ≥ 0` is the right hypothesis; revision applied.
+Constant `4(p−1)/p²` confirmed; direction `≤` confirmed; inequality
+holds at general symmetric-Markov level (no diffusion needed). -/
+axiom stroock_varopoulos {X : Type*} [MeasurableSpace X]
+    (D : DirichletMarkovSemigroup X) (p : ℝ) (hp : 2 ≤ p)
+    (f : X → ℝ) (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    (hf_p_half : D.IsCore (fun x => f x ^ (p / 2)))
+    (hf_p_one : D.IsCore (fun x => f x ^ (p - 1))) :
+    (4 * (p - 1) / p ^ 2) *
+      D.energy (fun x => f x ^ (p / 2)) (fun x => f x ^ (p / 2)) ≤
+    D.energy f (fun x => f x ^ (p - 1))
+
 /-! ## Gross's theorem (postulated as textbook axioms) -/
 
 /-- **Postulated (Gross 1975, Theorem 1).** LSI implies
