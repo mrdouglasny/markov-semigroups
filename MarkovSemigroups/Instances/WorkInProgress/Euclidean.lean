@@ -1179,23 +1179,16 @@ theorem ouSemigroup_ergodic (f : ℝ → ℝ) (hf : IsCore f) :
   have := h_outer.sub_const (Ef ^ 2)
   simpa using this
 
-/-- **Entropy decay for `f²` under OU (BGL Theorem 5.5.2).**
+/-! ### Entropy decay for `f²` under OU (BGL Theorem 5.5.2) — DISCHARGED
 
-  Ent_γ(f²) − Ent_γ(P_t(f²)) ≤ (1 − e^{-2t}) · 2 · E(f, f).
-
-Proof sketch: by the Leibniz rule for `Γ` (the diffusion property),
-`I(f²) = 4 E(f, f)` (Fisher information of `f²` in terms of energy of
-`f`). The de Bruijn identity gives `d/dt Ent(P_t g) = -I(P_t g)`, and
-gradient decay `I(P_t g) ≤ e^{-2t} I(g)` integrates from 0 to t to
-yield the claim with `g = f²`.
-
-Reference: BGL §5.5, proof of Theorem 5.5.2 (LSI from Bakry–Émery). -/
-axiom ouSemigroup_entropy_sq_decay_bound (f : ℝ → ℝ) (t : ℝ) (ht : 0 ≤ t)
-    (hf : IsCore f) :
-    DirichletSpace.entropy (ds := dirichletSpace) (fun x => f x * f x) -
-    DirichletSpace.entropy (ds := dirichletSpace)
-      (ouSemigroup t (fun x => f x * f x)) ≤
-      (1 - Real.exp (-2 * 1 * t)) * (2 / 1) * ouEnergy f f
+The former axiom `ouSemigroup_entropy_sq_decay_bound` has been
+**discharged** in
+`Instances/WorkInProgress/EuclideanEntropyDecay.lean` as the theorem
+`ouSemigroup_entropy_sq_decay_bound_proved`, deriving it from the two
+focused atomic axioms `ouSemigroup_fisher_info_decay` (A1) and
+`hasDerivAt_entropy_ouSemigroup` (A2) (both in
+`MarkovSemigroups/General/OUEntropyDecomposition.lean`) via FTC,
+ε-regularization `g_ε := f² + ε`, and DCT for the `ε → 0` limit. -/
 
 /-- **Entropy ergodicity of the OU semigroup — DERIVED via Mehler DCT + `s log s` continuity.**
 
