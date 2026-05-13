@@ -37,13 +37,67 @@ instance instIsProbabilityMeasureγFin (n : ℕ) : IsProbabilityMeasure (γFin n
   unfold γFin
   infer_instance
 
+theorem measurePreserving_piFinSuccAbove_γFin {n : ℕ} (i : Fin (n + 1)) :
+    MeasurePreserving (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i)
+      (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) := by
+  simpa [γFin] using
+    (measurePreserving_piFinSuccAbove (fun _ : Fin (n + 1) => Gaussian1D.γ) i)
+
+theorem integral_γFin_succAbove {n : ℕ} (i : Fin (n + 1))
+    {f : (Fin (n + 1) → ℝ) → ℝ} (hf : Integrable f (γFin (n + 1))) :
+    ∫ x, f x ∂γFin (n + 1) =
+      ∫ s, ∫ y, f (i.insertNth s y) ∂γFin n ∂Gaussian1D.γ := by
+  let e : (Fin (n + 1) → ℝ) ≃ᵐ ℝ × (Fin n → ℝ) :=
+    MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+  have he : MeasurePreserving e (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) :=
+    measurePreserving_piFinSuccAbove_γFin (n := n) i
+  have hcomp : Integrable (f ∘ e.symm) (Gaussian1D.γ.prod (γFin n)) := by
+    exact
+      (he.symm.integrable_comp_emb (MeasurableEquiv.measurableEmbedding e.symm)).2 hf
+  calc
+    ∫ x, f x ∂γFin (n + 1)
+      = ∫ p : ℝ × (Fin n → ℝ), f (e.symm p) ∂(Gaussian1D.γ.prod (γFin n)) := by
+          simpa using
+            (he.integral_comp' (g := fun p : ℝ × (Fin n → ℝ) => f (e.symm p)))
+    _ = ∫ s, ∫ y, f (i.insertNth s y) ∂γFin n ∂Gaussian1D.γ := by
+          simpa [e] using
+            (integral_prod (f := fun p : ℝ × (Fin n → ℝ) => f (e.symm p)) hcomp)
+
 /-- The affine Mehler shift on `(Fin n → ℝ)`. -/
 def ouShiftFin (t : ℝ) (x y : Fin n → ℝ) : Fin n → ℝ :=
   fun i => exp (-t) * x i + sqrt (1 - exp (-2 * t)) * y i
 
+theorem ouShiftFin_insertNth {n : ℕ} (i : Fin (n + 1)) (t s u : ℝ)
+    (x y : Fin n → ℝ) :
+    ouShiftFin t (i.insertNth s x) (i.insertNth u y) =
+      i.insertNth (exp (-t) * s + sqrt (1 - exp (-2 * t)) * u) (ouShiftFin t x y) := by
+  ext j
+  by_cases hji : j = i
+  · subst hji
+    simp [ouShiftFin]
+  · rcases Fin.exists_succAbove_eq hji with ⟨k, rfl⟩
+    simp [ouShiftFin]
+
 /-- The multivariate Ornstein-Uhlenbeck semigroup via the Mehler formula. -/
 def ouSemigroupFin (t : ℝ) (f : (Fin n → ℝ) → ℝ) : (Fin n → ℝ) → ℝ :=
   fun x => ∫ y, f (ouShiftFin t x y) ∂γFin n
+
+theorem ouSemigroupFin_insertNth_eq {n : ℕ} (t : ℝ) {f : (Fin (n + 1) → ℝ) → ℝ}
+    (hf_meas : Measurable f) {M : ℝ} (hM : ∀ z, ‖f z‖ ≤ M)
+    (i : Fin (n + 1)) (s : ℝ) (x : Fin n → ℝ) :
+    ouSemigroupFin t f (i.insertNth s x) =
+      ∫ u, ∫ y, f (i.insertNth (exp (-t) * s + sqrt (1 - exp (-2 * t)) * u) (ouShiftFin t x y))
+        ∂γFin n ∂Gaussian1D.γ := by
+  let g : (Fin (n + 1) → ℝ) → ℝ := fun z => f (ouShiftFin t (i.insertNth s x) z)
+  have hcont_shift : Continuous (fun z : Fin (n + 1) → ℝ => ouShiftFin t (i.insertNth s x) z) := by
+    continuity
+  have hg_meas : Measurable g := hf_meas.comp hcont_shift.measurable
+  have hg_int : Integrable g (γFin (n + 1)) := by
+    refine Integrable.mono' (integrable_const M) hg_meas.aestronglyMeasurable ?_
+    exact Filter.Eventually.of_forall (fun z => hM (ouShiftFin t (i.insertNth s x) z))
+  unfold ouSemigroupFin
+  simpa [g, ouShiftFin_insertNth] using
+    (integral_γFin_succAbove (n := n) (i := i) (f := g) hg_int)
 
 /-- Coordinate partial derivative along the `i`-th standard basis vector. -/
 def partialDeriv (i : Fin n) (f : (Fin n → ℝ) → ℝ) (x : Fin n → ℝ) : ℝ :=
@@ -106,6 +160,24 @@ theorem IsCoreFin.partial_measurable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreF
 theorem IsCoreFin.partial_stronglyMeasurable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
     (i : Fin n) : StronglyMeasurable (partialDeriv i f) :=
   (hf.partial_continuous i).stronglyMeasurable
+
+theorem IsCoreFin.secondPartial_contDiff {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) :
+    ContDiff ℝ ⊤ (secondPartial i f) := by
+  unfold secondPartial partialDeriv
+  simpa using
+    ((hf.partial_contDiff i).fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
+
+theorem IsCoreFin.secondPartial_continuous {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
+    (i : Fin n) : Continuous (secondPartial i f) :=
+  (hf.secondPartial_contDiff i).continuous
+
+theorem IsCoreFin.secondPartial_measurable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
+    (i : Fin n) : Measurable (secondPartial i f) :=
+  (hf.secondPartial_continuous i).measurable
+
+theorem IsCoreFin.secondPartial_stronglyMeasurable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
+    (i : Fin n) : StronglyMeasurable (secondPartial i f) :=
+  (hf.secondPartial_continuous i).stronglyMeasurable
 
 /-- Restrict a multivariate function to the `i`-th coordinate line through `x`. -/
 def coordSection (i : Fin n) (x : Fin n → ℝ) (f : (Fin n → ℝ) → ℝ) : ℝ → ℝ :=
@@ -1732,7 +1804,97 @@ theorem norm_ouSemigroupFin_le_of_bound (t : ℝ) {g : (Fin n → ℝ) → ℝ}
           · exact Filter.Eventually.of_forall (fun y => hM (ouShiftFin t x y))
     _ = M := by simp
 
-  theorem sq_ouSemigroupFin_le_ouSemigroupFin_sq (t : ℝ) {g : (Fin n → ℝ) → ℝ}
+theorem ouSemigroupFin_preserves_bound (t : ℝ) {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) :
+    ∃ M : ℝ, ∀ x, ‖ouSemigroupFin t f x‖ ≤ M := by
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  exact ⟨M, fun x => norm_ouSemigroupFin_le_of_bound (n := n) t hf.measurable hM x⟩
+
+theorem partialDeriv_ouSemigroupFin_preserves_bound (t : ℝ) (ht : 0 ≤ t)
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) :
+    ∃ M : ℝ, ∀ x, ‖partialDeriv i (ouSemigroupFin t f) x‖ ≤ M := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  refine ⟨M, ?_⟩
+  intro x
+  rw [partialDeriv_ouSemigroupFin_eq (n := n) t ht hf_core i]
+  calc
+    ‖exp (-t) * ouSemigroupFin t (partialDeriv i f) x‖
+      = exp (-t) * ‖ouSemigroupFin t (partialDeriv i f) x‖ := by
+          rw [norm_mul, Real.norm_eq_abs, abs_of_nonneg (exp_nonneg _)]
+    _ ≤ exp (-t) * M := by
+          gcongr
+          exact norm_ouSemigroupFin_le_of_bound (n := n) t (hf_core.partial_measurable i)
+            (fun y => (hM y).2.1 i) x
+    _ ≤ M := by
+          have hexp_le : exp (-t) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+          have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+          nlinarith
+
+theorem section_secondDeriv_ouSemigroupFin_preserves_bound (t : ℝ) (ht : 0 ≤ t)
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) (x : Fin n → ℝ) :
+    ∃ M : ℝ, ∀ s, ‖deriv (deriv (fun r => ouSemigroupFin t f (Function.update x i r))) s‖ ≤ M := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  refine ⟨M, ?_⟩
+  intro s
+  rw [section_secondDeriv_ouSemigroupFin_eq (n := n) hf_core t i x]
+  calc
+    ‖exp (-2 * t) * ouSemigroupFin t (secondPartial i f) (Function.update x i s)‖
+      = exp (-2 * t) * ‖ouSemigroupFin t (secondPartial i f) (Function.update x i s)‖ := by
+          rw [norm_mul, Real.norm_eq_abs, abs_of_nonneg (exp_nonneg _)]
+    _ ≤ exp (-2 * t) * M := by
+          gcongr
+          exact norm_ouSemigroupFin_le_of_bound (n := n) t
+            (hf_core.secondPartial_measurable i)
+            (fun y => (hM y).2.2 i) (Function.update x i s)
+    _ ≤ M := by
+          have hexp_le : exp (-2 * t) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+          have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+          nlinarith
+
+theorem ouSemigroupFin_preserves_core_bounds (t : ℝ) (ht : 0 ≤ t)
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
+    ∃ M : ℝ,
+      (∀ x, ‖ouSemigroupFin t f x‖ ≤ M) ∧
+      (∀ i x, ‖partialDeriv i (ouSemigroupFin t f) x‖ ≤ M) ∧
+      ∀ i x s, ‖deriv (deriv (fun r => ouSemigroupFin t f (Function.update x i r))) s‖ ≤ M := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  refine ⟨M, ?_, ?_, ?_⟩
+  · intro x
+    exact norm_ouSemigroupFin_le_of_bound (n := n) t hf_core.measurable (fun y => (hM y).1) x
+  · intro i x
+    rw [partialDeriv_ouSemigroupFin_eq (n := n) t ht hf_core i]
+    calc
+      ‖exp (-t) * ouSemigroupFin t (partialDeriv i f) x‖
+        = exp (-t) * ‖ouSemigroupFin t (partialDeriv i f) x‖ := by
+            rw [norm_mul, Real.norm_eq_abs, abs_of_nonneg (exp_nonneg _)]
+      _ ≤ exp (-t) * M := by
+            gcongr
+            exact norm_ouSemigroupFin_le_of_bound (n := n) t (hf_core.partial_measurable i)
+              (fun y => (hM y).2.1 i) x
+      _ ≤ M := by
+            have hexp_le : exp (-t) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+            have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+            nlinarith
+  · intro i x s
+    rw [section_secondDeriv_ouSemigroupFin_eq (n := n) hf_core t i x]
+    calc
+      ‖exp (-2 * t) * ouSemigroupFin t (secondPartial i f) (Function.update x i s)‖
+        = exp (-2 * t) *
+            ‖ouSemigroupFin t (secondPartial i f) (Function.update x i s)‖ := by
+              rw [norm_mul, Real.norm_eq_abs, abs_of_nonneg (exp_nonneg _)]
+      _ ≤ exp (-2 * t) * M := by
+            gcongr
+            exact norm_ouSemigroupFin_le_of_bound (n := n) t
+              (hf_core.secondPartial_measurable i) (fun y => (hM y).2.2 i) (Function.update x i s)
+      _ ≤ M := by
+            have hexp_le : exp (-2 * t) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+            have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+            nlinarith
+
+theorem sq_ouSemigroupFin_le_ouSemigroupFin_sq (t : ℝ) {g : (Fin n → ℝ) → ℝ}
     (hg_meas : Measurable g) {M : ℝ} (hM : ∀ x, ‖g x‖ ≤ M) (x : Fin n → ℝ) :
     (ouSemigroupFin t g x) ^ 2 ≤ ouSemigroupFin t (fun y => g y ^ 2) x := by
   have h_shift_meas : Measurable (fun y : Fin n → ℝ => ouShiftFin t x y) := by
