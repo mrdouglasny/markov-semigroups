@@ -612,19 +612,354 @@ axiom hasDerivAt_entropy_ouSemigroup
     HasDerivAt (fun s => boltzmannEntropy (ouSemigroup s g))
       (-fisherInfo (ouSemigroup t g)) t
 
-/-- **Boundary case of de Bruijn at `t = 0+`.** AXIOM.
+/-- **Pointwise continuity of `s ↦ P_s g x` at `s = 0`** for bounded continuous `g`,
+via DCT on the inner Mehler integrand. Inlined here to avoid an extra import. -/
+private theorem tendsto_ouSemigroup_pointwise_atZero_local
+    {g_aux : ℝ → ℝ} (hg_cont : Continuous g_aux) {M_g : ℝ} (hg_bd : ∀ y, |g_aux y| ≤ M_g) (x : ℝ) :
+    Tendsto (fun s => ouSemigroup s g_aux x) (𝓝[Ici 0] 0) (𝓝 (g_aux x)) := by
+  have h_rewrite : (fun s : ℝ => ouSemigroup s g_aux x) =
+      fun s => ∫ y, g_aux (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ := rfl
+  rw [h_rewrite]
+  have h_target : g_aux x = ∫ _y : ℝ, g_aux x ∂γ := by simp
+  rw [h_target]
+  refine tendsto_integral_filter_of_dominated_convergence (fun _ => M_g) ?_ ?_
+    (integrable_const _) ?_
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    exact (hg_cont.comp ((continuous_const.mul continuous_const).add
+      (continuous_const.mul continuous_id))).aestronglyMeasurable
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    filter_upwards with y
+    show ‖g_aux (Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)‖ ≤ M_g
+    rw [Real.norm_eq_abs]
+    exact hg_bd _
+  · filter_upwards with y
+    have h_arg : Tendsto (fun s : ℝ =>
+        Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)
+        (𝓝[Ici 0] 0) (𝓝 x) := by
+      have h_cont : ContinuousAt (fun s : ℝ =>
+          Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y) 0 := by
+        fun_prop
+      have h := h_cont.tendsto
+      have h_val : Real.exp (-(0 : ℝ)) * x + Real.sqrt (1 - Real.exp (-2 * 0)) * y = x := by
+        simp
+      rw [h_val] at h
+      exact h.mono_left nhdsWithin_le_nhds
+    exact hg_cont.continuousAt.tendsto.comp h_arg
+
+/-- **Boundary case of de Bruijn at `t = 0+`.** PROVED.
 
 The de Bruijn identity extends to a right-derivative at `t = 0`:
 `HasDerivWithinAt (s ↦ H(P_s g)) (-I(g)) (Ici 0) 0`.
 
-Required for the FTC application that integrates from 0 to t. -/
-axiom hasDerivWithinAt_entropy_ouSemigroup_zero
+Proof: apply `hasDerivWithinAt_Ici_of_tendsto_deriv`:
+* Differentiability on `Ioi 0` — from `hasDerivAt_entropy_ouSemigroup` (A2).
+* Continuity at `0` of the entropy `s ↦ H(P_s g)` — DCT, using `s · log s`
+  continuous on `[ε, M]`.
+* Convergence of the derivative `-I(P_s g) → -I(g)` as `s → 0+` — DCT
+  again, using `((P_s g)')² / P_s g ≤ M²/ε` uniformly. -/
+theorem hasDerivWithinAt_entropy_ouSemigroup_zero
     (g : ℝ → ℝ) (hg : ContDiff ℝ 1 g)
     {ε M : ℝ} (hε : 0 < ε)
     (hg_lo : ∀ x, ε ≤ g x) (hg_hi : ∀ x, g x ≤ M)
     (hg'_bd : ∀ x, |deriv g x| ≤ M) :
     HasDerivWithinAt (fun s => boltzmannEntropy (ouSemigroup s g))
-      (-fisherInfo g) (Set.Ici 0) 0
+      (-fisherInfo g) (Set.Ici 0) 0 := by
+  -- Notation and bounds.
+  have hε_nn : 0 ≤ ε := hε.le
+  have hM_nn : 0 ≤ M := hε_nn.trans ((hg_lo 0).trans (hg_hi 0))
+  have h_gpos : ∀ x, 0 < g x := fun x => lt_of_lt_of_le hε (hg_lo x)
+  have h_gabs : ∀ x, |g x| ≤ M := fun x => by
+    rw [abs_of_pos (h_gpos x)]; exact hg_hi x
+  have hg_norm : ∀ x, ‖g x‖ ≤ M := fun x => by
+    rw [Real.norm_eq_abs]; exact h_gabs x
+  have hg'_norm : ∀ x, ‖deriv g x‖ ≤ M := fun x => by
+    rw [Real.norm_eq_abs]; exact hg'_bd x
+  have hg_cont : Continuous g := hg.continuous
+  have hg_meas : Measurable g := hg_cont.measurable
+  have hg'_cont : Continuous (deriv g) := hg.continuous_deriv le_rfl
+  have hg'_meas : Measurable (deriv g) := hg'_cont.measurable
+  -- For each s ≥ 0, P_s g stays in [ε, M] and P_s (g') is bounded by M.
+  have h_Ptg_lo : ∀ s, 0 ≤ s → ∀ x, ε ≤ ouSemigroup s g x := by
+    intro s hs x
+    set a := Real.exp (-s)
+    set b := Real.sqrt (1 - Real.exp (-2 * s))
+    show ε ≤ ∫ y, g (a * x + b * y) ∂γ
+    have h_int : Integrable (fun y => g (a * x + b * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hg_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact hg_norm _
+    have h_le : ∀ y, (ε : ℝ) ≤ g (a * x + b * y) := fun y => hg_lo _
+    calc (ε : ℝ) = ∫ _, ε ∂γ := by simp
+      _ ≤ ∫ y, g (a * x + b * y) ∂γ :=
+            integral_mono (integrable_const _) h_int h_le
+  have h_Ptg_hi : ∀ s, 0 ≤ s → ∀ x, ouSemigroup s g x ≤ M := by
+    intro s hs x
+    set a := Real.exp (-s)
+    set b := Real.sqrt (1 - Real.exp (-2 * s))
+    show ∫ y, g (a * x + b * y) ∂γ ≤ M
+    have h_int : Integrable (fun y => g (a * x + b * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hg_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact hg_norm _
+    calc ∫ y, g (a * x + b * y) ∂γ
+        ≤ ∫ _, M ∂γ :=
+            integral_mono h_int (integrable_const _) (fun y => hg_hi _)
+      _ = M := by simp
+  have h_Ptg_pos : ∀ s, 0 ≤ s → ∀ x, 0 < ouSemigroup s g x := fun s hs x =>
+    lt_of_lt_of_le hε (h_Ptg_lo s hs x)
+  have h_Ptg_abs : ∀ s, 0 ≤ s → ∀ x, |ouSemigroup s g x| ≤ M := fun s hs x => by
+    rw [abs_of_pos (h_Ptg_pos s hs x)]; exact h_Ptg_hi s hs x
+  -- |P_s (g') x| ≤ M.
+  have h_Ptg'_abs : ∀ s, 0 ≤ s → ∀ x, |ouSemigroup s (deriv g) x| ≤ M := by
+    intro s hs x
+    set a := Real.exp (-s)
+    set b := Real.sqrt (1 - Real.exp (-2 * s))
+    show |∫ y, deriv g (a * x + b * y) ∂γ| ≤ M
+    have h_int : Integrable (fun y => deriv g (a * x + b * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hg'_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact hg'_norm _
+    calc |∫ y, deriv g (a * x + b * y) ∂γ|
+        ≤ ∫ y, |deriv g (a * x + b * y)| ∂γ := abs_integral_le_integral_abs
+      _ ≤ ∫ _, M ∂γ :=
+            integral_mono h_int.abs (integrable_const _) (fun y => hg'_bd _)
+      _ = M := by simp
+  -- Measurability of P_s g and its log/product.
+  have h_Ptg_meas : ∀ s, Measurable (ouSemigroup s g) := fun s => by
+    show Measurable fun x => ∫ y, g (Real.exp (-s) * x +
+      Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ
+    have h_sm : StronglyMeasurable
+        (fun p : ℝ × ℝ => g (Real.exp (-s) * p.1 +
+          Real.sqrt (1 - Real.exp (-2 * s)) * p.2)) :=
+      (hg_cont.comp ((continuous_const.mul continuous_fst).add
+        (continuous_const.mul continuous_snd))).stronglyMeasurable
+    exact (h_sm.integral_prod_right' (ν := γ)).measurable
+  have h_Ptdg_meas : ∀ s, Measurable (ouSemigroup s (deriv g)) := fun s => by
+    show Measurable fun x => ∫ y, deriv g (Real.exp (-s) * x +
+      Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂γ
+    have h_sm : StronglyMeasurable
+        (fun p : ℝ × ℝ => deriv g (Real.exp (-s) * p.1 +
+          Real.sqrt (1 - Real.exp (-2 * s)) * p.2)) :=
+      (hg'_cont.comp ((continuous_const.mul continuous_fst).add
+        (continuous_const.mul continuous_snd))).stronglyMeasurable
+    exact (h_sm.integral_prod_right' (ν := γ)).measurable
+  -- For convenience: bound |s · log s| for s ∈ [ε, M] by K := M * (|log ε| + |log M|).
+  set K : ℝ := M * (|Real.log ε| + |Real.log M|) with hK_def
+  have h_log_bd : ∀ s, ε ≤ s → s ≤ M → |Real.log s| ≤ |Real.log ε| + |Real.log M| := by
+    intro s hs1 hs2
+    by_cases h1 : s ≤ 1
+    · -- log s ≤ 0; -log s ≤ -log ε.
+      have hs_pos : 0 < s := lt_of_lt_of_le hε hs1
+      have h_log_s_le_0 : Real.log s ≤ 0 := Real.log_nonpos hs_pos.le h1
+      have h_log_eps_le : Real.log ε ≤ Real.log s :=
+        Real.log_le_log hε hs1
+      rw [abs_of_nonpos h_log_s_le_0]
+      have h_eps_log_nonpos : Real.log ε ≤ 0 := Real.log_nonpos hε.le (le_trans hs1 h1)
+      rw [abs_of_nonpos h_eps_log_nonpos]
+      linarith [abs_nonneg (Real.log M)]
+    · have h1 : (1 : ℝ) < s := not_le.mp h1
+      -- s > 1, so log s ≥ 0; log s ≤ log M.
+      have hs_pos : (0 : ℝ) < s := lt_trans one_pos h1
+      have h_log_s_nn : 0 ≤ Real.log s := Real.log_nonneg h1.le
+      have h_log_s_le : Real.log s ≤ Real.log M :=
+        Real.log_le_log hs_pos hs2
+      have h_log_M_nn : 0 ≤ Real.log M := h_log_s_nn.trans h_log_s_le
+      rw [abs_of_nonneg h_log_s_nn, abs_of_nonneg h_log_M_nn]
+      linarith [abs_nonneg (Real.log ε)]
+  have hK_nn : 0 ≤ K := by
+    refine mul_nonneg hM_nn ?_
+    exact add_nonneg (abs_nonneg _) (abs_nonneg _)
+  have h_slog_bd : ∀ s, ε ≤ s → s ≤ M → |s * Real.log s| ≤ K := by
+    intro s hs1 hs2
+    have hs_nn : 0 ≤ s := hε_nn.trans hs1
+    rw [abs_mul, abs_of_nonneg hs_nn]
+    exact mul_le_mul hs2 (h_log_bd s hs1 hs2) (abs_nonneg _) hM_nn
+  -- Pointwise convergence (P_s g) x → g x as s → 0+.
+  have h_Ptg_tendsto : ∀ x,
+      Tendsto (fun s => ouSemigroup s g x) (𝓝[Ici 0] 0) (𝓝 (g x)) := fun x =>
+    tendsto_ouSemigroup_pointwise_atZero_local hg_cont h_gabs x
+  have h_Ptdg_tendsto : ∀ x,
+      Tendsto (fun s => ouSemigroup s (deriv g) x) (𝓝[Ici 0] 0) (𝓝 (deriv g x)) := fun x =>
+    tendsto_ouSemigroup_pointwise_atZero_local hg'_cont hg'_bd x
+  -- Continuity of the entropy at s = 0 (DCT).
+  have h_entropy_tendsto :
+      Tendsto (fun s => boltzmannEntropy (ouSemigroup s g))
+        (𝓝[Ici 0] 0) (𝓝 (boltzmannEntropy g)) := by
+    unfold boltzmannEntropy
+    refine tendsto_integral_filter_of_dominated_convergence (fun _ => K) ?_ ?_
+      (integrable_const _) ?_
+    · -- AEStronglyMeasurable for s in a neighborhood of 0 within Ici 0.
+      filter_upwards [self_mem_nhdsWithin] with s _
+      exact ((h_Ptg_meas s).mul (h_Ptg_meas s).log).aestronglyMeasurable
+    · -- Pointwise bound |P_s g · log(P_s g)| ≤ K.
+      filter_upwards [self_mem_nhdsWithin] with s hs
+      have hs_nn : 0 ≤ s := hs
+      filter_upwards with y
+      show ‖ouSemigroup s g y * Real.log (ouSemigroup s g y)‖ ≤ K
+      rw [Real.norm_eq_abs]
+      have h_lo := h_Ptg_lo s hs_nn y
+      have h_hi := h_Ptg_hi s hs_nn y
+      exact h_slog_bd _ h_lo h_hi
+    · -- Pointwise convergence at each y.
+      filter_upwards with y
+      have h_inner := h_Ptg_tendsto y
+      have h_cont_at : ContinuousAt (fun u : ℝ => u * Real.log u) (g y) :=
+        Real.continuous_mul_log.continuousAt
+      exact h_cont_at.tendsto.comp h_inner
+  -- Pointwise: (P_s g)'(x) = e^{-s} · P_s(g')(x), so
+  -- ((P_s g)')²(x) / (P_s g)(x) = e^{-2s} · (P_s(g'))² / (P_s g).
+  have h_deriv_Ptg : ∀ s, ∀ x,
+      HasDerivAt (ouSemigroup s g)
+        (Real.exp (-s) * ouSemigroup s (deriv g) x) x := fun s x =>
+    hasDerivAt_ouSemigroup_C1 s hg hg_norm hg'_norm x
+  have h_deriv_Ptg_eq : ∀ s, ∀ x,
+      deriv (ouSemigroup s g) x = Real.exp (-s) * ouSemigroup s (deriv g) x :=
+    fun s x => (h_deriv_Ptg s x).deriv
+  -- Continuity of (fisherInfo (P_s g)) at s = 0+ via DCT.
+  have h_fisher_tendsto :
+      Tendsto (fun s => fisherInfo (ouSemigroup s g))
+        (𝓝[Ici 0] 0) (𝓝 (fisherInfo g)) := by
+    -- Rewrite fisherInfo (P_s g) using Mehler's derivative formula:
+    -- ∫ ((P_s g)')² / (P_s g) dγ = ∫ (e^{-s} P_s(g'))² / (P_s g) dγ.
+    have h_rewrite_fisher : ∀ s, 0 ≤ s →
+        fisherInfo (ouSemigroup s g) =
+          ∫ y, (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 / ouSemigroup s g y ∂γ := by
+      intro s hs
+      unfold fisherInfo
+      apply integral_congr_ae
+      filter_upwards with y
+      rw [h_deriv_Ptg_eq s y]
+    -- Pointwise convergence of integrand → (g'(y))² / g(y).
+    -- And uniform bound M²/ε.
+    have hMeps_nn : 0 ≤ M ^ 2 / ε := div_nonneg (sq_nonneg _) hε_nn
+    set H : ℝ → ℝ → ℝ := fun s y =>
+      (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 / ouSemigroup s g y with hH_def
+    have h_tendsto_H :
+        Tendsto (fun s => ∫ y, H s y ∂γ) (𝓝[Ici 0] 0)
+          (𝓝 (∫ y, (deriv g y) ^ 2 / g y ∂γ)) := by
+      refine tendsto_integral_filter_of_dominated_convergence (fun _ => M ^ 2 / ε) ?_ ?_
+        (integrable_const _) ?_
+      · -- AEStronglyMeasurable for s in a neighborhood of 0 within Ici 0.
+        filter_upwards [self_mem_nhdsWithin] with s _
+        have h_meas_num : Measurable
+            (fun y => (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2) :=
+          (measurable_const.mul (h_Ptdg_meas s)).pow_const 2
+        exact (h_meas_num.div (h_Ptg_meas s)).aestronglyMeasurable
+      · -- Pointwise bound.
+        filter_upwards [self_mem_nhdsWithin] with s hs
+        have hs_nn : 0 ≤ s := hs
+        filter_upwards with y
+        show ‖(Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 /
+          ouSemigroup s g y‖ ≤ M ^ 2 / ε
+        have hPtg_pos := h_Ptg_pos s hs_nn y
+        have hPtg_lo := h_Ptg_lo s hs_nn y
+        have h_num_nn : 0 ≤ (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 := sq_nonneg _
+        have h_quot_nn : 0 ≤ (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 /
+            ouSemigroup s g y := div_nonneg h_num_nn hPtg_pos.le
+        rw [Real.norm_eq_abs, abs_of_nonneg h_quot_nn]
+        -- Numerator ≤ M².
+        have h_exp_le : Real.exp (-s) ≤ 1 := by
+          rw [show (1 : ℝ) = Real.exp 0 by simp]
+          exact Real.exp_le_exp.mpr (by linarith)
+        have h_exp_nn : 0 ≤ Real.exp (-s) := (Real.exp_pos _).le
+        have h_exp_abs : |Real.exp (-s)| ≤ 1 := by
+          rw [abs_of_nonneg h_exp_nn]; exact h_exp_le
+        have h_inner_abs : |Real.exp (-s) * ouSemigroup s (deriv g) y| ≤ M := by
+          rw [abs_mul]
+          calc |Real.exp (-s)| * |ouSemigroup s (deriv g) y|
+              ≤ 1 * M :=
+                mul_le_mul h_exp_abs (h_Ptg'_abs s hs_nn y) (abs_nonneg _) (by norm_num)
+            _ = M := one_mul _
+        have h_inner_sq_le : (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 ≤ M ^ 2 := by
+          have h_eq : (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 =
+              |Real.exp (-s) * ouSemigroup s (deriv g) y| ^ 2 := by rw [sq_abs]
+          rw [h_eq]
+          exact pow_le_pow_left₀ (abs_nonneg _) h_inner_abs 2
+        calc (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2 / ouSemigroup s g y
+            ≤ M ^ 2 / ouSemigroup s g y :=
+              div_le_div_of_nonneg_right h_inner_sq_le hPtg_pos.le
+          _ ≤ M ^ 2 / ε := by
+              apply div_le_div_of_nonneg_left (sq_nonneg _) hε hPtg_lo
+      · -- Pointwise convergence of integrand at each y.
+        filter_upwards with y
+        -- exp(-s) → 1.
+        have h_exp_lim : Tendsto (fun s : ℝ => Real.exp (-s)) (𝓝[Ici 0] 0) (𝓝 1) := by
+          have h_cont : Continuous (fun s : ℝ => Real.exp (-s)) := by fun_prop
+          have h := h_cont.continuousAt.tendsto (x := (0 : ℝ))
+          have h_val : Real.exp (-(0 : ℝ)) = 1 := by simp
+          rw [h_val] at h
+          exact h.mono_left nhdsWithin_le_nhds
+        -- exp(-s) * P_s(g')(y) → 1 * g'(y) = g'(y).
+        have h_prod_lim : Tendsto (fun s => Real.exp (-s) * ouSemigroup s (deriv g) y)
+            (𝓝[Ici 0] 0) (𝓝 (deriv g y)) := by
+          have h := h_exp_lim.mul (h_Ptdg_tendsto y)
+          simpa using h
+        -- Square it.
+        have h_sq_lim : Tendsto
+            (fun s => (Real.exp (-s) * ouSemigroup s (deriv g) y) ^ 2)
+            (𝓝[Ici 0] 0) (𝓝 ((deriv g y) ^ 2)) := by
+          have h_cont_sq : ContinuousAt (fun u : ℝ => u ^ 2) (deriv g y) := by fun_prop
+          exact h_cont_sq.tendsto.comp h_prod_lim
+        -- P_s g (y) → g(y), and g(y) ≠ 0.
+        have h_gy_ne : g y ≠ 0 := (h_gpos y).ne'
+        have h_div_lim : Tendsto (fun s => H s y) (𝓝[Ici 0] 0)
+            (𝓝 ((deriv g y) ^ 2 / g y)) := by
+          have h := h_sq_lim.div (h_Ptg_tendsto y) h_gy_ne
+          exact h
+        exact h_div_lim
+    -- Conclude.
+    have h_eq_ev : ∀ᶠ s in 𝓝[Ici 0] 0,
+        fisherInfo (ouSemigroup s g) = ∫ y, H s y ∂γ := by
+      filter_upwards [self_mem_nhdsWithin] with s hs
+      exact h_rewrite_fisher s hs
+    -- Use the eventual equality to transfer the tendsto.
+    have h_target_eq : fisherInfo g = ∫ y, (deriv g y) ^ 2 / g y ∂γ := rfl
+    rw [h_target_eq]
+    refine h_tendsto_H.congr' ?_
+    filter_upwards [h_eq_ev] with s hs_eq
+    exact hs_eq.symm
+  -- Apply hasDerivWithinAt_Ici_of_tendsto_deriv.
+  refine hasDerivWithinAt_Ici_of_tendsto_deriv (s := Ioi 0)
+    (f := fun s => boltzmannEntropy (ouSemigroup s g))
+    (e := -fisherInfo g) (a := 0) ?_ ?_ self_mem_nhdsWithin ?_
+  · -- DifferentiableOn on Ioi 0.
+    intro s hs
+    have hs_pos : 0 < s := hs
+    have h_deriv := hasDerivAt_entropy_ouSemigroup g hg hε hg_lo hg_hi hg'_bd hs_pos
+    exact h_deriv.differentiableAt.differentiableWithinAt
+  · -- ContinuousWithinAt at 0.
+    have h_zero : ouSemigroup 0 g = g := by
+      ext x
+      simp only [ouSemigroup, neg_zero, Real.exp_zero, mul_zero, sub_self,
+        Real.sqrt_zero, zero_mul, add_zero, one_mul]
+      simp [integral_const]
+    show ContinuousWithinAt (fun s => boltzmannEntropy (ouSemigroup s g)) (Ioi 0) 0
+    have h_target : Tendsto (fun s => boltzmannEntropy (ouSemigroup s g))
+        (𝓝[Ioi 0] 0) (𝓝 (boltzmannEntropy (ouSemigroup 0 g))) := by
+      rw [h_zero]
+      exact h_entropy_tendsto.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+    exact h_target
+  · -- Tendsto of deriv to -fisherInfo g.
+    -- For s > 0: deriv (...) s = -fisherInfo (P_s g).
+    have h_deriv_eq : ∀ s, 0 < s →
+        deriv (fun s => boltzmannEntropy (ouSemigroup s g)) s =
+          -fisherInfo (ouSemigroup s g) := by
+      intro s hs
+      exact (hasDerivAt_entropy_ouSemigroup g hg hε hg_lo hg_hi hg'_bd hs).deriv
+    have h_fisher_neg_tendsto :
+        Tendsto (fun s => -fisherInfo (ouSemigroup s g))
+          (𝓝[Ici 0] 0) (𝓝 (-fisherInfo g)) := h_fisher_tendsto.neg
+    have h_fisher_neg_tendsto' :
+        Tendsto (fun s => -fisherInfo (ouSemigroup s g))
+          (𝓝[Ioi 0] 0) (𝓝 (-fisherInfo g)) :=
+      h_fisher_neg_tendsto.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+    refine h_fisher_neg_tendsto'.congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with s hs
+    exact (h_deriv_eq s hs).symm
 
 end Gaussian1D
 
