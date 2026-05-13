@@ -19,10 +19,11 @@ five early discharges
 Hermite IBP in `EuclideanHermite.lean`), and
 `ouSemigroup_entropy_sq_decay_bound` (A1+A2 decomposition in
 `EuclideanEntropyDecay.lean`). Net: **Gaussian1D concrete instance is
-axiom-free**; 3 atomic Bakry-Émery building-block axioms (Fisher info
-decay + de Bruijn identity) live in
+axiom-free**; 2 atomic Bakry-Émery de Bruijn-identity axioms live in
 `MarkovSemigroups/General/OUEntropyDecomposition.lean` and are reusable
-across future BakryEmerySpace instances.
+across future BakryEmerySpace instances. (The third atomic building
+block, `ouSemigroup_fisher_info_decay`, was proved on 2026-05-12 via
+Cauchy-Schwarz on the Mehler probability kernel.)
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
 Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
