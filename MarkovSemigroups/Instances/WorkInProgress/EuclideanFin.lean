@@ -135,13 +135,13 @@ We require:
 
 This is the direct finite-dimensional analogue of `Gaussian1D.IsCore`. -/
 def IsCoreFin (f : (Fin n → ℝ) → ℝ) : Prop :=
-  ContDiff ℝ ⊤ f ∧ ∃ M : ℝ,
+  ContDiff ℝ ∞ f ∧ ∃ M : ℝ,
     ∀ x, ‖f x‖ ≤ M ∧
       (∀ i : Fin n, ‖partialDeriv i f x‖ ≤ M) ∧
       ∀ i : Fin n, ‖secondPartial i f x‖ ≤ M
 
 theorem IsCoreFin.contDiff {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
-    ContDiff ℝ ⊤ f := hf.1
+    ContDiff ℝ ∞ f := hf.1
 
 theorem IsCoreFin.bound_exists {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
     ∃ M : ℝ, ∀ x, ‖f x‖ ≤ M := by
@@ -158,9 +158,9 @@ theorem IsCoreFin.stronglyMeasurable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreF
     StronglyMeasurable f := hf.continuous.stronglyMeasurable
 
 theorem IsCoreFin.partial_contDiff {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) :
-    ContDiff ℝ ⊤ (partialDeriv i f) := by
+    ContDiff ℝ ∞ (partialDeriv i f) := by
   unfold partialDeriv
-  simpa using (hf.contDiff.fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
+  simpa using (hf.contDiff.fderiv_right (m := ∞) (by simp)).clm_apply contDiff_const
 
 theorem IsCoreFin.partial_differentiable {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) :
     Differentiable ℝ (partialDeriv i f) :=
@@ -177,10 +177,10 @@ theorem IsCoreFin.partial_stronglyMeasurable {f : (Fin n → ℝ) → ℝ} (hf :
   (hf.partial_continuous i).stronglyMeasurable
 
 theorem IsCoreFin.secondPartial_contDiff {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (i : Fin n) :
-    ContDiff ℝ ⊤ (secondPartial i f) := by
+    ContDiff ℝ ∞ (secondPartial i f) := by
   unfold secondPartial partialDeriv
   simpa using
-    ((hf.partial_contDiff i).fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
+    ((hf.partial_contDiff i).fderiv_right (m := ∞) (by simp)).clm_apply contDiff_const
 
 theorem IsCoreFin.secondPartial_continuous {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
     (i : Fin n) : Continuous (secondPartial i f) :=
@@ -198,13 +198,13 @@ theorem IsCoreFin.secondPartial_stronglyMeasurable {f : (Fin n → ℝ) → ℝ}
 def coordSection (i : Fin n) (x : Fin n → ℝ) (f : (Fin n → ℝ) → ℝ) : ℝ → ℝ :=
   fun s => f (Function.update x i s)
 
-theorem section_contDiff {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ⊤ f)
+theorem section_contDiff {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ∞ f)
     (i : Fin n) (x : Fin n → ℝ) :
-    ContDiff ℝ ⊤ (coordSection i x f) := by
+    ContDiff ℝ ∞ (coordSection i x f) := by
   unfold coordSection
-  exact hf.comp (contDiff_update ⊤ x i)
+  exact hf.comp (contDiff_update ∞ x i)
 
-theorem section_hasDerivAt {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ⊤ f)
+theorem section_hasDerivAt {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ∞ f)
     (i : Fin n) (x : Fin n → ℝ) (s : ℝ) :
     HasDerivAt (coordSection i x f)
       (partialDeriv i f (Function.update x i s)) s := by
@@ -214,7 +214,7 @@ theorem section_hasDerivAt {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ⊤ 
     ((hf.differentiable (by simp)).differentiableAt).hasFDerivAt
   simpa [partialDeriv] using h_f.comp_hasDerivAt s h_update
 
-theorem section_deriv {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ⊤ f)
+theorem section_deriv {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ∞ f)
     (i : Fin n) (x : Fin n → ℝ) :
     deriv (coordSection i x f) = fun s => partialDeriv i f (Function.update x i s) := by
   funext s
@@ -344,11 +344,11 @@ theorem stein_partialDeriv_ouShiftFin {n : ℕ} {f : (Fin (n + 1) → ℝ) → �
     let base : Fin (n + 1) → ℝ := i.insertNth 0 (ouShiftFin t x' z)
     let g : ℝ → ℝ := fun u => coordSection i base (partialDeriv i f) (a * x i + b * u)
     have hg_C1 : ContDiff ℝ 1 g := by
-      have hsec : ContDiff ℝ ⊤ (coordSection i base (partialDeriv i f)) :=
+      have hsec : ContDiff ℝ ∞ (coordSection i base (partialDeriv i f)) :=
         section_contDiff (IsCoreFin.partial_contDiff hf_core i) i base
       have h_aff : ContDiff ℝ 1 (fun u : ℝ => a * x i + b * u) := by
         exact contDiff_const.add (contDiff_const.mul contDiff_id)
-      simpa [g] using (hsec.of_le (by simp : (1 : WithTop ℕ∞) ≤ ⊤)).comp h_aff
+      simpa [g] using (hsec.of_le (by simp)).comp h_aff
     have hg_bd : ∀ u, |g u| ≤ M := by
       intro u
       simp [g, coordSection]
@@ -420,7 +420,7 @@ theorem sum_smul_single (v : Fin n → ℝ) :
   ext j
   simp [Pi.single_apply]
 
-theorem fderiv_apply_eq_sum_partial {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ⊤ f)
+theorem fderiv_apply_eq_sum_partial {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ∞ f)
     (x v : Fin n → ℝ) :
     fderiv ℝ f x v = ∑ i : Fin n, v i * partialDeriv i f x := by
   have hdiff : DifferentiableAt ℝ f x := (hf.differentiable (by simp)).differentiableAt
@@ -840,11 +840,11 @@ theorem section_deriv_ouSemigroupFin_eq {f : (Fin n → ℝ) → ℝ} (hf : IsCo
     deriv (fun s => ouSemigroupFin t f (Function.update x i s)) =
       fun s => exp (-t) * ouSemigroupFin t (partialDeriv i f) (Function.update x i s) := by
   have hf_core : IsCoreFin f := hf
-  have hf_cont : ContDiff ℝ ⊤ f := hf.contDiff
+  have hf_cont : ContDiff ℝ ∞ f := hf.contDiff
   obtain ⟨_, M, hM⟩ := hf
   funext s
   exact (hasDerivAt_coordSection_ouSemigroupFin_C1 (t := t)
-    (hf_C1 := hf_cont.of_le (by simp : (1 : WithTop ℕ∞) ≤ ⊤))
+    (hf_C1 := hf_cont.of_le (by simp))
     (i := i)
     (hM0 := fun z => (hM z).1)
     (hM1 := fun z => (hM z).2.1 i)
@@ -855,12 +855,12 @@ theorem section_secondDeriv_ouSemigroupFin_eq {f : (Fin n → ℝ) → ℝ} (hf 
     deriv (deriv (fun s => ouSemigroupFin t f (Function.update x i s))) =
       fun s => exp (-2 * t) * ouSemigroupFin t (secondPartial i f) (Function.update x i s) := by
   have hf_core : IsCoreFin f := hf
-  have hf_partial : ContDiff ℝ ⊤ (partialDeriv i f) := hf.partial_contDiff i
+  have hf_partial : ContDiff ℝ ∞ (partialDeriv i f) := hf.partial_contDiff i
   obtain ⟨_, M, hM⟩ := hf
   funext s
   have h :=
     hasDerivAt_coordSection_ouSemigroupFin_C1 (t := t)
-      (hf_C1 := hf_partial.of_le (by simp : (1 : WithTop ℕ∞) ≤ ⊤))
+      (hf_C1 := hf_partial.of_le (by simp))
       (i := i)
       (hM0 := fun z => (hM z).2.1 i)
       (hM1 := fun z => (hM z).2.2 i)
@@ -885,7 +885,7 @@ theorem IsCoreFin.section_isCore {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f
   obtain ⟨hf_smooth, M, hM⟩ := hf
   have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
   have hsection : ContDiff ℝ ∞ (coordSection i x f) := by
-    exact (section_contDiff hf_smooth i x).of_le le_top
+    exact section_contDiff hf_smooth i x
   refine ⟨hsection, ⟨M, fun s => ?_⟩⟩
   refine ⟨?_, ?_, ?_⟩
   · simpa [coordSection] using (hM (Function.update x i s)).1
@@ -981,12 +981,10 @@ theorem IsCoreFin_add {f g : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (hg : I
         ≤ ‖partialDeriv i f x‖ + ‖partialDeriv i g x‖ := norm_add_le _ _
       _ ≤ Mf + Mg := add_le_add ((hfM x).2.1 i) ((hgM x).2.1 i)
   · intro i
-    have hpartialf_smooth : ContDiff ℝ ⊤ (partialDeriv i f) := by
-      unfold partialDeriv
-      simpa using (hf_smooth.fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
-    have hpartialg_smooth : ContDiff ℝ ⊤ (partialDeriv i g) := by
-      unfold partialDeriv
-      simpa using (hg_smooth.fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
+    have hf_core : IsCoreFin f := ⟨hf_smooth, Mf, hfM⟩
+    have hg_core : IsCoreFin g := ⟨hg_smooth, Mg, hgM⟩
+    have hpartialf_smooth : ContDiff ℝ ∞ (partialDeriv i f) := hf_core.partial_contDiff i
+    have hpartialg_smooth : ContDiff ℝ ∞ (partialDeriv i g) := hg_core.partial_contDiff i
     have hdf' : DifferentiableAt ℝ (partialDeriv i f) x := (hpartialf_smooth.differentiable (by simp)).differentiableAt
     have hdg' : DifferentiableAt ℝ (partialDeriv i g) x := (hpartialg_smooth.differentiable (by simp)).differentiableAt
     unfold secondPartial
@@ -1043,7 +1041,7 @@ theorem IsCoreFin_smul (c : ℝ) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f
       _ ≤ ‖c‖ * M := mul_le_mul_of_nonneg_left ((hM x).2.2 i) (norm_nonneg _)
 
 theorem partialDeriv_mul (i : Fin n) {f g : (Fin n → ℝ) → ℝ}
-    (hf : ContDiff ℝ ⊤ f) (hg : ContDiff ℝ ⊤ g) :
+    (hf : ContDiff ℝ ∞ f) (hg : ContDiff ℝ ∞ g) :
     partialDeriv i (f * g) = fun x => partialDeriv i f x * g x + f x * partialDeriv i g x := by
   funext x
   have hdf : DifferentiableAt ℝ f x := (hf.differentiable (by simp)).differentiableAt
@@ -1082,12 +1080,10 @@ theorem IsCoreFin_mul {f g : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (hg : I
   · intro i
     have hdf : DifferentiableAt ℝ f x := (hf_smooth.differentiable (by simp)).differentiableAt
     have hdg : DifferentiableAt ℝ g x := (hg_smooth.differentiable (by simp)).differentiableAt
-    have hpartialf_smooth : ContDiff ℝ ⊤ (partialDeriv i f) := by
-      unfold partialDeriv
-      simpa using (hf_smooth.fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
-    have hpartialg_smooth : ContDiff ℝ ⊤ (partialDeriv i g) := by
-      unfold partialDeriv
-      simpa using (hg_smooth.fderiv_right (m := ⊤) (by simp)).clm_apply contDiff_const
+    have hf_core : IsCoreFin f := ⟨hf_smooth, Mf, hfM⟩
+    have hg_core : IsCoreFin g := ⟨hg_smooth, Mg, hgM⟩
+    have hpartialf_smooth : ContDiff ℝ ∞ (partialDeriv i f) := hf_core.partial_contDiff i
+    have hpartialg_smooth : ContDiff ℝ ∞ (partialDeriv i g) := hg_core.partial_contDiff i
     have hdf' : DifferentiableAt ℝ (partialDeriv i f) x :=
       (hpartialf_smooth.differentiable (by simp)).differentiableAt
     have hdg' : DifferentiableAt ℝ (partialDeriv i g) x :=
@@ -1148,7 +1144,7 @@ theorem IsCoreFin_mul {f g : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (hg : I
   simp [partialDeriv, smul_eq_mul, ContinuousLinearMap.smul_apply]
 
 theorem partialDeriv_add (i : Fin n) {f g : (Fin n → ℝ) → ℝ}
-    (hf : ContDiff ℝ ⊤ f) (hg : ContDiff ℝ ⊤ g) :
+    (hf : ContDiff ℝ ∞ f) (hg : ContDiff ℝ ∞ g) :
     partialDeriv i (f + g) = fun x => partialDeriv i f x + partialDeriv i g x := by
   funext x
   have hdf : DifferentiableAt ℝ f x := (hf.differentiable (by simp)).differentiableAt
