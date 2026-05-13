@@ -689,6 +689,181 @@ theorem gaussian_dirichlet_form_identity {g : ℝ → ℝ} (hg : IsCore g) :
       integral_add h_int_g'sq h_int_gg'']
   ring
 
+/-- **Bilinear Gaussian Dirichlet form identity** (BGL §1.6, asymmetric form).
+PROVED.
+
+For `f` C¹ with `f, f'` bounded and `h` C² with `h, h', h''` bounded, with
+`L h := h'' - x · h'` the OU generator,
+  `∫ f · L h dγ = -∫ f' · h' dγ`.
+
+Generalizes `gaussian_dirichlet_form_identity` (the diagonal case `f = h`).
+Used in the discharge of `hasDerivAt_entropy_ouSemigroup` to convert the
+parametric-derivative expression `∫ (L P_t g) · (log P_t g + 1) dγ` into
+`-∫ ((P_t g)')² / P_t g dγ = -fisherInfo (P_t g)`. -/
+theorem gaussian_dirichlet_form_bilinear
+    {f h : ℝ → ℝ}
+    (hf : ContDiff ℝ 1 f) {Mf : ℝ}
+    (hf_bd : ∀ y, |f y| ≤ Mf) (hf'_bd : ∀ y, |deriv f y| ≤ Mf)
+    (hh : ContDiff ℝ 2 h) {Mh Mh' Mh'' : ℝ}
+    (hh_bd : ∀ y, |h y| ≤ Mh) (hh'_bd : ∀ y, |deriv h y| ≤ Mh')
+    (hh''_bd : ∀ y, |deriv (deriv h) y| ≤ Mh'') :
+    ∫ y, f y * (deriv (deriv h) y - y * deriv h y) ∂γ
+      = -∫ y, deriv f y * deriv h y ∂γ := by
+  set pdf : ℝ → ℝ := gaussianPDFReal 0 1 with hpdf_def
+  have hpdf_nn : ∀ y, 0 ≤ pdf y := fun y => gaussianPDFReal_nonneg _ _ _
+  have hpdf_meas : Measurable pdf := measurable_gaussianPDFReal _ _
+  have hMf_nn : 0 ≤ Mf := (abs_nonneg _).trans (hf_bd 0)
+  have hMh'_nn : 0 ≤ Mh' := (abs_nonneg _).trans (hh'_bd 0)
+  have hMh''_nn : 0 ≤ Mh'' := (abs_nonneg _).trans (hh''_bd 0)
+  -- Differentiability of f, h, h'.
+  have hf_diff : Differentiable ℝ f := hf.differentiable (by norm_num)
+  have hh_C1 : ContDiff ℝ 1 h := hh.of_le (by norm_num : (1 : WithTop ℕ∞) ≤ 2)
+  have hh_diff : Differentiable ℝ h := hh_C1.differentiable (by norm_num)
+  have hh' : ContDiff ℝ 1 (deriv h) := by
+    have h2 : ContDiff ℝ (1 + 1) h := by simpa using hh
+    exact h2.deriv'
+  have hh'_diff : Differentiable ℝ (deriv h) := hh'.differentiable (by norm_num)
+  -- Measurability.
+  have hf_meas : Measurable f := hf.continuous.measurable
+  have hf'_meas : Measurable (deriv f) := (hf.continuous_deriv (by norm_num)).measurable
+  have hh_meas : Measurable h := hh_C1.continuous.measurable
+  have hh'_meas : Measurable (deriv h) := hh'.continuous.measurable
+  have hh''_meas : Measurable (deriv (deriv h)) :=
+    (hh'.continuous_deriv (by norm_num)).measurable
+  -- Define G(y) := f(y) · h'(y) · pdf(y).
+  -- G'(y) = f'(y) · h'(y) · pdf(y) + f(y) · h''(y) · pdf(y) - y · f(y) · h'(y) · pdf(y).
+  have hG_deriv : ∀ y, HasDerivAt (fun z => f z * deriv h z * pdf z)
+      (deriv f y * deriv h y * pdf y + f y * deriv (deriv h) y * pdf y
+        - y * f y * deriv h y * pdf y) y := by
+    intro y
+    have h1 : HasDerivAt f (deriv f y) y := hf_diff.differentiableAt.hasDerivAt
+    have h2 : HasDerivAt (deriv h) (deriv (deriv h) y) y :=
+      hh'_diff.differentiableAt.hasDerivAt
+    have h3 : HasDerivAt pdf (-y * pdf y) y := hasDerivAt_gaussianPDF_standard y
+    have h4 : HasDerivAt (fun z => f z * deriv h z)
+        (deriv f y * deriv h y + f y * deriv (deriv h) y) y := h1.mul h2
+    have h5 : HasDerivAt (fun z => f z * deriv h z * pdf z)
+        ((deriv f y * deriv h y + f y * deriv (deriv h) y) * pdf y
+          + f y * deriv h y * (-y * pdf y)) y := h4.mul h3
+    convert h5 using 1; ring
+  -- G → 0 at ±∞ via |G(y)| ≤ Mf · Mh' · pdf y.
+  have h_bound_pdf_atTop : Tendsto (fun y => Mf * Mh' * pdf y) atTop (nhds 0) := by
+    have := gaussianPDF_tendsto_atTop.const_mul (Mf * Mh')
+    simpa using this
+  have h_bound_pdf_atBot : Tendsto (fun y => Mf * Mh' * pdf y) atBot (nhds 0) := by
+    have := gaussianPDF_tendsto_atBot.const_mul (Mf * Mh')
+    simpa using this
+  have hG_atTop : Tendsto (fun y => f y * deriv h y * pdf y) atTop (nhds 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    refine squeeze_zero (fun _ => norm_nonneg _) (fun y => ?_) h_bound_pdf_atTop
+    show ‖f y * deriv h y * pdf y‖ ≤ Mf * Mh' * pdf y
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    have hprod : |f y| * |deriv h y| ≤ Mf * Mh' :=
+      mul_le_mul (hf_bd y) (hh'_bd y) (abs_nonneg _) hMf_nn
+    exact mul_le_mul_of_nonneg_right hprod (hpdf_nn y)
+  have hG_atBot : Tendsto (fun y => f y * deriv h y * pdf y) atBot (nhds 0) := by
+    rw [tendsto_zero_iff_norm_tendsto_zero]
+    refine squeeze_zero (fun _ => norm_nonneg _) (fun y => ?_) h_bound_pdf_atBot
+    show ‖f y * deriv h y * pdf y‖ ≤ Mf * Mh' * pdf y
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    have hprod : |f y| * |deriv h y| ≤ Mf * Mh' :=
+      mul_le_mul (hf_bd y) (hh'_bd y) (abs_nonneg _) hMf_nn
+    exact mul_le_mul_of_nonneg_right hprod (hpdf_nn y)
+  -- Integrability of each piece of G'.
+  have h_pdf_int : Integrable pdf := integrable_gaussianPDFReal _ _
+  have h_int_f'h'pdf : Integrable (fun y => deriv f y * deriv h y * pdf y) := by
+    refine Integrable.mono' (h_pdf_int.const_mul (Mf * Mh'))
+      (((hf'_meas.mul hh'_meas).mul hpdf_meas).aestronglyMeasurable) ?_
+    filter_upwards with y
+    show ‖deriv f y * deriv h y * pdf y‖ ≤ Mf * Mh' * pdf y
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    have hprod : |deriv f y| * |deriv h y| ≤ Mf * Mh' :=
+      mul_le_mul (hf'_bd y) (hh'_bd y) (abs_nonneg _) hMf_nn
+    exact mul_le_mul_of_nonneg_right hprod (hpdf_nn y)
+  have h_int_fh''pdf : Integrable (fun y => f y * deriv (deriv h) y * pdf y) := by
+    refine Integrable.mono' (h_pdf_int.const_mul (Mf * Mh''))
+      (((hf_meas.mul hh''_meas).mul hpdf_meas).aestronglyMeasurable) ?_
+    filter_upwards with y
+    show ‖f y * deriv (deriv h) y * pdf y‖ ≤ Mf * Mh'' * pdf y
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    have hprod : |f y| * |deriv (deriv h) y| ≤ Mf * Mh'' :=
+      mul_le_mul (hf_bd y) (hh''_bd y) (abs_nonneg _) hMf_nn
+    exact mul_le_mul_of_nonneg_right hprod (hpdf_nn y)
+  have h_int_yfh'pdf : Integrable (fun y => y * f y * deriv h y * pdf y) := by
+    refine Integrable.mono' (integrable_abs_mul_gaussianPDF.const_mul (Mf * Mh'))
+      ((((measurable_id.mul hf_meas).mul hh'_meas).mul hpdf_meas).aestronglyMeasurable) ?_
+    filter_upwards with y
+    show ‖y * f y * deriv h y * pdf y‖ ≤ Mf * Mh' * (|y| * pdf y)
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, abs_mul, abs_of_nonneg (hpdf_nn y)]
+    have hprod : |f y| * |deriv h y| ≤ Mf * Mh' :=
+      mul_le_mul (hf_bd y) (hh'_bd y) (abs_nonneg _) hMf_nn
+    have habs_nn : 0 ≤ |y| := abs_nonneg _
+    calc |y| * |f y| * |deriv h y| * pdf y
+        = (|f y| * |deriv h y|) * (|y| * pdf y) := by ring
+      _ ≤ (Mf * Mh') * (|y| * pdf y) :=
+          mul_le_mul_of_nonneg_right hprod (mul_nonneg habs_nn (hpdf_nn y))
+  have h_G'_int : Integrable
+      (fun y => deriv f y * deriv h y * pdf y + f y * deriv (deriv h) y * pdf y
+        - y * f y * deriv h y * pdf y) :=
+    (h_int_f'h'pdf.add h_int_fh''pdf).sub h_int_yfh'pdf
+  -- ∫ G' = 0 by FTC.
+  have h_int_G' : ∫ y, deriv f y * deriv h y * pdf y + f y * deriv (deriv h) y * pdf y
+      - y * f y * deriv h y * pdf y = 0 := by
+    have := integral_of_hasDerivAt_of_tendsto hG_deriv h_G'_int hG_atBot hG_atTop
+    simpa using this
+  -- Lebesgue identity: ∫ f · (L h) · pdf = -∫ f' · h' · pdf.
+  -- Split the G' integral into three pieces.
+  set A : ℝ → ℝ := fun y => deriv f y * deriv h y * pdf y
+  set B : ℝ → ℝ := fun y => f y * deriv (deriv h) y * pdf y
+  set C : ℝ → ℝ := fun y => y * f y * deriv h y * pdf y
+  have hA_int : Integrable A := h_int_f'h'pdf
+  have hB_int : Integrable B := h_int_fh''pdf
+  have hC_int : Integrable C := h_int_yfh'pdf
+  have h_G'_eq :
+      (fun y => deriv f y * deriv h y * pdf y + f y * deriv (deriv h) y * pdf y
+        - y * f y * deriv h y * pdf y)
+        = (fun y => A y + B y - C y) := by
+    funext y; rfl
+  rw [h_G'_eq] at h_int_G'
+  have h_int_AB : Integrable (fun y => A y + B y) := hA_int.add hB_int
+  have h_split_int :
+      ∫ y, A y + B y - C y = (∫ y, A y) + (∫ y, B y) - (∫ y, C y) := by
+    rw [integral_sub h_int_AB hC_int, integral_add hA_int hB_int]
+  rw [h_split_int] at h_int_G'
+  -- Now the goal LHS, after splitting f · (L h - y·h') · pdf into two pieces.
+  have h_lebesgue :
+      ∫ y, f y * (deriv (deriv h) y - y * deriv h y) * pdf y
+        = -∫ y, deriv f y * deriv h y * pdf y := by
+    have h_split_fun :
+        (fun y => f y * (deriv (deriv h) y - y * deriv h y) * pdf y)
+          = (fun y => B y - C y) := by
+      funext y; show f y * (deriv (deriv h) y - y * deriv h y) * pdf y = _
+      simp only [B, C]; ring
+    rw [h_split_fun, integral_sub hB_int hC_int]
+    show (∫ y, B y) - (∫ y, C y) = -∫ y, A y
+    linarith
+  -- Convert γ-integrals to Lebesgue.
+  have h_v_ne : (1 : NNReal) ≠ 0 := ne_of_gt zero_lt_one
+  have h_γ_lhs :
+      ∫ y, f y * (deriv (deriv h) y - y * deriv h y) ∂γ
+        = ∫ y, f y * (deriv (deriv h) y - y * deriv h y) * pdf y := by
+    show ∫ y, f y * (deriv (deriv h) y - y * deriv h y)
+        ∂(gaussianReal (0 : ℝ) (1 : NNReal)) = _
+    rw [integral_gaussianReal_eq_integral_smul h_v_ne]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    show pdf y • (f y * (deriv (deriv h) y - y * deriv h y))
+      = f y * (deriv (deriv h) y - y * deriv h y) * pdf y
+    rw [smul_eq_mul]; ring
+  have h_γ_rhs :
+      ∫ y, deriv f y * deriv h y ∂γ = ∫ y, deriv f y * deriv h y * pdf y := by
+    show ∫ y, deriv f y * deriv h y
+        ∂(gaussianReal (0 : ℝ) (1 : NNReal)) = _
+    rw [integral_gaussianReal_eq_integral_smul h_v_ne]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
+    show pdf y • (deriv f y * deriv h y) = deriv f y * deriv h y * pdf y
+    rw [smul_eq_mul]; ring
+  rw [h_γ_lhs, h_γ_rhs, h_lebesgue]
+
 /-! ## L²-norm derivative for the OU semigroup (BGL Prop 4.7.1)
 
 PROVED for `t > 0` (combines heat equation + parametric derivative +
