@@ -45,6 +45,8 @@ import Mathlib.MeasureTheory.Integral.IntegralEqImproper
 
 open MeasureTheory Filter Set Real ProbabilityTheory
 
+open scoped ContDiff
+
 noncomputable section
 
 namespace Gaussian1D
@@ -119,33 +121,29 @@ theorem ou_kernel_map (t : ℝ) (ht : 0 ≤ t) :
 
 /-! ## DirichletSpace instance -/
 
-/-- The core algebra for OU on ℝ: smooth functions with bounded first and
+/-- The core algebra for OU on ℝ: `C^∞` functions with bounded first and
 second derivatives. Closed under constants, addition, scalar multiplication;
 closure under products and the semigroup is stated with `sorry` — these
 are standard but tedious (bounded derivatives remain bounded under these
-operations). -/
+operations).
+
+The smoothness class is `C^∞` (`ContDiff ℝ ∞`), not analytic (`ContDiff ℝ ⊤`);
+the OU semigroup gives `C^∞` smoothing of bounded `C^∞` inputs, which is
+all that's needed for the BGL theory. -/
 def IsCore (f : ℝ → ℝ) : Prop :=
-  ContDiff ℝ ⊤ f ∧ ∃ M : ℝ,
+  ContDiff ℝ ∞ f ∧ ∃ M : ℝ,
     ∀ x, ‖f x‖ ≤ M ∧ ‖deriv f x‖ ≤ M ∧ ‖deriv (deriv f) x‖ ≤ M
 
 /-! ## IsCore helpers -/
 
-theorem IsCore.contDiff {f : ℝ → ℝ} (hf : IsCore f) : ContDiff ℝ ⊤ f := hf.1
+theorem IsCore.contDiff {f : ℝ → ℝ} (hf : IsCore f) : ContDiff ℝ ∞ f := hf.1
 
 theorem IsCore.differentiable {f : ℝ → ℝ} (hf : IsCore f) : Differentiable ℝ f :=
-  hf.1.differentiable (by simp)
+  hf.1.differentiable (by decide : (∞ : WithTop ℕ∞) ≠ 0)
 
 theorem IsCore.contDiff_deriv {f : ℝ → ℝ} (hf : IsCore f) :
-    ContDiff ℝ ⊤ (deriv f) := by
-  -- From ContDiff ℝ ω f, deriv f is also ContDiff ℝ ω.
-  have hω : ContDiff ℝ (⊤ : WithTop ℕ∞) f := hf.1
-  -- Using ContDiff.deriv' we only get down by 1, but ⊤ + 1 = ⊤ here (ω-analytic).
-  -- Simpler: derive from ContDiff at order 2 which suffices for our use.
-  have h2 : ContDiff ℝ 2 f := hf.1.of_le (by
-    exact_mod_cast (OrderTop.le_top (2 : WithTop ℕ∞)))
-  -- but we want to return top-level deriv ContDiff. Use fun_prop:
-  exact hf.1.deriv'.of_le (by
-    exact_mod_cast (OrderTop.le_top _))
+    ContDiff ℝ ∞ (deriv f) :=
+  (contDiff_infty_iff_deriv.mp hf.1).2
 
 theorem IsCore.differentiable_deriv {f : ℝ → ℝ} (hf : IsCore f) :
     Differentiable ℝ (deriv f) :=
@@ -489,29 +487,13 @@ the bounded parts (`|P_t f|, |(P_t f)'|, |(P_t f)''| ≤ M`) are PROVED in
 (`ouSemigroup_preserves_IsCore`) is now a theorem, defined below after
 the bound proof. -/
 
-/-- **Smoothing of `ouSemigroup`** (BGL §2.7.1, atomic). The OU semigroup
-applied to a `C^∞` function (or even bounded measurable) produces a
-`C^∞` function in `x` — a consequence of the Mehler kernel's `C^∞`
-regularity.
+/-! ### Smoothing of `ouSemigroup` — DISCHARGED elsewhere
 
-The discharge path goes through
-`MarkovSemigroups.General.SchwartzConvolution.contDiff_top_convolution_schwartzKernel`,
-which gives `ContDiff ⊤` for convolutions of an integrable-derivative `C^∞`
-kernel against a bounded measurable function. To reduce the Mehler integral
-`∫ y, f(a·x + b·y) ∂γ` to that form requires (for `t > 0`):
-1. Change of variables `u = a·x + b·y` from γ to Lebesgue, giving
-   `∫ u, K_t(a·x − u) · f(u) du` where `K_t(z) = (b√(2π))⁻¹ exp(−z²/(2b²))`
-   is the Mehler kernel density.
-2. Verification that all iterated derivatives of `K_t` are integrable
-   (each is a Hermite polynomial × Gaussian).
-3. Composition with the smooth dilation `x ↦ a·x`.
-
-For `t ≤ 0`: `b = 0` (Real.sqrt of negative is 0; t = 0 gives exact 0),
-so `ouSemigroup t f = f ∘ (exp(−t)·)`, trivially `C^∞`.
-
-Reference: BGL §2.7.1. -/
-axiom ouSemigroup_contDiff (t : ℝ) {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) :
-    ContDiff ℝ ⊤ (ouSemigroup t f)
+The Mehler kernel's `C^∞` smoothing is proved in
+`MarkovSemigroups/Instances/WorkInProgress/EuclideanHermite.lean` as
+`ouSemigroup_contDiff_bounded` (via Hermite integration-by-parts). The
+former axiom here, and its consumer `ouSemigroup_preserves_IsCore`, have
+been relocated to that file. Reference: BGL §2.7.1. -/
 
 /-- **Mehler derivative formula, generalized hypothesis.** PROVED.
 
@@ -586,7 +568,7 @@ theorem hasDerivAt_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f) (x₀
       (Real.exp (-t) * ouSemigroup t (deriv f) x₀) x₀ := by
   obtain ⟨h_smooth, M, hM⟩ := hf
   refine hasDerivAt_ouSemigroup_C1 t
-    (h_smooth.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤))
+    (h_smooth.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ∞))
     (M := M) (fun x => (hM x).1) (fun x => (hM x).2.1) x₀
 
 /-- Pointwise: `deriv (ouSemigroup t f) x = e^{-t} · ouSemigroup t (deriv f) x`. -/
@@ -609,7 +591,7 @@ theorem hasDerivAt_deriv_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f)
   -- Apply hasDerivAt_ouSemigroup_C1 to g := deriv f.
   have hg_C1 : ContDiff ℝ 1 (deriv f) :=
     (IsCore.contDiff_deriv ⟨h_smooth, M, hM⟩).of_le
-      (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
+      (by simp : ((1 : WithTop ℕ∞)) ≤ ∞)
   have hg_bd : ∀ x, ‖deriv f x‖ ≤ M := fun x => (hM x).2.1
   have hg'_bd : ∀ x, ‖deriv (deriv f) x‖ ≤ M := fun x => (hM x).2.2
   have h_inner : HasDerivAt (ouSemigroup t (deriv f))
@@ -645,7 +627,7 @@ This proves the bound-related half of `ouSemigroup_preserves_IsCore`. The
 `ContDiff ℝ ⊤` requirement of `IsCore` is the only remaining piece (a
 smaller atomic axiom: the Mehler kernel's `C^∞` smoothing). -/
 theorem ouSemigroup_preserves_bounds {f : ℝ → ℝ}
-    (h_smooth : ContDiff ℝ ⊤ f) {M : ℝ}
+    (h_smooth : ContDiff ℝ ∞ f) {M : ℝ}
     (hM : ∀ x, ‖f x‖ ≤ M ∧ ‖deriv f x‖ ≤ M ∧ ‖deriv (deriv f) x‖ ≤ M)
     (t : ℝ) (ht : 0 ≤ t) :
     ∀ x, ‖ouSemigroup t f x‖ ≤ M ∧
@@ -719,7 +701,7 @@ theorem ouSemigroup_preserves_bounds {f : ℝ → ℝ}
         Real.sqrt (1 - Real.exp (-2*t)) * y)) γ := by
       refine Integrable.mono' (integrable_const M) ?_ ?_
       · have hd_meas : Measurable (deriv (deriv f)) := by
-          have h_smooth_d : ContDiff ℝ ⊤ (deriv f) :=
+          have h_smooth_d : ContDiff ℝ ∞ (deriv f) :=
             IsCore.contDiff_deriv hf_core
           exact (h_smooth_d.continuous_deriv (by simp)).measurable
         exact (hd_meas.comp
@@ -743,19 +725,10 @@ theorem ouSemigroup_preserves_bounds {f : ℝ → ℝ}
         ≤ 1 * M := mul_le_mul h_e_2t_le h_pf''_le (abs_nonneg _) (by linarith)
       _ = M := one_mul _
 
-/-- **OU semigroup preserves `IsCore` (BGL §2.7).** PROVED, modulo the
-smaller atomic axiom `ouSemigroup_contDiff` (the `C^∞` smoothing).
+/-! ### `ouSemigroup_preserves_IsCore` — relocated
 
-For `t ≥ 0` and `IsCore f`, `P_t f` is `IsCore`:
-* `ContDiff ⊤ (P_t f)`: from the `ouSemigroup_contDiff` axiom.
-* Boundedness of `P_t f`, `(P_t f)'`, `(P_t f)''` by the same `M` as `f`:
-  PROVED in `ouSemigroup_preserves_bounds` via the Mehler derivative
-  formulas `(P_t f)' = e^{-t} P_t(f')` and `(P_t f)'' = e^{-2t} P_t(f'')`. -/
-theorem ouSemigroup_preserves_IsCore (t : ℝ) (ht : 0 ≤ t) {f : ℝ → ℝ}
-    (hf : IsCore f) : IsCore (ouSemigroup t f) := by
-  obtain ⟨h_smooth, M, hM⟩ := hf
-  refine ⟨ouSemigroup_contDiff t h_smooth, M, ?_⟩
-  exact ouSemigroup_preserves_bounds h_smooth hM t ht
+Moved to `EuclideanHermite.lean` (where the `C^∞` smoothing it depends on
+is proved). -/
 
 /-- **OU gradient decay (BGL Theorem 5.5.2).** PROVED (was axiom).
 

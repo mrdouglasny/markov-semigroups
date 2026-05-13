@@ -43,6 +43,8 @@ import Mathlib.Analysis.Calculus.IteratedDeriv.Defs
 
 open MeasureTheory Filter Set Real ProbabilityTheory Polynomial Topology
 
+open scoped ContDiff
+
 noncomputable section
 
 namespace Gaussian1D
@@ -515,7 +517,7 @@ Proof by induction on `n`:
     `(a/b)^n · a · b⁻¹ · ∫ H_{n+1}(y) · f(a·x + b·y) dγ
         = (a/b)^{n+1} · ∫ H_{n+1}(y) · f(a·x + b·y) dγ`. -/
 theorem iteratedDeriv_ouSemigroup_pos (t : ℝ) (ht : 0 < t)
-    {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) {M : ℝ}
+    {f : ℝ → ℝ} (hf : ContDiff ℝ ∞ f) {M : ℝ}
     (hf_bd : ∀ x, |f x| ≤ M) (hf'_bd : ∀ x, |deriv f x| ≤ M)
     (n : ℕ) :
     iteratedDeriv n (ouSemigroup t f) =
@@ -544,8 +546,8 @@ theorem iteratedDeriv_ouSemigroup_pos (t : ℝ) (ht : 0 < t)
   -- M nonneg.
   have hM_nn : 0 ≤ M := (abs_nonneg _).trans (hf_bd 0)
   -- Basic regularity of f.
-  have hf_C1 : ContDiff ℝ 1 f := hf.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
-  have hf_diff : Differentiable ℝ f := hf.differentiable (by simp)
+  have hf_C1 : ContDiff ℝ 1 f := hf.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ∞)
+  have hf_diff : Differentiable ℝ f := hf.differentiable (by decide : (∞ : WithTop ℕ∞) ≠ 0)
   have hf_meas : Measurable f := hf.continuous.measurable
   have hf'_meas : Measurable (deriv f) :=
     (hf_C1.continuous_deriv (by simp)).measurable
@@ -827,11 +829,11 @@ differentiable by `differentiable_hermiteMehlerIntegral`. The hypothesis
 parametric integral derivative; only `C^∞` regularity is required for the
 conclusion, hence the result type `ContDiff ℝ ∞`. -/
 theorem ouSemigroup_contDiff_pos (t : ℝ) (ht : 0 < t)
-    {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) {M : ℝ}
+    {f : ℝ → ℝ} (hf : ContDiff ℝ ∞ f) {M : ℝ}
     (hf_bd : ∀ x, |f x| ≤ M) (hf'_bd : ∀ x, |deriv f x| ≤ M) :
-    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (ouSemigroup t f) := by
-  have hf_C1 : ContDiff ℝ 1 f := hf.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
-  apply contDiff_of_differentiable_iteratedDeriv (n := ⊤)
+    ContDiff ℝ ∞ (ouSemigroup t f) := by
+  have hf_C1 : ContDiff ℝ 1 f := hf.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ∞)
+  apply contDiff_of_differentiable_iteratedDeriv (n := (⊤ : ℕ∞))
   intro m _
   rw [iteratedDeriv_ouSemigroup_pos t ht hf hf_bd hf'_bd m]
   exact (differentiable_hermiteMehlerIntegral t ht hf_C1 hf_bd hf'_bd m).const_mul _
@@ -875,14 +877,35 @@ is stated as `ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)`; the input hypothe
 `ContDiff ℝ ⊤ f` (where `⊤ : WithTop ℕ∞ = ω`, i.e. analyticity) is
 weakened in the proof — only `C^∞` is needed. -/
 theorem ouSemigroup_contDiff_bounded (t : ℝ) {f : ℝ → ℝ}
-    (hf : ContDiff ℝ ⊤ f) {M : ℝ}
+    (hf : ContDiff ℝ ∞ f) {M : ℝ}
     (hf_bd : ∀ x, |f x| ≤ M) (hf'_bd : ∀ x, |deriv f x| ≤ M) :
-    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (ouSemigroup t f) := by
+    ContDiff ℝ ∞ (ouSemigroup t f) := by
   rcases lt_trichotomy t 0 with ht | rfl | ht
   · rw [ouSemigroup_neg t ht]
-    exact (hf.comp (contDiff_const.mul contDiff_id)).of_le (by simp)
-  · rw [ouSemigroup_zero]; exact hf.of_le (by simp)
+    exact hf.comp (contDiff_const.mul contDiff_id)
+  · rw [ouSemigroup_zero]; exact hf
   · exact ouSemigroup_contDiff_pos t ht hf hf_bd hf'_bd
+
+/-! ## `ouSemigroup_preserves_IsCore` (relocated from `Euclidean.lean`)
+
+This theorem was previously in `Euclidean.lean` and used the
+`ouSemigroup_contDiff` axiom. With Path C complete, the axiom is
+discharged: the C^∞ part comes from `ouSemigroup_contDiff_bounded`
+above, and the bound part from `ouSemigroup_preserves_bounds` in
+`Euclidean.lean`. -/
+
+/-- **OU semigroup preserves `IsCore` (BGL §2.7).** PROVED (no axioms).
+
+For `t ≥ 0` and `IsCore f`, `P_t f` is `IsCore`:
+* `ContDiff ℝ ∞ (P_t f)`: by `ouSemigroup_contDiff_bounded` (Path C).
+* Boundedness of `P_t f, (P_t f)', (P_t f)''` by the same `M`: by
+  `ouSemigroup_preserves_bounds` via the Mehler derivative formulas. -/
+theorem ouSemigroup_preserves_IsCore (t : ℝ) (ht : 0 ≤ t) {f : ℝ → ℝ}
+    (hf : IsCore f) : IsCore (ouSemigroup t f) := by
+  obtain ⟨h_smooth, M, hM⟩ := hf
+  refine ⟨ouSemigroup_contDiff_bounded t h_smooth
+            (fun x => (hM x).1) (fun x => (hM x).2.1), M, ?_⟩
+  exact ouSemigroup_preserves_bounds h_smooth hM t ht
 
 end Gaussian1D
 

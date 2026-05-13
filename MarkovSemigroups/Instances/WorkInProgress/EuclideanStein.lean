@@ -48,8 +48,11 @@ residue.
 
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
 import Mathlib.Analysis.Calculus.FDeriv.Extend
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanHermite
 
 open MeasureTheory ProbabilityTheory Real Filter Set Topology
+
+open scoped ContDiff
 
 noncomputable section
 
@@ -440,7 +443,7 @@ theorem hasDerivAt_t_ouSemigroup (t₀ : ℝ) (ht₀ : 0 < t₀)
   set g : ℝ → ℝ := fun y => deriv f (a₀ * x + b₀ * y)
   have hg_C1 : ContDiff ℝ 1 g := by
     have h_d : ContDiff ℝ 1 (deriv f) :=
-      (IsCore.contDiff_deriv hf_core).of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
+      (IsCore.contDiff_deriv hf_core).of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ∞)
     have h_inner : ContDiff ℝ 1 (fun y => a₀ * x + b₀ * y) := by
       have h1 : ContDiff ℝ 1 (fun y : ℝ => b₀ * y) := contDiff_const.mul contDiff_id
       exact contDiff_const.add h1
@@ -566,13 +569,13 @@ theorem gaussian_ibp_x_g_deriv_g {g : ℝ → ℝ} (hg : IsCore g) :
   obtain ⟨h_smooth, M, hM⟩ := hg
   have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
   have hg_diff : Differentiable ℝ g := h_smooth.differentiable (by simp)
-  have hg' : ContDiff ℝ ⊤ (deriv g) :=
+  have hg' : ContDiff ℝ ∞ (deriv g) :=
     IsCore.contDiff_deriv ⟨h_smooth, M, hM⟩
   have hg'_diff : Differentiable ℝ (deriv g) := hg'.differentiable (by simp)
   set h : ℝ → ℝ := fun y => g y * deriv g y with hh_def
   have hh_C1 : ContDiff ℝ 1 h :=
-    (h_smooth.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)).mul
-      (hg'.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤))
+    (h_smooth.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ∞)).mul
+      (hg'.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ∞))
   have hh_bd : ∀ x, |h x| ≤ M ^ 2 := by
     intro x
     show |g x * deriv g x| ≤ M ^ 2
@@ -636,7 +639,7 @@ theorem gaussian_dirichlet_form_identity {g : ℝ → ℝ} (hg : IsCore g) :
   have hg_core : IsCore g := ⟨h_smooth, M, hM⟩
   have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
   have hg_meas : Measurable g := h_smooth.continuous.measurable
-  have hg' : ContDiff ℝ ⊤ (deriv g) := IsCore.contDiff_deriv hg_core
+  have hg' : ContDiff ℝ ∞ (deriv g) := IsCore.contDiff_deriv hg_core
   have hg'_meas : Measurable (deriv g) := hg'.continuous.measurable
   have hg''_meas : Measurable (deriv (deriv g)) :=
     (hg'.continuous_deriv (by simp)).measurable
@@ -752,7 +755,7 @@ theorem hasDerivAt_l2sq_ouSemigroup_pos (t₀ : ℝ) (ht₀ : 0 < t₀)
     have h_core_t₀ : IsCore (ouSemigroup t₀ f) :=
       ouSemigroup_preserves_IsCore t₀ ht₀.le hf_core
     have h_meas_t₀ : Measurable (ouSemigroup t₀ f) := h_core_t₀.measurable
-    have h_smooth_t₀_d : ContDiff ℝ ⊤ (deriv (ouSemigroup t₀ f)) :=
+    have h_smooth_t₀_d : ContDiff ℝ ∞ (deriv (ouSemigroup t₀ f)) :=
       IsCore.contDiff_deriv h_core_t₀
     have h_meas_t₀' : Measurable (deriv (ouSemigroup t₀ f)) :=
       h_smooth_t₀_d.continuous.measurable
