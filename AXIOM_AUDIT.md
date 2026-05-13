@@ -47,16 +47,16 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-9 axioms total. Of these:
+8 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
-- **2 Gaussian1D BGL Ch. 2** axioms — Mehler-kernel-level facts on `(ℝ, γ_1)`
-  (`ouSemigroup_gradient_decay`, `ouSemigroup_preserves_IsCore`,
-  `ouSemigroup_l2_sq_hasDerivWithinAt`, plus its `t = 0` boundary residue
-  all discharged via Stein's identity + Mehler heat equation + Gaussian
-  Dirichlet form identity + DCT-based boundary analysis; only
-  `ouSemigroup_contDiff` (Mehler kernel `C^∞` smoothing) and
-  `ouSemigroup_entropy_sq_decay_bound` remain)
+- **1 Gaussian1D BGL Ch. 2** axiom — `ouSemigroup_entropy_sq_decay_bound`
+  is the last remaining Mehler-kernel-level fact on `(ℝ, γ_1)`. The
+  `ouSemigroup_contDiff` axiom was **discharged 2026-05-12** via the
+  Hermite integration-by-parts identity (Path C) — see
+  `Instances/WorkInProgress/EuclideanHermite.lean` for
+  `ouSemigroup_contDiff_bounded` and the relocated
+  `ouSemigroup_preserves_IsCore`.
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
 
@@ -82,20 +82,11 @@ on 2026-05-10. See that repo for the current home and audit.
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
 
-### Gaussian1D BGL Ch. 2 (2 axioms — Mehler-kernel-level facts on ℝ)
-
-All four were vetted in one pass via Gemini chat (`gemini-3-pro-preview`),
-which flagged a missing `IsCore` hypothesis on the original
-`ouSemigroup_compose` axiom — patched in both the axiom and the upstream
-`BakryEmerySpace.semigroup_add` field; that axiom was then *reduced to a
-theorem* via Gaussian convolution arithmetic. Five of the originally
-nine were similarly reduced; the four below are the remaining atomic
-Mehler-kernel facts.
+### Gaussian1D BGL Ch. 2 (1 axiom — Mehler-kernel-level facts on ℝ)
 
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `ouSemigroup_contDiff` | [`Instances/WorkInProgress/Euclidean.lean`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean) | BGL §2.7 (Mehler kernel `C^∞` smoothing) | Standard | GR | Residue of the originally-axiomatized `ouSemigroup_preserves_IsCore` after decomposition (2026-05-12): the bounded parts (`|P_t f|, |(P_t f)'|, |(P_t f)''| ≤ M`) are now proved via `ouSemigroup_preserves_bounds` + new theorems `hasDerivAt_ouSemigroup_C1`, `hasDerivAt_deriv_ouSemigroup`; only the `ContDiff ℝ ⊤` smoothing remains. Full discharge requires Mathlib infrastructure for `ContDiff` of parametric integrals at all orders (Schwartz-class kernel convolution). | `Gaussian1D.bakryEmerySpace` (1D BE instance only, via the now-derived `ouSemigroup_preserves_IsCore` theorem) |
-| `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean:943`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean#L943) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
+| `ouSemigroup_entropy_sq_decay_bound` | [`Instances/WorkInProgress/Euclidean.lean`](../MarkovSemigroups/Instances/WorkInProgress/Euclidean.lean) | BGL Theorem 5.5.2 (`Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t}) E(f)`) | Standard | GR | Entropy decay under OU. Time-integral of Fisher information gradient decay + Leibniz rule for `Γ` (`I(f²) = 4 E(f,f)`). Estimated 2 weeks. | `Gaussian1D.bakryEmerySpace` |
 
 **Six originally axiomatized 1D facts were reduced to theorems**:
 - `ouSemigroup_l2_decay_bound` (FTC + gradient decay)
@@ -109,17 +100,16 @@ Mehler-kernel facts.
   γ-invariance (Fubini + `ou_kernel_map`). Additionally,
   `stein_identity_standard` (Stein's identity for the standard Gaussian,
   BGL §1.15) is now also proved, paving the way for further discharges.
-- `ouSemigroup_preserves_IsCore` (2026-05-12) — DECOMPOSED. The bounded
-  parts proved via `ouSemigroup_preserves_bounds` (using the new
-  `hasDerivAt_ouSemigroup_C1` weakened-hypothesis Mehler-derivative and
-  `hasDerivAt_deriv_ouSemigroup` second-order formula). Residual atomic
-  axiom `ouSemigroup_contDiff` is just the `C^∞` smoothing of the
-  Mehler kernel. The previously-axiomatized `ouSemigroup_preserves_IsCore`
-  is now a theorem. Also proved as cleanup: the
-  **Gaussian Dirichlet form identity** `∫ g · L g dγ = -∫ (g')² dγ` for
-  `IsCore g` (`gaussian_dirichlet_form_identity`, BGL §1.6), via Stein
-  applied to `h := g · g'` — bridges `BakryEmerySpace` energy and the
-  L²(γ) generator inner product.
+- `ouSemigroup_preserves_IsCore` (2026-05-12) — DECOMPOSED, then FULLY
+  DISCHARGED. The bounded parts proved via `ouSemigroup_preserves_bounds`
+  (using `hasDerivAt_ouSemigroup_C1` weakened-hypothesis Mehler-derivative
+  and `hasDerivAt_deriv_ouSemigroup` second-order formula). Also proved as
+  cleanup: the **Gaussian Dirichlet form identity**
+  `∫ g · L g dγ = -∫ (g')² dγ` for `IsCore g`
+  (`gaussian_dirichlet_form_identity`, BGL §1.6), via Stein applied to
+  `h := g · g'` — bridges `BakryEmerySpace` energy and the L²(γ)
+  generator inner product. The `C^∞` smoothing residue is now also
+  discharged (see `ouSemigroup_contDiff` entry below).
 - `ouSemigroup_l2_sq_hasDerivWithinAt` (2026-05-12) — FULLY DISCHARGED.
   The `t > 0` case proved via `hasDerivAt_l2sq_ouSemigroup_pos`
   (heat equation `hasDerivAt_t_ouSemigroup` + Mathlib's parametric
@@ -129,10 +119,22 @@ Mehler-kernel facts.
   (`ouSemigroup_l2sq_hasDerivWithinAt_zero` is now a theorem in
   `EuclideanStein.lean`) via Mathlib's `hasDerivWithinAt_Ici_of_tendsto_deriv`
   combined with DCT-based pointwise/integral continuity of `P_s f` and
-  `(P_s f')` at `s = 0+`. All proofs live in `EuclideanStein.lean`. The
-  `bakryEmerySpace` instance and `ouSemigroup_l2_decay_bound` now route
-  through these theorems, depending only on `ouSemigroup_contDiff` (and
-  `ouSemigroup_entropy_sq_decay_bound`).
+  `(P_s f')` at `s = 0+`. All proofs live in `EuclideanStein.lean`.
+- `ouSemigroup_contDiff` (2026-05-12) — FULLY DISCHARGED via the
+  **Hermite IBP path** (Path C) in
+  `Instances/WorkInProgress/EuclideanHermite.lean`. The discharge
+  establishes the closed-form iterated-derivative identity
+  `(P_t f)^{(n)}(x) = (a/b)^n · ∫ y, H_n(y) · f(a·x + b·y) ∂γ`
+  by induction on `n`, combining parametric integral differentiation
+  with `hermite_ibp_gaussian` (the n-th-order Stein identity:
+  `∫ H_n · F' dγ = ∫ H_{n+1} · F dγ`). The C^∞ conclusion then follows
+  via `contDiff_of_differentiable_iteratedDeriv`. As part of this
+  discharge, `IsCore` was refactored to use `ContDiff ℝ ∞` (C^∞)
+  rather than `ContDiff ℝ ⊤` (analyticity / ω) since in current
+  Mathlib `⊤ : WithTop ℕ∞ = ω`, and the project's intent throughout
+  has been C^∞ smoothing. The new theorem
+  `ouSemigroup_contDiff_bounded` and the relocated
+  `ouSemigroup_preserves_IsCore` are in `EuclideanHermite.lean`.
 
 ### Dobrushin-Zegarlinski
 

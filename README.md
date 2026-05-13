@@ -234,20 +234,19 @@ GFFIdentification). 2 sorries remain, both in
 `Instances/WorkInProgress/TwoPoint.lean` and mathematically false for
 jump processes (validates that the diffusion axiom is a real
 constraint). The Gaussian1D Bakry-Émery instance
-(`Instances/WorkInProgress/Euclidean.lean`) holds 0 sorries and 4
-BGL Ch. 2 textbook axioms (Mehler-kernel facts, GR-vetted via Gemini).
-Five of the originally nine were reduced to theorems proved from the
-remaining four atomic axioms plus Mathlib's Gaussian infrastructure:
-`ouSemigroup_l2_decay_bound` (FTC + gradient decay), `ouSemigroup_ergodic`
-(double DCT on Mehler integrand), `ouSemigroup_entropy_sq_ergodic`
-(DCT for `s log s` + compactness bound), `ouSemigroup_compose`
-(Gaussian convolution via `gaussianReal_add_gaussianReal_of_indepFun`),
-and `gaussian2D_orthogonal_invariance` (proved by Codex via
-`stdGaussian_map` + `map_pi_eq_stdGaussian` through the
-`EuclideanSpace ℝ (Fin 2) ≃ₗᵢ WithLp 2 (ℝ × ℝ)` isometry). These
-WIP instances are imported by the top-level module so that callers
-of `#print axioms` on any theorem that transitively uses them will
-see the axiom/sorry surface honestly.
+(`Instances/WorkInProgress/Euclidean.lean` and supporting
+`EuclideanStein.lean`, `EuclideanHermite.lean`) holds 0 sorries and
+**1 remaining BGL Ch. 2 textbook axiom** (`ouSemigroup_entropy_sq_decay_bound`,
+the de Bruijn entropy-derivative identity; GR-vetted via Gemini).
+Eight of the originally nine were reduced to theorems: the five early
+discharges (`ouSemigroup_l2_decay_bound`, `ouSemigroup_ergodic`,
+`ouSemigroup_entropy_sq_ergodic`, `ouSemigroup_compose`,
+`gaussian2D_orthogonal_invariance`), plus the 2026-05-12 discharges of
+`ouSemigroup_gradient_decay`, `ouSemigroup_l2_sq_hasDerivWithinAt`,
+`ouSemigroup_preserves_IsCore`, and `ouSemigroup_contDiff` (Path C
+Hermite IBP). These WIP instances are imported by the top-level module
+so that callers of `#print axioms` on any theorem that transitively
+uses them will see the axiom/sorry surface honestly.
 
 ### Fully proved (zero sorry's)
 
@@ -267,7 +266,7 @@ see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 2 Gaussian1D = 9 total)
+### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 1 Gaussian1D = 8 total)
 
 *See [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md) for the per-axiom
 vetting verdicts (Standard / Likely correct / Placeholder / etc.),
@@ -284,31 +283,39 @@ self-audit), and links to the discharge plans.*
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
-| `ouSemigroup_contDiff` | BGL §2.7 (Mehler kernel `C^∞` smoothing — residue of `preserves_IsCore`) |
 | `ouSemigroup_entropy_sq_decay_bound` | BGL Theorem 5.5.2 (Ent(f²) - Ent(P_t f²) ≤ 2(1-e^{-2t})E(f)) |
 
-The three remaining Gaussian1D axioms are concrete-instance bridges to
+The single remaining Gaussian1D axiom is a concrete-instance bridge to
 the abstract Bakry-Émery layer for the standard Gaussian + OU semigroup
-on ℝ — Mehler-kernel-level facts requiring Mathlib infrastructure
-(`C^∞`-of-parametric-integrals, differentiation of `L²` norms,
-de Bruijn entropy derivative). The previously-axiomatized
-`ouSemigroup_gradient_decay` (BGL Theorem 5.5.2) is now **PROVED** via
-the new theorem `hasDerivAt_ouSemigroup` (Mehler derivative formula
-via Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le`) +
-Jensen + γ-invariance. Additionally, **Stein's identity** for the
+on ℝ — a Mehler-kernel-level fact (de Bruijn entropy derivative).
+The previously-axiomatized `ouSemigroup_gradient_decay` (BGL Theorem
+5.5.2) is now **PROVED** via the new theorem `hasDerivAt_ouSemigroup`
+(Mehler derivative formula via Mathlib's
+`hasDerivAt_integral_of_dominated_loc_of_deriv_le`) + Jensen +
+γ-invariance. Additionally, **Stein's identity** for the
 standard Gaussian (BGL §1.15: `∫ y · g(y) dγ = ∫ g'(y) dγ` for
 bounded C¹ g) is now **PROVED** as `stein_identity_standard` via the
 Gaussian-PDF ODE `pdf'(y) = -y · pdf(y)` + FTC on infinite intervals
 (`integral_of_hasDerivAt_of_tendsto`) + `withDensity` bridge. The
 **Gaussian Dirichlet form identity** `∫ g · L g dγ = -∫ (g')² dγ`
 (`gaussian_dirichlet_form_identity`, BGL §1.6) follows from Stein
-applied to `h := g · g'`. Finally, `ouSemigroup_preserves_IsCore` was
+applied to `h := g · g'`. `ouSemigroup_preserves_IsCore` was
 **DECOMPOSED** (2026-05-12) — the bounded parts `|P_t f|, |(P_t f)'|,
 |(P_t f)''| ≤ M` are now proved (`ouSemigroup_preserves_bounds`) via a
 generalized Mehler-derivative `hasDerivAt_ouSemigroup_C1` + iterated
 formula `hasDerivAt_deriv_ouSemigroup` (giving `(P_t f)'' = e^{-2t}
-P_t(f'')`); only the residual `ContDiff ⊤` smoothing remains as the
-smaller atomic axiom `ouSemigroup_contDiff`. All originally-introduced
+P_t(f'')`); the `C^∞` smoothing residue (`ouSemigroup_contDiff`) was
+then **FULLY DISCHARGED** via the **Hermite IBP path** (Path C):
+the closed-form iterated-derivative identity
+`(P_t f)^{(n)}(x) = (a/b)^n · ∫ y, H_n(y) · f(a·x + b·y) ∂γ` is proved
+by induction on `n`, combining parametric integral differentiation
+with the n-th-order Stein identity `∫ H_n · F' dγ = ∫ H_{n+1} · F dγ`
+(`hermite_ibp_gaussian`). C^∞ conclusion via
+`contDiff_of_differentiable_iteratedDeriv`. See
+`Instances/WorkInProgress/EuclideanHermite.lean`. As part of this
+discharge, `IsCore` was refactored from `ContDiff ℝ ⊤` (analyticity in
+current Mathlib) to `ContDiff ℝ ∞` (C^∞), matching the project's
+long-standing C^∞ intent. All originally-introduced
 axioms were vetted in one pass via Gemini chat
 (gemini-3-pro-preview), which flagged a missing `IsCore` hypothesis
 on the Mehler-composition axiom — patched in both the axiom and the
@@ -357,7 +364,7 @@ only on Lean's three standard axioms `propext`, `Classical.choice`,
 | `cov_entrywise_bound_of_zegarlinski` | `cov_entrywise_decay_nn` (`DobrushinZegarlinski/EntrywiseCovariance.lean`, the proven exponential-decay corollary `\|Cov(σ_x, σ_y)\| ≤ α^{d(x,y)} / (c·(1-α))` for nearest-neighbor finite-range V); declared for pphi2N's `HSData.AdmitsThimbleLocal` |
 | `herbst_mgf_bound` | `lipschitz_concentration_of_lsi` (proven theorem, `Abstract/Concentration.lean`, derived from this axiom + Mathlib's Chernoff `measure_ge_le_exp_mul_mgf`); `lipschitz_concentration_left_of_lsi` and `lipschitz_concentration_two_sided_of_lsi` (proven, by reflection / union bound); `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi` (proven `L^p` moment bounds); `lipschitz_concentration_of_zegarlinski` + left-tail + two-sided + Mathlib bridge + `MemLp` (`DobrushinZegarlinski/Concentration.lean`, all composing with the global LSI from the Zegarlinski hypothesis) |
 | `poincare_of_lsi` | `variance_lipschitz_le_of_lsi` (proven `Var(F) ≤ L²/c` via Mathlib's `norm_fderiv_le_of_lipschitz`); `variance_lipschitz_le_of_zegarlinski` (proven Zegarlinski composition `Var ≤ L²/(c·(1-α))`). Declared for spectral-gap-style fluctuation bounds |
-| `gaussian2D_orthogonal_invariance` … `ouSemigroup_entropy_sq_decay_bound` (5 axioms) | `Gaussian1D.bakryEmerySpace` (proven `BakryEmerySpace ℝ` instance, `Instances/WorkInProgress/Euclidean.lean`); none consumed transitively by any theorem outside that file. They surface in `#print axioms` only on theorems that explicitly invoke the Gaussian1D instance (the abstract `BakryEmerySpace` theory in `Diffusion/CarreDuChamp.lean` is itself axiom-free) |
+| `ouSemigroup_entropy_sq_decay_bound` (1 axiom) | `Gaussian1D.bakryEmerySpace` (proven `BakryEmerySpace ℝ` instance, `Instances/WorkInProgress/Euclidean.lean`); not consumed transitively by any theorem outside that file. Surfaces in `#print axioms` only on theorems that explicitly invoke the Gaussian1D instance (the abstract `BakryEmerySpace` theory in `Diffusion/CarreDuChamp.lean` is itself axiom-free) |
 
 **DZ-layer axiom audit (verified `#print axioms` 2026-05-01):** the
 proven content of `DobrushinZegarlinski/` — `AbstractInfluenceMatrix`
@@ -416,7 +423,7 @@ on concrete inputs. Zero sorries.
 |---|---|---|
 | **A. Mehler eigenfunctions** | `ouSemigroup_const`, `ouSemigroup_id`, `ouSemigroup_hermite_two`, `ouSemigroup_hermite_three` (eigenvalues `1, e^{-t}, e^{-2t}, e^{-3t}` on `H₀, H₁, H₂, H₃`) | none (Mathlib only) |
 | **A. Helpers** | `integral_sq_γ` (= 1), `integral_cube_γ` (= 0), `integrable_cube_γ` | none |
-| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | two atomic axioms: `ouSemigroup_contDiff`, `ouSemigroup_entropy_sq_decay_bound`. (The full BGL Proposition 4.7.1 chain is now proved end-to-end in `EuclideanStein.lean` via Stein's identity + Mehler heat equation + Dirichlet form + DCT-based boundary discharge.) |
+| **B. Bakry-Émery on `cos`** | `cos_isCore`, `cos_poincare` (`Var_γ(cos) ≤ ∫sin² dγ`), `cos_variance_decay` (`Var_γ(P_t cos) ≤ e^{-2t} Var_γ(cos)`) | one atomic axiom: `ouSemigroup_entropy_sq_decay_bound`. (The full BGL Proposition 4.7.1 chain is now proved end-to-end in `EuclideanStein.lean` via Stein's identity + Mehler heat equation + Dirichlet form + DCT-based boundary discharge. `ouSemigroup_contDiff` was discharged 2026-05-12 via Hermite IBP — see `EuclideanHermite.lean`.) |
 | **C. Conditional BL → Gaussian Poincaré** | `brascampLieb_recovers_gaussian_poincare` (conditional on a `LogConcaveMeasure ℝ` with `μ = γ`) | none |
 | **C. Gaussian `LogConcaveMeasure` — structural** | `V_gauss = x²/2`, `contDiff_V_gauss`, `hessianBilin_V_gauss` (= `v · w`), `hV_gauss_convex`, `hV_gauss_curvature` (`‖v‖² ≤ Hess V(v,v)`) | none |
 | **C. Gaussian `LogConcaveMeasure` — resolvent fields** | `gaussianLogConcaveMeasure : LogConcaveMeasure ℝ` (built directly, no `Classical.choose`) | four named axioms: `gaussianResolvent`, `gaussianResolvent_ibp`, `gaussianResolvent_ibp_integrable`, `gaussianBochner_identity` (BGL §1.15-1.16: OU resolvent via Lax-Milgram + Stein IBP + Bochner-Weitzenböck) |
@@ -425,7 +432,7 @@ on concrete inputs. Zero sorries.
 **Verification summary.** Set A confirms that the Mehler integral
 `ouSemigroup` evaluates to the textbook eigenvalues on the first four
 Hermite polynomials — operationally verifying it really is the Mehler
-kernel, without invoking any of the four atomic OU axioms. Set B
+kernel, without invoking the remaining atomic OU axiom. Set B
 confirms the abstract `satisfiesPoincare` / `variance_decay` theorems
 plug correctly into the concrete instance with `ρ = 1`. Set C confirms
 that the Brascamp-Lieb route to Gaussian Poincaré with `ρ = 1` agrees
