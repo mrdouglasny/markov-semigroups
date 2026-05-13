@@ -2281,4 +2281,82 @@ theorem ouSemigroupFin_gradient_decay (f : (Fin n → ℝ) → ℝ) (t : ℝ) (h
     _ = exp (-2 * t) * ∫ x, ouGammaFin f f x ∂γFin n := by
           rw [integral_const_mul, h_inv]
 
+theorem ouSemigroupFin_ergodic (f : (Fin n → ℝ) → ℝ) (hf : IsCoreFin f) :
+    Tendsto
+      (fun t => ∫ x, (ouSemigroupFin t f x) ^ 2 ∂γFin n - (∫ x, f x ∂γFin n) ^ 2)
+      atTop (nhds 0) := by
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+  have hf_cont : Continuous f := hf.continuous
+  have hf_meas : Measurable f := hf.measurable
+  set Ef : ℝ := ∫ y, f y ∂γFin n with hEf_def
+  have h_exp_neg_atTop : Tendsto (fun t : ℝ => Real.exp (-t)) atTop (nhds 0) :=
+    Real.tendsto_exp_atBot.comp tendsto_neg_atTop_atBot
+  have h_exp_neg2_atTop : Tendsto (fun t : ℝ => Real.exp (-2 * t)) atTop (nhds 0) := by
+    have h_neg2t : Tendsto (fun t : ℝ => -2 * t) atTop atBot := by
+      refine Filter.tendsto_atBot.mpr ?_
+      intro B
+      rw [Filter.eventually_atTop]
+      refine ⟨max 1 ((1 - B) / 2), ?_⟩
+      intro t ht
+      have h1 : (1 - B) / 2 ≤ t := (le_max_right _ _).trans ht
+      linarith
+    exact Real.tendsto_exp_atBot.comp h_neg2t
+  have h_b_atTop : Tendsto (fun t : ℝ => Real.sqrt (1 - Real.exp (-2 * t))) atTop (nhds 1) := by
+    have h_inner : Tendsto (fun t : ℝ => 1 - Real.exp (-2 * t)) atTop (nhds 1) := by
+      simpa using Filter.Tendsto.const_sub 1 h_exp_neg2_atTop
+    simpa using h_inner.sqrt
+  have h_ptwise : ∀ x, Tendsto (fun t => ouSemigroupFin t f x) atTop (nhds Ef) := by
+    intro x
+    show Tendsto
+      (fun t => ∫ y, f (ouShiftFin t x y) ∂γFin n)
+      atTop (nhds (∫ y, f y ∂γFin n))
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => M) ?_ ?_ (integrable_const M) ?_
+    · filter_upwards with t
+      have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      exact (hf_meas.comp hshift.measurable).aestronglyMeasurable
+    · filter_upwards with t
+      filter_upwards with y
+      exact hM _
+    · filter_upwards with y
+      have h_arg : Tendsto (fun t : ℝ => ouShiftFin t x y) atTop (nhds y) := by
+        have h1 : Tendsto (fun t : ℝ => Real.exp (-t) • x) atTop (nhds 0) := by
+          simpa [Pi.zero_apply] using h_exp_neg_atTop.smul_const x
+        have h2 : Tendsto
+            (fun t : ℝ => Real.sqrt (1 - Real.exp (-2 * t)) • y) atTop (nhds y) := by
+          simpa using h_b_atTop.smul_const y
+        have := h1.add h2
+        have h_eq :
+            (fun t : ℝ => ouShiftFin t x y) =
+              fun t : ℝ => Real.exp (-t) • x + Real.sqrt (1 - Real.exp (-2 * t)) • y := by
+          funext t
+          ext i
+          simp [ouShiftFin, Pi.add_apply, Pi.smul_apply]
+        simpa [h_eq, one_smul] using this
+      exact (hf_cont.tendsto y).comp h_arg
+  have h_bound : ∀ x t, |ouSemigroupFin t f x| ≤ M := by
+    intro x t
+    exact norm_ouSemigroupFin_le_of_bound (n := n) t hf_meas hM x
+  have h_outer :
+      Tendsto (fun t => ∫ x, (ouSemigroupFin t f x) ^ 2 ∂γFin n) atTop (nhds (Ef ^ 2)) := by
+    have h_target : Ef ^ 2 = ∫ _x, Ef ^ 2 ∂γFin n := by simp
+    rw [h_target]
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => M ^ 2) ?_ ?_ (integrable_const _) ?_
+    · filter_upwards with t
+      exact ((stronglyMeasurable_ouSemigroupFin (n := n) t hf_meas).pow 2).aestronglyMeasurable
+    · filter_upwards with t
+      filter_upwards with x
+      have habs : |ouSemigroupFin t f x| ≤ M := h_bound x t
+      rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _)]
+      have : |ouSemigroupFin t f x| ^ 2 ≤ M ^ 2 := by
+        nlinarith [abs_nonneg (ouSemigroupFin t f x)]
+      rwa [sq_abs] at this
+    · filter_upwards with x
+      exact (h_ptwise x).pow 2
+  have := h_outer.sub_const (Ef ^ 2)
+  simpa [hEf_def] using this
+
 end GaussianFin
