@@ -51,8 +51,8 @@ BrascampLieb, Torus, GFFIdentification).
 
 | Axiom | Reference | Obstacle |
 |---|---|---|
-| `gross_lsi_implies_hypercontractive` | Gross (1975) Thm 1 | L^p norm differentiation |
-| `gross_hypercontractive_implies_lsi` | Gross (1975) Thm 2 | Linearization at t=0 |
+| `gross_lsi_implies_hypercontractive` | Gross (1975) Thm 1 | L^p norm differentiation. Stated on bundled `DirichletMarkovSemigroup` (refactored 2026-05-13 after Gemini 3.1-pro vetting: right-deriv `Set.Ici 0`, `eLpNorm` avoiding the Bochner trap, conservation/positivity/symmetry as structural fields). |
+| `gross_hypercontractive_implies_lsi` | Gross (1975) Thm 2 | Linearization at t=0. Same bundled-structure setup. |
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Sub-Gaussian moment generating function bound: `mgf (F − E F) μ t ≤ exp(L²t²/(2c))` for L-Lipschitz F under LSI(c). Apply LSI to `exp(λF/2)` — bootstrap problem (requires exponential integrability we are trying to prove). Rigorous treatment uses truncation + mollification + monotone limit. **The full concentration theorem `lipschitz_concentration_of_lsi` is *proven* from this axiom + Mathlib's Chernoff bound** `measure_ge_le_exp_mul_mgf` |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | The Poincaré inequality `Var_μ(f) ≤ (1/c) ∫ ‖∇f‖² dμ`. Standard linearization of LSI on `f = 1 + εg` and ε → 0 limit. Equivalent (via DirichletForm bridge) to existing `logSobolev_implies_poincare_bounded`. **The Lipschitz variance bound `Var(F) ≤ L²/c` is *proven* from this + Mathlib's `norm_fderiv_le_of_lipschitz`** |
 

@@ -168,7 +168,7 @@ MarkovSemigroups/
     Poincare.lean               -- Spectral gap <-> variance decay
     LogSobolev.lean             -- Gross LSI, entropy decay
     HolleyStroock.lean          -- Bounded density perturbation of LSI
-    Hypercontractivity.lean     -- LSI <-> hypercontractivity (Gross)
+    Hypercontractivity.lean     -- DirichletMarkovSemigroup; LSI <-> hypercontractivity (Gross, 2 axioms)
     Concentration.lean          -- Borell-Herbst sub-Gaussian concentration from LSI
   Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
     CarreDuChamp.lean           -- BakryEmerySpace: Gamma, semigroup, curvature
@@ -276,8 +276,8 @@ self-audit), and links to the discharge plans.*
 
 | Axiom | Reference |
 |-------|-----------|
-| `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 |
-| `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 |
+| `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 (now on bundled `DirichletMarkovSemigroup`) |
+| `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 (now on bundled `DirichletMarkovSemigroup`) |
 | `diamagnetic_resolvent` | Diamagnetic inequality (assembles 5 steps) |
 | `zegarlinski_lsi_inequality` | Otto-Reznikoff (2007) J. Funct. Anal. 243 Thm 1; Zegarlinski (1996) CMP 175; BGL §5.7.5 |
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
@@ -374,8 +374,8 @@ only on Lean's three standard axioms `propext`, `Classical.choice`,
 
 | Axiom | Transitive consumers inside this repo |
 |---|---|
-| `gross_lsi_implies_hypercontractive` | `MarkovSemigroup.hypercontractive_of_logSobolev`, `MarkovSemigroup.gross_equivalence` (`Abstract/Hypercontractivity.lean`) |
-| `gross_hypercontractive_implies_lsi` | `MarkovSemigroup.logSobolev_of_hypercontractive`, `MarkovSemigroup.gross_equivalence` (`Abstract/Hypercontractivity.lean`) |
+| `gross_lsi_implies_hypercontractive` | `DirichletMarkovSemigroup.hypercontractive_of_logSobolev`, `DirichletMarkovSemigroup.gross_equivalence` (`Abstract/Hypercontractivity.lean`); not consumed by any other module or downstream project |
+| `gross_hypercontractive_implies_lsi` | `DirichletMarkovSemigroup.logSobolev_of_hypercontractive`, `DirichletMarkovSemigroup.gross_equivalence` (`Abstract/Hypercontractivity.lean`); not consumed by any other module or downstream project |
 | `diamagnetic_resolvent` | None — declared for external callers; no theorem in this repo uses it |
 | `zegarlinski_lsi_inequality` | `global_lsi_of_zegarlinski` (`DobrushinZegarlinski/GlobalLSI.lean`); declared for downstream consumers (pphi2N strict thermodynamic-limit route) |
 | `cov_entrywise_bound_of_zegarlinski` | `cov_entrywise_decay_nn` (`DobrushinZegarlinski/EntrywiseCovariance.lean`, the proven exponential-decay corollary `\|Cov(σ_x, σ_y)\| ≤ α^{d(x,y)} / (c·(1-α))` for nearest-neighbor finite-range V); declared for pphi2N's `HSData.AdmitsThimbleLocal` |

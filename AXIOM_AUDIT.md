@@ -84,10 +84,25 @@ on 2026-05-10. See that repo for the current home and audit.
 
 ### Core: hypercontractivity / Gross duality
 
+Both axioms are stated against the bundled
+[`DirichletMarkovSemigroup`](../MarkovSemigroups/Abstract/Hypercontractivity.lean)
+structure (refactored 2026-05-13 after Gemini 3.1-pro vetting found
+four formal soundness issues with the previous separate
+`MarkovSemigroup` + `DirichletSpace` + side-hypothesis formulation):
+* the time parameter is now restricted to `t ≥ 0` (was two-sided —
+  Stone's theorem collapsed the structure);
+* the form-semigroup compatibility uses
+  `HasDerivWithinAt _ _ (Set.Ici 0) 0` (right-derivative);
+* `IsHypercontractive` uses `eLpNorm` (was raw `∫|f|^p`, which
+  silently evaluates to `0` for non-`Lᵖ` functions);
+* conservation `P_t 1 = 1`, positivity `f ≥ 0 ⇒ P_t f ≥ 0`, and
+  symmetry `⟨f, P_t g⟩ = ⟨P_t f, g⟩` are now structural fields of
+  `MarkovSemigroup`.
+
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `gross_lsi_implies_hypercontractive` | [`Abstract/Hypercontractivity.lean:100`](../MarkovSemigroups/Abstract/Hypercontractivity.lean#L100) | Gross (1975) Amer. J. Math. 97, Theorem 1 | Standard | LP, SA | Genuine textbook duality theorem; full proof is the eigenvalue argument on `Γ`-energy + entropy. Multi-week to discharge in Lean (functional inequality calculus on abstract Markov semigroups). | `MarkovSemigroup.hypercontractive_of_logSobolev`, `MarkovSemigroup.gross_equivalence`; load-bearing for the Bonami-Nelson step in `polynomial_chaos_concentration` once OU placeholders are discharged via the BE+Gross route ([`ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md)) |
-| `gross_hypercontractive_implies_lsi` | [`Abstract/Hypercontractivity.lean:108`](../MarkovSemigroups/Abstract/Hypercontractivity.lean#L108) | Gross (1975) Amer. J. Math. 97, Theorem 2 | Standard | LP, SA | Reverse implication of Gross. Same effort estimate as the forward direction. | `MarkovSemigroup.logSobolev_of_hypercontractive`, `MarkovSemigroup.gross_equivalence` |
+| `gross_lsi_implies_hypercontractive` | [`Abstract/Hypercontractivity.lean`](../MarkovSemigroups/Abstract/Hypercontractivity.lean) | Gross (1975) Amer. J. Math. 97, Theorem 1 | Standard | LP, SA, GR (gemini-3.1-pro 2026-05-13 vetting of revised statement) | Genuine textbook duality theorem; full proof differentiates `‖P_t f‖_{L^{q(t)}}` along `q(t) = 1 + (p-1)e^{2ρt}` and uses LSI applied to `|f|^{q/2}` plus Stroock-Varopoulos. Mathlib lacks the `Lᵖ` semigroup interpolation machinery; estimated 2000-4000 lines / multi-week to discharge directly. | `DirichletMarkovSemigroup.hypercontractive_of_logSobolev`, `DirichletMarkovSemigroup.gross_equivalence` (in-file wrappers only — not consumed by any other module in the project or by any downstream consumer: `lgt`, `pphi2`, `pphi2N`, `gaussian-hilbert` do not import this file) |
+| `gross_hypercontractive_implies_lsi` | [`Abstract/Hypercontractivity.lean`](../MarkovSemigroups/Abstract/Hypercontractivity.lean) | Gross (1975) Amer. J. Math. 97, Theorem 2 | Standard | LP, SA, GR (gemini-3.1-pro 2026-05-13) | Reverse implication: differentiate the hypercontractive bound at `t = 0` with `p = 2`, `q = 2 + ε`, take `ε → 0`. Same effort scale as the forward direction. | `DirichletMarkovSemigroup.logSobolev_of_hypercontractive`, `DirichletMarkovSemigroup.gross_equivalence` (same in-file-only consumer status) |
 
 ### Concentration / Poincaré
 
