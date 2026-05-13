@@ -9,6 +9,7 @@ Bakry-Emery construction.
 -/
 
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanStein
 import Mathlib.Analysis.Calculus.ContDiff.FiniteDimension
 import Mathlib.Analysis.Calculus.Deriv.Pi
 import Mathlib.Analysis.Calculus.FDeriv.Mul
@@ -98,6 +99,20 @@ theorem ouSemigroupFin_insertNth_eq {n : ℕ} (t : ℝ) {f : (Fin (n + 1) → �
   unfold ouSemigroupFin
   simpa [g, ouShiftFin_insertNth] using
     (integral_γFin_succAbove (n := n) (i := i) (f := g) hg_int)
+
+def sectionInputFin (t : ℝ) {n : ℕ} (f : (Fin (n + 1) → ℝ) → ℝ)
+    (i : Fin (n + 1)) (x : Fin n → ℝ) : ℝ → ℝ :=
+  fun r => ∫ y, f (i.insertNth r (ouShiftFin t x y)) ∂γFin n
+
+theorem ouSemigroupFin_section_eq_ouSemigroup
+    {n : ℕ} (t : ℝ) {f : (Fin (n + 1) → ℝ) → ℝ}
+    (hf_meas : Measurable f) {M : ℝ} (hM : ∀ z, ‖f z‖ ≤ M)
+    (i : Fin (n + 1)) (x : Fin n → ℝ) :
+    (fun s => ouSemigroupFin t f (i.insertNth s x)) =
+      Gaussian1D.ouSemigroup t (sectionInputFin t f i x) := by
+  funext s
+  rw [ouSemigroupFin_insertNth_eq (n := n) (t := t) (hf_meas := hf_meas) (hM := hM) i s x]
+  simp [Gaussian1D.ouSemigroup, sectionInputFin]
 
 /-- Coordinate partial derivative along the `i`-th standard basis vector. -/
 def partialDeriv (i : Fin n) (f : (Fin n → ℝ) → ℝ) (x : Fin n → ℝ) : ℝ :=
@@ -223,6 +238,182 @@ theorem section_secondDeriv {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
   funext s
   rw [section_deriv hf.contDiff i x]
   exact (partialDeriv_update_hasDerivAt hf i x s).deriv
+
+theorem stein_partialDeriv_ouShiftFin {n : ℕ} {f : (Fin (n + 1) → ℝ) → ℝ}
+    (hf : IsCoreFin f) (t : ℝ) (i : Fin (n + 1)) (x : Fin (n + 1) → ℝ) :
+    ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin (n + 1) =
+      sqrt (1 - exp (-2 * t)) * ouSemigroupFin t (secondPartial i f) x := by
+  have hf_core : IsCoreFin f := hf
+  obtain ⟨_, M, hM⟩ := hf
+  have hM_nn : 0 ≤ M := (norm_nonneg _).trans (hM 0).1
+  let a : ℝ := exp (-t)
+  let b : ℝ := sqrt (1 - exp (-2 * t))
+  let x' : Fin n → ℝ := i.removeNth x
+  let φ : ℝ × (Fin n → ℝ) → (Fin (n + 1) → ℝ) := fun p =>
+    Fin.insertNth (α := fun _ : Fin (n + 1) => ℝ) i
+      (a * x i + b * p.1) (ouShiftFin t x' p.2)
+  let e : (Fin (n + 1) → ℝ) ≃ᵐ ℝ × (Fin n → ℝ) :=
+    MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+  let G : ℝ × (Fin n → ℝ) → ℝ := fun p => secondPartial i f (φ p)
+  let H : ℝ × (Fin n → ℝ) → ℝ := fun p => p.1 * partialDeriv i f (φ p)
+  have hφ_meas : Measurable φ := by
+    refine measurable_pi_iff.2 ?_
+    intro j
+    by_cases hji : j = i
+    · subst hji
+      simpa [φ, a, b] using
+        ((measurable_const).add ((measurable_const).mul measurable_fst))
+    · rcases Fin.exists_succAbove_eq hji with ⟨k, rfl⟩
+      simpa [φ, x', a, b, ouShiftFin] using
+        ((measurable_const).add ((measurable_const).mul ((measurable_pi_apply k).comp measurable_snd)))
+  have hG_int : Integrable G (Gaussian1D.γ.prod (γFin n)) := by
+    refine Integrable.mono' (integrable_const M) ?_ ?_
+    · exact ((IsCoreFin.secondPartial_measurable hf_core i).comp hφ_meas).aestronglyMeasurable
+    · filter_upwards with p
+      exact (hM (φ p)).2.2 i
+  have hH_int : Integrable H (Gaussian1D.γ.prod (γFin n)) := by
+    refine Integrable.mono'
+      ((((memLp_id_gaussianReal 1).integrable le_rfl).abs.comp_fst (γFin n)).const_mul M)
+      ?_ ?_
+    · refine ((measurable_fst.mul ?_).aestronglyMeasurable)
+      exact (IsCoreFin.partial_measurable hf_core i).comp hφ_meas
+    · filter_upwards with p
+      have hp : ‖partialDeriv i f (φ p)‖ ≤ M := (hM (φ p)).2.1 i
+      calc
+        ‖H p‖
+          = |p.1| * ‖partialDeriv i f (φ p)‖ := by simp [H, norm_mul, Real.norm_eq_abs]
+        _ ≤ |p.1| * M := mul_le_mul_of_nonneg_left hp (abs_nonneg _)
+        _ = M * |p.1| := by ring
+  have hsplit :
+      ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin (n + 1) =
+        ∫ p, H p ∂(Gaussian1D.γ.prod (γFin n)) := by
+    have he : MeasurePreserving e (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) :=
+      measurePreserving_piFinSuccAbove_γFin (n := n) i
+    have hEq : (fun y : Fin (n + 1) → ℝ => y i * partialDeriv i f (ouShiftFin t x y)) = H ∘ e := by
+      funext y
+      have hx : i.insertNth (x i) x' = x := by
+        simpa [x'] using (Fin.insertNth_self_removeNth i x)
+      have hy : i.insertNth (y i) (i.removeNth y) = y := by
+        simpa using (Fin.insertNth_self_removeNth i y)
+      change y i * partialDeriv i f (ouShiftFin t x y) = H (y i, i.removeNth y)
+      rw [← hx, ← hy, ouShiftFin_insertNth]
+      simpa [a, b, H, φ]
+    calc
+      ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin (n + 1)
+        = ∫ y, (H ∘ e) y ∂γFin (n + 1) := by rw [hEq]
+      _ = ∫ p, H p ∂(Gaussian1D.γ.prod (γFin n)) := he.integral_comp' H
+  have hGsplit :
+      ∫ p, G p ∂(Gaussian1D.γ.prod (γFin n)) = ouSemigroupFin t (secondPartial i f) x := by
+    have he : MeasurePreserving e (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) :=
+      measurePreserving_piFinSuccAbove_γFin (n := n) i
+    have hEq : (fun y : Fin (n + 1) → ℝ => secondPartial i f (ouShiftFin t x y)) = G ∘ e := by
+      funext y
+      have hx : i.insertNth (x i) x' = x := by
+        simpa [x'] using (Fin.insertNth_self_removeNth i x)
+      have hy : i.insertNth (y i) (i.removeNth y) = y := by
+        simpa using (Fin.insertNth_self_removeNth i y)
+      change secondPartial i f (ouShiftFin t x y) = G (y i, i.removeNth y)
+      rw [← hx, ← hy, ouShiftFin_insertNth]
+      simpa [a, b, G, φ]
+    calc
+      ∫ p, G p ∂(Gaussian1D.γ.prod (γFin n))
+        = ∫ y, G (e y) ∂γFin (n + 1) := by symm; exact he.integral_comp' G
+      _ = ∫ y, (G ∘ e) y ∂γFin (n + 1) := by rfl
+      _ = ∫ y, secondPartial i f (ouShiftFin t x y) ∂γFin (n + 1) := by rw [← hEq]
+      _ = ouSemigroupFin t (secondPartial i f) x := rfl
+  have hb_le_one : |b| ≤ 1 := by
+    have hb_nn : 0 ≤ b := by simp [b]
+    rw [abs_of_nonneg hb_nn]
+    by_cases hrad : 0 ≤ 1 - exp (-2 * t)
+    · have hsqrt : sqrt (1 - exp (-2 * t)) ≤ 1 := by
+        refine (Real.sqrt_le_iff).2 ?_
+        constructor
+        · positivity
+        · have hexp_nonneg : 0 ≤ exp (-2 * t) := by positivity
+          linarith
+      simpa [b] using hsqrt
+    · have hzero : sqrt (1 - exp (-2 * t)) = 0 :=
+        Real.sqrt_eq_zero_of_nonpos (le_of_not_ge hrad)
+      simpa [b, hzero]
+  have hinner :
+      ∀ z : Fin n → ℝ,
+        ∫ u, H (u, z) ∂Gaussian1D.γ =
+          b * ∫ u, secondPartial i f (i.insertNth (a * x i + b * u) (ouShiftFin t x' z))
+            ∂Gaussian1D.γ := by
+    intro z
+    let base : Fin (n + 1) → ℝ := i.insertNth 0 (ouShiftFin t x' z)
+    let g : ℝ → ℝ := fun u => coordSection i base (partialDeriv i f) (a * x i + b * u)
+    have hg_C1 : ContDiff ℝ 1 g := by
+      have hsec : ContDiff ℝ ⊤ (coordSection i base (partialDeriv i f)) :=
+        section_contDiff (IsCoreFin.partial_contDiff hf_core i) i base
+      have h_aff : ContDiff ℝ 1 (fun u : ℝ => a * x i + b * u) := by
+        exact contDiff_const.add (contDiff_const.mul contDiff_id)
+      simpa [g] using (hsec.of_le (by simp : (1 : WithTop ℕ∞) ≤ ⊤)).comp h_aff
+    have hg_bd : ∀ u, |g u| ≤ M := by
+      intro u
+      simp [g, coordSection]
+      rw [← Real.norm_eq_abs]
+      exact (hM _).2.1 i
+    have hderiv_eq :
+        ∀ u, deriv g u = b * secondPartial i f (Function.update base i (a * x i + b * u)) := by
+      intro u
+      have h_aff : HasDerivAt (fun s : ℝ => a * x i + b * s) b u := by
+        simpa [a, b] using ((hasDerivAt_id u).const_mul b).const_add (a * x i)
+      have h_part :
+          HasDerivAt (coordSection i base (partialDeriv i f))
+            (secondPartial i f (Function.update base i (a * x i + b * u))) (a * x i + b * u) :=
+        section_hasDerivAt (IsCoreFin.partial_contDiff hf_core i) i base (a * x i + b * u)
+      simpa [g, mul_comm] using (h_part.comp u h_aff).deriv
+    have hg'_bd : ∀ u, |deriv g u| ≤ M := by
+      intro u
+      rw [hderiv_eq u, abs_mul]
+      have hsec_bd : |secondPartial i f (Function.update base i (a * x i + b * u))| ≤ M := by
+        rw [← Real.norm_eq_abs]
+        exact (hM _).2.2 i
+      calc
+        |b| * |secondPartial i f (Function.update base i (a * x i + b * u))|
+          ≤ 1 * M := mul_le_mul hb_le_one hsec_bd (abs_nonneg _) (by positivity)
+        _ = M := by ring
+    have hstein := Gaussian1D.stein_identity_standard hg_C1 hg_bd hg'_bd
+    have hφ_update : ∀ u : ℝ,
+        φ (u, z) = Function.update base i (a * x i + b * u) := by
+      intro u
+      ext j
+      by_cases hji : j = i
+      · subst hji
+        simp [φ, base]
+      · rcases Fin.exists_succAbove_eq hji with ⟨k, rfl⟩
+        simp [φ, base, x', ouShiftFin]
+    rw [show (fun u => H (u, z)) = fun u => u * g u from by
+      funext u
+      simp [H, g, coordSection, hφ_update u]]
+    rw [hstein, show deriv g = fun u => b * secondPartial i f (Function.update base i (a * x i + b * u))
+      from by funext u; exact hderiv_eq u, integral_const_mul]
+    congr 2
+    ext u
+    rw [← hφ_update u]
+  have houter :
+      ∫ p, H p ∂(Gaussian1D.γ.prod (γFin n)) =
+        b * ∫ p, G p ∂(Gaussian1D.γ.prod (γFin n)) := by
+    calc
+      ∫ p, H p ∂(Gaussian1D.γ.prod (γFin n))
+        = ∫ z, ∫ u, H (u, z) ∂Gaussian1D.γ ∂γFin n := by
+            rw [integral_prod_symm H hH_int]
+      _ 
+        = ∫ z, b * ∫ u,
+            G (u, z) ∂Gaussian1D.γ ∂γFin n := by
+                refine integral_congr_ae (Filter.Eventually.of_forall hinner)
+      _ = b * ∫ z, ∫ u,
+            G (u, z)
+              ∂Gaussian1D.γ ∂γFin n := by
+                rw [integral_const_mul]
+      _ = b * ∫ p, G p ∂(Gaussian1D.γ.prod (γFin n)) := by
+            rw [integral_prod_symm G hG_int]
+  calc
+    ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin (n + 1)
+      = ∫ p, H p ∂(Gaussian1D.γ.prod (γFin n)) := hsplit
+    _ = b * ∫ p, G p ∂(Gaussian1D.γ.prod (γFin n)) := houter
+    _ = b * ouSemigroupFin t (secondPartial i f) x := by rw [hGsplit]
 
 theorem sum_smul_single (v : Fin n → ℝ) :
     (∑ i : Fin n, v i • (Pi.single i (1 : ℝ) : Fin n → ℝ)) = v := by
