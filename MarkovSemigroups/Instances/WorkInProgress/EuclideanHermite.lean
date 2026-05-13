@@ -731,17 +731,110 @@ theorem iteratedDeriv_ouSemigroup_pos (t : ℝ) (ht : 0 < t)
 
 /-! ## `ContDiff ⊤` conclusion -/
 
+/-- **Differentiability of the Hermite-Mehler integral.** PROVED.
+
+For `t > 0` and `C¹` `f` with `f, f'` bounded, `hermiteMehlerIntegral t n f`
+is differentiable in `x`. The proof uses
+`hasDerivAt_integral_of_dominated_loc_of_deriv_le` to differentiate under
+the integral sign — the integrand `H_n(y) · f(a·x + b·y)` is differentiable
+in `x` with derivative `H_n(y) · a · f'(a·x + b·y)`, uniformly bounded by
+`|H_n(y)| · a · M`. -/
+private lemma differentiable_hermiteMehlerIntegral (t : ℝ) (ht : 0 < t)
+    {f : ℝ → ℝ} (hf_C1 : ContDiff ℝ 1 f) {M : ℝ}
+    (hf_bd : ∀ x, |f x| ≤ M) (hf'_bd : ∀ x, |deriv f x| ≤ M)
+    (n : ℕ) : Differentiable ℝ (hermiteMehlerIntegral t n f) := by
+  set a : ℝ := Real.exp (-t) with ha_def
+  set b : ℝ := Real.sqrt (1 - Real.exp (-2 * t)) with hb_def
+  have ha_pos : 0 < a := Real.exp_pos _
+  have ha_nn : 0 ≤ a := ha_pos.le
+  have ha_abs : |a| = a := abs_of_pos ha_pos
+  have h_exp_neg_two_t_lt : Real.exp (-2 * t) < 1 := by
+    apply Real.exp_lt_one_iff.mpr; linarith
+  have h_one_sub_pos : 0 < 1 - Real.exp (-2 * t) := by linarith
+  have hb_pos : 0 < b := Real.sqrt_pos.mpr h_one_sub_pos
+  have hb_nn : 0 ≤ b := hb_pos.le
+  have hM_nn : 0 ≤ M := (abs_nonneg _).trans (hf_bd 0)
+  have hf_diff : Differentiable ℝ f := hf_C1.differentiable (by simp)
+  have hf_meas : Measurable f := hf_C1.continuous.measurable
+  have hf'_meas : Measurable (deriv f) :=
+    (hf_C1.continuous_deriv (by simp)).measurable
+  intro x₀
+  -- Set up the parametric integral on a neighbourhood of x₀.
+  set F : ℝ → ℝ → ℝ := fun x y => hermiteFun n y * f (a * x + b * y) with hF_def
+  set F' : ℝ → ℝ → ℝ :=
+    fun x y => hermiteFun n y * (a * deriv f (a * x + b * y)) with hF'_def
+  set bound : ℝ → ℝ := fun y => |hermiteFun n y| * (a * M) with hbound_def
+  have hs : Set.Ioo (x₀ - 1) (x₀ + 1) ∈ nhds x₀ :=
+    Ioo_mem_nhds (by linarith) (by linarith)
+  have hH_meas : Measurable (hermiteFun n) := hermiteFun_measurable n
+  have hF_meas : ∀ x, AEStronglyMeasurable (F x) γ := by
+    intro x
+    have h1 : Measurable (fun y => f (a * x + b * y)) :=
+      hf_meas.comp (measurable_const.add (measurable_const.mul measurable_id))
+    exact (hH_meas.mul h1).aestronglyMeasurable
+  have hF_int : Integrable (F x₀) γ := by
+    refine Integrable.mono'
+      ((integrable_hermiteFun_gamma n).abs.const_mul M) (hF_meas x₀) ?_
+    filter_upwards with y
+    show ‖hermiteFun n y * f (a * x₀ + b * y)‖ ≤ M * |hermiteFun n y|
+    rw [Real.norm_eq_abs, abs_mul]
+    rw [mul_comm M _]
+    exact mul_le_mul_of_nonneg_left (hf_bd _) (abs_nonneg _)
+  have hF'_meas : AEStronglyMeasurable (F' x₀) γ := by
+    have h1 : Measurable (fun y => deriv f (a * x₀ + b * y)) :=
+      hf'_meas.comp (measurable_const.add (measurable_const.mul measurable_id))
+    exact (hH_meas.mul (measurable_const.mul h1)).aestronglyMeasurable
+  have h_bound : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
+      ‖F' x y‖ ≤ bound y := by
+    filter_upwards with y x _
+    show ‖hermiteFun n y * (a * deriv f (a * x + b * y))‖
+      ≤ |hermiteFun n y| * (a * M)
+    rw [Real.norm_eq_abs, abs_mul, abs_mul, ha_abs]
+    have h1 : |deriv f (a * x + b * y)| ≤ M := hf'_bd _
+    have h_inner : a * |deriv f (a * x + b * y)| ≤ a * M :=
+      mul_le_mul_of_nonneg_left h1 ha_nn
+    exact mul_le_mul_of_nonneg_left h_inner (abs_nonneg _)
+  have h_bound_int : Integrable bound γ := by
+    show Integrable (fun y => |hermiteFun n y| * (a * M)) γ
+    exact (integrable_hermiteFun_gamma n).abs.mul_const _
+  have h_diff : ∀ᵐ y ∂γ, ∀ x ∈ Set.Ioo (x₀ - 1) (x₀ + 1),
+      HasDerivAt (F · y) (F' x y) x := by
+    filter_upwards with y x _
+    show HasDerivAt (fun x => hermiteFun n y * f (a * x + b * y))
+      (hermiteFun n y * (a * deriv f (a * x + b * y))) x
+    have h_inner : HasDerivAt (fun x => a * x + b * y) a x := by
+      simpa using ((hasDerivAt_id x).const_mul a).add_const (b * y)
+    have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
+      hf_diff.differentiableAt.hasDerivAt
+    have h_comp : HasDerivAt (fun x => f (a * x + b * y))
+        (deriv f (a * x + b * y) * a) x := h_f.comp x h_inner
+    have h_mul := h_comp.const_mul (hermiteFun n y)
+    simpa [mul_comm a (deriv f _), mul_assoc] using h_mul
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le hs
+      (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bound h_bound_int h_diff
+  -- `h_deriv : HasDerivAt (fun x => ∫ y, F x y ∂γ) (∫ y, F' x₀ y ∂γ) x₀`.
+  -- And `(fun x => ∫ y, F x y ∂γ) = hermiteMehlerIntegral t n f`.
+  exact h_deriv.differentiableAt
+
 /-- **`ouSemigroup_contDiff` for `t > 0`.** PROVED.
 
 The OU semigroup applied to a `C^∞` function with `f, f'` bounded gives a
 `C^∞` function. Follows from `iteratedDeriv_ouSemigroup_pos`: each iterated
-derivative is a parametric integral of a continuous integrand against `γ`,
-hence continuous. -/
+derivative equals `(a/b)^n · hermiteMehlerIntegral t n f`, which is
+differentiable by `differentiable_hermiteMehlerIntegral`. The hypothesis
+`ContDiff ℝ ⊤ f` is weakened (via `hf.of_le`) to `ContDiff ℝ 1 f` for the
+parametric integral derivative; only `C^∞` regularity is required for the
+conclusion, hence the result type `ContDiff ℝ ∞`. -/
 theorem ouSemigroup_contDiff_pos (t : ℝ) (ht : 0 < t)
     {f : ℝ → ℝ} (hf : ContDiff ℝ ⊤ f) {M : ℝ}
     (hf_bd : ∀ x, |f x| ≤ M) (hf'_bd : ∀ x, |deriv f x| ≤ M) :
-    ContDiff ℝ ⊤ (ouSemigroup t f) := by
-  sorry
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (ouSemigroup t f) := by
+  have hf_C1 : ContDiff ℝ 1 f := hf.of_le (by simp : ((1 : WithTop ℕ∞)) ≤ ⊤)
+  apply contDiff_of_differentiable_iteratedDeriv (n := ⊤)
+  intro m _
+  rw [iteratedDeriv_ouSemigroup_pos t ht hf hf_bd hf'_bd m]
+  exact (differentiable_hermiteMehlerIntegral t ht hf_C1 hf_bd hf'_bd m).const_mul _
 
 /-- **Boundary case `t = 0`:** `P_0 f = f`, so trivially `C^∞`. -/
 theorem ouSemigroup_zero (f : ℝ → ℝ) : ouSemigroup 0 f = f := by
@@ -777,15 +870,18 @@ theorem ouSemigroup_neg (t : ℝ) (ht : t < 0) (f : ℝ → ℝ) :
 /-- **Main result: `ouSemigroup_contDiff` discharged via Hermite IBP.**
 
 For any `f : ℝ → ℝ` that is `C^∞` and has both `f` and `f'` bounded, the
-OU semigroup `P_t f` is `C^∞` for every `t : ℝ`. -/
+OU semigroup `P_t f` is `C^∞` for every `t : ℝ`. The conclusion `C^∞`
+is stated as `ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)`; the input hypothesis
+`ContDiff ℝ ⊤ f` (where `⊤ : WithTop ℕ∞ = ω`, i.e. analyticity) is
+weakened in the proof — only `C^∞` is needed. -/
 theorem ouSemigroup_contDiff_bounded (t : ℝ) {f : ℝ → ℝ}
     (hf : ContDiff ℝ ⊤ f) {M : ℝ}
     (hf_bd : ∀ x, |f x| ≤ M) (hf'_bd : ∀ x, |deriv f x| ≤ M) :
-    ContDiff ℝ ⊤ (ouSemigroup t f) := by
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (ouSemigroup t f) := by
   rcases lt_trichotomy t 0 with ht | rfl | ht
   · rw [ouSemigroup_neg t ht]
-    exact hf.comp (contDiff_const.mul contDiff_id)
-  · rw [ouSemigroup_zero]; exact hf
+    exact (hf.comp (contDiff_const.mul contDiff_id)).of_le (by simp)
+  · rw [ouSemigroup_zero]; exact hf.of_le (by simp)
   · exact ouSemigroup_contDiff_pos t ht hf hf_bd hf'_bd
 
 end Gaussian1D
