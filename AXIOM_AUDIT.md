@@ -47,20 +47,24 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-8 axioms total. Of these:
+7 axioms total. Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
-- **1 General/OU diffusion** axiom — the de Bruijn identity for `t > 0`
-  in `MarkovSemigroups/General/OUEntropyDecomposition.lean`:
-  `hasDerivAt_entropy_ouSemigroup` (A2). It's abstract enough to be
-  reusable for any future BakryEmerySpace instance. The Gaussian1D
-  concrete instance is **axiom-free**. **A1**
-  (`ouSemigroup_fisher_info_decay`) was discharged on 2026-05-12 via
-  Cauchy-Schwarz on the Mehler probability kernel. **A2-boundary**
-  (`hasDerivWithinAt_entropy_ouSemigroup_zero`) was discharged on
-  2026-05-12 from A2 + DCT-based continuity at `t = 0+`.
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
+
+**The entire Gaussian1D / OU chain is now axiom-free.** All BGL Ch. 2
+and §5.5 facts have been discharged. The general-purpose
+`MarkovSemigroups/General/OUEntropyDecomposition.lean` file is also
+axiom-free. Discharges from 2026-05-12:
+- **A1** (`ouSemigroup_fisher_info_decay`): Cauchy-Schwarz on the
+  Mehler probability kernel.
+- **A2-boundary** (`hasDerivWithinAt_entropy_ouSemigroup_zero`):
+  derived from A2 interior + DCT-based continuity.
+- **A2 interior** (`hasDerivAt_entropy_ouSemigroup`): proved via
+  Stein-IBP-based formula for `(P_t g)''` + parametric DCT for the
+  entropy integral + bilinear Dirichlet form identity
+  (`gaussian_dirichlet_form_bilinear` in EuclideanStein.lean).
 
 **Discharged axioms** (Gaussian1D, was 9 + 2 atomic; now 0 atomic axioms
 in the concrete instance):
@@ -92,19 +96,11 @@ on 2026-05-10. See that repo for the current home and audit.
 | `herbst_mgf_bound` | [`Abstract/Concentration.lean:98`](../MarkovSemigroups/Abstract/Concentration.lean#L98) | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 | Standard | LP, SA | Three-line proof: differentiate `t ↦ log E[exp(tF)]` and apply LSI to the function `F + t·c`. Direct discharge would require the full LSI-derivative-of-MGF calculus on `Lp`. Estimated 1-2 weeks. | `lipschitz_concentration_of_lsi` and variants; `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi`; the Zegarlinski concentration corollaries in `DobrushinZegarlinski/Concentration.lean` |
 | `poincare_of_lsi` | [`Abstract/Concentration.lean:351`](../MarkovSemigroups/Abstract/Concentration.lean#L351) | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) | Standard | LP, SA | Standard textbook implication: take `f = 1 + εg`, expand both sides of LSI to second order in ε. Estimated 3-5 days to formalize (Taylor expansion + careful bookkeeping). | `variance_lipschitz_le_of_lsi`, `variance_lipschitz_le_of_zegarlinski` |
 
-### General/OU diffusion (1 atomic axiom — de Bruijn identity for t > 0)
+### General/OU diffusion (axiom-free!)
 
-The single remaining axiom in
-[`MarkovSemigroups/General/OUEntropyDecomposition.lean`](../MarkovSemigroups/General/OUEntropyDecomposition.lean),
-together with the proved `ouSemigroup_fisher_info_decay` and
-`hasDerivWithinAt_entropy_ouSemigroup_zero`, discharges the former
-`ouSemigroup_entropy_sq_decay_bound` axiom (BGL Theorem 5.5.2) — see
-`Instances/WorkInProgress/EuclideanEntropyDecay.lean` for the proof
-`ouSemigroup_entropy_sq_decay_bound_proved`.
-
-| Axiom | Reference | Rating | Vetting | Strategy / Plan | Consumers |
-|---|---|---|---|---|---|
-| `hasDerivAt_entropy_ouSemigroup` | BGL §5.5 (de Bruijn identity for `t > 0`) | Standard | GR (gemini-3.1-pro-preview 2026-05-12) | Bilinear Dirichlet form identity (1D IBP from Gaussian-density ODE) + parametric differentiation. Expected ~300-500 lines. | `Gaussian1D.bakryEmerySpace` (via `EuclideanEntropyDecay.lean`) |
+[`MarkovSemigroups/General/OUEntropyDecomposition.lean`](../MarkovSemigroups/General/OUEntropyDecomposition.lean)
+is now axiom-free. The three originally-axiomatized de Bruijn /
+Fisher-decay facts have all been proved.
 
 **Proved (2026-05-12):**
 * `ouSemigroup_fisher_info_decay` (A1, BGL Proposition 5.5.2) —
@@ -118,6 +114,11 @@ together with the proved `ouSemigroup_fisher_info_decay` and
   derived from A2 (`t > 0` interior version) + DCT-based continuity
   of the entropy and Fisher info at `s = 0+` + Mathlib's
   `hasDerivWithinAt_Ici_of_tendsto_deriv`. ~330 lines.
+* `hasDerivAt_entropy_ouSemigroup` (A2 interior, BGL §5.5
+  de Bruijn identity for `t > 0`) — proved via a Stein-IBP-based
+  formula for `(P_t g)''` (avoiding the need for `g''`), parametric
+  DCT for the entropy integral, and the bilinear Dirichlet form
+  identity (`gaussian_dirichlet_form_bilinear`). ~740 lines.
 
 ### Gaussian1D BGL Ch. 2 (0 axioms — instance is axiom-free)
 

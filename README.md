@@ -266,7 +266,7 @@ uses them will see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré + 1 General/OU = 8 total)
+### Postulated as textbook axioms (2 core + 1 matrix + 2 DZ + 2 concentration/Poincaré = 7 total)
 
 *See [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md) for the per-axiom
 vetting verdicts (Standard / Likely correct / Placeholder / etc.),
@@ -283,20 +283,11 @@ self-audit), and links to the discharge plans.*
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
-| `hasDerivAt_entropy_ouSemigroup` | BGL §5.5 (de Bruijn identity, `t > 0`) |
 
-The Gaussian1D concrete instance is now **axiom-free**: all original
-Mehler-kernel-level facts have been proved. The single remaining
-`General/OU` atomic axiom listed above (the de Bruijn identity for
-`t > 0`) is an abstract Bakry-Émery building block, placed in
-`MarkovSemigroups/General/OUEntropyDecomposition.lean` so it's
-reusable for any future BakryEmerySpace instance — not just the
-standard Gaussian on ℝ. Vetted by `gemini-3.1-pro-preview` (verdict:
-Standard, 2026-05-12). The original `ouSemigroup_entropy_sq_decay_bound`
-axiom was discharged via this (plus the now-proved A1 Fisher info
-decay and A2-boundary version at `t = 0+`) plus the ε-regularization
-`g_ε := f² + ε`, FTC inequality, and DCT — see
-`Instances/WorkInProgress/EuclideanEntropyDecay.lean`.
+The Gaussian1D concrete instance and the abstract
+`MarkovSemigroups/General/OUEntropyDecomposition.lean` are both now
+**axiom-free**: all BGL Ch. 2 and §5.5 facts for the Gaussian OU
+semigroup have been discharged.
 
 **Discharged 2026-05-12:**
 * `ouSemigroup_fisher_info_decay` (A1, BGL Proposition 5.5.2) — the
@@ -308,6 +299,12 @@ decay and A2-boundary version at `t = 0+`) plus the ε-regularization
   derived from A2 (`t > 0` interior version) + DCT-based continuity
   of entropy and Fisher info at `s = 0+` + Mathlib's
   `hasDerivWithinAt_Ici_of_tendsto_deriv`. ~330 lines.
+* `hasDerivAt_entropy_ouSemigroup` (A2 interior, BGL §5.5
+  de Bruijn identity for `t > 0`) — proved via a Stein-IBP-based
+  formula for `(P_t g)''` (avoiding the need for `g''`), parametric
+  DCT for the entropy integral, and the bilinear Dirichlet form
+  identity (`gaussian_dirichlet_form_bilinear` in
+  `EuclideanStein.lean`). ~740 lines.
 The previously-axiomatized `ouSemigroup_gradient_decay` (BGL Theorem
 5.5.2) is now **PROVED** via the new theorem `hasDerivAt_ouSemigroup`
 (Mehler derivative formula via Mathlib's
@@ -384,7 +381,7 @@ only on Lean's three standard axioms `propext`, `Classical.choice`,
 | `cov_entrywise_bound_of_zegarlinski` | `cov_entrywise_decay_nn` (`DobrushinZegarlinski/EntrywiseCovariance.lean`, the proven exponential-decay corollary `\|Cov(σ_x, σ_y)\| ≤ α^{d(x,y)} / (c·(1-α))` for nearest-neighbor finite-range V); declared for pphi2N's `HSData.AdmitsThimbleLocal` |
 | `herbst_mgf_bound` | `lipschitz_concentration_of_lsi` (proven theorem, `Abstract/Concentration.lean`, derived from this axiom + Mathlib's Chernoff `measure_ge_le_exp_mul_mgf`); `lipschitz_concentration_left_of_lsi` and `lipschitz_concentration_two_sided_of_lsi` (proven, by reflection / union bound); `hasSubgaussianMGF_of_lsi` (proven Mathlib `HasSubgaussianMGF` bridge); `memLp_of_lsi` (proven `L^p` moment bounds); `lipschitz_concentration_of_zegarlinski` + left-tail + two-sided + Mathlib bridge + `MemLp` (`DobrushinZegarlinski/Concentration.lean`, all composing with the global LSI from the Zegarlinski hypothesis) |
 | `poincare_of_lsi` | `variance_lipschitz_le_of_lsi` (proven `Var(F) ≤ L²/c` via Mathlib's `norm_fderiv_le_of_lipschitz`); `variance_lipschitz_le_of_zegarlinski` (proven Zegarlinski composition `Var ≤ L²/(c·(1-α))`). Declared for spectral-gap-style fluctuation bounds |
-| `hasDerivAt_entropy_ouSemigroup` (1 axiom in `General/OUEntropyDecomposition.lean`) | `Gaussian1D.bakryEmerySpace` (proven `BakryEmerySpace ℝ` instance, now in `Instances/WorkInProgress/EuclideanEntropyDecay.lean`); not consumed transitively by any theorem outside that file. Surfaces in `#print axioms` only on theorems that explicitly invoke the Gaussian1D instance (the abstract `BakryEmerySpace` theory in `Diffusion/CarreDuChamp.lean` is itself axiom-free). The atomic Bakry-Émery de Bruijn identity for `t > 0`, reusable for any future BakryEmerySpace instance. The two sibling atomic axioms `ouSemigroup_fisher_info_decay` (Fisher info gradient decay) and `hasDerivWithinAt_entropy_ouSemigroup_zero` (de Bruijn at `t = 0+`) were discharged as theorems on 2026-05-12. |
+| `Gaussian1D.bakryEmerySpace` consumes no atomic OU axioms | The Gaussian1D `BakryEmerySpace ℝ` instance (in `Instances/WorkInProgress/EuclideanEntropyDecay.lean`) is **axiom-free**. All originally-axiomatized BGL Ch. 2 / §5.5 Mehler-kernel-level facts have been discharged as theorems. |
 
 **DZ-layer axiom audit (verified `#print axioms` 2026-05-01):** the
 proven content of `DobrushinZegarlinski/` — `AbstractInfluenceMatrix`
