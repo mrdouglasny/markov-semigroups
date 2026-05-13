@@ -49,6 +49,7 @@ import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.Analysis.Calculus.Deriv.Basic
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanStein
 
 open MeasureTheory Filter Set Real ProbabilityTheory Topology
 
@@ -603,14 +604,281 @@ growth × Gaussian decay → γ-integrable. The boundary version at
 route: `lim_{t↘0} I(P_t g) = I(g)` by DCT, so the right-derivative
 matches. Hypotheses tight; both `g ≤ M` and `|g'| ≤ M` are needed
 for clean dominator bounds. -/
-axiom hasDerivAt_entropy_ouSemigroup
+theorem hasDerivAt_entropy_ouSemigroup
     (g : ℝ → ℝ) (hg : ContDiff ℝ 1 g)
     {ε M : ℝ} (hε : 0 < ε)
     (hg_lo : ∀ x, ε ≤ g x) (hg_hi : ∀ x, g x ≤ M)
     (hg'_bd : ∀ x, |deriv g x| ≤ M)
     {t : ℝ} (ht : 0 < t) :
     HasDerivAt (fun s => boltzmannEntropy (ouSemigroup s g))
-      (-fisherInfo (ouSemigroup t g)) t
+      (-fisherInfo (ouSemigroup t g)) t := by
+  -- ===========================================================================
+  -- DEEP-PASS PARTIAL PROOF (2026-05-12)
+  --
+  -- This proof builds the proof infrastructure (Phase 1, ~250 lines below)
+  -- but the final assembly via the parametric-DCT + bilinear Dirichlet form
+  -- requires four substantial sub-lemmas marked with `sorry` (see the
+  -- comprehensive comment below). The mathematical strategy is fully laid
+  -- out in the docstring above and in inline comments. Math vetting:
+  -- **Standard** (Gemini 3.1-pro, 2026-05-12).
+  -- ===========================================================================
+  -- Notation.
+  set a : ℝ → ℝ := fun s => Real.exp (-s) with ha_def
+  set b : ℝ → ℝ := fun s => Real.sqrt (1 - Real.exp (-2 * s)) with hb_def
+  -- Basic bounds on ε, M.
+  have hε_nn : 0 ≤ ε := hε.le
+  have hε_le_M : ε ≤ M := (hg_lo 0).trans (hg_hi 0)
+  have hM_nn : 0 ≤ M := hε_nn.trans hε_le_M
+  -- Basic properties of g.
+  have h_gpos : ∀ x, 0 < g x := fun x => lt_of_lt_of_le hε (hg_lo x)
+  have h_gabs : ∀ x, |g x| ≤ M := fun x => by
+    rw [abs_of_pos (h_gpos x)]; exact hg_hi x
+  have hg_norm : ∀ x, ‖g x‖ ≤ M := fun x => by
+    rw [Real.norm_eq_abs]; exact h_gabs x
+  have hg'_norm : ∀ x, ‖deriv g x‖ ≤ M := fun x => by
+    rw [Real.norm_eq_abs]; exact hg'_bd x
+  have hg_cont : Continuous g := hg.continuous
+  have hg_meas : Measurable g := hg_cont.measurable
+  have hg'_cont : Continuous (deriv g) := hg.continuous_deriv le_rfl
+  have hg'_meas : Measurable (deriv g) := hg'_cont.measurable
+  -- Neighborhood of t in (0, ∞): Ioo (t/2) (3t/2).
+  set tlo : ℝ := t / 2 with htlo_def
+  set thi : ℝ := 3 * t / 2 with hthi_def
+  have htlo_pos : 0 < tlo := half_pos ht
+  have htlo_lt_t : tlo < t := half_lt_self ht
+  have ht_lt_thi : t < thi := by show t < 3 * t / 2; linarith
+  have h_nbhd : Set.Ioo tlo thi ∈ nhds t := Ioo_mem_nhds htlo_lt_t ht_lt_thi
+  -- Lower bound on b(s) for s ∈ Ioo tlo thi.
+  have h_atlo_lt_one : Real.exp (-2 * tlo) < 1 :=
+    Real.exp_lt_one_iff.mpr (by linarith)
+  have hb_lo_pos : 0 < b tlo := by apply Real.sqrt_pos.mpr; linarith
+  have hb_pos_on_nbhd : ∀ s ∈ Set.Ioo tlo thi, 0 < b s := by
+    intro s hs
+    apply Real.sqrt_pos.mpr
+    have : Real.exp (-2 * s) < 1 := Real.exp_lt_one_iff.mpr (by linarith [hs.1])
+    linarith
+  have hb_t_pos : 0 < b t := hb_pos_on_nbhd t ⟨htlo_lt_t, ht_lt_thi⟩
+  -- a(s) properties.
+  have h_a_pos : ∀ s, 0 < a s := fun s => Real.exp_pos _
+  have h_a_nn : ∀ s, 0 ≤ a s := fun s => (h_a_pos s).le
+  have h_a_le_one : ∀ s, 0 ≤ s → a s ≤ 1 := fun s hs =>
+    Real.exp_le_one_iff.mpr (by linarith)
+  -- P_s g bounds (averaging against probability measure preserves [ε, M]).
+  have h_Ptg_lo : ∀ s, 0 ≤ s → ∀ x, ε ≤ ouSemigroup s g x := by
+    intro s hs x
+    show ε ≤ ∫ y, g (a s * x + b s * y) ∂γ
+    have h_int : Integrable (fun y => g (a s * x + b s * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hg_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact hg_norm _
+    calc (ε : ℝ) = ∫ _, ε ∂γ := by simp
+      _ ≤ ∫ y, g (a s * x + b s * y) ∂γ :=
+            integral_mono (integrable_const _) h_int (fun _ => hg_lo _)
+  have h_Ptg_hi : ∀ s, 0 ≤ s → ∀ x, ouSemigroup s g x ≤ M := by
+    intro s hs x
+    show ∫ y, g (a s * x + b s * y) ∂γ ≤ M
+    have h_int : Integrable (fun y => g (a s * x + b s * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hg_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact hg_norm _
+    calc ∫ y, g (a s * x + b s * y) ∂γ
+        ≤ ∫ _, M ∂γ :=
+            integral_mono h_int (integrable_const _) (fun _ => hg_hi _)
+      _ = M := by simp
+  have h_Ptg_pos : ∀ s, 0 ≤ s → ∀ x, 0 < ouSemigroup s g x := fun s hs x =>
+    lt_of_lt_of_le hε (h_Ptg_lo s hs x)
+  have h_Ptg_abs : ∀ s, 0 ≤ s → ∀ x, |ouSemigroup s g x| ≤ M := fun s hs x => by
+    rw [abs_of_pos (h_Ptg_pos s hs x)]; exact h_Ptg_hi s hs x
+  -- Mehler derivative: (P_s g)'(x) = a(s) · P_s(g')(x).
+  have h_deriv_Ptg : ∀ s, ∀ x,
+      HasDerivAt (ouSemigroup s g)
+        (a s * ouSemigroup s (deriv g) x) x := fun s x =>
+    hasDerivAt_ouSemigroup_C1 s hg hg_norm hg'_norm x
+  have h_deriv_Ptg_eq : ∀ s, ∀ x,
+      deriv (ouSemigroup s g) x = a s * ouSemigroup s (deriv g) x :=
+    fun s x => (h_deriv_Ptg s x).deriv
+  -- |P_s(g')(x)| ≤ M.
+  have h_Ptdg_abs : ∀ s, 0 ≤ s → ∀ x, |ouSemigroup s (deriv g) x| ≤ M := by
+    intro s hs x
+    show |∫ y, deriv g (a s * x + b s * y) ∂γ| ≤ M
+    have h_int : Integrable (fun y => deriv g (a s * x + b s * y)) γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (hg'_meas.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with y; exact hg'_norm _
+    calc |∫ y, deriv g (a s * x + b s * y) ∂γ|
+        ≤ ∫ y, |deriv g (a s * x + b s * y)| ∂γ := abs_integral_le_integral_abs
+      _ ≤ ∫ _, M ∂γ :=
+            integral_mono h_int.abs (integrable_const _) (fun _ => hg'_bd _)
+      _ = M := by simp
+  -- |(P_s g)'(x)| ≤ M.
+  have h_dPtg_abs : ∀ s, 0 ≤ s → ∀ x, |deriv (ouSemigroup s g) x| ≤ M := by
+    intro s hs x
+    rw [h_deriv_Ptg_eq s x, abs_mul, abs_of_nonneg (h_a_nn s)]
+    calc a s * |ouSemigroup s (deriv g) x|
+        ≤ 1 * M := mul_le_mul (h_a_le_one s hs) (h_Ptdg_abs s hs x) (abs_nonneg _) (by norm_num)
+      _ = M := one_mul _
+  -- Measurability of P_s g.
+  have h_Ptg_meas : ∀ s, Measurable (ouSemigroup s g) := fun s => by
+    show Measurable fun x => ∫ y, g (a s * x + b s * y) ∂γ
+    have h_sm : StronglyMeasurable
+        (fun p : ℝ × ℝ => g (a s * p.1 + b s * p.2)) :=
+      (hg_cont.comp ((continuous_const.mul continuous_fst).add
+        (continuous_const.mul continuous_snd))).stronglyMeasurable
+    exact (h_sm.integral_prod_right' (ν := γ)).measurable
+  -- Bound on |log(P_t g x) + 1|.
+  set Mlog : ℝ := |Real.log ε| + |Real.log M| + 1 with hMlog_def
+  have hMlog_nn : 0 ≤ Mlog := by positivity
+  have h_log_bd : ∀ x, |Real.log (ouSemigroup t g x) + 1| ≤ Mlog := by
+    intro x
+    have h1 : ε ≤ ouSemigroup t g x := h_Ptg_lo t ht.le x
+    have h2 : ouSemigroup t g x ≤ M := h_Ptg_hi t ht.le x
+    have hPtg_pos := h_Ptg_pos t ht.le x
+    have hlog_bd : |Real.log (ouSemigroup t g x)| ≤ |Real.log ε| + |Real.log M| := by
+      by_cases hcase : ouSemigroup t g x ≤ 1
+      · have h_log_le_0 : Real.log (ouSemigroup t g x) ≤ 0 :=
+          Real.log_nonpos hPtg_pos.le hcase
+        have h_log_eps_le : Real.log ε ≤ Real.log (ouSemigroup t g x) :=
+          Real.log_le_log hε h1
+        rw [abs_of_nonpos h_log_le_0]
+        have h_eps_log_nonpos : Real.log ε ≤ 0 :=
+          Real.log_nonpos hε.le (le_trans h1 hcase)
+        rw [abs_of_nonpos h_eps_log_nonpos]
+        linarith [abs_nonneg (Real.log M)]
+      · have h1' : (1 : ℝ) < ouSemigroup t g x := not_le.mp hcase
+        have h_log_nn : 0 ≤ Real.log (ouSemigroup t g x) := Real.log_nonneg h1'.le
+        have h_log_le_M : Real.log (ouSemigroup t g x) ≤ Real.log M :=
+          Real.log_le_log hPtg_pos h2
+        have h_log_M_nn : 0 ≤ Real.log M := h_log_nn.trans h_log_le_M
+        rw [abs_of_nonneg h_log_nn, abs_of_nonneg h_log_M_nn]
+        linarith [abs_nonneg (Real.log ε)]
+    calc |Real.log (ouSemigroup t g x) + 1|
+        ≤ |Real.log (ouSemigroup t g x)| + |(1 : ℝ)| := abs_add_le _ _
+      _ ≤ (|Real.log ε| + |Real.log M|) + 1 := by
+          gcongr; rw [abs_one]
+      _ = Mlog := by simp [Mlog]
+  -- log(P_t g) + 1 has derivative (P_t g)'/(P_t g).
+  have h_logPtg_deriv : ∀ x,
+      HasDerivAt (fun y => Real.log (ouSemigroup t g y) + 1)
+        (deriv (ouSemigroup t g) x / ouSemigroup t g x) x := by
+    intro x
+    have hPtg_pos := h_Ptg_pos t ht.le x
+    have h_log_deriv : HasDerivAt Real.log (ouSemigroup t g x)⁻¹ (ouSemigroup t g x) :=
+      Real.hasDerivAt_log hPtg_pos.ne'
+    have h_Ptg_deriv : HasDerivAt (ouSemigroup t g) (deriv (ouSemigroup t g) x) x :=
+      (h_deriv_Ptg t x).congr_deriv (h_deriv_Ptg_eq t x).symm
+    have h_comp := h_log_deriv.comp x h_Ptg_deriv
+    have h_comp' : HasDerivAt (fun y => Real.log (ouSemigroup t g y))
+        (deriv (ouSemigroup t g) x / ouSemigroup t g x) x := by
+      convert h_comp using 1; field_simp
+    exact h_comp'.add_const 1
+  -- Bound on |(log P_t g + 1)'| ≤ M/ε.
+  have h_logPtg'_bd : ∀ x,
+      |deriv (fun y => Real.log (ouSemigroup t g y) + 1) x| ≤ M / ε := by
+    intro x
+    rw [(h_logPtg_deriv x).deriv]
+    have hPtg_pos := h_Ptg_pos t ht.le x
+    have hPtg_lo := h_Ptg_lo t ht.le x
+    rw [abs_div, abs_of_pos hPtg_pos]
+    have h_num_bd : |deriv (ouSemigroup t g) x| ≤ M := h_dPtg_abs t ht.le x
+    calc |deriv (ouSemigroup t g) x| / ouSemigroup t g x
+        ≤ M / ouSemigroup t g x :=
+          div_le_div_of_nonneg_right h_num_bd hPtg_pos.le
+      _ ≤ M / ε := div_le_div_of_nonneg_left hM_nn hε hPtg_lo
+  -- ===========================================================================
+  -- Hard sub-lemmas marked with sorry (see top comment for full description).
+  -- ===========================================================================
+  -- (A) P_t g is C².
+  have h_Ptg_C2 : ContDiff ℝ 2 (ouSemigroup t g) := by sorry
+  -- (B) Pointwise bound on |(P_t g)''|.
+  obtain ⟨M_dd, h_dd_Ptg_bd⟩ :
+      ∃ M_dd : ℝ, ∀ x, |deriv (deriv (ouSemigroup t g)) x| ≤ M_dd := by sorry
+  -- (C) log(P_t g) + 1 is C¹.
+  have h_Ptg_C1 : ContDiff ℝ 1 (ouSemigroup t g) := by
+    -- ContDiff 1 is implied by ContDiff 2.
+    exact h_Ptg_C2.of_le (by norm_num : (1 : WithTop ℕ∞) ≤ 2)
+  have h_logPtg_C1 : ContDiff ℝ 1 (fun y => Real.log (ouSemigroup t g y) + 1) := by
+    -- log is C^∞ on ℝ \ {0}; compose with P_t g (which is C¹ and ≥ ε > 0).
+    have h_log_cd : ContDiffOn ℝ ω Real.log ({0}ᶜ) := Real.contDiffOn_log
+    have h_log_at : ∀ x, ContDiffAt ℝ 1 Real.log (ouSemigroup t g x) := by
+      intro x
+      have hx_pos : 0 < ouSemigroup t g x := h_Ptg_pos t ht.le x
+      have hx : ouSemigroup t g x ∈ ({0} : Set ℝ)ᶜ := fun h => by
+        rw [Set.mem_singleton_iff] at h; linarith
+      have h_open : IsOpen ({0} : Set ℝ)ᶜ := isOpen_compl_singleton
+      have h1 := h_log_cd.contDiffAt (h_open.mem_nhds hx)
+      exact h1.of_le (by exact OrderTop.le_top _)
+    -- Compose. Pointwise contDiffAt assemble to ContDiff via contDiff_iff_contDiffAt.
+    have h_comp_at : ∀ x, ContDiffAt ℝ 1 (fun y => Real.log (ouSemigroup t g y)) x := by
+      intro x
+      exact (h_log_at x).comp x h_Ptg_C1.contDiffAt
+    have h_comp : ContDiff ℝ 1 (fun y => Real.log (ouSemigroup t g y)) :=
+      contDiff_iff_contDiffAt.mpr h_comp_at
+    exact h_comp.add contDiff_const
+  -- (D) Parametric DCT for the entropy: derivative of H(P_s g) at s = t equals
+  -- the L²-paired integrand ∫ (L P_t g) · (1 + log P_t g) dγ, where
+  -- L P_t g(y) := (P_t g)''(y) - y · (P_t g)'(y).
+  have h_param_deriv : HasDerivAt (fun s => boltzmannEntropy (ouSemigroup s g))
+      (∫ y, (deriv (deriv (ouSemigroup t g)) y - y * deriv (ouSemigroup t g) y) *
+            (Real.log (ouSemigroup t g y) + 1) ∂γ) t := by sorry
+  -- ===========================================================================
+  -- Phase 4 (provable): bilinear Dirichlet form ⇒ -fisherInfo.
+  -- ===========================================================================
+  -- Apply gaussian_dirichlet_form_bilinear with
+  --   f := fun y => Real.log (P_t g y) + 1
+  --   h := ouSemigroup t g
+  -- which gives:
+  --   ∫ (log P_t g + 1) · ((P_t g)'' - y · (P_t g)') dγ = -∫ (deriv f) · (deriv h) dγ
+  -- and (deriv f) · (deriv h) = ((P_t g)'/P_t g) · (P_t g)' = ((P_t g)')² / (P_t g).
+  -- Bounds for gaussian_dirichlet_form_bilinear: |f|, |f'| ≤ max(Mlog, M/ε);
+  -- |h|, |h'|, |h''| ≤ max(M, M, M_dd).
+  have h_bilinear : ∫ y, (deriv (deriv (ouSemigroup t g)) y - y * deriv (ouSemigroup t g) y) *
+      (Real.log (ouSemigroup t g y) + 1) ∂γ = -fisherInfo (ouSemigroup t g) := by
+    -- Set up the maximum bound for f and the bound for h, h', h''.
+    set Mf : ℝ := max Mlog (M / ε) with hMf_def
+    have hMf_lo_log : ∀ x, |Real.log (ouSemigroup t g x) + 1| ≤ Mf := fun x =>
+      (h_log_bd x).trans (le_max_left _ _)
+    have hMf_lo_log' : ∀ x,
+        |deriv (fun y => Real.log (ouSemigroup t g y) + 1) x| ≤ Mf := fun x =>
+      (h_logPtg'_bd x).trans (le_max_right _ _)
+    set Mh : ℝ := max (max M M) M_dd with hMh_def
+    -- We need a single bound that works for h, h', h'' (not all the same).
+    -- gaussian_dirichlet_form_bilinear takes Mh, Mh', Mh'' separately.
+    have h_apply :=
+      gaussian_dirichlet_form_bilinear (f := fun y => Real.log (ouSemigroup t g y) + 1)
+        (h := ouSemigroup t g) h_logPtg_C1 (Mf := Mf) hMf_lo_log hMf_lo_log'
+        h_Ptg_C2 (Mh := M) (Mh' := M) (Mh'' := M_dd)
+        (h_Ptg_abs t ht.le) (h_dPtg_abs t ht.le) h_dd_Ptg_bd
+    -- h_apply : ∫ (log P_t g + 1) · ((P_t g)'' - y · (P_t g)') dγ
+    --           = -∫ deriv(log P_t g + 1) · deriv(P_t g) dγ
+    -- We want: ∫ (...) · (log P_t g + 1) = -fisherInfo.
+    -- Rewrite the LHS of h_apply to match our target order.
+    rw [show (fun y => (deriv (deriv (ouSemigroup t g)) y - y * deriv (ouSemigroup t g) y) *
+        (Real.log (ouSemigroup t g y) + 1)) =
+        (fun y => (Real.log (ouSemigroup t g y) + 1) *
+        (deriv (deriv (ouSemigroup t g)) y - y * deriv (ouSemigroup t g) y)) from by
+      funext y; ring]
+    rw [h_apply]
+    -- Now goal: -∫ deriv(log P_t g + 1) · deriv(P_t g) dγ = -fisherInfo (P_t g).
+    -- deriv(log P_t g + 1) y = (P_t g)' y / (P_t g) y (by h_logPtg_deriv).
+    show -∫ y, deriv (fun y => Real.log (ouSemigroup t g y) + 1) y *
+        deriv (ouSemigroup t g) y ∂γ = -fisherInfo (ouSemigroup t g)
+    congr 1
+    have h_integrand_eq : (fun y => deriv (fun y => Real.log (ouSemigroup t g y) + 1) y *
+        deriv (ouSemigroup t g) y) =
+        (fun y => (deriv (ouSemigroup t g) y) ^ 2 / ouSemigroup t g y) := by
+      funext y
+      rw [(h_logPtg_deriv y).deriv]
+      have hPtg_pos := h_Ptg_pos t ht.le y
+      have hPtg_ne : ouSemigroup t g y ≠ 0 := hPtg_pos.ne'
+      rw [sq, mul_div_assoc, mul_comm, ← mul_div_assoc, mul_div_assoc]
+    rw [h_integrand_eq]
+    rfl
+  -- Combine the parametric derivative with the bilinear identity.
+  convert h_param_deriv using 1
+  exact h_bilinear.symm
 
 /-- **Pointwise continuity of `s ↦ P_s g x` at `s = 0`** for bounded continuous `g`,
 via DCT on the inner Mehler integrand. Inlined here to avoid an extra import. -/
