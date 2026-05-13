@@ -2719,4 +2719,131 @@ theorem ouSemigroupFin_l2_decay_bound {n : ℕ}
     rw [show (fun s => -2 * Real.exp (-2 * s) * Ef) =
         (fun s => (-2 * Real.exp (-2 * s)) * Ef) from rfl]
     rw [intervalIntegral.integral_mul_const, hintExp]
+    have : Real.exp (-2 * 0) = 1 := by simp
+    rw [this, mul_comm]
+  have hg0 : g 0 = ∫ x, (f x) ^ 2 ∂γFin n := by
+    show ∫ x, (ouSemigroupFin 0 f x) ^ 2 ∂γFin n = ∫ x, (f x) ^ 2 ∂γFin n
+    rw [ouSemigroupFin_zero]
+  rw [show g t = ∫ x, (ouSemigroupFin t f x) ^ 2 ∂γFin n from rfl] at hFTC
+  rw [hg0, hintφ] at hFTC
+  have hEf_rw : (1 - Real.exp (-2 * t)) * ouEnergyFin f f =
+      -(Ef * (Real.exp (-2 * t) - 1)) := by
+    rw [hEf_def]
+    ring
+  rw [hEf_rw]
+  linarith
+
+/-! ### N1.5 textbook axiom: `C^∞` core preservation under the multivariate OU semigroup
+
+After the `IsCoreFin` harmonization from `ContDiff ℝ ⊤` to `ContDiff ℝ ∞`,
+the remaining nontrivial part of semigroup-core preservation is the
+`C^∞` smoothing statement. The boundedness half is already proved by
+`ouSemigroupFin_preserves_core_bounds`. What remains is the standard
+kernel-smoothing fact that Mehler convolution preserves `C^∞`. -/
+
+/-- **Multivariate OU smoothing preserves the `IsCoreFin` test algebra.**
+
+For `t ≥ 0`, if `f` is `IsCoreFin`, then `P_t f` is again `IsCoreFin`.
+
+Post-harmonization this means `C^∞` regularity plus the same uniform
+bounds on the function, coordinate first partials, and coordinate
+sectionwise second derivatives. The bounds portion is already proved in
+`ouSemigroupFin_preserves_core_bounds`; the remaining load-bearing input
+is the `C^∞` smoothing of the explicit Mehler kernel in the spatial
+variable.
+
+**Reference:** BGL §2.7 (OU kernel smoothing), applied coordinatewise to
+the finite product Gaussian setting.
+
+**Vetting:** gemini-3.1-pro-preview, 2026-05-13, verdict
+**Flagged** pre-harmonization and **Standard / Likely correct**
+post-harmonization to `ContDiff ℝ ∞`. The vet specifically confirmed
+that no mixed-derivative bounds are needed for this `IsCoreFin`
+predicate: the pure second partials commute with the semigroup up to the
+expected `exp (-2t)` factor, so only the `C^∞` smoothing remains to be
+discharged.
+
+**Discharge plan:** rewrite `P_t f` against the explicit shifted
+Gaussian density `ρ_t (x, z)`, then apply `ContDiff.integral` to push
+spatial derivatives onto the kernel rather than onto `f`. This avoids
+the multi-index Hermite formalization burden and matches the recommended
+kernel-based proof route from the vet. -/
+axiom ouSemigroupFin_preserves_IsCore {n : ℕ}
+    (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
+    IsCoreFin (ouSemigroupFin t f)
+
+/-! ### N1.5 textbook axiom: multivariate entropy decay for `f²`
+
+The 1D entropy-decay theorem is already proved in
+`EuclideanEntropyDecay.lean`. The finite-dimensional statement is its
+tensor lift through Fubini, but the full formal port would require
+rebuilding the Fisher-information and entropy-derivative machinery in
+the product setting. We keep that lift as an explicitly documented
+temporary axiom so the concrete wrapper can be completed. -/
+
+/-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2, n-dim Gaussian case).**
+
+For every `IsCoreFin` test function `f` and every `t ≥ 0`,
+`Ent(f²) - Ent(P_t(f²)) ≤ (1 - e^{-2t}) * 2 * E_n(f,f)`.
+
+This is the finite-dimensional Gaussian tensor lift of the proved 1D
+theorem `Gaussian1D.ouSemigroup_entropy_sq_decay_bound_proved`.
+
+**Reference:** Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
+Diffusion Operators*, Springer 2014, §5.5, Theorem 5.5.2.
+
+**Discharge plan:** lift the 1D entropy decomposition/Fisher-information
+argument through `ouSemigroupFin_insertNth_eq` and
+`integral_γFin_succAbove`, reusing the already-built sectionwise Mehler
+bridges and product Gaussian Fubini lemmas. -/
+axiom ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
+    (f : (Fin n → ℝ) → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : IsCoreFin f) :
+    DirichletSpace.entropy (ds := dirichletSpaceFin (n := n)) (fun x => f x * f x) -
+      DirichletSpace.entropy (ds := dirichletSpaceFin (n := n))
+        (ouSemigroupFin t (fun x => f x * f x)) ≤
+      (1 - Real.exp (-2 * 1 * t)) * (2 / 1) * ouEnergyFin f f
+
 end GaussianFin
+
+namespace stdGaussianFin
+
+open GaussianFin
+
+/-- The finite-dimensional standard Gaussian Bakry-Emery structure on `Fin n → ℝ`. -/
+@[reducible]
+def bakryEmerySpace (n : ℕ) : BakryEmerySpace (Fin n → ℝ) where
+  toDirichletSpace := GaussianFin.dirichletSpaceFin n
+  Γ := GaussianFin.ouGammaFin
+  Γ_symm := fun f g => GaussianFin.ouGammaFin_symm
+  Γ_nonneg := fun f x => GaussianFin.ouGammaFin_nonneg x
+  energy_eq_integral_Γ := fun f g => rfl
+  IsCore_mul := fun hf hg => GaussianFin.IsCoreFin_mul hf hg
+  Γ_leibniz := fun f g h hf hg hh x => GaussianFin.ouGammaFin_leibniz hf hg hh x
+  Γ_const := fun c f => GaussianFin.ouGammaFin_const_left c f
+  semigroup := GaussianFin.ouSemigroupFin
+  IsCore_semigroup := fun t ht _ hf => GaussianFin.ouSemigroupFin_preserves_IsCore t ht hf
+  ρ := 1
+  hρ := one_pos
+  gradient_decay := fun f t ht hf => by
+    simpa using GaussianFin.ouSemigroupFin_gradient_decay (n := n) f t ht hf
+  semigroup_zero := fun f => GaussianFin.ouSemigroupFin_zero (n := n) f
+  semigroup_add := fun s t f hs ht hf =>
+    GaussianFin.ouSemigroupFin_compose (n := n) s t hs ht hf
+  semigroup_contraction := fun f t ht hf =>
+    GaussianFin.ouSemigroupFin_contraction (n := n) f t ht hf
+  semigroup_mean := fun f t ht hf =>
+    GaussianFin.ouSemigroupFin_mean (n := n) f t ht hf
+  semigroup_selfAdjoint := fun f g t ht hf hg =>
+    GaussianFin.ouSemigroupFin_selfAdjoint (n := n) f g t ht hf hg
+  semigroup_l2_decay_bound := fun f t ht hf => by
+    simpa using GaussianFin.ouSemigroupFin_l2_decay_bound (n := n) f t ht hf
+  semigroup_l2_sq_hasDerivWithinAt := fun f t ht hf =>
+    GaussianFin.ouSemigroupFin_l2_sq_hasDerivWithinAt f t ht hf
+  semigroup_ergodic := fun f hf =>
+    GaussianFin.ouSemigroupFin_ergodic (n := n) f hf
+  semigroup_entropy_sq_decay_bound := fun f t ht hf =>
+    GaussianFin.ouSemigroupFin_entropy_sq_decay_bound f t ht hf
+  semigroup_entropy_sq_ergodic := fun f hf =>
+    GaussianFin.ouSemigroupFin_entropy_sq_ergodic (n := n) f hf
+
+end stdGaussianFin
