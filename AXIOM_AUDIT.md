@@ -3,7 +3,7 @@
 *Centralized registry of every textbook axiom in `markov-semigroups`.
 Each row records the axiom's literature reference, vetting verdict,
 discharge plan (if any), and downstream consumers. Last refreshed:
-2026-05-10.*
+2026-05-13.*
 
 ## Purpose
 
@@ -99,26 +99,30 @@ on 2026-05-10. See that repo for the current home and audit.
 
 ### Core: hypercontractivity / Gross duality / Stroock-Varopoulos
 
-Both axioms are stated against the bundled
-[`DirichletMarkovSemigroup`](../MarkovSemigroups/Abstract/Hypercontractivity.lean)
-structure (refactored 2026-05-13 after Gemini 3.1-pro vetting found
-four formal soundness issues with the previous separate
-`MarkovSemigroup` + `DirichletSpace` + side-hypothesis formulation):
-* the time parameter is now restricted to `t ≥ 0` (was two-sided —
-  Stone's theorem collapsed the structure);
-* the form-semigroup compatibility uses
-  `HasDerivWithinAt _ _ (Set.Ici 0) 0` (right-derivative);
-* `IsHypercontractive` uses `eLpNorm` (was raw `∫|f|^p`, which
-  silently evaluates to `0` for non-`Lᵖ` functions);
-* conservation `P_t 1 = 1`, positivity `f ≥ 0 ⇒ P_t f ≥ 0`, and
-  symmetry `⟨f, P_t g⟩ = ⟨P_t f, g⟩` are now structural fields of
-  `MarkovSemigroup`.
+The three core axioms are now stated against the bundled
+[`DirichletMarkovSemigroup`](MarkovSemigroups/Abstract/Hypercontractivity.lean)
+structure after the 2026-05-13 **Lp-carrier refactor** documented in
+[`docs/lp-carrier-refactor-design.md`](docs/lp-carrier-refactor-design.md).
+This refactor changed the abstract semigroup carrier from the
+mathematically flawed pointwise space `(X → ℝ) → (X → ℝ)` to bounded
+operators on `L²(μ)`, `Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ`, while keeping the
+active axiom count unchanged at 11.
+
+Post-refactor statement shape:
+* time remains `t : ℝ` but all semigroup laws are restricted to `t ≥ 0`;
+* the form-semigroup compatibility is the right-derivative statement
+  `HasDerivWithinAt _ _ (Set.Ici 0) 0`;
+* `IsHypercontractive` now quantifies over `f : Lp ℝ 2 μ` with an
+  explicit `MemLp` hypothesis at exponent `p`;
+* conservation is phrased as fixing any a.e.-constant-`1` `L²` element,
+  and symmetry is the `L²` inner-product identity
+  `⟪f, P_t g⟫ = ⟪P_t f, g⟫`.
 
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `gross_lsi_implies_hypercontractive` | [`Abstract/Hypercontractivity.lean`](../MarkovSemigroups/Abstract/Hypercontractivity.lean) | Gross (1975) Amer. J. Math. 97, Theorem 1 | Standard | LP, SA, GR (gemini-3.1-pro 2026-05-13 vetting of revised statement) | Genuine textbook duality theorem; full proof differentiates `‖P_t f‖_{L^{q(t)}}` along `q(t) = 1 + (p-1)e^{2ρt}` and uses LSI applied to `|f|^{q/2}` plus Stroock-Varopoulos. Mathlib lacks the `Lᵖ` semigroup interpolation machinery; estimated 2000-4000 lines / multi-week to discharge directly. | `DirichletMarkovSemigroup.hypercontractive_of_logSobolev`, `DirichletMarkovSemigroup.gross_equivalence` (in-file wrappers only — not consumed by any other module in the project or by any downstream consumer: `lgt`, `pphi2`, `pphi2N`, `gaussian-hilbert` do not import this file) |
-| `gross_hypercontractive_implies_lsi` | [`Abstract/Hypercontractivity.lean`](../MarkovSemigroups/Abstract/Hypercontractivity.lean) | Gross (1975) Amer. J. Math. 97, Theorem 2 | Standard | LP, SA, GR (gemini-3.1-pro 2026-05-13) | Reverse implication: differentiate the hypercontractive bound at `t = 0` with `p = 2`, `q = 2 + ε`, take `ε → 0`. Same effort scale as the forward direction. | `DirichletMarkovSemigroup.logSobolev_of_hypercontractive`, `DirichletMarkovSemigroup.gross_equivalence` (same in-file-only consumer status) |
-| `stroock_varopoulos` | [`Abstract/Hypercontractivity.lean`](../MarkovSemigroups/Abstract/Hypercontractivity.lean) | Stroock (1992), Varopoulos (1985); BGL Prop 1.7.1 / §1.7 | Standard | GR (gemini-3.1-pro-preview two-pass 2026-05-13: first pass `Needs Revision` flagging vacuous `f ≥ ε > 0` on infinite-measure spaces; revision to `f ≥ 0` applied; second pass `Standard`, confirming `C¹` powers at 0 for `p ≥ 2`, edge cases `p = 2` giving equality and `f ≡ 0` giving `0 ≤ 0`, constant + direction + general symmetric-Markov scope all correct) | Currently no internal consumers — added 2026-05-13 as the first intermediate-step atomic lemma toward a future Gross discharge. Discharge plan via pointwise convexity `(a-b)(a^{p-1}-b^{p-1}) ≥ (4(p-1)/p²)(a^{p/2}-b^{p/2})²` + integration against a symmetric Markov kernel + `energy_eq_deriv`. |
+| `gross_lsi_implies_hypercontractive` | [`Abstract/Hypercontractivity.lean:261`](MarkovSemigroups/Abstract/Hypercontractivity.lean#L261) | Gross (1975) Amer. J. Math. 97, Theorem 1 | Standard | LP, SA, GR (gemini-3.1-pro-preview 2026-05-13, re-vetted against the post-refactor `Lp ℝ 2 μ` carrier design) | Genuine textbook duality theorem; the new statement is the same theorem on a sound carrier. Full proof differentiates `‖P_t f‖_{L^{q(t)}}` along `q(t) = 1 + (p-1)e^{2ρt}` for `f : Lp ℝ 2 μ`, uses the `MemLp` hypothesis to interpret the `L^p` norm, and applies LSI to `|f|^{q/2}` plus Stroock-Varopoulos. Estimated 2000-4000 lines / multi-week to discharge directly. | `DirichletMarkovSemigroup.hypercontractive_of_logSobolev`, `DirichletMarkovSemigroup.gross_equivalence` (in-file wrappers only — not consumed by any other module in the project or by any downstream consumer: `lgt`, `pphi2`, `pphi2N`, `gaussian-hilbert` do not import this file) |
+| `gross_hypercontractive_implies_lsi` | [`Abstract/Hypercontractivity.lean:271`](MarkovSemigroups/Abstract/Hypercontractivity.lean#L271) | Gross (1975) Amer. J. Math. 97, Theorem 2 | Standard | LP, SA, GR (gemini-3.1-pro-preview 2026-05-13, re-vetted on the post-refactor `Lp ℝ 2 μ` carrier statement) | Reverse implication: differentiate the hypercontractive bound at `t = 0` with `p = 2`, `q = 2 + ε`, and pass `ε → 0`. Same effort scale as the forward direction; the refactor changes only the formal carrier, not the textbook content. | `DirichletMarkovSemigroup.logSobolev_of_hypercontractive`, `DirichletMarkovSemigroup.gross_equivalence` (same in-file-only consumer status) |
+| `stroock_varopoulos` | [`Abstract/Hypercontractivity.lean:242`](MarkovSemigroups/Abstract/Hypercontractivity.lean#L242) | Stroock (1992), Varopoulos (1985); BGL Prop 1.7.1 / §1.7 | Standard | GR (gemini-3.1-pro-preview two-pass 2026-05-13: first pass `Needs Revision` flagging vacuous `f ≥ ε > 0` on infinite-measure spaces; revision to `f ≥ 0` applied; second pass `Standard`, confirming the post-refactor statement on `DirichletMarkovSemigroup`, the `p ≥ 2` power regularity at 0, the sharp constant `4(p-1)/p²`, edge cases `p = 2` and `f ≡ 0`, and the general symmetric-Markov scope) | Currently no internal consumers — added 2026-05-13 as the first intermediate-step atomic lemma toward a future Gross discharge. Discharge plan via pointwise convexity `(a-b)(a^{p-1}-b^{p-1}) ≥ (4(p-1)/p²)(a^{p/2}-b^{p/2})²`, integration against a symmetric Markov kernel, and the right-derivative compatibility field `energy_eq_deriv`. |
 
 ### Concentration / Poincaré
 
