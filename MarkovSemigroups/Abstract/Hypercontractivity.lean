@@ -257,9 +257,17 @@ The proof uses the semigroup interpolation method: differentiate
 `‖P_t f‖_{L^{q(t)}}` along `q(t) = 1 + (p − 1) e^{2ρt}` and show the
 derivative is `≤ 0` via LSI applied to `|f|^{q/2}`. The Dirichlet form
 enters through the compatibility field `energy_eq_deriv`, with
-Stroock–Varopoulos supplying the key energy comparison. -/
+Stroock–Varopoulos supplying the key energy comparison.
+
+**Note on `hρ`**: the explicit `0 < ρ` hypothesis is required to
+firewall against a soundness trap. `SatisfiesLogSobolev D ρ` is
+**trivially true** for `ρ ≤ 0` (the LSI inequality `ρ · Ent(f²) ≤ 2 · E(f, f)`
+has LHS `≤ 0` and RHS `≥ 0`), while `IsHypercontractive` bakes in
+`0 < ρ`. Without `hρ` the axiom would prove `0 < ρ` from a vacuous
+hypothesis (i.e. `0 < ρ` for any `ρ`), yielding `False`. Flagged by
+gemini-3.1-pro-preview 2026-05-13 re-vet of the Lp-carrier refactor. -/
 axiom gross_lsi_implies_hypercontractive {X : Type*} [MeasurableSpace X]
-    (D : DirichletMarkovSemigroup X) (ρ : ℝ)
+    (D : DirichletMarkovSemigroup X) (ρ : ℝ) (hρ : 0 < ρ)
     (h_lsi : D.SatisfiesLogSobolev ρ) :
     D.toMarkovSemigroup.IsHypercontractive ρ
 
@@ -277,12 +285,15 @@ namespace DirichletMarkovSemigroup
 
 variable {X : Type*} [MeasurableSpace X]
 
-/-- Gross's theorem (forward direction): LSI ⇒ hypercontractivity. -/
+/-- Gross's theorem (forward direction): LSI ⇒ hypercontractivity.
+
+The `hρ : 0 < ρ` hypothesis firewalls the `ρ ≤ 0` soundness trap
+documented at `gross_lsi_implies_hypercontractive`. -/
 theorem hypercontractive_of_logSobolev (D : DirichletMarkovSemigroup X)
-    (ρ : ℝ) (h_lsi : D.SatisfiesLogSobolev ρ) :
+    (ρ : ℝ) (hρ : 0 < ρ) (h_lsi : D.SatisfiesLogSobolev ρ) :
     D.IsHypercontractive ρ := by
   show D.toMarkovSemigroup.IsHypercontractive ρ
-  exact gross_lsi_implies_hypercontractive D ρ h_lsi
+  exact gross_lsi_implies_hypercontractive D ρ hρ h_lsi
 
 /-- Gross's theorem (reverse direction): hypercontractivity ⇒ LSI. -/
 theorem logSobolev_of_hypercontractive (D : DirichletMarkovSemigroup X)
@@ -292,10 +303,12 @@ theorem logSobolev_of_hypercontractive (D : DirichletMarkovSemigroup X)
   exact gross_hypercontractive_implies_lsi D ρ h_hyp
 
 /-- The Gross equivalence: LSI ↔ hypercontractivity for a
-`DirichletMarkovSemigroup`. -/
-theorem gross_equivalence (D : DirichletMarkovSemigroup X) (ρ : ℝ) :
+`DirichletMarkovSemigroup`. The forward direction requires `0 < ρ`
+(see `hypercontractive_of_logSobolev`); the reverse derives `ρ > 0`
+from the `IsHypercontractive` predicate's built-in `0 < ρ` field. -/
+theorem gross_equivalence (D : DirichletMarkovSemigroup X) (ρ : ℝ) (hρ : 0 < ρ) :
     D.SatisfiesLogSobolev ρ ↔ D.IsHypercontractive ρ :=
-  ⟨D.hypercontractive_of_logSobolev ρ,
+  ⟨D.hypercontractive_of_logSobolev ρ hρ,
    D.logSobolev_of_hypercontractive ρ⟩
 
 /-! ## Direct consequence: the semigroup improves integrability -/
