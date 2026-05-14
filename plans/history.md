@@ -19,6 +19,8 @@ When a planning doc in `plans/` is completed, also move the doc to
 
 | Date | Title | Net axiom count Δ |
 |---|---|---|
+| 2026-05-13 | [Lp-carrier refactor of abstract `MarkovSemigroup`](#2026-05-13-lp-carrier-refactor-of-abstract-markovsemigroup) | 0 (correctness fix; `hρ : 0 < ρ` firewall added) |
+| 2026-05-13 | [Stage N1 — multivariate Gaussian BE instance merged](#2026-05-13-stage-n1--multivariate-gaussian-be-instance-merged) | +3 placeholder GaussianFin axioms (all vetted Standard) |
 | 2026-05-13 | [Bundled `DirichletMarkovSemigroup` refactor + S–V axiom](#2026-05-13-bundled-dirichletmarkovsemigroup-refactor--stroockvaropoulos-axiom) | +1 (S–V axiom added, vetted Standard) |
 | 2026-05-12 | [A2 (interior de Bruijn) discharge](#2026-05-12-a2-de-bruijn-interior-discharge) | −1 |
 | 2026-05-12 | [A2-boundary discharge from A2 interior](#2026-05-12-a2-boundary-discharge) | −1 |
@@ -26,6 +28,135 @@ When a planning doc in `plans/` is completed, also move the doc to
 | 2026-05-12 | [`ouSemigroup_entropy_sq_decay_bound` discharge via A1+A2](#2026-05-12-ousemigroup_entropy_sq_decay_bound-discharge) | net +2 (1 broad → 3 focused, then proven over next 2 entries) |
 | 2026-05-12 | [Path C Hermite IBP discharge of `ouSemigroup_contDiff`](#2026-05-12-path-c-hermite-ibp-discharge-of-ousemigroup_contdiff) | −1 |
 | 2026-05-12 | [`IsCore` refactor `ContDiff ⊤ → ContDiff ∞`](#2026-05-12-iscore-refactor-contdiff--contdiff-) | 0 (correctness fix) |
+
+---
+
+## 2026-05-13: Lp-carrier refactor of abstract `MarkovSemigroup`
+
+**Goal:** fix a soundness flaw in the post-bundle `MarkovSemigroup` /
+`DirichletMarkovSemigroup` structure in `Abstract/Hypercontractivity.lean`.
+Move the abstract semigroup carrier from `(X → ℝ) → (X → ℝ)` (pointwise
+functions) to bounded operators on `L²(μ)`,
+`Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ`.
+
+**Commits:**
+* `c133b8a` — design doc `docs/lp-carrier-refactor-design.md`.
+* `65f0364` — core refactor: move carrier to `Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ`,
+  rewrite all `MarkovSemigroup` fields, regenerate
+  `DirichletMarkovSemigroup` bundle.
+* `78b2694` — add `hρ : 0 < ρ` to `gross_lsi_implies_hypercontractive`
+  to firewall a `ρ ≤ 0` vacuity trap (LSI is trivially true for
+  non-positive `ρ`, but `IsHypercontractive` bakes in `0 < ρ`).
+* `1f81794` — audit row update recording the `hρ` fix.
+* `e1e2011` — merge to `main`.
+
+**Resources:**
+* Time: ~1 day of design + execution.
+* Lines: ~250 net change in `Hypercontractivity.lean`; ~250 lines new
+  design doc.
+* Gemini vetting: `gemini-3.1-pro-preview` two passes.
+  * Pass 1: identified the Bochner junk-value flaw in the pointwise
+    carrier ("if `f` is signed and non-absolutely-integrable, the
+    unconditional field `P_semigroup` can fail because one side hits
+    the junk value `0` while the other side conditionally converges
+    to a non-zero value").
+  * Pass 2 (on refactor shape): "commit to this refactor".
+  * Third pass after `hρ` fix: confirmed `Standard / Likely correct`.
+* No subagents needed (single-author refactor).
+
+**Outcome:**
+* `MarkovSemigroup.P` now `: ℝ → (Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ)` — junk
+  values impossible on `L²` equivalence classes.
+* `P_zero`, `P_semigroup`, `P_strong_cont`, `P_contraction`,
+  `P_conservation`, `P_positivity`, `P_symmetric` all reformulated
+  on the Lp carrier.
+* `DirichletMarkovSemigroup` gains a new field `IsCore_memLp`
+  (every core function lies in `L²(μ)`), and `energy_eq_deriv` is
+  reformulated using a let-binding `coreToL2 : ∀ {h : X → ℝ}, IsCore h → Lp ℝ 2 μ`.
+* `gross_lsi_implies_hypercontractive` signature acquires
+  `(hρ : 0 < ρ)` between `(ρ : ℝ)` and `(h_lsi : ...)`.
+* Active axiom count unchanged at 11 (the refactor is a soundness
+  fix, not an axiom-count fix).
+* Downstream impact: zero — no other module or downstream project
+  imports `Abstract/Hypercontractivity.lean`.
+
+**Lessons learned:**
+* **Lp carriers eliminate whole classes of Bochner-trap bugs.** When
+  in doubt between pointwise and Lp carriers for a semigroup on a
+  measure space, prefer Lp. Junk-value pathologies on non-integrable
+  inputs simply don't exist on `L²` equivalence classes.
+* **Vetting catches subtle vacuity traps.** The `ρ ≤ 0` firewall was
+  found by Gemini on the third pass — without it, the axiom would
+  have allowed deriving `False` via `IsHypercontractive` baking in
+  `0 < ρ` while `SatisfiesLogSobolev` does not.
+* **Design docs upfront pay off** even for "abstract structure"
+  refactors. The design doc was vetted before any code was written,
+  saving the cost of a second iteration after misshape detection.
+
+---
+
+## 2026-05-13: Stage N1 — multivariate Gaussian BE instance merged
+
+**Goal:** build `stdGaussianFin.bakryEmerySpace n : BakryEmerySpace (Fin n → ℝ)`,
+the concrete multivariate-Gaussian Bakry-Émery instance, as the
+foundation for the gaussian-hilbert hypercontractivity discharge.
+
+**Commits (Codex branch `feat/bakry-emery-multivariate-gaussian`):**
+* `28962ea` — sectionwise OU derivative lemmas on `Fin` Gaussian.
+* `1711914` — rebase adaptation for Section core proof.
+* `b23ed6d`, `92cff22`, `ea6b35e`, `895e691`, `6bf390b`, `c71b260` —
+  N1.4–N1.6 infrastructure checkpoints (kernel-pushforward, harmonized
+  `IsCoreFin`, ergodic field, `ouSemigroupFin_l2_decay_bound`).
+* `b97f7d9` — add N1.5/N1.6 vetted axioms and BakryEmerySpace wrap.
+* `ab1f454` — audit doc for the merged N1 GaussianFin axioms.
+* `6a23582` — archive Stage N detailed plan + codex N1 brief.
+* `43793af`, `ed88be1` — README/status axiom-count bumps 8 → 11.
+* `8ed9e52` — merge to `main`.
+
+**Resources:**
+* Time: ~7–10 active days (codex; ran concurrently with the bundled
+  refactor + Lp-carrier work on `main`).
+* Lines: ~2850 in
+  `MarkovSemigroups/Instances/WorkInProgress/EuclideanFin.lean`
+  (0 sorries, 3 placeholder axioms).
+* Subagent: Codex (independent worktree, with periodic checkpoints).
+* Gemini vetting: `gemini-3.1-pro-preview` — `Standard` verdict on
+  each of the 3 placeholder axioms (all tensor-lift analogues of
+  historical 1D primitives that are now discharged in `Gaussian1D`).
+
+**Outcome:**
+* `stdGaussianFin.bakryEmerySpace n : BakryEmerySpace (Fin n → ℝ)`
+  is an instance, with curvature `ρ = 1` (tensorizes from 1D).
+* 3 placeholder axioms remain, all `gemini-3.1-pro-preview` vetted
+  **Standard**, all tensor-lift analogues of already-proved 1D
+  primitives:
+  * `ouSemigroupFin_l2_sq_hasDerivWithinAt` (BGL Prop 4.7.1
+    multivariate version).
+  * `ouSemigroupFin_preserves_IsCore` (BGL §2.7.1 + §3 multivariate
+    Mehler smoothing).
+  * `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2
+    multivariate version).
+* Sub-stage N1 of the OU hypercontractivity discharge is **complete**;
+  stages N2 + N3 (gaussian-hilbert wire-in to discharge
+  `ouSemigroupAct_eLpNorm_hypercontractive`) are in progress.
+* Project axiom count: 8 → 11.
+
+**Lessons learned:**
+* **Concrete-instance route beats generic-tensorization route for
+  abstract classes lacking kernel data.** The original Stage N plan
+  called for a generic `BakryEmerySpace.pi` tensorization lemma, but
+  the abstract class exposes the semigroup as a bare operator with no
+  kernel representation. Codex correctly identified this blocker and
+  pivoted to the concrete instance.
+* **Tensor-lift placeholder axioms are a clean staging strategy.** The
+  3 axioms are *not* new mathematics — they are the multivariate
+  versions of facts already discharged in 1D. Future N1.5/N1.6 work
+  will discharge them by tensor-lift from `Gaussian1D` primitives.
+  In the interim, the multivariate instance is usable downstream.
+* **Long codex branches need rebases planned.** The N1 branch
+  rebased onto the bundled Gross refactor twice (commits `1711794`
+  and a follow-up); each rebase was ~6 lines but had to be done
+  promptly to avoid drift.
 
 ---
 

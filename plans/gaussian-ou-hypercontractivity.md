@@ -1,6 +1,6 @@
 # Gaussian OU hypercontractivity: full discharge chain
 
-**Status:** scoped, not started (as of 2026-05-13).
+**Status:** active, partially in progress (2026-05-14).
 
 **Goal:** discharge the chain of axioms blocking `pphi2`'s
 `gaussian_hypercontractivity_continuum`, replacing them with theorems
@@ -11,6 +11,62 @@ proved from the explicit Gaussian Ornstein-Uhlenbeck Mehler kernel.
 scope for this plan.
 
 **Estimated total:** ~1900–3200 lines, ~6–9 weeks of focused work.
+
+## Status update (2026-05-14)
+
+Since this plan was originally scoped (2026-05-13), two structural
+changes have landed on `main` that affect Phases 2 and 4:
+
+* **2026-05-13: Lp-carrier refactor** (commits `c133b8a`, `65f0364`,
+  `78b2694`, `1f81794`, merge `e1e2011`). The abstract `MarkovSemigroup`
+  carrier was moved from `(X → ℝ) → (X → ℝ)` to bounded operators
+  on `L²(μ)`, `Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ`, after `gemini-3.1-pro-preview`
+  flagged that the previous pointwise carrier was unsound (Bochner
+  junk-value trap on non-integrable inputs). Design doc:
+  [`docs/lp-carrier-refactor-design.md`](../docs/lp-carrier-refactor-design.md).
+  `gross_lsi_implies_hypercontractive` also acquired an `hρ : 0 < ρ`
+  hypothesis to firewall a vacuity issue. **Affects Phase 2** below.
+
+* **2026-05-13: Stage N1 — multivariate Gaussian BE instance merge**
+  (commit `8ed9e52`). The codex branch
+  `feat/bakry-emery-multivariate-gaussian` landed
+  `stdGaussianFin.bakryEmerySpace n : BakryEmerySpace (Fin n → ℝ)`
+  with 3 placeholder textbook axioms (`ouSemigroupFin_l2_sq_hasDerivWithinAt`,
+  `ouSemigroupFin_preserves_IsCore`, `ouSemigroupFin_entropy_sq_decay_bound`),
+  all `gemini-3.1-pro-preview`-vetted **Standard**, all tensor-lift
+  analogues of historical 1D primitives that have already been
+  discharged in `Gaussian1D`. Detailed codex plan:
+  [`docs/stage-n-detailed-plan.md`](../docs/stage-n-detailed-plan.md);
+  N1 codex hand-off (now mostly historical):
+  [`docs/stage-n1-codex-brief.md`](../docs/stage-n1-codex-brief.md).
+  **Affects Phase 4** below.
+
+* **2026-05-13: Stage N Phase 2 codex hand-off** is open
+  (commit `7ccef48`):
+  [`docs/stage-n-phase-2-codex-brief.md`](../docs/stage-n-phase-2-codex-brief.md).
+  It builds the **concrete `DirichletMarkovSemigroup (Fin n → ℝ)`**
+  for the standard multivariate Gaussian OU using the Lp-carrier
+  framework. ~3–5 active days, no new axioms. This is the (Lp-carrier
+  era) replacement for **Phase 2 + Phase 4 combined** of this plan.
+
+**Net effect on this plan:**
+- **Phase 1** (Stroock–Varopoulos for `Gaussian1D`) is unchanged and
+  unstarted; it remains the natural first concrete bite.
+- **Phase 2** (the `DirichletMarkovSemigroup` *instance* construction)
+  is being delivered for the multivariate Gaussian directly by the
+  codex Phase 2 brief, leveraging Stage N1. The 1D analog is no
+  longer the priority — once the `n`-dim instance exists, the 1D
+  case is `n = 1`.
+- **Phase 3** (Gross-LSI⇒HC for the concrete instance) is unchanged
+  in shape but should now target the `Fin n → ℝ` instance directly.
+- **Phase 4** (tensorization to multivariate) is partly delivered by
+  Stage N1; the remaining work is (a) discharging the 3 GaussianFin
+  placeholder axioms by tensor-lift, (b) the Lp-carrier wrap that
+  Phase 2 codex brief is building.
+- **Phases 5–6** (gaussian-hilbert wire-in) unchanged.
+
+The plan below retains its original 1D-first framing for educational
+value; the *delivery* path is now multivariate-first via Stage N.
 
 ---
 
