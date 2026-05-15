@@ -19,3 +19,13 @@ operator algebras / CFC, among others).
   unbundled / junk-value definitions. CFC for bounded operators as
   the canonical Mathlib example. Our own `MarkovSemigroup` carrier
   refactor (2026-05-13) as a project-internal example.
+
+* [`gusakov-nelson-watt-2025.md`](gusakov-nelson-watt-2025.md) —
+  structured reading of Gusakov, Nelson, Watt,
+  **"Structuring Definitions in Mathematical Libraries"
+  (arXiv:2509.10828, 2025)**. Four Mathlib case studies (CFC,
+  graded rings, matroids, graphs) with explicit design patterns:
+  junk values, bundled/unbundled trade-off, typeclass `Prop`-with-
+  `outParam`, and "carrier set as data" for sub-object operations.
+  Directly validates the methodology in our own `bundled-vs-unbundled`
+  entry.
