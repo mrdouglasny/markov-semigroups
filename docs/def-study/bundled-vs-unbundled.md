@@ -3,6 +3,14 @@
 *Captured from ICERM discussions; first entry in the
 [def-study](README.md) collection.*
 
+*Cross-reference: Gusakov–Nelson–Watt (arXiv:2509.10828, 2025),
+**"Structuring Definitions in Mathematical Libraries"** — paper-level
+treatment of exactly these trade-offs, with four Mathlib case
+studies (CFC, graded rings, matroids, graphs). Structured reading:
+[`gusakov-nelson-watt-2025.md`](gusakov-nelson-watt-2025.md). The
+paper independently arrives at the same operational methodology
+described below.*
+
 ## The principle
 
 The **conceptually nicest** Lean/Mathlib definition is to bundle an
@@ -156,13 +164,19 @@ When proposing a structural definition in this project:
    cleanly without auxiliary lemmas.
 3. **Try the unbundled version**. Check the same, and note what
    side hypotheses are needed.
-4. **Compare**, paying attention to:
+4. **Consider the *carrier-set-as-data* pattern** (Gusakov–Nelson–
+   Watt's matroid / graph case studies): when sub-objects, restriction,
+   or deletion operations show up, an explicit carrier-set field is
+   often cleaner than a type parameter — avoids cascading coercions.
+5. **Compare**, paying attention to:
    - How clean the *use sites* are, not just the *definition*.
    - Whether junk values introduce vacuity / unsoundness traps
      (Bochner returns `0`, division-by-zero, `Real.log 0 = 0`, etc.).
    - Whether the unbundled version forces every call site to
      re-establish the missing property.
-5. **Have the proposed definition vetted** by `gemini-3.1-pro-preview`
+   - Whether sub-object operations are in the use-case list — if yes,
+     carrier-set-as-data deserves a hard look.
+6. **Have the proposed definition vetted** by `gemini-3.1-pro-preview`
    *before* writing the code. This is cheap and catches structural
    flaws that would otherwise show up multiple commits in.
 
@@ -170,8 +184,21 @@ This rule is meant to be applied to every non-trivial structural
 choice: classes, structures, alternative carriers, what's a
 hypothesis vs. a structure field, etc.
 
+The three design-pattern axes to consider explicitly:
+
+| Axis | Question | Worked example |
+|---|---|---|
+| Bundled vs. unbundled | Does the structure carry its laws/properties, or are they side hypotheses? | `MarkovSemigroup` vs `DirichletMarkovSemigroup` (this repo) |
+| Strict typing vs. junk values | Do operations require domain conformance, or accept arbitrary input with default fallback? | Mathlib's `cfc` (unbundled) vs `cfcL` (bundled) |
+| Type parameter vs. carrier set | Is the carrier a type-level argument, or an explicit field of the structure? | Mathlib's `Matroid`, `SimpleGraph` (carrier-set) |
+
 ## References
 
+* **Gusakov, Nelson, Watt** (2025, arXiv:2509.10828),
+  *Structuring Definitions in Mathematical Libraries* — four
+  Mathlib case studies (CFC, graded rings, matroids, graphs) with
+  explicit design patterns. Structured reading:
+  [`gusakov-nelson-watt-2025.md`](gusakov-nelson-watt-2025.md).
 * Jireh Loreaux's ICERM talks on operator algebras / CFC design.
 * `Mathlib.Analysis.CStarAlgebra.ContinuousFunctionalCalculus.Unital`
   — the bundled (`cfcL`) and unbundled (`cfc`) views side by side.
