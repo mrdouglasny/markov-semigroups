@@ -25,6 +25,324 @@ namespace GaussianFin
 
 variable {n : ℕ}
 
+private theorem gaussian1D_ouSemigroup_pointwise_tendsto_zero_of_bound
+    {g : ℝ → ℝ} (hg_cont : Continuous g) {M : ℝ} (hg_bd : ∀ y, |g y| ≤ M) (x : ℝ) :
+    Tendsto (fun s => Gaussian1D.ouSemigroup s g x) (𝓝[Ici 0] 0) (𝓝 (g x)) := by
+  have h_rewrite : (fun s : ℝ => Gaussian1D.ouSemigroup s g x) =
+      fun s => ∫ y, g (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂Gaussian1D.γ := rfl
+  rw [h_rewrite]
+  have h_target : g x = ∫ _y : ℝ, g x ∂Gaussian1D.γ := by simp
+  rw [h_target]
+  refine tendsto_integral_filter_of_dominated_convergence (fun _ => M) ?_ ?_
+    (integrable_const _) ?_
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    exact (hg_cont.comp ((continuous_const.mul continuous_const).add
+      (continuous_const.mul continuous_id))).aestronglyMeasurable
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    filter_upwards with y
+    show ‖g (Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)‖ ≤ M
+    rw [Real.norm_eq_abs]
+    exact hg_bd _
+  · filter_upwards with y
+    have h_arg : Tendsto (fun s : ℝ =>
+        Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)
+        (𝓝[Ici 0] 0) (𝓝 x) := by
+      have h_cont : ContinuousAt (fun s : ℝ =>
+          Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y) 0 := by
+        fun_prop
+      have h := h_cont.tendsto
+      have h_val : Real.exp (-(0 : ℝ)) * x + Real.sqrt (1 - Real.exp (-2 * 0)) * y = x := by
+        simp
+      rw [h_val] at h
+      exact h.mono_left nhdsWithin_le_nhds
+    exact hg_cont.continuousAt.tendsto.comp h_arg
+
+private theorem gaussian1D_pairing_tendsto_atZero_of_bound
+    {f g : ℝ → ℝ} (hf_cont : Continuous f) (hg_cont : Continuous g)
+    {Mf Mg : ℝ} (hf_bd : ∀ x, |f x| ≤ Mf) (hg_bd : ∀ y, |g y| ≤ Mg) :
+    Tendsto (fun s => ∫ x, f x * Gaussian1D.ouSemigroup s g x ∂Gaussian1D.γ)
+      (𝓝[Ici 0] 0)
+      (𝓝 (∫ x, f x * g x ∂Gaussian1D.γ)) := by
+  have hMf_nn : 0 ≤ Mf := (abs_nonneg _).trans (hf_bd 0)
+  have hPg_meas : ∀ s, Measurable (Gaussian1D.ouSemigroup s g) := fun s => by
+    show Measurable fun x => ∫ y, g (Real.exp (-s) * x +
+      Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂Gaussian1D.γ
+    apply StronglyMeasurable.measurable
+    have h_inner : StronglyMeasurable
+        (fun p : ℝ × ℝ => g (Real.exp (-s) * p.1 +
+          Real.sqrt (1 - Real.exp (-2 * s)) * p.2)) :=
+      (hg_cont.comp ((continuous_const.mul continuous_fst).add
+        (continuous_const.mul continuous_snd))).stronglyMeasurable
+    exact h_inner.integral_prod_right' (ν := Gaussian1D.γ)
+  refine tendsto_integral_filter_of_dominated_convergence (fun _ => Mf * Mg) ?_ ?_
+    (integrable_const _) ?_
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    exact ((hf_cont.measurable).mul (hPg_meas s)).aestronglyMeasurable
+  · filter_upwards [self_mem_nhdsWithin] with s _
+    filter_upwards with x
+    show ‖f x * Gaussian1D.ouSemigroup s g x‖ ≤ Mf * Mg
+    rw [Real.norm_eq_abs, abs_mul]
+    have h_int : Integrable (fun y => g (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y)) Gaussian1D.γ := by
+      refine Integrable.mono' (integrable_const Mg) ?_ ?_
+      · exact (hg_cont.comp ((continuous_const.add
+          (continuous_const.mul continuous_id)))).aestronglyMeasurable
+      · filter_upwards with y
+        show ‖g (Real.exp (-s) * x + Real.sqrt (1 - Real.exp (-2 * s)) * y)‖ ≤ Mg
+        rw [Real.norm_eq_abs]
+        exact hg_bd _
+    have hPg : |Gaussian1D.ouSemigroup s g x| ≤ Mg := by
+      show |∫ y, g (Real.exp (-s) * x +
+        Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂Gaussian1D.γ| ≤ Mg
+      calc
+        |∫ y, g (Real.exp (-s) * x +
+            Real.sqrt (1 - Real.exp (-2 * s)) * y) ∂Gaussian1D.γ|
+            ≤ ∫ y, |g (Real.exp (-s) * x +
+                Real.sqrt (1 - Real.exp (-2 * s)) * y)| ∂Gaussian1D.γ :=
+              abs_integral_le_integral_abs
+        _ ≤ ∫ _, Mg ∂Gaussian1D.γ := by
+            refine integral_mono h_int.abs (integrable_const _) ?_
+            intro y
+            exact hg_bd _
+        _ = Mg := by simp
+    exact mul_le_mul (hf_bd x) hPg (abs_nonneg _) hMf_nn
+  · filter_upwards with x
+    exact tendsto_const_nhds.mul
+      (gaussian1D_ouSemigroup_pointwise_tendsto_zero_of_bound hg_cont hg_bd x)
+
+private theorem gaussian1D_pairing_hasDerivAt_pos
+    (t₀ : ℝ) (ht₀ : 0 < t₀) {f g : ℝ → ℝ}
+    (hf : Gaussian1D.IsCore f) (hg : Gaussian1D.IsCore g) :
+    HasDerivAt (fun s => ∫ x, f x * Gaussian1D.ouSemigroup s g x ∂Gaussian1D.γ)
+      (-(∫ x, deriv f x * deriv (Gaussian1D.ouSemigroup t₀ g) x ∂Gaussian1D.γ)) t₀ := by
+  obtain ⟨hf_smooth, Mf, hfM⟩ := hf
+  obtain ⟨hg_smooth, Mg, hgM⟩ := hg
+  have hf_core : Gaussian1D.IsCore f := ⟨hf_smooth, Mf, hfM⟩
+  have hg_core : Gaussian1D.IsCore g := ⟨hg_smooth, Mg, hgM⟩
+  have hMf_nn : 0 ≤ Mf := (abs_nonneg _).trans (by
+    rw [← Real.norm_eq_abs]
+    exact (hfM 0).1)
+  set ε : ℝ := t₀ / 2 with hε_def
+  have hε_pos : 0 < ε := half_pos ht₀
+  have hε_lt : ε < t₀ := half_lt_self ht₀
+  have h_nbhd : Set.Ioo ε (t₀ + 1) ∈ nhds t₀ := Ioo_mem_nhds hε_lt (by linarith)
+  set F : ℝ → ℝ → ℝ := fun s x => f x * Gaussian1D.ouSemigroup s g x
+  set F' : ℝ → ℝ → ℝ := fun s x => f x *
+    (deriv (deriv (Gaussian1D.ouSemigroup s g)) x -
+      x * deriv (Gaussian1D.ouSemigroup s g) x)
+  set bound : ℝ → ℝ := fun x => Mf * Mg * (1 + |x|)
+  have h_id_int : Integrable (fun x : ℝ => x) Gaussian1D.γ :=
+    (memLp_id_gaussianReal 1).integrable le_rfl
+  have h_bound_int : Integrable bound Gaussian1D.γ := by
+    have h_eq : bound = (fun x => Mf * Mg + (Mf * Mg) * |x|) := by
+      funext x
+      simp [bound]
+      ring
+    rw [h_eq]
+    exact (integrable_const _).add (h_id_int.abs.const_mul _)
+  have h_bounds : ∀ s, 0 ≤ s → ∀ x,
+      ‖Gaussian1D.ouSemigroup s g x‖ ≤ Mg ∧
+      ‖deriv (Gaussian1D.ouSemigroup s g) x‖ ≤ Mg ∧
+      ‖deriv (deriv (Gaussian1D.ouSemigroup s g)) x‖ ≤ Mg :=
+    fun s hs x => Gaussian1D.ouSemigroup_preserves_bounds hg_smooth hgM s hs x
+  have hPsg_meas : ∀ s, 0 ≤ s → Measurable (Gaussian1D.ouSemigroup s g) := fun s hs => by
+    exact (Gaussian1D.ouSemigroup_preserves_IsCore s hs hg_core).measurable
+  have hF_meas : ∀ s ∈ Set.Ioo ε (t₀ + 1), AEStronglyMeasurable (F s) Gaussian1D.γ := by
+    intro s hs
+    have hs_pos : 0 < s := lt_of_lt_of_le hε_pos hs.1.le
+    exact ((hf_smooth.continuous.measurable).mul (hPsg_meas s hs_pos.le)).aestronglyMeasurable
+  have hF_int : Integrable (F t₀) Gaussian1D.γ := by
+    refine Integrable.mono' (integrable_const (Mf * Mg)) (hF_meas t₀
+      ⟨hε_lt, by linarith⟩) ?_
+    filter_upwards with x
+    show ‖f x * Gaussian1D.ouSemigroup t₀ g x‖ ≤ Mf * Mg
+    rw [Real.norm_eq_abs, abs_mul]
+    have hPg : |Gaussian1D.ouSemigroup t₀ g x| ≤ Mg := by
+      rw [← Real.norm_eq_abs]
+      exact (h_bounds t₀ ht₀.le x).1
+    exact mul_le_mul
+      (by
+        rw [← Real.norm_eq_abs]
+        exact (hfM x).1)
+      hPg (abs_nonneg _) hMf_nn
+  have hF'_meas : AEStronglyMeasurable (F' t₀) Gaussian1D.γ := by
+    have hcore_t₀ : Gaussian1D.IsCore (Gaussian1D.ouSemigroup t₀ g) :=
+      Gaussian1D.ouSemigroup_preserves_IsCore t₀ ht₀.le hg_core
+    have hmeas1 : Measurable (deriv (Gaussian1D.ouSemigroup t₀ g)) := by
+      exact (Gaussian1D.IsCore.contDiff_deriv hcore_t₀).continuous.measurable
+    have hmeas2 : Measurable (deriv (deriv (Gaussian1D.ouSemigroup t₀ g))) := by
+      exact ((Gaussian1D.IsCore.contDiff_deriv hcore_t₀).continuous_deriv (by norm_num)).measurable
+    exact ((hf_smooth.continuous.measurable).mul (hmeas2.sub (measurable_id.mul hmeas1))).aestronglyMeasurable
+  have h_bound : ∀ᵐ x ∂Gaussian1D.γ, ∀ s ∈ Set.Ioo ε (t₀ + 1), ‖F' s x‖ ≤ bound x := by
+    filter_upwards with x s hs
+    have hs_nonneg : 0 ≤ s := (lt_of_lt_of_le hε_pos hs.1.le).le
+    obtain ⟨hPs, hDPs, hDDPs⟩ := h_bounds s hs_nonneg x
+    show ‖f x * (deriv (deriv (Gaussian1D.ouSemigroup s g)) x -
+        x * deriv (Gaussian1D.ouSemigroup s g) x)‖ ≤ Mf * Mg * (1 + |x|)
+    rw [Real.norm_eq_abs, abs_mul]
+    have hf_abs : |f x| ≤ Mf := by
+      rw [← Real.norm_eq_abs]
+      exact (hfM x).1
+    have hL :
+        |deriv (deriv (Gaussian1D.ouSemigroup s g)) x -
+            x * deriv (Gaussian1D.ouSemigroup s g) x| ≤ Mg * (1 + |x|) := by
+      calc
+        |deriv (deriv (Gaussian1D.ouSemigroup s g)) x -
+            x * deriv (Gaussian1D.ouSemigroup s g) x|
+            ≤ |deriv (deriv (Gaussian1D.ouSemigroup s g)) x|
+              + |x * deriv (Gaussian1D.ouSemigroup s g) x| := by
+                rw [sub_eq_add_neg]
+                exact (abs_add_le _ _).trans (by rw [abs_neg])
+        _ = |deriv (deriv (Gaussian1D.ouSemigroup s g)) x|
+              + |x| * |deriv (Gaussian1D.ouSemigroup s g) x| := by
+                rw [abs_mul]
+        _ ≤ Mg + |x| * Mg := by
+              gcongr
+              · rw [← Real.norm_eq_abs]
+                exact hDDPs
+              · rw [← Real.norm_eq_abs]
+                exact hDPs
+        _ = Mg * (1 + |x|) := by ring
+    calc
+      |f x| * |deriv (deriv (Gaussian1D.ouSemigroup s g)) x -
+          x * deriv (Gaussian1D.ouSemigroup s g) x|
+          ≤ Mf * (Mg * (1 + |x|)) := mul_le_mul hf_abs hL (abs_nonneg _) hMf_nn
+      _ = Mf * Mg * (1 + |x|) := by ring
+  have h_diff :
+      ∀ᵐ x ∂Gaussian1D.γ, ∀ s ∈ Set.Ioo ε (t₀ + 1), HasDerivAt (fun r => F r x) (F' s x) s := by
+    filter_upwards with x s hs
+    have hs_pos : 0 < s := lt_of_lt_of_le hε_pos hs.1.le
+    simpa [F, F'] using
+      (Gaussian1D.hasDerivAt_t_ouSemigroup s hs_pos hg_core x).const_mul (f x)
+  have hF_meas_ev : ∀ᶠ s in nhds t₀, AEStronglyMeasurable (F s) Gaussian1D.γ :=
+    Filter.eventually_of_mem h_nbhd hF_meas
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le h_nbhd
+      hF_meas_ev hF_int hF'_meas h_bound h_bound_int h_diff
+  have hcore_t₀ : Gaussian1D.IsCore (Gaussian1D.ouSemigroup t₀ g) :=
+    Gaussian1D.ouSemigroup_preserves_IsCore t₀ ht₀.le hg_core
+  have h_dir :
+      ∫ x, f x *
+        (deriv (deriv (Gaussian1D.ouSemigroup t₀ g)) x -
+          x * deriv (Gaussian1D.ouSemigroup t₀ g) x) ∂Gaussian1D.γ
+        = -∫ x, deriv f x * deriv (Gaussian1D.ouSemigroup t₀ g) x ∂Gaussian1D.γ := by
+    have hf_bd : ∀ y, |f y| ≤ Mf := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (hfM y).1
+    have hf'_bd : ∀ y, |deriv f y| ≤ Mf := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (hfM y).2.1
+    have hh_bd : ∀ y, |Gaussian1D.ouSemigroup t₀ g y| ≤ Mg := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (h_bounds t₀ ht₀.le y).1
+    have hh'_bd : ∀ y, |deriv (Gaussian1D.ouSemigroup t₀ g) y| ≤ Mg := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (h_bounds t₀ ht₀.le y).2.1
+    have hh''_bd : ∀ y, |deriv (deriv (Gaussian1D.ouSemigroup t₀ g)) y| ≤ Mg := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (h_bounds t₀ ht₀.le y).2.2
+    have hf_C1 : ContDiff ℝ 1 f := by
+      have h : (1 : WithTop ℕ∞) ≤ ↑(⊤ : ℕ∞) := by
+        exact WithTop.coe_le_coe.mpr (show (1 : ℕ∞) ≤ ⊤ by simp)
+      exact hf_smooth.of_le h
+    have hPtg_C2 : ContDiff ℝ 2 (Gaussian1D.ouSemigroup t₀ g) := by
+      have h : (2 : WithTop ℕ∞) ≤ ↑(⊤ : ℕ∞) := by
+        exact WithTop.coe_le_coe.mpr (show (2 : ℕ∞) ≤ ⊤ by simp)
+      exact hcore_t₀.contDiff.of_le h
+    simpa using Gaussian1D.gaussian_dirichlet_form_bilinear
+      (f := f) (h := Gaussian1D.ouSemigroup t₀ g)
+      (hf := hf_C1) hf_bd hf'_bd hPtg_C2 hh_bd hh'_bd hh''_bd
+  rw [h_dir] at h_deriv
+  simpa using h_deriv
+
+private theorem gaussian1D_pairing_hasDerivWithinAt_zero
+    {f g : ℝ → ℝ} (hf : Gaussian1D.IsCore f) (hg : Gaussian1D.IsCore g) :
+    HasDerivWithinAt (fun s => ∫ x, f x * Gaussian1D.ouSemigroup s g x ∂Gaussian1D.γ)
+      (-(∫ x, deriv f x * deriv g x ∂Gaussian1D.γ)) (Ici 0) 0 := by
+  obtain ⟨hf_smooth, Mf, hfM⟩ := hf
+  obtain ⟨hg_smooth, Mg, hgM⟩ := hg
+  have hf_core : Gaussian1D.IsCore f := ⟨hf_smooth, Mf, hfM⟩
+  have hg_core : Gaussian1D.IsCore g := ⟨hg_smooth, Mg, hgM⟩
+  refine hasDerivWithinAt_Ici_of_tendsto_deriv (s := Ioi 0)
+    (f := fun s => ∫ x, f x * Gaussian1D.ouSemigroup s g x ∂Gaussian1D.γ)
+    (e := -(∫ x, deriv f x * deriv g x ∂Gaussian1D.γ)) (a := 0) ?_ ?_ self_mem_nhdsWithin ?_
+  · intro t ht
+    exact (gaussian1D_pairing_hasDerivAt_pos t ht hf_core hg_core).differentiableAt.differentiableWithinAt
+  · have hf_bd : ∀ x, |f x| ≤ Mf := by
+      intro x
+      rw [← Real.norm_eq_abs]
+      exact (hfM x).1
+    have hg_bd : ∀ y, |g y| ≤ Mg := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (hgM y).1
+    have h := gaussian1D_pairing_tendsto_atZero_of_bound hf_smooth.continuous hg_smooth.continuous hf_bd hg_bd
+    show ContinuousWithinAt (fun s => ∫ x, f x * Gaussian1D.ouSemigroup s g x ∂Gaussian1D.γ) (Ioi 0) 0
+    have h0 :
+        ∫ x, f x * Gaussian1D.ouSemigroup 0 g x ∂Gaussian1D.γ = ∫ x, f x * g x ∂Gaussian1D.γ := by
+      have hzero : Gaussian1D.ouSemigroup 0 g = g := by
+        ext x
+        simp [Gaussian1D.ouSemigroup, integral_const]
+      rw [hzero]
+    rw [ContinuousWithinAt, h0]
+    exact h.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+  · have hf'_bd : ∀ x, |deriv f x| ≤ Mf := by
+      intro x
+      rw [← Real.norm_eq_abs]
+      exact (hfM x).2.1
+    have hg'_bd : ∀ y, |deriv g y| ≤ Mg := by
+      intro y
+      rw [← Real.norm_eq_abs]
+      exact (hgM y).2.1
+    have hpair_lim :=
+      gaussian1D_pairing_tendsto_atZero_of_bound
+        (Gaussian1D.IsCore.contDiff_deriv hf_core).continuous
+        (Gaussian1D.IsCore.contDiff_deriv hg_core).continuous
+        hf'_bd hg'_bd
+    have h_exp_Ici : Tendsto (fun s : ℝ => Real.exp (-s)) (𝓝[Ici 0] 0) (𝓝 1) := by
+      have h_cont : Continuous (fun s : ℝ => Real.exp (-s)) := by fun_prop
+      have h := h_cont.continuousAt.tendsto (x := (0 : ℝ))
+      simpa using h.mono_left nhdsWithin_le_nhds
+    have h_exp : Tendsto (fun s : ℝ => Real.exp (-s)) (𝓝[Ioi 0] 0) (𝓝 1) :=
+      h_exp_Ici.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+    have hpair_lim_Ioi :
+        Tendsto (fun s => ∫ x, deriv f x * Gaussian1D.ouSemigroup s (deriv g) x ∂Gaussian1D.γ)
+          (𝓝[Ioi 0] 0) (𝓝 (∫ x, deriv f x * deriv g x ∂Gaussian1D.γ)) :=
+      hpair_lim.mono_left (nhdsWithin_mono _ Ioi_subset_Ici_self)
+    have h_mul := h_exp.mul hpair_lim_Ioi
+    have htarget :
+        Tendsto (fun s =>
+          -(Real.exp (-s) * ∫ x, deriv f x * Gaussian1D.ouSemigroup s (deriv g) x ∂Gaussian1D.γ))
+          (𝓝[Ioi 0] 0) (𝓝 (-(∫ x, deriv f x * deriv g x ∂Gaussian1D.γ))) := by
+      simpa using h_mul.neg
+    refine htarget.congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with s hs
+    have hderiv : deriv (fun r => ∫ x, f x * Gaussian1D.ouSemigroup r g x ∂Gaussian1D.γ) s =
+        -(Real.exp (-s) * ∫ x, deriv f x * Gaussian1D.ouSemigroup s (deriv g) x ∂Gaussian1D.γ) := by
+      rw [(gaussian1D_pairing_hasDerivAt_pos s hs hf_core hg_core).deriv]
+      have hmehler : ∀ x, deriv (Gaussian1D.ouSemigroup s g) x =
+          Real.exp (-s) * Gaussian1D.ouSemigroup s (deriv g) x := by
+        intro x
+        exact congrFun (Gaussian1D.deriv_ouSemigroup_eq hg_core s) x
+      have h_int :
+          ∫ x, deriv f x * deriv (Gaussian1D.ouSemigroup s g) x ∂Gaussian1D.γ =
+            Real.exp (-s) * ∫ x, deriv f x * Gaussian1D.ouSemigroup s (deriv g) x ∂Gaussian1D.γ := by
+        have hrw :
+            (fun x => deriv f x * deriv (Gaussian1D.ouSemigroup s g) x) =
+              (fun x => Real.exp (-s) * (deriv f x * Gaussian1D.ouSemigroup s (deriv g) x)) := by
+          funext x
+          rw [hmehler x]
+          ring
+        rw [hrw, integral_const_mul]
+      rw [h_int]
+    exact hderiv.symm
+
 private theorem integralProdRight_sq_le
     (F : Lp ℝ 2 ((γFin n).prod (γFin n))) :
     ∫ x, (∫ y, F (x, y) ∂γFin n) ^ 2 ∂γFin n ≤
@@ -1060,5 +1378,251 @@ noncomputable def markovSemigroup (n : ℕ) :
   P_conservation := ouSemigroupFinLp_conservation (n := n)
   P_positivity := ouSemigroupFinLp_positivity (n := n)
   P_symmetric := ouSemigroupFinLp_symmetric (n := n)
+
+private theorem ouSemigroupFinLp_half_normSq_hasDerivWithinAt
+    {h : (Fin n → ℝ) → ℝ} (hh : IsCoreFin h) :
+    HasDerivWithinAt
+      (fun t : ℝ =>
+        ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) h hh).toLp h)‖ ^ 2)
+      (-ouEnergyFin h h) (Set.Ici 0) 0 := by
+  obtain ⟨M, hM⟩ := hh.bound_exists
+  let h_mem : MemLp h 2 (γFin n) := isCoreFin_memLp (n := n) h hh
+  let ψ : ℝ → ℝ := fun s => ∫ x, (ouSemigroupFin s h x) ^ 2 ∂γFin n
+  have hψ : HasDerivWithinAt ψ (-2 * ouEnergyFin h h) (Set.Ici 0) 0 := by
+    simpa [ψ, ouEnergyFin, ouSemigroupFin_zero] using
+      ouSemigroupFin_l2_sq_hasDerivWithinAt (n := n) h 0 le_rfl hh
+  have hhalf : HasDerivWithinAt (fun t : ℝ => t / 2) (1 / 2) (Set.Ici 0) 0 := by
+    simpa using ((hasDerivAt_id 0).div_const (2 : ℝ)).hasDerivWithinAt
+  have hcomp :
+      HasDerivWithinAt (fun t : ℝ => ψ (t / 2))
+        ((-2 * ouEnergyFin h h) * (1 / 2)) (Set.Ici 0) 0 := by
+    refine HasDerivWithinAt.comp_of_eq (x := 0) (s := Set.Ici 0) (s' := Set.Ici 0)
+      (h := fun t : ℝ => t / 2) (h₂ := ψ) hψ hhalf ?_ ?_
+    intro t ht
+    show 0 ≤ t / 2
+    have ht0 : 0 ≤ t := ht
+    nlinarith
+    ring
+  have hEq := by
+    have hIci : ∀ᶠ t : ℝ in nhdsWithin 0 (Set.Ici 0), t ∈ Set.Ici 0 :=
+      eventually_mem_of_tendsto_nhdsWithin tendsto_id
+    filter_upwards [hIci] with t ht
+    have ht2 : 0 ≤ t / 2 := div_nonneg ht zero_le_two
+    calc
+      ‖ouSemigroupFinLp (n := n) (t / 2) (h_mem.toLp h)‖ ^ 2
+          = ‖(ouSemigroupFin_memLp_of_bound (n := n) (t / 2) hh.measurable hM).toLp
+              (ouSemigroupFin (t / 2) h)‖ ^ 2 := by
+                rw [ouSemigroupFinLp_eq_toLp_of_bound (n := n) (t / 2) ht2 hh.measurable hM]
+      _ = ψ (t / 2) := by
+            simpa [ψ] using
+              (norm_sq_toLp_eq_integral_sq (n := n)
+                (ouSemigroupFin_memLp_of_bound (n := n) (t / 2) hh.measurable hM))
+  have hmain :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) h hh).toLp h)‖ ^ 2)
+        ((-2 * ouEnergyFin h h) * (1 / 2)) (Set.Ici 0) 0 :=
+    hcomp.congr_of_eventuallyEq hEq (by
+      simpa [ψ, ouSemigroupFin_zero, ouSemigroupFinLp_zero] using
+        (norm_sq_toLp_eq_integral_sq (n := n) h_mem))
+  convert hmain using 1 <;> ring
+
+private theorem ouSemigroupFinLp_pairing_eq_polarization
+    (t : ℝ) (ht : 0 ≤ t) (f g : Lp ℝ 2 (γFin n)) :
+    4 * ⟪f, ouSemigroupFinLp (n := n) t g⟫_ℝ =
+      ‖ouSemigroupFinLp (n := n) (t / 2) (f + g)‖ ^ 2 -
+        ‖ouSemigroupFinLp (n := n) (t / 2) (f - g)‖ ^ 2 := by
+  have ht2 : 0 ≤ t / 2 := div_nonneg ht zero_le_two
+  let u := ouSemigroupFinLp (n := n) (t / 2) f
+  let v := ouSemigroupFinLp (n := n) (t / 2) g
+  have hpair :
+      ⟪f, ouSemigroupFinLp (n := n) t g⟫_ℝ = ⟪u, v⟫_ℝ := by
+    rw [show t = t / 2 + t / 2 by ring]
+    rw [ouSemigroupFinLp_semigroup (n := n) (t / 2) (t / 2) ht2 ht2]
+    simpa [u, v] using
+      (ouSemigroupFinLp_symmetric (n := n) (t / 2) ht2 f
+        (ouSemigroupFinLp (n := n) (t / 2) g))
+  have hadd :
+      ouSemigroupFinLp (n := n) (t / 2) (f + g) = u + v := by
+    simp [u, v]
+  have hsub :
+      ouSemigroupFinLp (n := n) (t / 2) (f - g) = u - v := by
+    simp [u, v]
+  calc
+    4 * ⟪f, ouSemigroupFinLp (n := n) t g⟫_ℝ = 4 * ⟪u, v⟫_ℝ := by rw [hpair]
+    _ = ‖u + v‖ ^ 2 - ‖u - v‖ ^ 2 := by
+          linarith [norm_add_sq_real u v, norm_sub_sq_real u v]
+    _ = ‖ouSemigroupFinLp (n := n) (t / 2) (f + g)‖ ^ 2 -
+          ‖ouSemigroupFinLp (n := n) (t / 2) (f - g)‖ ^ 2 := by
+            rw [hadd, hsub]
+
+private theorem ouEnergyFin_polarization
+    {f g : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (hg : IsCoreFin g) :
+    ouEnergyFin (f - g) (f - g) - ouEnergyFin (f + g) (f + g) = -4 * ouEnergyFin f g := by
+  have hplus : IsCoreFin (f + g) := IsCoreFin_add hf hg
+  have hneg : IsCoreFin ((-1 : ℝ) • g) := IsCoreFin_smul (-1 : ℝ) hg
+  have hminus : IsCoreFin (f - g) := by
+    simpa [sub_eq_add_neg] using IsCoreFin_add hf hneg
+  have hΓ :
+      (fun x => ouGammaFin (f - g) (f - g) x - ouGammaFin (f + g) (f + g) x) =
+        fun x => -4 * ouGammaFin f g x := by
+    ext x
+    unfold ouGammaFin
+    calc
+      (∑ i : Fin n, partialDeriv i (f - g) x * partialDeriv i (f - g) x) -
+          ∑ i : Fin n, partialDeriv i (f + g) x * partialDeriv i (f + g) x
+          = ∑ i : Fin n,
+              (partialDeriv i (f - g) x * partialDeriv i (f - g) x -
+                partialDeriv i (f + g) x * partialDeriv i (f + g) x) := by
+              rw [Finset.sum_sub_distrib]
+        _ = ∑ i : Fin n,
+              ((partialDeriv i f x - partialDeriv i g x) *
+                  (partialDeriv i f x - partialDeriv i g x) -
+                (partialDeriv i f x + partialDeriv i g x) *
+                  (partialDeriv i f x + partialDeriv i g x)) := by
+              refine Finset.sum_congr rfl ?_
+              intro i hi
+              rw [show partialDeriv i (f - g) x = partialDeriv i f x - partialDeriv i g x by
+                    have hsub : partialDeriv i (f - g) = fun x => partialDeriv i f x - partialDeriv i g x := by
+                      funext x
+                      rw [sub_eq_add_neg]
+                      have hnegfun : (-g : (Fin n → ℝ) → ℝ) = (-1 : ℝ) • g := by
+                        funext y
+                        simp
+                      rw [hnegfun, partialDeriv_add i hf.contDiff hneg.contDiff, partialDeriv_smul]
+                      ring
+                    simpa using congrFun hsub x,
+                  partialDeriv_add i hf.contDiff hg.contDiff]
+        _ = ∑ i : Fin n, -4 * (partialDeriv i f x * partialDeriv i g x) := by
+              refine Finset.sum_congr rfl ?_
+              intro i hi
+              ring
+        _ = -4 * ∑ i : Fin n, partialDeriv i f x * partialDeriv i g x := by
+              rw [Finset.mul_sum]
+  calc
+    ouEnergyFin (f - g) (f - g) - ouEnergyFin (f + g) (f + g)
+        = ∫ x, (ouGammaFin (f - g) (f - g) x - ouGammaFin (f + g) (f + g) x) ∂γFin n := by
+            rw [ouEnergyFin, ouEnergyFin,
+              integral_sub (hminus.integrable_gamma hminus) (hplus.integrable_gamma hplus)]
+    _ = ∫ x, -4 * ouGammaFin f g x ∂γFin n := by rw [hΓ]
+    _ = -4 * ouEnergyFin f g := by rw [ouEnergyFin, integral_const_mul]
+
+theorem ouSemigroupFin_energy_eq_deriv (f g : (Fin n → ℝ) → ℝ)
+    (hf : IsCoreFin f) (hg : IsCoreFin g) :
+    HasDerivWithinAt
+      (fun t : ℝ => ⟪(isCoreFin_memLp (n := n) f hf).toLp f,
+                     ouSemigroupFinLp (n := n) t ((isCoreFin_memLp (n := n) g hg).toLp g)⟫_ℝ)
+      (-(ouEnergyFin f g)) (Set.Ici 0) 0 := by
+  let fLp : Lp ℝ 2 (γFin n) := (isCoreFin_memLp (n := n) f hf).toLp f
+  let gLp : Lp ℝ 2 (γFin n) := (isCoreFin_memLp (n := n) g hg).toLp g
+  let hf_mem : MemLp f 2 (γFin n) := isCoreFin_memLp (n := n) f hf
+  let hg_mem : MemLp g 2 (γFin n) := isCoreFin_memLp (n := n) g hg
+  have hplus : IsCoreFin (f + g) := IsCoreFin_add hf hg
+  have hneg : IsCoreFin ((-1 : ℝ) • g) := IsCoreFin_smul (-1 : ℝ) hg
+  have hminus : IsCoreFin (f - g) := by
+    simpa [sub_eq_add_neg] using IsCoreFin_add hf hneg
+  have hplusD :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) (f + g) hplus).toLp
+            (f + g))‖ ^ 2)
+        (-ouEnergyFin (f + g) (f + g)) (Set.Ici 0) 0 :=
+    ouSemigroupFinLp_half_normSq_hasDerivWithinAt (n := n) hplus
+  have hminusD :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) (f - g) hminus).toLp
+            (f - g))‖ ^ 2)
+        (-ouEnergyFin (f - g) (f - g)) (Set.Ici 0) 0 :=
+    ouSemigroupFinLp_half_normSq_hasDerivWithinAt (n := n) hminus
+  have hpol :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f + g) hplus).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f - g) hminus).toLp (f - g))‖ ^ 2))
+        ((1 / 4) * ((-ouEnergyFin (f + g) (f + g)) - (-ouEnergyFin (f - g) (f - g))))
+        (Set.Ici 0) 0 := by
+    exact (hplusD.sub hminusD).const_mul (1 / 4)
+  have hEq :
+      (fun t : ℝ => ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ) =ᶠ[nhdsWithin 0 (Set.Ici 0)]
+        (fun t : ℝ =>
+          (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f + g) hplus).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f - g) hminus).toLp (f - g))‖ ^ 2)) := by
+    have hIci : ∀ᶠ t : ℝ in nhdsWithin 0 (Set.Ici 0), t ∈ Set.Ici 0 :=
+      eventually_mem_of_tendsto_nhdsWithin tendsto_id
+    filter_upwards [hIci] with t ht
+    have hpair := ouSemigroupFinLp_pairing_eq_polarization (n := n) t ht fLp gLp
+    have hplusLp : ((hf_mem.add hg_mem).toLp (f + g)) = fLp + gLp :=
+      MemLp.toLp_add hf_mem hg_mem
+    have hminusLp : ((hf_mem.sub hg_mem).toLp (f - g)) = fLp - gLp :=
+      MemLp.toLp_sub hf_mem hg_mem
+    calc
+      ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ
+          = (1 / 4) * (4 * ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ) := by ring
+      _ = (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (t / 2)
+                ((hf_mem.add hg_mem).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (t / 2)
+                ((hf_mem.sub hg_mem).toLp (f - g))‖ ^ 2) := by
+              rw [hpair, ← hplusLp, ← hminusLp]
+  have h0eq :
+      ⟪fLp, ouSemigroupFinLp (n := n) 0 gLp⟫_ℝ =
+        (1 / 4) *
+          (‖ouSemigroupFinLp (n := n) (0 / 2)
+              ((isCoreFin_memLp (n := n) (f + g) hplus).toLp (f + g))‖ ^ 2 -
+            ‖ouSemigroupFinLp (n := n) (0 / 2)
+              ((isCoreFin_memLp (n := n) (f - g) hminus).toLp (f - g))‖ ^ 2) := by
+    have hpair := ouSemigroupFinLp_pairing_eq_polarization (n := n) 0 le_rfl fLp gLp
+    have hplusLp : ((hf_mem.add hg_mem).toLp (f + g)) = fLp + gLp :=
+      MemLp.toLp_add hf_mem hg_mem
+    have hminusLp : ((hf_mem.sub hg_mem).toLp (f - g)) = fLp - gLp :=
+      MemLp.toLp_sub hf_mem hg_mem
+    calc
+      ⟪fLp, ouSemigroupFinLp (n := n) 0 gLp⟫_ℝ
+          = (1 / 4) * (4 * ⟪fLp, ouSemigroupFinLp (n := n) 0 gLp⟫_ℝ) := by ring
+      _ = (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (0 / 2)
+                ((hf_mem.add hg_mem).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (0 / 2)
+                ((hf_mem.sub hg_mem).toLp (f - g))‖ ^ 2) := by
+              rw [hpair, ← hplusLp, ← hminusLp]
+  have hmain :
+      HasDerivWithinAt
+        (fun t : ℝ => ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ)
+        ((1 / 4) * ((-ouEnergyFin (f + g) (f + g)) - (-ouEnergyFin (f - g) (f - g))))
+        (Set.Ici 0) 0 :=
+    hpol.congr_of_eventuallyEq hEq h0eq
+  convert hmain using 1
+  have hE := ouEnergyFin_polarization (n := n) hf hg
+  linarith
+
+/-- The multivariate Gaussian OU semigroup on `L²(γFin n)`, bundled
+with the canonical Dirichlet form data.
+
+TODO: replace the current `energy_eq_deriv` proof by the direct
+Fubini lift of the discharged 1D boundary derivative identity, so this
+bundle no longer depends on
+`ouSemigroupFin_l2_sq_hasDerivWithinAt`. -/
+noncomputable def stdGaussianFin_dirichletMarkovSemigroup (n : ℕ) :
+    DirichletMarkovSemigroup (Fin n → ℝ) where
+  toMarkovSemigroup := markovSemigroup n
+  energy := ouEnergyFin
+  energy_symm := (dirichletSpaceFin n).energy_symm
+  energy_nonneg := (dirichletSpaceFin n).energy_nonneg
+  IsCore := IsCoreFin
+  IsCore_const := IsCoreFin_const
+  IsCore_add := fun hf hg => IsCoreFin_add hf hg
+  IsCore_smul := fun c _ hf => IsCoreFin_smul c hf
+  energy_add_left := (dirichletSpaceFin n).energy_add_left
+  energy_smul_left := (dirichletSpaceFin n).energy_smul_left
+  energy_const := (dirichletSpaceFin n).energy_const
+  IsCore_memLp := fun {_f} hf => isCoreFin_memLp (n := n) _ hf
+  energy_eq_deriv := fun f g hf hg => ouSemigroupFin_energy_eq_deriv (n := n) f g hf hg
 
 end GaussianFin
