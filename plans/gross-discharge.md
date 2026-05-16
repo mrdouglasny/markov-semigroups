@@ -132,10 +132,68 @@ These corrections are folded into the Route-A spec below. They are
 
 ## Corrected Route-A spec (the harder, abstract option)
 
-### Phase 0 — Structure augmentation (breaking change)
+### Phase 0 — `L2Semigroup`→hille-yosida bridge + structure augmentation
 
-Add to `DirichletMarkovSemigroup` (breaking; needed for *being* a
-usable DMS):
+`L2Semigroup.lean` is today a **pure stub**: it works only at the
+*function* level (`BakryEmerySpace.semigroup : X→ℝ`), has **no
+hille-yosida import or usage**, and merely restates the Γ energy
+identity. The bridge is built from scratch. Three sub-phases + the
+remaining fields.
+
+API facts (verified 2026-05-16 vs `.lake/packages/HilleYosida`):
+hille-yosida exposes `StronglyContinuousSemigroup`/`ContractingSemigroup`
+(`operator : ℝ → X →L[ℝ] X`, `at_zero`, `semigroup`, `strong_cont`,
+`contracting`); `.generator x : Prop` = ∃ Ax, **right** difference
+quotient `(1/t)•(S t x − x) → Ax` over `𝓝[>] 0`; `.domain` (Submodule),
+`.generatorMap`, `semigroup_maps_domain`, `semigroup_generator_comm`,
+`ContractingSemigroup.resolvent`, `hilleYosidaResolventBound`. It does
+**not** package any `HasDeriv*` for `t ↦ S t x` — only the right
+difference-quotient + the commutation `A(S t x) = S t (A x)`.
+
+#### 0a — Semigroup repackaging (cheap; fields already line up 1:1)
+
+`MarkovSemigroup`'s fields map directly onto `ContractingSemigroup
+(Lp ℝ 2 S.μ)`: `P_zero↔at_zero`, `P_semigroup↔semigroup`,
+`P_strong_cont↔strong_cont`, `P_l2_contraction↔contracting`.
+Deliverable: `def MarkovSemigroup.toContractingSemigroup :
+HilleYosida.ContractingSemigroup (Lp ℝ 2 S.μ)`, modulo coercion/defeq.
+**~50–120 lines, 1–2 d. Low risk.**
+
+#### 0b — Form↔generator identification (the crux; a Kato-family problem)
+
+hille-yosida's `.generator` needs **strong (norm)** convergence;
+`energy_eq_deriv` only gives a **weak, scalar-paired 0⁺ derivative**
+`(d/ds)|₀₊ ⟨[f],P_s[g]⟩ = -E(f,g)`. Upgrading weak-form ⇒
+strong-generator-membership with `core ⊆ domain(A)` and
+`⟨[g],A[f]⟩_{L²} = -E(g,f)` **is essentially Kato's first
+representation theorem** — the same form↔operator gap flagged for
+Beurling–Deny ([`beurling-deny.md`](beurling-deny.md)) and the
+quantumlib dependency (memory `quantumlib-unbounded-spectral-theorem`).
+**Not feasible to derive abstractly here.**
+
+Resolution (consistent with project philosophy — `energy_eq_deriv` is
+*already* a postulated compatibility field): **strengthen the
+compatibility field** to a `generator_compat` postulating `core ⊆
+D(A)` + the form identification, discharged **per instance**
+(GaussianFin: the explicit OU generator `A f = f'' − x·f'`, fully
+concrete; abstract users supply it as data). This factors the one
+Kato-hard piece out as a structural obligation — exactly as the repo
+already does for `energy_eq_deriv`. **Field + GaussianFin discharge:
+~150–300 lines, 3–5 d. This is Phase 0's real risk** (see Risks).
+
+#### 0c — Derivative-at-`t` lemma (hille-yosida lacks it)
+
+From `semigroup_maps_domain` + `semigroup_generator_comm` +
+`.generator`, derive `HasDerivWithinAt (fun t => ⟪φ, S.P t (coreToL2
+f)⟫) (-(energy φ (P_t f))) (Set.Ici t₀) t₀` for `t₀≥0`, `φ,f` core
+(**right**-derivative; two-sided for `t>0` is a true but extra
+derivation — right-derivative + `antitone` suffices, Trap 3). A
+genuine deliverable: hille-yosida packages maps-domain/comm but **not**
+this `HasDeriv*`. **~200–400 lines, ~1 wk.**
+
+#### 0d — Remaining structural fields
+
+Add to `DirichletMarkovSemigroup` (breaking):
 - `IsCore_semigroup : ∀ t, 0 ≤ t → ∀ {g}, IsCore g → IsCore (P t g)`
 - An **L∞ / Markov contractivity field** giving `ε ≤ P_t f ≤ M` for
   `ε ≤ f ≤ M`, to keep `log u`, `u^{q-1}` integrable (matches the
@@ -159,12 +217,14 @@ Every instance must fill the two new fields (GaussianFin uses
 `ouSemigroupFin_preserves_IsCore` + explicit bounds). **~150–250
 lines + fixups, 3–5 d.**
 
-### Phase 1 — Right-derivative generator–form identity
+### ~~Phase 1~~ — subsumed by Phase 0c
 
-`HasDerivWithinAt (fun t => ⟨φ, P_t g⟩) (-E(φ, P_{t₀}g)) (Set.Ici t₀)`
-for `φ,g` core, via semigroup law + `energy_eq_deriv` (0⁺) + Phase 0
-core-invariance. **Right-derivatives only; no two-sided `HasDerivAt`.**
-**~300–500 lines, 1 wk.**
+The original Phase 1 (`HasDerivWithinAt (fun t => ⟨φ,P_t g⟩)
+(-E(φ,P_{t₀}g)) (Set.Ici t₀)` via a fragile `energy_eq_deriv` 0⁺
+**bootstrap**) is replaced by **Phase 0c**, which derives the same
+right-derivative directly from the hille-yosida generator
+(`semigroup_generator_comm` + `generator_compat`). Cleaner and on firm
+C₀-semigroup footing rather than a bootstrap.
 
 ### Phase 2 — Weak-L² difference-quotient derivative (the bottleneck)
 
@@ -195,25 +255,44 @@ representation — circular here.
 
 | Phase | Deliverable | Lines | Time |
 |---|---|---|---|
-| 0 | `IsCore_semigroup` + L∞ fields; S–V as theorem hypothesis | 150–250 | 3–5 d |
-| 1 | right-derivative generator–form identity | 300–500 | 1 wk |
+| 0a | `MarkovSemigroup.toContractingSemigroup` (repackage) | 50–120 | 1–2 d |
+| 0b | `generator_compat` field (Kato-factored) + GaussianFin discharge | 150–300 | 3–5 d |
+| 0c | derivative-at-`t` lemma (**subsumes old Phase 1**) | 200–400 | 1 wk |
+| 0d | `IsCore_semigroup` + L∞ fields | 80–150 | 2–3 d |
 | 2 | weak-L² difference-quotient derivative | 700–1300 | 2–4 wk |
 | 3 | right-derivative monotonicity → `IsHypercontractive` | 200–400 | 3–5 d |
-| **Route A total** | (S–V deferred to instances) | **~1350–2450** | multi-week |
+| **Route A total** | S–V a theorem hypothesis (instance-discharged) | **~1380–2670** | multi-week |
+
+Old "Phase 1" (0⁺-bootstrap of the generator–form identity) is
+**subsumed by Phase 0c**: the hille-yosida generator replaces the
+fragile bootstrap.
 
 ## Risks
 
-- Route A remains analytically heavier and depends on the Phase-0
-  structure refactor rippling to every instance. Route B avoids all
-  three traps natively — **prefer Route B for pphi2**.
-- Either route still leaves the **3 GaussianFin axioms** on the pphi2
-  chain (they supply the LSI/BE-instance inputs); tracked in
-  `AXIOM_AUDIT.md`.
+- **Phase 0b is the make-or-break risk.** The weak-form ⇒
+  strong-generator upgrade is a Kato-family form-representation
+  problem, infeasible to *derive* abstractly. Mitigation: factor it as
+  the postulated `generator_compat` field (project precedent:
+  `energy_eq_deriv`), discharged per instance. If even the
+  *per-instance* GaussianFin discharge proves hard, the OU generator
+  is fully explicit there, so it remains tractable — but this is the
+  one sub-phase to **Codex/Gemini-vet before engineering** (the
+  field's exact statement: strong vs weak, domain core, symmetry).
+- Phase 0 is a **breaking structure change** rippling to every
+  `DirichletMarkovSemigroup` instance (GaussianFin via
+  `ouSemigroupFin_preserves_IsCore` + explicit OU generator).
+- Phase 2 stays the analytical bottleneck (standard BGL §5.2 given
+  0b/0c, but heavy Lean plumbing).
+- Discharging Gross still leaves the **3 GaussianFin axioms** on the
+  pphi2 chain (LSI/BE-instance inputs); tracked in `AXIOM_AUDIT.md`.
 
 ## Done =
 
-(Route B path) `gaussian-hilbert`'s
-`ouSemigroupAct_eLpNorm_hypercontractive` proved from the concrete
-Route-B theorem; `#print axioms` no longer lists
+`gross_lsi_implies_hypercontractive` is a theorem on the augmented
+`DirichletMarkovSemigroup` (S–V as hypothesis); the GaussianFin
+instance discharges `generator_compat` + the S–V hypothesis so
+`gaussian-hilbert`'s `ouSemigroupAct_eLpNorm_hypercontractive` proves
+through it; `#print axioms` there no longer lists
 `gross_lsi_implies_hypercontractive` / `stroock_varopoulos`;
-`AXIOM_AUDIT.md`/`status.md`/`README.md` updated same commit.
+`AXIOM_AUDIT.md`/`status.md`/`README.md` updated same commit; this
+file → `plans/archive/` + `plans/history.md` entry.
