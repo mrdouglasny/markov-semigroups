@@ -10,9 +10,14 @@ hille-yosida bridge; (2) integrability discharged free from the
 structural `hμ : IsProbabilityMeasure μ` (`L^∞⊂L²⊂L¹`); (3) `ε≤P_tf≤M`
 derived from existing `P_positivity`+`P_conservation`, not a bespoke
 field; (4) `Done =` already Route-A. Gemini explicitly endorsed
-S–V-as-hypothesis as the correct Lean 4 pattern. **Next: re-vet the
-concrete `generator_compat` statement (0b) with Gemini before
-engineering.**
+S–V-as-hypothesis as the correct Lean 4 pattern. **Pass 3
+(2026-05-16): `generator_compat` vetted "mathematically flawless,
+architecturally perfect" — plan "100% sound, ready for execution."**
+Applied: `t⁻¹•`/`𝓝[>] 0` polish; the **S–V core-domain trap fix**
+(state S–V via the strong generator `⟪u^{q-1},-A u⟫`, since `u^{q-1}
+∉ core`); 0b risk downgraded (GaussianFin discharge is elementary).
+**Next: audit GaussianFin actually supports 0b** (see Risks /
+`plans/gaussianfin-0b-readiness.md`).
 
 **Recommendation (revised 2026-05-16 per user directive "we want the
 most general result which is feasible"): execute the corrected
@@ -202,13 +207,20 @@ function. The Kato obligation, postulated; discharged per instance. -/
 generator_compat : ∀ {f : X → ℝ} (hf : IsCore f),
   ∃ Af : Lp ℝ 2 μ,
     Filter.Tendsto
-      (fun t : ℝ => (1 / t) • (P t (coreToL2 hf) - coreToL2 hf))
-      (nhdsWithin 0 (Set.Ioi 0)) (nhds Af)
+      (fun t : ℝ => t⁻¹ • (P t (coreToL2 hf) - coreToL2 hf))
+      (𝓝[>] 0) (𝓝 Af)
     ∧ ∀ {g : X → ℝ} (hg : IsCore g),
         ⟪coreToL2 hg, Af⟫_ℝ = - energy g f
 ```
 
-Notes for the Gemini soundness pass:
+**Gemini verdict (pass 3, 2026-05-16): mathematically flawless,
+architecturally perfect — green-lit.** Two idiomatic polishes applied
+above: `t⁻¹ •` (scalar-action lemmas resolve cleaner than `(1/t) •`)
+and `𝓝[>] 0` / `𝓝 Af` (localized Mathlib notation). Type-safety: `P t`
+here is the **0a L²-CLM extension** (`Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ`) — not
+a pointwise operator on `coreToL2 hf`, or it type-errors.
+
+Notes:
 - Sign: `A` = generator (`lim (P_t−I)/t`); the form's nonneg
   self-adjoint operator is `−A`, so `⟨g,Af⟩ = −E(g,f)` — consistent
   with `energy_eq_deriv`'s sign and `P_symmetric` (`energy_symm` ⇒
@@ -217,15 +229,25 @@ Notes for the Gemini soundness pass:
   with `coreToL2 hg` through the continuous functional
   `⟪coreToL2 hg, ·⟫_ℝ`; so `energy_eq_deriv` becomes a derived
   corollary (drop it from the structure).
-- Uses hille-yosida's *exact* filter `nhdsWithin 0 (Set.Ioi 0)` and
-  quotient, so `.generator`, `semigroup_maps_domain`,
-  `semigroup_generator_comm` apply with zero re-derivation.
+- Uses hille-yosida's *exact* filter `𝓝[>] 0` and quotient, so
+  `.generator`, `semigroup_maps_domain`, `semigroup_generator_comm`
+  apply with zero re-derivation.
 - `[IsProbabilityMeasure μ]` is **already** a structure field
   (`MarkovSemigroup.hμ`, an `instance`); the `⟪·,·⟫_ℝ` pairing of an
   L^∞-bounded test function is therefore automatically well-defined.
 
-**Field + GaussianFin discharge: ~150–300 lines, 3–5 d. Phase 0's
-make-or-break risk** — vet *this statement* before engineering.
+**GaussianFin discharge — risk eliminated (Gemini pass 3).** The
+abstract weak⇒strong upgrade is a Kato problem *in general*, but the
+*only instance pphi2 needs* is elementary: on the polynomial /
+finite-Wiener-chaos subcore the Mehler semigroup acts diagonally
+`P_t H_k = e^{−kt} H_k`, so `t⁻¹(e^{−kt}−1)H_k → −k H_k` is a finite
+sum of scalar 1D limits — the OU generator `A f = Σ −k f_k`, **no
+DCT, no spectral theory**. For the general `ContDiff ℝ ∞`-bounded
+`IsCoreFin` (broader than polynomials) it reuses the *already-Standard*
+1D Mehler-derivative discharges (`ouSemigroupFin_*`). So per-instance
+0b is **low risk**; the abstract Kato gap remains but is correctly
+factored as the postulated field (unchanged). **Field + GaussianFin
+discharge: ~150–300 lines, 3–5 d.**
 
 #### 0c — Derivative-at-`t` lemma (hille-yosida lacks it)
 
@@ -254,19 +276,44 @@ accepted): derive it as a ~3-line lemma from the *existing*
 `f − ε·1 ≥ 0 ⇒ P_t(f − ε·1) ≥ 0 ⇒ P_t f ≥ ε·1`, dually `≤ M`. Keeps
 `DirichletMarkovSemigroup` Mathlib-standard.
 
-**Stroock–Varopoulos: a hypothesis to the theorem, NOT a structure
-field** (Trap 2 — cannot be proved abstractly; would need the
-Beurling–Deny representation). Design decision (def-study
-leaf-placement): `gross_lsi_implies_hypercontractive` takes an
-explicit `h_sv : StroockVaropoulos D` argument. Rationale: a DMS is a
-valid DMS without S–V; only the Gross implication needs it, so
-bundling it onto the structure would burden every construction
-needlessly and reduce generality of the structure. Instances satisfy
-`h_sv` at the call-site — GaussianFin via the ~10-line explicit
-Gaussian chain rule; the existing `stroock_varopoulos` axiom supplies
-it generically in the meantime. *Alternative:* a bundled
-`IsStroockVaropoulos` mixin class — adopt only if S–V gains multiple
-independent consumers.
+**Stroock–Varopoulos: a hypothesis, stated via the STRONG generator**
+(Trap 2 + Gemini pass-3 correction). Cannot be proved abstractly
+(needs Beurling–Deny). `gross_lsi_implies_hypercontractive` takes
+`h_sv : StroockVaropoulos D` with the **generator-paired** form, not
+the abstract energy form:
+
+```lean
+def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
+  ∀ {u : X → ℝ} (hu : IsCore u) (q : ℝ) (hq : 2 ≤ q),
+    -- A u : the strong generator value of `coreToL2 hu` (from generator_compat)
+    (4 * (q - 1) / q ^ 2) * energy (u ^ (q/2)) (u ^ (q/2))
+      ≤ ⟪coreToL2 hu ^ (q-1), - (A (coreToL2 hu))⟫_ℝ
+```
+
+**Why generator-paired, not `E(u, u^{q-1})`** (the subtle Phase-2/3
+trap Gemini flagged): `IsCore_semigroup` gives `u = P_t f ∈ core`, so
+`A u` is well-defined by `generator_compat`. But `u^{q-1} ∉ core` in
+general (fractional/integer powers of core functions aren't core —
+polynomials⁄chaos aren't closed under `(·)^{q-1}`), so the *second*
+clause of `generator_compat` (which pins `⟨g,Af⟩=-E(g,f)` only for
+`g` **core**) **cannot** convert `⟨u^{q-1}, Au⟩` into `-E(u^{q-1},u)`,
+and the abstract energy `E(u,u^{q-1})` is not usable. Stating S–V as
+the concrete L²-pairing `⟪u^{q-1}, -A u⟫` with the strong generator
+(LHS only needs `u^{q-1} ∈ L²` — automatic: `ε≤u≤M` + probability
+measure ⇒ `u^{q-1} ∈ L^∞ ⊂ L²`; and `A u ∈ L²`) **cleanly couples
+Phase 2's ODE derivative to Phase 3's LSI without ever needing
+`u^{q-1}` core**. Rationale for hypothesis-not-field unchanged
+(def-study leaf-placement; DMS valid without S–V; Gemini-endorsed as
+the correct Lean 4 pattern).
+
+*Note:* the existing energy-form `stroock_varopoulos` axiom
+(`E(u,u^{q-1})`, requiring `u^{q-1}` core) is **the wrong shape** for
+the ODE — the GaussianFin discharge proves the **generator-paired**
+form directly (Gaussian IBP: `⟪u^{q-1},-A u⟫ = ∫∇(u^{q-1})·∇u dγ =
+(q-1)∫u^{q-2}|∇u|² dγ`, then the pointwise convexity gives the
+`≥ (4(q-1)/q²)∫|∇ u^{q/2}|² = (4(q-1)/q²) E(u^{q/2},u^{q/2})` bound).
+*Alternative:* bundled `IsStroockVaropoulos` mixin — only if S–V
+gains multiple consumers.
 
 Every instance must fill the two new fields (GaussianFin uses
 `ouSemigroupFin_preserves_IsCore` + explicit bounds). **~150–250
@@ -333,15 +380,17 @@ fragile bootstrap.
 
 ## Risks
 
-- **Phase 0b is the make-or-break risk.** The weak-form ⇒
-  strong-generator upgrade is a Kato-family form-representation
-  problem, infeasible to *derive* abstractly. Mitigation: factor it as
-  the postulated `generator_compat` field (project precedent:
-  `energy_eq_deriv`), discharged per instance. If even the
-  *per-instance* GaussianFin discharge proves hard, the OU generator
-  is fully explicit there, so it remains tractable — but this is the
-  one sub-phase to **Codex/Gemini-vet before engineering** (the
-  field's exact statement: strong vs weak, domain core, symmetry).
+- **Phase 0b — risk eliminated for the instance (Gemini pass 3).**
+  `generator_compat` was vetted "mathematically flawless,
+  architecturally perfect — green-lit." The abstract weak⇒strong
+  upgrade is Kato-hard *in general*, but correctly factored as the
+  postulated field; the *only* discharge pphi2 needs (GaussianFin) is
+  elementary — diagonal Mehler action on finite chaos, or reuse of the
+  already-Standard `ouSemigroupFin_*` 1D Mehler-derivative discharges.
+  Residual: this rests on GaussianFin actually exposing what 0b needs
+  (the explicit OU generator + strong-L² limit) — **see the
+  GaussianFin-readiness audit** (`plans/gaussianfin-0b-readiness.md`,
+  to be produced).
 - Phase 0 is a **breaking structure change** rippling to every
   `DirichletMarkovSemigroup` instance (GaussianFin via
   `ouSemigroupFin_preserves_IsCore` + explicit OU generator).
