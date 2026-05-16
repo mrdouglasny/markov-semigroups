@@ -150,30 +150,45 @@ module-level table (module · role · canonical Book/Ch/§/p · status):
 - "BGL Part I/III" anywhere → read as **Ledoux-2000** (the local
   BGL PDF is an 8-pp teaser).
 
-### 6b. `status.md` discrepancies (recorded, not edited — view-only)
+### 6b. `status.md` discrepancies — reconciliation status
 
-1. **`Matrix/` axiom overcount.** `status.md` lists 2 axioms;
-   only `diamagnetic_resolvent` (Diamagnetic.lean:57) is local.
-   `LaplaceTransform`'s `m_matrix_inverse_nonneg` was migrated
-   upstream to `SpectralPositivity` and is now imported as a
-   *theorem*. Effective local axioms in `Matrix/` = **1**.
-2. **`DobrushinZegarlinski/` file count.** `status.md` says
-   "7 files"; there are **8** modules (`Concentration.lean`
-   omitted from that row).
-3. **`Instances/BrascampLieb`.** status.md's "3 elementary
-   axioms" are superseded — promoted to `LogConcaveMeasure`
-   structure fields; the module is now **0-axiom, 0-sorry**.
-4. **Stale docstring prose** (not code; not corrected per
-   view-only): `Doeblin.lean` (lines 11,13,126–139),
-   `L2Semigroup.lean` (line 47 design note), and
-   `Uniqueness.lean` (claims `TVCoupling.exists_maximal_coupling`
-   still `sorry`).
+1. **`Matrix/` axiom overcount — FIXED in `status.md`.** Verified:
+   `m_matrix_inverse_nonneg` is now a *theorem* re-exported from
+   `SpectralPositivity` (`LaplaceTransform.lean:82`); only
+   `diamagnetic_resolvent` (Diamagnetic.lean:57) is local. status.md
+   table updated 2→**1** and the stale `m_matrix_inverse_nonneg`
+   audit row replaced with a relocation note.
+2. **`DobrushinZegarlinski/` file count — FIXED in `status.md`.**
+   Verified 8 modules (`Concentration.lean` was omitted); table
+   updated 7→**8**.
+3. **`Instances/BrascampLieb` — NO `status.md` defect.** status.md
+   was already correct: the project table shows BrascampLieb
+   `1 | 0 | 0`, and `resolvent_ibp_axiom` /
+   `integrated_bochner_axiom` are already listed under "Former
+   axiom | How proved" as promoted to `LogConcaveMeasure` structure
+   fields. The original §6b wording overstated this — it was an
+   agent-hint-vs-reality artifact, not a status.md error. No edit
+   made; wording corrected here.
+4. **Stale docstring prose** (in `.lean`; left as-is — editing code
+   docstrings is out of scope of this view-only doc task):
+   `Doeblin.lean` (lines 11,13,126–139), `L2Semigroup.lean`
+   (line 47 design note), `Uniqueness.lean` (claims
+   `TVCoupling.exists_maximal_coupling` still `sorry`).
 5. **Conflict resolved.** `TVCoupling.exists_maximal_coupling`
    (TVCoupling.lean:352) is a **proved theorem** (Hahn
    decomposition); `Coupling/` is entirely sorry-/axiom-free. The
    `lgt` mass-gap path is not blocked here. (Dobrushin README
-   corrected; `Uniqueness.lean` docstring left stale per
-   view-only.)
+   corrected; `Uniqueness.lean` docstring left stale.)
+
+**Open (out of scope of "the three"; flagged, not guessed):**
+status.md line 41 "Total project axiom count went from 8 to 11"
+is now internally inconsistent — it predates the Matrix relocation,
+and `General/` (`OUEntropyDecomposition`, `SchwartzConvolution`) has
+no row in the project table at all despite holding axioms (verified
+repo-wide `^axiom ` decls: 9 non-WIP + 7 WIP scaffolding). This
+aggregate needs a dedicated axiom-audit pass with an explicit
+enumeration; deliberately **not** rewritten here without a sound
+basis.
 
 ### 6c. Verified custom-axiom inventory (2026-05-16)
 

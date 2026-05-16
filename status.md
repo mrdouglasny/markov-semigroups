@@ -54,10 +54,10 @@ BrascampLieb, Torus, GFFIdentification).
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
 | Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance is **axiom-free**; the 3 atomic Bakry-Émery axioms (Fisher info decay + de Bruijn identity) live in `MarkovSemigroups/General/OUEntropyDecomposition.lean`. All 9 original Mehler-kernel axioms discharged. |
-| Matrix/ | 4 | 0 | 2 | Heat kernel, Trotter, diamagnetic inequality |
+| Matrix/ | 4 | 0 | 1 | Heat kernel, Trotter, diamagnetic inequality (`m_matrix_inverse_nonneg` now imported from `SpectralPositivity` as a theorem) |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
 | Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
-| DobrushinZegarlinski/ | 7 | 0 | 2 | Continuous spins: gradient interaction, local LSI, global LSI (Otto-Reznikoff), entrywise covariance (Helffer-Sjöstrand) |
+| DobrushinZegarlinski/ | 8 | 0 | 2 | Continuous spins: gradient interaction, local LSI, global LSI (Otto-Reznikoff), entrywise covariance (Helffer-Sjöstrand), Lipschitz concentration |
 
 ## Axioms
 
@@ -73,9 +73,13 @@ BrascampLieb, Torus, GFFIdentification).
 
 ### Matrix/
 
+`m_matrix_inverse_nonneg` (Berman-Plemmons Ch. 6) is **no longer a
+local axiom**: it is imported from
+`SpectralPositivity.Matrix.MMatrixInverse` and re-exported as a
+*theorem* (`LaplaceTransform.lean:82`). Only one local axiom remains.
+
 | Axiom | Reference | Obstacle |
 |---|---|---|
-| `m_matrix_inverse_nonneg` | Berman-Plemmons Ch. 6 | Laplace transform integral |
 | `diamagnetic_resolvent` | Simon Ch. 22 | Assembles 5-step proof |
 
 ### Instances/WorkInProgress/Euclidean (Gaussian1D / OU semigroup, BGL Ch. 2)
