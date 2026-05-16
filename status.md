@@ -38,7 +38,14 @@ of the proved 1D BE chain:
   preservation)
 - `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, entropy decay)
 
-Total project axiom count went from 8 to 11 with the N1 merge.
+Registered axiom count: **12** (9 non-WIP + 3 WIP GaussianFin) —
+see canonical `AXIOM_AUDIT.md`. History: 8 → 11 at the N1 merge
+(commit `8ed9e52`, 2026-05-13); → 12 on 2026-05-16 when the repo-wide
+audit registered the previously-undocumented
+`contDiff_top_convolution_schwartzKernel` (`General/SchwartzConvolution`,
+Needs review / NOT VERIFIED, no consumers). A further 4
+`EuclideanTests` test-scaffolding axioms are excluded by policy
+(WorkInProgress, not consumed by the main tree).
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
 Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
@@ -48,16 +55,20 @@ BrascampLieb, Torus, GFFIdentification).
 
 | Module | Files | Sorry's | Axioms | Description |
 |---|---|---|---|---|
-| Abstract/ | 6 | 0 | 4 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross, Borell-Herbst concentration, LSI⇒Poincaré |
+| Abstract/ | 6 | 0 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (3: +Stroock-Varopoulos), Borell-Herbst concentration (2: Herbst MGF + LSI⇒Poincaré) |
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
-| Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance is **axiom-free**; the 3 atomic Bakry-Émery axioms (Fisher info decay + de Bruijn identity) live in `MarkovSemigroups/General/OUEntropyDecomposition.lean`. All 9 original Mehler-kernel axioms discharged. |
+| Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 2 | 0 | Standard Gaussian / OU. Concrete instance **axiom-free**; the de Bruijn / Fisher-info entropy-decay facts are now **discharged as theorems** in `General/OUEntropyDecomposition.lean` (itself axiom-free — AXIOM_AUDIT.md confirms). All 9 original Mehler-kernel axioms discharged. (`Euclidean.lean` carries 2 `sorry` = Lean gaps.) |
+| Instances/WorkInProgress/EuclideanFin | 1 | 0 | 3 | Multivariate GaussianFin BE-instance primitives (`ouSemigroupFin_*`); registered Standard, N1 merge `8ed9e52` |
+| Instances/WorkInProgress/EuclideanTests | 1 | 0 | 4 | Scaffolding axioms (`gaussianResolvent*`, `gaussianBochner_identity`) — excluded by policy, not consumed by main tree |
 | Matrix/ | 4 | 0 | 1 | Heat kernel, Trotter, diamagnetic inequality (`m_matrix_inverse_nonneg` now imported from `SpectralPositivity` as a theorem) |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
 | Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
 | DobrushinZegarlinski/ | 8 | 0 | 2 | Continuous spins: gradient interaction, local LSI, global LSI (Otto-Reznikoff), entrywise covariance (Helffer-Sjöstrand), Lipschitz concentration |
+| General/ | 2 | 0 | 1 | OUEntropyDecomposition (axiom-free) + SchwartzConvolution (1 axiom: `contDiff_top_convolution_schwartzKernel`, Needs review / NOT VERIFIED, no consumers) |
+| Tools/ | 1 | 0 | 0 | Single-site disintegration primitive (consumed by Dobrushin layer / lgt) |
 
 ## Axioms
 

@@ -180,15 +180,19 @@ module-level table (module · role · canonical Book/Ch/§/p · status):
    `lgt` mass-gap path is not blocked here. (Dobrushin README
    corrected; `Uniqueness.lean` docstring left stale.)
 
-**Open (out of scope of "the three"; flagged, not guessed):**
-status.md line 41 "Total project axiom count went from 8 to 11"
-is now internally inconsistent — it predates the Matrix relocation,
-and `General/` (`OUEntropyDecomposition`, `SchwartzConvolution`) has
-no row in the project table at all despite holding axioms (verified
-repo-wide `^axiom ` decls: 9 non-WIP + 7 WIP scaffolding). This
-aggregate needs a dedicated axiom-audit pass with an explicit
-enumeration; deliberately **not** rewritten here without a sound
-basis.
+**RESOLVED 2026-05-16 (full audit pass).** The aggregate was
+reconciled across all three docs. Findings: `OUEntropyDecomposition`
+is **axiom-free** (status.md line 56's "3 atomic axioms live there"
+was stale — they are discharged theorems; AXIOM_AUDIT.md confirms);
+`General/SchwartzConvolution`'s `contDiff_top_convolution_schwartzKernel`
+was a **real but unregistered** axiom — now registered in
+`AXIOM_AUDIT.md` as **Needs review / NOT VERIFIED** (no consumers).
+`status.md` line 41 + project table corrected (Abstract 4→5, added
+`General/`/`Tools/`/`EuclideanFin`/`EuclideanTests` rows); README
+inline counts synced; `AXIOM_AUDIT.md` summary 11→12 + EuclideanTests
+4 scaffolding axioms acknowledged as excluded-by-policy. Authoritative
+count: **12 registered** (9 non-WIP + 3 WIP GaussianFin); 4
+`EuclideanTests` scaffolding axioms excluded.
 
 ### 6c. Verified custom-axiom inventory (2026-05-16)
 
@@ -197,8 +201,8 @@ basis.
 | `Abstract/Hypercontractivity` | 3 | `gross_lsi_implies_hypercontractive`, `gross_hypercontractive_implies_lsi`, `stroock_varopoulos`; cite Ledoux Cor 4.3 / vanHandel §8.2 for vetting |
 | `Abstract/Concentration` | 2 | `herbst_mgf_bound`, `poincare_of_lsi` |
 | `DobrushinZegarlinski` | 2 | `zegarlinski_lsi_inequality`, `cov_entrywise_bound_of_zegarlinski` (Likely correct, GR) |
-| `General/OUEntropyDecomposition` | 3 | + 1 residual `sorry` (~line 620, de Bruijn `HasDerivAt`) |
-| `General/SchwartzConvolution` | 1 | `contDiff_top_convolution_schwartzKernel` |
+| `General/OUEntropyDecomposition` | **0** | axiom-free (de Bruijn/Fisher facts discharged as theorems; the earlier "3 axioms" claim was stale) |
+| `General/SchwartzConvolution` | 1 | `contDiff_top_convolution_schwartzKernel` — registered 2026-05-16, Needs review / NOT VERIFIED, no consumers |
 | `Matrix/Diamagnetic` | 1 | `diamagnetic_resolvent` |
 | `Instances/WorkInProgress` | 7+ | EuclideanFin 3, EuclideanTests 4 (scaffolding); Euclidean.lean 2 `sorry`; TwoPoint 2 math-false `sorry` |
 

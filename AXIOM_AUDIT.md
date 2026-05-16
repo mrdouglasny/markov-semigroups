@@ -3,7 +3,7 @@
 *Centralized registry of every textbook axiom in `markov-semigroups`.
 Each row records the axiom's literature reference, vetting verdict,
 discharge plan (if any), and downstream consumers. Last refreshed:
-2026-05-13.*
+2026-05-16.*
 
 ## Purpose
 
@@ -47,13 +47,22 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-11 axioms total. Of these:
+12 registered axioms total (was 11; +1 on 2026-05-16 when the
+repo-wide audit surfaced a previously-undocumented General axiom).
+Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **1 Stroock-Varopoulos** axiom — intermediate-step lemma for Gross,
   added 2026-05-13 as a vetted atomic textbook bridge
 - **2 concentration / Poincaré** axioms (Herbst MGF + LSI ⇒ Poincaré)
 - **2 Dobrushin-Zegarlinski** axioms — Otto-Reznikoff LSI + Helffer-Sjöstrand Cov
 - **1 Matrix** axiom — diamagnetic resolvent inequality
+  (`m_matrix_inverse_nonneg` relocated upstream to `SpectralPositivity`
+  and re-exported as a theorem, so it is no longer counted here)
+- **1 General/SchwartzConvolution** axiom —
+  `contDiff_top_convolution_schwartzKernel` (Folland *Real Analysis*
+  2nd ed. Ch. 8 §2). Surfaced **unregistered** during the 2026-05-16
+  audit; **Needs review / NOT VERIFIED** (no Gemini/Codex pass on
+  record); no internal consumers (standalone utility).
 - **3 GaussianFin** axioms (merged to main 2026-05-13, commit `8ed9e52`)
   — multivariate Gaussian BE-instance primitives, all gemini-3.1-pro-preview
   vetted **Standard**, all tensor-lift analogues of historical 1D primitives
@@ -95,6 +104,16 @@ proved theorems `hermiteMulti_dense`, `wienerChaos_isHilbertSum`,
 `bonami_nelson_*`, `polynomial_chaos_concentration`) **moved to
 [gaussian-hilbert](https://github.com/mrdouglasny/gaussian-hilbert)**
 on 2026-05-10. See that repo for the current home and audit.
+
+**Excluded by policy (not counted above):**
+`Instances/WorkInProgress/EuclideanTests.lean` declares 4 local
+scaffolding axioms (`gaussianResolvent`, `gaussianResolvent_ibp`,
+`gaussianResolvent_ibp_integrable`, `gaussianBochner_identity`) used
+only for a conditional in-file check. They are not textbook axioms,
+are not consumed by the main tree, and live in `WorkInProgress`;
+acknowledged here for exhaustiveness but deliberately not registered
+as project axioms.
+
 ## Audit table
 
 ### Core: hypercontractivity / Gross duality / Stroock-Varopoulos
@@ -154,6 +173,20 @@ Fisher-decay facts have all been proved.
   formula for `(P_t g)''` (avoiding the need for `g''`), parametric
   DCT for the entropy integral, and the bilinear Dirichlet form
   identity (`gaussian_dirichlet_form_bilinear`). ~740 lines.
+
+### General/SchwartzConvolution
+
+Surfaced **unregistered** during the repo-wide axiom audit on
+2026-05-16. The module docstring self-marks it
+"AXIOM (vetting-required textbook bridge)"; no Gemini/Codex vetting
+is on record, so it is rated **Needs review** and tagged
+**NOT VERIFIED** until a vetting pass is run. It has no internal
+consumers (standalone utility), so no proved theorem in the repo
+transitively depends on it.
+
+| Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
+|---|---|---|---|---|---|---|
+| `contDiff_top_convolution_schwartzKernel` | [`General/SchwartzConvolution.lean:103`](../MarkovSemigroups/General/SchwartzConvolution.lean#L103) | Folland *Real Analysis* (2nd ed.) Ch. 8 §2 (Convolution); Reed-Simon I §V | Needs review (NOT VERIFIED) | — (none on record; discovered unregistered 2026-05-16) | For a `C^∞` kernel `K` with all iterated derivatives Lebesgue-integrable and bounded measurable `f`, `x ↦ ∫ K(x−y)·f(y) dy` is `C^∞`. Discharge: extend Mathlib's compact-support convolution-smoothing to integrable-derivative kernels via differentiation under the integral (dominated convergence on each `iteratedDeriv`). | None internal (standalone). |
 
 ### Gaussian1D BGL Ch. 2 (0 axioms — instance is axiom-free)
 

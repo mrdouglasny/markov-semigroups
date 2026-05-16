@@ -168,7 +168,7 @@ MarkovSemigroups/
     Poincare.lean               -- Spectral gap <-> variance decay
     LogSobolev.lean             -- Gross LSI, entropy decay
     HolleyStroock.lean          -- Bounded density perturbation of LSI
-    Hypercontractivity.lean     -- DirichletMarkovSemigroup; LSI <-> hypercontractivity (Gross, 2 axioms)
+    Hypercontractivity.lean     -- DirichletMarkovSemigroup; LSI <-> hypercontractivity (Gross + Stroock-Varopoulos, 3 axioms)
     Concentration.lean          -- Borell-Herbst sub-Gaussian concentration from LSI
   Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
     CarreDuChamp.lean           -- BakryEmerySpace: Gamma, semigroup, curvature
@@ -184,7 +184,7 @@ MarkovSemigroups/
     GFFIdentification.lean      -- OU invariant on T^d = GFF (header)
     BrascampLieb.lean           -- Brascamp-Lieb for log-concave measures
     WorkInProgress/             -- Layer 3, in progress (honest sorries)
-      Euclidean.lean            --   R: standard Gaussian, OU semigroup (0 sorry, 4 BGL Ch. 2 axioms)
+      Euclidean.lean            --   R: standard Gaussian, OU semigroup (2 sorry = Lean gaps; axiom-free, Mehler-kernel axioms discharged)
       TwoPoint.lean             --   {0,1}: diffusion axiom fails (2 sorry)
   Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
@@ -408,6 +408,12 @@ Bakry-Émery Poincaré / LSI / variance decay / entropy decay
 (`Dobrushin/CovarianceBoundMultisite.lean`), and heat-kernel
 positivity for Z-matrices (`Matrix/HeatKernel.lean`) all have
 `#print axioms` showing only the three Lean built-ins.
+
+One caveat to "the rest is axiom-free": `General/SchwartzConvolution.lean`
+declares `contDiff_top_convolution_schwartzKernel` (registered in
+`AXIOM_AUDIT.md` 2026-05-16 as **Needs review / NOT VERIFIED**). It
+has **no consumers**, so no theorem's `#print axioms` is affected —
+but the declaration exists and is not yet vetted.
 
 **For downstream consumers:** [lgt](https://github.com/mrdouglasny/lgt)'s
 Yang-Mills mass-gap proof uses only the Dobrushin + Coupling +
