@@ -16,8 +16,11 @@ architecturally perfect" — plan "100% sound, ready for execution."**
 Applied: `t⁻¹•`/`𝓝[>] 0` polish; the **S–V core-domain trap fix**
 (state S–V via the strong generator `⟪u^{q-1},-A u⟫`, since `u^{q-1}
 ∉ core`); 0b risk downgraded (GaussianFin discharge is elementary).
-**Next: audit GaussianFin actually supports 0b** (see Risks /
-`plans/gaussianfin-0b-readiness.md`).
+**GaussianFin-readiness audit done (2026-05-16): supports 0b, LOW
+RISK** — 1D primitives (`hasDerivAt_t_ouSemigroup`,
+`gaussian_dirichlet_form_bilinear`) already proved; gaps G1–G4 are
+tensor-lift + pointwise→L² upgrade. See
+`plans/gaussianfin-0b-readiness.md`. Plan ready for Codex handoff.
 
 **Recommendation (revised 2026-05-16 per user directive "we want the
 most general result which is feasible"): execute the corrected
@@ -387,10 +390,12 @@ fragile bootstrap.
   postulated field; the *only* discharge pphi2 needs (GaussianFin) is
   elementary — diagonal Mehler action on finite chaos, or reuse of the
   already-Standard `ouSemigroupFin_*` 1D Mehler-derivative discharges.
-  Residual: this rests on GaussianFin actually exposing what 0b needs
-  (the explicit OU generator + strong-L² limit) — **see the
-  GaussianFin-readiness audit** (`plans/gaussianfin-0b-readiness.md`,
-  to be produced).
+  **GaussianFin-readiness audit done** (`plans/gaussianfin-0b-readiness.md`,
+  2026-05-16): all primitives 0b needs are *already proved at 1D* in
+  `EuclideanStein.lean` (linear heat eqn `hasDerivAt_t_ouSemigroup`,
+  Gaussian IBP `gaussian_dirichlet_form_bilinear`); the 4 gaps (G1–G4)
+  are tensor-lift + the repo-standard pointwise→strong-L² DCT upgrade
+  — **no Kato/spectral/finite-chaos**. Risk: **low**, confirmed.
 - Phase 0 is a **breaking structure change** rippling to every
   `DirichletMarkovSemigroup` instance (GaussianFin via
   `ouSemigroupFin_preserves_IsCore` + explicit OU generator).
