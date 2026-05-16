@@ -26,18 +26,40 @@ namespace GaussianFin
 
 variable {n : ℕ}
 
+/-- **The precise blocker (Codex 2026-05-16): the nD pointwise OU
+heat equation at `t = 0⁺`.** The branch controls *spatial*
+derivatives of `ouSemigroupFin t f` and has the scalar/L²-continuity
+endgame, but exposes **no reusable multivariate pointwise
+time-derivative** for `τ ↦ ouSemigroupFin τ f x`. This lemma is
+exactly that missing prerequisite (right-derivative-at-0 form, which
+Codex confirmed suffices): `P_0 f = f`, so the right `t`-derivative of
+`τ ↦ (P_τ f) x` at `0` is `(L f) x = ouGeneratorFin f x`.
+
+Proof route: tensor/Fubini lift of the proved 1D
+`Gaussian1D.hasDerivAt_t_ouSemigroup'` (G1) through
+`ouSemigroupFin_section_eq_ouSemigroup` / `ouSemigroupFin_insertNth_eq`
++ per-coordinate product rule + the `t→0⁺` endpoint
+(`hasDerivWithinAt_Ici_of_tendsto_deriv`, as used for the 1D /
+quadratic discharges). This is the genuine analytic crux; isolated as
+its own target so it can be filled (Codex) independently of the DCT
+upgrade below. -/
+theorem hasDerivWithinAt_t_ouSemigroupFin_zero {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (x : Fin n → ℝ) :
+    HasDerivWithinAt (fun t : ℝ => ouSemigroupFin t f x)
+      (ouGeneratorFin f x) (Set.Ici 0) 0 := by
+  sorry
+
 /-- **G2 (a) — strong-`L²` difference-quotient limit.** For core `f`,
 `t⁻¹ • (P_t [f] − [f]) → [ouGeneratorFin f]` in `Lp ℝ 2 (γFin n)` as
 `t → 0⁺` (right limit, matching `GeneratorCompat`'s `𝓝[>] 0`).
 
-Strategy (Gross-discharge plan, Gemini-vetted): the pointwise OU heat
-equation `Gaussian1D.hasDerivAt_t_ouSemigroup'`, lifted coordinatewise
-through the `ouSemigroupFin` tensor / `insertNth` structure, gives
-`(P_t f(x) − f(x))/t → ouGeneratorFin f x` pointwise; the difference
-quotient is dominated by a fixed `L²(γFin n)` function (core
-`IsCoreFin` bounds + Mehler contraction `ouSemigroupFin_preserves_*`),
-so `MeasureTheory.tendsto_Lp_of_…` / dominated convergence upgrades
-the pointwise limit to the strong `L²` limit. Same DCT pattern as the
+Strategy (Gross-discharge plan, Gemini-vetted): from the now-explicit
+prerequisite `hasDerivWithinAt_t_ouSemigroupFin_zero`, the pointwise
+right limit `(P_t f(x) − f(x))/t → ouGeneratorFin f x` is immediate;
+the difference quotient is dominated by a fixed `L²(γFin n)` function
+(core `IsCoreFin` bounds + Mehler contraction
+`ouSemigroupFin_preserves_*`), so dominated convergence upgrades the
+pointwise limit to the strong `L²` limit. Same DCT pattern as the
 existing `ouSemigroupFin_l2_sq_hasDerivWithinAt` /
 `gaussian1D_pairing_hasDerivWithinAt_zero` discharges. -/
 theorem ouSemigroupFinLp_diffQuot_tendsto {f : (Fin n → ℝ) → ℝ}
