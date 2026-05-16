@@ -22,6 +22,11 @@ two-sided derivative, so P2/P3 are **right-derivative only**
 (self-contained via `h_gen`+`h_core`; ‡ in §3). G2 DCT strategy
 endorsed. Ready for execution.
 
+**Execution progress:** H0 ✅ done (branch
+`feat/lp-carrier-stdGaussianFin-dirichletmarkov` commit `64f3c44` —
+3 predicates + hypothesis-parameterised theorem with documented
+`sorry`; build green, axiom footprint clean, non-breaking). Next: G1.
+
 ---
 
 ## 1. Branch reality → the design pivot
@@ -123,7 +128,7 @@ Base every change on `feat/lp-carrier-stdGaussianFin-dirichletmarkov`.
 
 | # | Item | Where | Status / effort |
 |---|------|-------|-----------------|
-| H0 | Define the 3 predicates (`CoreSemigroupInvariant`, `GeneratorCompat`, `StroockVaropoulos`) + restate the theorem with them as hypotheses | `Abstract/Hypercontractivity.lean` | non-breaking; ~80–150 L, 1–2 d |
+| H0 | Define the 3 predicates (`CoreSemigroupInvariant`, `GeneratorCompat`, `StroockVaropoulos`) + restate the theorem with them as hypotheses | `Abstract/Hypercontractivity.lean` | **✅ DONE** — branch commit `64f3c44`; build green, `#print axioms` clean (no custom axioms), non-breaking |
 | G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | EuclideanStein/EuclideanFin | low, ~80 L |
 | G2 | Strong-L² linear limit for GaussianFin: `t→0⁺` endpoint of the proved 1D `hasDerivAt_t_ouSemigroup` + pointwise→L² (DCT, repo-standard) + nD lift ⇒ discharges `GeneratorCompat` for the branch instance | new, off branch | moderate-routine, ~250–450 L |
 | G4 | nD γ-IBP: tensor-lift the proved 1D `gaussian_dirichlet_form_bilinear` ⇒ the form-id half of `h_gen` + the generator-paired `h_sv` | new, off branch | moderate-routine, ~150–300 L |
