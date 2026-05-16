@@ -16,11 +16,18 @@ architecturally perfect" — plan "100% sound, ready for execution."**
 Applied: `t⁻¹•`/`𝓝[>] 0` polish; the **S–V core-domain trap fix**
 (state S–V via the strong generator `⟪u^{q-1},-A u⟫`, since `u^{q-1}
 ∉ core`); 0b risk downgraded (GaussianFin discharge is elementary).
-**GaussianFin-readiness audit done (2026-05-16): supports 0b, LOW
-RISK** — 1D primitives (`hasDerivAt_t_ouSemigroup`,
-`gaussian_dirichlet_form_bilinear`) already proved; gaps G1–G4 are
-tensor-lift + pointwise→L² upgrade. See
-`plans/gaussianfin-0b-readiness.md`. Plan ready for Codex handoff.
+**⚠ BRANCH REALITY (2026-05-16): G3 + Phase 0a + the GaussianFin DMS
+instance are ALREADY DONE, sorry-free, on
+`feat/lp-carrier-stdGaussianFin-dirichletmarkov`** (the branch
+gaussian-hilbert pins) — `EuclideanFinLp.lean`:
+`ouSemigroupFinLp` CLM, `markovSemigroup n`,
+`stdGaussianFin_dirichletMarkovSemigroup n` (on the **weak**
+`energy_eq_deriv`). Phase 0a/0c/0d as written are largely OBE; the
+genuinely-remaining Route-A work is G1/G2/G4 (strong generator) +
+strengthening `energy_eq_deriv → generator_compat` (now a **breaking
+change to a working sorry-free branch instance**) + Phases 2/3, and
+**must be based off that branch, not `main`**. See
+`plans/gaussianfin-0b-readiness.md` (BRANCH REALITY note).
 
 **Recommendation (revised 2026-05-16 per user directive "we want the
 most general result which is feasible"): execute the corrected

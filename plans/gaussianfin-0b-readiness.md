@@ -1,5 +1,24 @@
 # GaussianFin readiness for Gross-discharge Phase 0b
 
+> **⚠ BRANCH REALITY (discovered 2026-05-16, supersedes parts below).**
+> gaussian-hilbert pins markov-semigroups to branch
+> **`feat/lp-carrier-stdGaussianFin-dirichletmarkov`**, *not* `main`.
+> On that branch `EuclideanFinLp.lean` (~1660 L, **sorry-/axiom-free**)
+> already implements: `ouSemigroupFinLp` (the `Lp ℝ 2 (γFin n) →L` CLM
+> — **G3 DONE**), every MarkovSemigroup-field lemma, `markovSemigroup n`
+> (**Phase 0a DONE**, built directly — *not* via the hille-yosida
+> `toContractingSemigroup` repackaging the Gross plan proposed), and
+> `stdGaussianFin_dirichletMarkovSemigroup n` (**the full DMS instance
+> DONE**). It fills the **weak** `energy_eq_deriv`
+> (`:= ouSemigroupFin_energy_eq_deriv`) — there is **no
+> `generator_compat`, no generator term, no hille-yosida bridge**. So:
+> G3/0a/DMS-instance = already done on the consumed branch (do not
+> rebuild on main); **G1/G2/G4 + the strong-field strengthening +
+> Phases 2/3 remain** the genuine work, and strengthening
+> `energy_eq_deriv → generator_compat` is now a **breaking change to a
+> working sorry-free branch instance**. Any further work must branch
+> from `feat/lp-carrier-stdGaussianFin-dirichletmarkov`, not `main`.
+
 **Status:** audit complete 2026-05-16. **Verdict: feasible, LOW RISK
 — all 1D primitives are already proved; the four gaps (G1–G4) are
 tensor-lift + a pointwise→strong-L² upgrade, NOT new analysis.** The
@@ -50,17 +69,11 @@ executed repeatedly for the entropy/quadratic discharges), then
 tensor-lift to nD. *Genuine but routine deliverable; no novel
 analysis, no finite-chaos hand-wave needed.*
 
-**G3 — No `Lp ℝ 2 (γFin n)` CLM packaging.** `ouSemigroupFin` is
-function-valued; Phase 0a needs a `ContractingSemigroup
-(Lp ℝ 2 (γFin n))`. Must show it preserves `MemLp · 2 (γFin n)` and
-descends to `Lp ℝ 2 (γFin n) →L[ℝ] Lp ℝ 2 (γFin n)` (transport
-`_contraction`/`_compose`/`_zero` to the `Lp` quotient + strong
-continuity). **Cross-repo note:** gaussian-hilbert already has
-`ouSemigroupAct : … → Lp ℝ 2 (stdGaussianFin n)`, but
-markov-semigroups must **not** depend on gaussian-hilbert (wrong
-dependency direction) — build the packaging *here* and re-point
-gaussian-hilbert's `ouSemigroupAct` at it (this is Gemini's "5-line
-consumption swap" once it exists). *Moderate, plumbing-heavy.*
+**G3 — DONE on the branch.** `ouSemigroupFinLp (t) :
+Lp ℝ 2 (γFin n) →L[ℝ] Lp ℝ 2 (γFin n)` is built sorry-free on
+`feat/lp-carrier-stdGaussianFin-dirichletmarkov` (EuclideanFinLp.lean
+:560), with `isCoreFin_memLp` (:1000) and all field lemmas. No work
+needed — *reuse it; do not rebuild on main*.
 
 **G4 — Generator↔energy IBP: PROVED at 1D, lift it.** Confirmed:
 `EuclideanStein.lean:703 gaussian_dirichlet_form_bilinear` +
@@ -84,7 +97,7 @@ is used there. The four deliverables are:
 |---|---|---|
 | G1 generator term | name 1D `L`, tensor-lift to `ouGeneratorFin` | low |
 | G2 strong-L² linear limit | `t→0⁺` endpoint + pointwise→L² (DCT, repo-standard pattern) + nD lift | moderate, routine |
-| G3 `Lp ℝ 2 (γFin n)` CLM | descend function semigroup to `Lp` quotient (0a) | moderate, plumbing |
+| G3 `Lp ℝ 2 (γFin n)` CLM | **DONE on branch** (`ouSemigroupFinLp`, sorry-free) | none |
 | G4 generator↔energy IBP | tensor-lift 1D `gaussian_dirichlet_form_bilinear` | moderate, routine |
 
 None require Kato theory, spectral theory, or the finite-chaos
