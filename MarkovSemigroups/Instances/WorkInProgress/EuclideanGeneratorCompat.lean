@@ -33,22 +33,6 @@ namespace GaussianFin
 
 variable {n : ℕ}
 
-/-- **G4 — nD Gaussian integration by parts.** For core `f, g`:
-`⟪g, ouGeneratorFin f⟫_{L²(γFin n)} = -ouEnergyFin g f`.
-
-Strategy: tensor-lift of the proved 1D
-`Gaussian1D.gaussian_generator_ibp` (`∫ g·(L f) dγ = -∫ g'·f' dγ`)
-through the product Gaussian via the Fubini/`insertNth` machinery in
-`EuclideanFinLp`: apply the 1D identity per coordinate, sum over
-`i : Fin n`, recombining `∑ᵢ ∂ᵢg·∂ᵢf = ouGammaFin g f` whose integral
-is `ouEnergyFin g f`. -/
-theorem ouGeneratorFin_ibp {f g : (Fin n → ℝ) → ℝ}
-    (hf : IsCoreFin f) (hg : IsCoreFin g) :
-    ⟪(stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hg,
-        ouGeneratorFinLp hf⟫_ℝ
-      = - ouEnergyFin g f := by
-  sorry
-
 /-- **G2 — `GeneratorCompat` discharged for the shipped Gaussian
 instance.** Assembles the strong-`L²` limit
 (`ouSemigroupFinLp_diffQuot_tendsto`) and the γ-IBP form identity

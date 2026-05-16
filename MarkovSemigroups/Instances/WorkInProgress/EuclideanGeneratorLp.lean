@@ -19,7 +19,7 @@ import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinLp
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanGenerator
 
 open MeasureTheory ProbabilityTheory
-open scoped BigOperators ENNReal NNReal
+open scoped BigOperators ENNReal NNReal InnerProductSpace
 
 noncomputable section
 
@@ -99,6 +99,52 @@ theorem memLp_ouGeneratorFin {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
 def ouGeneratorFinLp {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
     Lp ℝ 2 (γFin n) :=
   (memLp_ouGeneratorFin hf).toLp (ouGeneratorFin f)
+
+/-- **G4 analytic kernel — nD Gaussian integration by parts, integral
+form.** `∫ g·(ouGeneratorFin f) dγFin n = -ouEnergyFin g f`, i.e.
+`∫ g·(Δf − x·∇f) dγ = -∫ ⟨∇g,∇f⟩ dγ`.
+
+The genuine analytic content, isolated as its own crisp target (like
+the heat-equation blocker): a **tensor-lift of the proved 1D
+`Gaussian1D.gaussian_generator_ibp`** (`∫ g·(g'' − x·g') dγ =
+-∫ g'·f' dγ`). Route: split coordinate `i` via the Fubini
+decomposition `integral_γFin_succAbove`-style
+(`∫_{γFin (n+1)} = ∫_{γ} ∫_{γFin n}` through `i.insertNth`); along the
+split variable the `i`-th piece `g·(∂ᵢ²f − xᵢ∂ᵢf)` is the 1D OU
+generator with the other coords as parameters, so 1D
+`gaussian_generator_ibp` gives `-∫ ∂ᵢg·∂ᵢf`; sum over `i` and
+recombine `∑ᵢ ∂ᵢg·∂ᵢf = ouGammaFin g f`, whose integral is
+`ouEnergyFin g f`. Boundedness for the 1D lemma from `IsCoreFin`
+section bounds; Fubini integrability from the same. -/
+theorem ouGeneratorFin_ibp_integral {f g : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (hg : IsCoreFin g) :
+    ∫ x, g x * ouGeneratorFin f x ∂γFin n = - ouEnergyFin g f := by
+  sorry
+
+/-- **G4 — nD Gaussian integration by parts (inner-product form).**
+For core `f, g`: `⟪g, ouGeneratorFin f⟫_{L²(γFin n)} = -ouEnergyFin g f`.
+The `L²` inner product unfolds (via `L2.inner_def` + `MemLp.coeFn_toLp`
+for `coreToL2 g` and `ouGeneratorFinLp f`) to
+`∫ g·(ouGeneratorFin f) dγ`, which is `ouGeneratorFin_ibp_integral`.
+Lives here (imports only the building base, no `EuclideanGeneratorLimit`)
+so it verifies independently of the parallel limit work. -/
+theorem ouGeneratorFin_ibp {f g : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (hg : IsCoreFin g) :
+    ⟪(stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hg,
+        ouGeneratorFinLp hf⟫_ℝ
+      = - ouEnergyFin g f := by
+  -- Pure `Lp` wiring (no math): reduces to `ouGeneratorFin_ibp_integral`
+  -- via the exact `EuclideanFinLp.lean:1076` incantation —
+  --   `rw [MeasureTheory.L2.inner_def]; refine integral_congr_ae ?_;`
+  --   `filter_upwards [(isCoreFin_memLp g hg).coeFn_toLp,`
+  --     `(memLp_ouGeneratorFin hf).coeFn_toLp] with x hgx hfx;`
+  --   `rw [hgx, hfx]; change RCLike.re (b x * star (a x)) = a x * b x;`
+  --   `simp [mul_comm]`
+  -- modulo the `coreToL2`/`ouGeneratorFinLp` wrapper-coe normal form
+  -- (the `rw [hgx,hfx]` pattern match), deliberately left as a
+  -- documented `sorry`: it is Mathlib coercion plumbing, not the
+  -- analytic content (that is `ouGeneratorFin_ibp_integral`).
+  sorry
 
 end GaussianFin
 
