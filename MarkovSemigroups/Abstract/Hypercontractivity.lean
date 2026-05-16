@@ -281,6 +281,96 @@ axiom gross_hypercontractive_implies_lsi {X : Type*} [MeasurableSpace X]
     (h_hyp : D.toMarkovSemigroup.IsHypercontractive ρ) :
     D.SatisfiesLogSobolev ρ
 
+/-! ## H0 — hypothesis-parameterised Gross (Route A scaffold)
+
+The discharge route for `gross_lsi_implies_hypercontractive` keeps the
+abstract `DirichletMarkovSemigroup` (and its shipped sorry-free
+GaussianFin instance) **unchanged**: the strong-generator facts are
+explicit `Prop` hypotheses, not new structural fields — the same
+leaf-placement design already used for `stroock_varopoulos`,
+Gemini-vetted (passes 1–4). They are discharged per instance at the
+call-site (GaussianFin in gaussian-hilbert). See
+`plans/gross-discharge.md` (§2–§3) and
+`plans/gaussianfin-0b-readiness.md`. -/
+
+variable {X : Type*} [MeasurableSpace X]
+
+/-- **Core invariance under the semigroup.** Applying the `L²`
+semigroup `P_t` (`t ≥ 0`) to (the `L²` class of) a core function
+yields the `L²` class of *some* core function. Phrased `L²`-side
+because the abstract structure exposes only the `Lp` operator, not a
+function-level action. Discharged for GaussianFin by
+`ouSemigroupFin_preserves_IsCore` (`g' := ouSemigroupFin t g`). -/
+def CoreSemigroupInvariant (D : DirichletMarkovSemigroup X) : Prop :=
+  ∀ t : ℝ, 0 ≤ t → ∀ {g : X → ℝ} (hg : D.IsCore g),
+    ∃ (g' : X → ℝ) (hg' : D.IsCore g'),
+      D.P t (D.coreToL2 hg) = D.coreToL2 hg'
+
+/-- **Generator–form compatibility (strong).** `coreToL2 f ∈ dom(A)`
+with the difference quotient converging in `L²`-*norm* (not merely
+weakly), and the generator value `Af` pinned by the Dirichlet form
+against every core test function. Strengthens `energy_eq_deriv`
+(weak, scalar-paired). Gemini pass-3 green-lit; uses the explicit
+`nhdsWithin (0:ℝ) (Set.Ioi 0)` / `nhds` idiom of this file (matching
+`P_strong_cont`). Discharged for GaussianFin via the proved 1D linear
+heat equation lifted + pointwise→strong-`L²` DCT. -/
+def GeneratorCompat (D : DirichletMarkovSemigroup X) : Prop :=
+  ∀ {f : X → ℝ} (hf : D.IsCore f), ∃ Af : Lp ℝ 2 D.μ,
+    Filter.Tendsto
+      (fun t : ℝ => t⁻¹ • (D.P t (D.coreToL2 hf) - D.coreToL2 hf))
+      (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds Af)
+    ∧ ∀ {g : X → ℝ} (hg : D.IsCore g),
+        ⟪D.coreToL2 hg, Af⟫_ℝ = - D.energy g f
+
+/-- **Stroock–Varopoulos, generator-paired** (Gemini pass-3 trap fix:
+`u^{q-1} ∉ core` makes the abstract `E(u,u^{q-1})` unusable; pass-4
+binding fix: `GeneratorCompat` is existential, so the generator
+element `Au` + its strong-limit witness are passed explicitly rather
+than via a global `A`). The core-power hypotheses match the existing
+`stroock_varopoulos` axiom (cleaner than `MemLp.toLp` packaging and
+equivalent for the GaussianFin discharge, which has the core
+powers). `_hq`/`_hu_half` are contract antecedents (the inequality is
+only claimed for `q ≥ 2` with `u^{q/2}` core); `_`-prefixed per the
+Mathlib convention for binders required by the statement's shape but
+not referenced in the body — the discharger still supplies them
+positionally. -/
+def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
+  ∀ {u : X → ℝ} (hu : D.IsCore u) (q : ℝ) (_hq : 2 ≤ q)
+    (_hu_half : D.IsCore (fun x => u x ^ (q / 2)))
+    (hu_one : D.IsCore (fun x => u x ^ (q - 1)))
+    (Au : Lp ℝ 2 D.μ),
+    Filter.Tendsto
+      (fun t : ℝ => t⁻¹ • (D.P t (D.coreToL2 hu) - D.coreToL2 hu))
+      (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds Au) →
+    (4 * (q - 1) / q ^ 2) *
+        D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
+      ≤ ⟪D.coreToL2 hu_one, - Au⟫_ℝ
+
+/-- **Gross 1975, Theorem 1 — hypothesis-parameterised (Route A
+target).** LSI ⇒ hypercontractivity for any `DirichletMarkovSemigroup`
+additionally satisfying core-invariance, generator–form
+compatibility, and Stroock–Varopoulos. No structural change; the
+existing `gross_lsi_implies_hypercontractive` axiom is retained
+(non-breaking — downstream `gaussian-hilbert` keeps compiling) until
+this theorem is proved and the call-site is rewired.
+
+`hρ : 0 < ρ` firewalls the `ρ ≤ 0` soundness trap (see the axiom's
+docstring).
+
+**Proof status: WIP** — the body is the Gross differentiation
+argument, Phases P2 (weak-`L²` right-difference-quotient derivative
+of `∫(P_tf)^{q(t)}`) and P3 (algebraic closure via LSI ⊕ `h_sv` ⊕
+`q'=2ρ(q-1)`, monotonicity by `antitoneOn_…nonpos` on `Set.Ici 0`)
+of `plans/gross-discharge.md`. -/
+theorem gross_lsi_implies_hypercontractive_of_hypotheses
+    (D : DirichletMarkovSemigroup X) (ρ : ℝ) (hρ : 0 < ρ)
+    (h_lsi : D.SatisfiesLogSobolev ρ)
+    (h_core : CoreSemigroupInvariant D)
+    (h_gen : GeneratorCompat D)
+    (h_sv : StroockVaropoulos D) :
+    D.toMarkovSemigroup.IsHypercontractive ρ := by
+  sorry
+
 namespace DirichletMarkovSemigroup
 
 variable {X : Type*} [MeasurableSpace X]
