@@ -11,9 +11,16 @@ from an axiom into a theorem, so the *existing* gaussian-hilbert
 wiring (`HypercontractivityFromBE` → `ouSemigroupAct_eLpNorm_hypercontractive`
 → `polynomial_chaos_concentration` → pphi2) becomes Gross-axiom-free.
 
-**Vetting trail:** Gemini deep-think passes 1–3 (analytical traps;
-S–V-as-hypothesis; `generator_compat` green-lit). Those verdicts still
-hold; only the *delivery vehicle* changes per §1.
+**Vetting trail:** Gemini passes 1–3 (analytical traps;
+S–V-as-hypothesis; `generator_compat` green-lit). **Pass 4
+(2026-05-16): plan "100% green-lit for Codex handoff"** with two
+fixes, both applied: (i) **S–V binding trap** — `GeneratorCompat` is
+existential so no global `A`; `StroockVaropoulos` now takes `Au` + its
+`Tendsto` witness explicitly (§2); (ii) **right-derivative
+consistency** — dropping the hille-yosida bridge means no free
+two-sided derivative, so P2/P3 are **right-derivative only**
+(self-contained via `h_gen`+`h_core`; ‡ in §3). G2 DCT strategy
+endorsed. Ready for execution.
 
 ---
 
@@ -85,15 +92,28 @@ Strong (norm) limit ⇒ subsumes `energy_eq_deriv`; sign matches
 `P_symmetric`/`energy_symm`; `[IsProbabilityMeasure μ]` is already a
 `MarkovSemigroup` field so the pairing is well-defined.
 
-**`StroockVaropoulos D`** — generator-paired (Gemini pass-3 trap fix:
-`u^{q-1} ∉ core`, so the abstract `E(u,u^{q-1})` is unusable):
+**`StroockVaropoulos D`** — generator-paired (Gemini pass-3: `u^{q-1}
+∉ core`, abstract `E(u,u^{q-1})` unusable) **with the binding trap
+fixed (Gemini pass-4)**: `GeneratorCompat` is an existential, so there
+is *no global `A`* to write `A (coreToL2 hu)`. Decouple by passing
+the generator element `Au` + its strong-limit witness explicitly:
 ```lean
-∀ {u} (hu : IsCore u) (q) (hq : 2 ≤ q),
-  (4*(q-1)/q^2) * energy (u^(q/2)) (u^(q/2))
-    ≤ ⟪coreToL2 hu ^ (q-1), - (A (coreToL2 hu))⟫_ℝ
+def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
+  ∀ {u : X → ℝ} (hu : IsCore u) (q : ℝ) (hq : 2 ≤ q)
+    (Au : Lp ℝ 2 D.μ),
+    Filter.Tendsto (fun t : ℝ => t⁻¹ • (D.P t (coreToL2 hu)
+        - coreToL2 hu)) (𝓝[>] 0) (𝓝 Au) →
+    (4*(q-1)/q^2) * D.energy (u^(q/2)) (u^(q/2))
+      ≤ ⟪upow hu (q-1), - Au⟫_ℝ
 ```
-LHS needs only `u^{q-1} ∈ L²` (free: `ε≤u≤M` + prob. measure) and
-`A u ∈ L²` (from `h_gen`).
+In P3, Codex destructs `h_gen` to get `Au` + the `Tendsto` proof and
+feeds them straight into `h_sv` — no `Classical.choose`, no dependent-
+type-hell on the `GeneratorCompat` proof. LHS needs only `u^{q-1} ∈
+L²` (free: `ε≤u≤M` + prob. measure) and `Au ∈ L²`.
+*Lp `HPow` note (Gemini pass-4):* `Lp ℝ 2 μ` has **no** global real-
+power instance — `upow hu (q-1)` := apply `(·)^(q-1)` to the
+representative pointwise then repackage via `MemLp.toLp` (trivial
+under the L∞ bounds).
 
 ---
 
@@ -107,14 +127,30 @@ Base every change on `feat/lp-carrier-stdGaussianFin-dirichletmarkov`.
 | G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | EuclideanStein/EuclideanFin | low, ~80 L |
 | G2 | Strong-L² linear limit for GaussianFin: `t→0⁺` endpoint of the proved 1D `hasDerivAt_t_ouSemigroup` + pointwise→L² (DCT, repo-standard) + nD lift ⇒ discharges `GeneratorCompat` for the branch instance | new, off branch | moderate-routine, ~250–450 L |
 | G4 | nD γ-IBP: tensor-lift the proved 1D `gaussian_dirichlet_form_bilinear` ⇒ the form-id half of `h_gen` + the generator-paired `h_sv` | new, off branch | moderate-routine, ~150–300 L |
-| P2 | The Gross ODE: weak-L² difference-quotient derivative of `∫(P_tf)^{q(t)}` (Gemini Trap-1 method; two-sided interior; `L^∞⊂L²⊂L¹` free from `hμ`) | `Abstract/` | bottleneck, ~700–1300 L, 2–4 wk |
-| P3 | Algebraic closure: P2 ⊕ `h_lsi` ⊕ `h_sv` ⊕ `q'=2ρ(q-1)` ⇒ `d/dt log N ≤0` on `(0,∞)`; `AntitoneOn`-via-continuity ⇒ `IsHypercontractive` (`0<ρ` firewall) | `Abstract/` | ~200–400 L, 3–5 d |
+| P2 | The Gross ODE: weak-L² **right**-difference-quotient derivative of `∫(P_tf)^{q(t)}` (Gemini Trap-1 method; `L^∞⊂L²⊂L¹` free from `hμ`). **Right-derivative only** (Gemini pass-4 — see ‡): at `t`, `lim_{h→0⁺} h⁻¹(P_h(P_tf)−P_tf)`; by `h_core` `P_tf∈core`, so `h_gen` gives the strong limit `A(P_tf)` directly — self-contained, no analytic-semigroup theory | `Abstract/` | bottleneck, ~700–1300 L, 2–4 wk |
+| P3 | Algebraic closure: P2 ⊕ `h_lsi` ⊕ `h_sv` ⊕ `q'=2ρ(q-1)` ⇒ `d⁺/dt log N ≤ 0` on `[0,∞)`; close via Mathlib `antitoneOn_of_hasDerivWithinAt_nonpos` on `Set.Ici 0` (continuity on `[0,∞)` + nonpositive **right**-derivative ⇒ `N(t) ≤ N(0)`) ⇒ `IsHypercontractive` (`0<ρ` firewall) | `Abstract/` | ~200–400 L, 3–5 d |
 | W | Wire gaussian-hilbert: pass the 3 discharges to the now-theorem | gaussian-hilbert | ~10–30 L, hrs |
 
 **Total ≈ 1450–2600 L, multi-week.** G3/0a/DMS-instance contribute
-**0** (already done). hille-yosida is now an *optional* implementation
-aid for G2 only, **not** a mandated bridge (the branch proved the
-weak field directly; G2 mirrors that, plus the strong upgrade).
+**0** (already done). **hille-yosida is fully dropped** — not even an
+aid: G2 mirrors how the branch proved the weak field directly (Mehler
+DCT), and the right-derivative design (‡) makes the abstract proof
+self-contained without any C₀-semigroup module.
+
+> **‡ Right-derivative consistency (Gemini pass-4, my prior error
+> fixed).** Passes 1–3 deleted the "right-derivative-only" constraint
+> *because the hille-yosida bridge was then mandated* (giving free
+> two-sided derivatives). The branch-reconciliation **dropped that
+> bridge** but I left the two-sided wording — a contradiction.
+> Without the bridge, `GeneratorCompat`'s `𝓝[>] 0` gives **only** the
+> right derivative; a left-derivative would need pushing a limit
+> through `P_{t−h}` as `h→0⁺` (the joint-limit machinery hille-yosida
+> supplied, now gone). So **right-derivative only** — and it is fully
+> rigorous and *self-contained*: `h_core` ⇒ `P_tf ∈ core` ⇒ `h_gen`
+> gives `A(P_tf)` as a strong right limit; `antitoneOn` on `Set.Ici 0`
+> closes monotonicity. This is the original pre-hille-yosida design,
+> now correctly justified — and the exact pattern the OU-entropy
+> discharge already used (`hasDerivWithinAt_Ici_…`).
 
 ## 4. Risks
 
