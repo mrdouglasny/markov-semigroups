@@ -41,9 +41,9 @@ of the proved 1D BE chain:
 Registered axiom count: **12** (9 non-WIP + 3 WIP GaussianFin) —
 see canonical `AXIOM_AUDIT.md`. History: 8 → 11 at the N1 merge
 (commit `8ed9e52`, 2026-05-13); → 12 on 2026-05-16 when the repo-wide
-audit registered the previously-undocumented
-`contDiff_top_convolution_schwartzKernel` (`General/SchwartzConvolution`,
-Needs review / NOT VERIFIED, no consumers). A further 4
+audit registered the previously-undocumented (but already
+Gemini-vetted, Likely correct) `contDiff_top_convolution_schwartzKernel`
+(`General/SchwartzConvolution`, no consumers). A further 4
 `EuclideanTests` test-scaffolding axioms are excluded by policy
 (WorkInProgress, not consumed by the main tree).
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
@@ -67,7 +67,7 @@ BrascampLieb, Torus, GFFIdentification).
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
 | Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
 | DobrushinZegarlinski/ | 8 | 0 | 2 | Continuous spins: gradient interaction, local LSI, global LSI (Otto-Reznikoff), entrywise covariance (Helffer-Sjöstrand), Lipschitz concentration |
-| General/ | 2 | 0 | 1 | OUEntropyDecomposition (axiom-free) + SchwartzConvolution (1 axiom: `contDiff_top_convolution_schwartzKernel`, Needs review / NOT VERIFIED, no consumers) |
+| General/ | 2 | 0 | 1 | OUEntropyDecomposition (axiom-free) + SchwartzConvolution (1 axiom: `contDiff_top_convolution_schwartzKernel`, **Likely correct** — Gemini-vetted 2026-05-12, was unregistered in AXIOM_AUDIT until 2026-05-16; no consumers) |
 | Tools/ | 1 | 0 | 0 | Single-site disintegration primitive (consumed by Dobrushin layer / lgt) |
 
 ## Axioms

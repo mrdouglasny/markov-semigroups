@@ -410,10 +410,12 @@ positivity for Z-matrices (`Matrix/HeatKernel.lean`) all have
 `#print axioms` showing only the three Lean built-ins.
 
 One caveat to "the rest is axiom-free": `General/SchwartzConvolution.lean`
-declares `contDiff_top_convolution_schwartzKernel` (registered in
-`AXIOM_AUDIT.md` 2026-05-16 as **Needs review / NOT VERIFIED**). It
-has **no consumers**, so no theorem's `#print axioms` is affected —
-but the declaration exists and is not yet vetted.
+declares `contDiff_top_convolution_schwartzKernel` (Gemini-vetted
+2026-05-12, **Likely correct**; registered in `AXIOM_AUDIT.md` on
+2026-05-16 after the repo-wide sweep found it undocumented there). It
+has **no consumers** — staged infrastructure; the OU smoothing fact
+was discharged by a different route — so no theorem's `#print axioms`
+is affected.
 
 **For downstream consumers:** [lgt](https://github.com/mrdouglasny/lgt)'s
 Yang-Mills mass-gap proof uses only the Dobrushin + Coupling +

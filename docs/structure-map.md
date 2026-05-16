@@ -185,8 +185,9 @@ reconciled across all three docs. Findings: `OUEntropyDecomposition`
 is **axiom-free** (status.md line 56's "3 atomic axioms live there"
 was stale — they are discharged theorems; AXIOM_AUDIT.md confirms);
 `General/SchwartzConvolution`'s `contDiff_top_convolution_schwartzKernel`
-was a **real but unregistered** axiom — now registered in
-`AXIOM_AUDIT.md` as **Needs review / NOT VERIFIED** (no consumers).
+was a **real axiom unregistered in `AXIOM_AUDIT.md`** (though
+Gemini-vetted *Likely correct* in its file docstring, 2026-05-12) —
+now registered, no consumers.
 `status.md` line 41 + project table corrected (Abstract 4→5, added
 `General/`/`Tools/`/`EuclideanFin`/`EuclideanTests` rows); README
 inline counts synced; `AXIOM_AUDIT.md` summary 11→12 + EuclideanTests
@@ -202,7 +203,7 @@ count: **12 registered** (9 non-WIP + 3 WIP GaussianFin); 4
 | `Abstract/Concentration` | 2 | `herbst_mgf_bound`, `poincare_of_lsi` |
 | `DobrushinZegarlinski` | 2 | `zegarlinski_lsi_inequality`, `cov_entrywise_bound_of_zegarlinski` (Likely correct, GR) |
 | `General/OUEntropyDecomposition` | **0** | axiom-free (de Bruijn/Fisher facts discharged as theorems; the earlier "3 axioms" claim was stale) |
-| `General/SchwartzConvolution` | 1 | `contDiff_top_convolution_schwartzKernel` — registered 2026-05-16, Needs review / NOT VERIFIED, no consumers |
+| `General/SchwartzConvolution` | 1 | `contDiff_top_convolution_schwartzKernel` — Gemini-vetted *Likely correct* (2026-05-12); registered in AXIOM_AUDIT 2026-05-16; no consumers |
 | `Matrix/Diamagnetic` | 1 | `diamagnetic_resolvent` |
 | `Instances/WorkInProgress` | 7+ | EuclideanFin 3, EuclideanTests 4 (scaffolding); Euclidean.lean 2 `sorry`; TwoPoint 2 math-false `sorry` |
 

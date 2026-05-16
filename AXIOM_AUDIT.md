@@ -59,10 +59,13 @@ Of these:
   (`m_matrix_inverse_nonneg` relocated upstream to `SpectralPositivity`
   and re-exported as a theorem, so it is no longer counted here)
 - **1 General/SchwartzConvolution** axiom —
-  `contDiff_top_convolution_schwartzKernel` (Folland *Real Analysis*
-  2nd ed. Ch. 8 §2). Surfaced **unregistered** during the 2026-05-16
-  audit; **Needs review / NOT VERIFIED** (no Gemini/Codex pass on
-  record); no internal consumers (standalone utility).
+  `contDiff_top_convolution_schwartzKernel` (Lieb–Loss Thm 2.16;
+  Folland *Real Analysis* 2nd ed. Ch. 8 §2). Was **unregistered in
+  this audit doc** until the 2026-05-16 sweep, but **is vetted** in
+  its file docstring (`gemini-2.5-pro` Standard + `gemini-3.1-pro-preview`
+  Likely correct, 2026-05-12, integrand revised per 3.1-pro). Rating
+  **Likely correct**. No internal consumers (staged infrastructure;
+  `ouSemigroup_contDiff` was discharged by a different route).
 - **3 GaussianFin** axioms (merged to main 2026-05-13, commit `8ed9e52`)
   — multivariate Gaussian BE-instance primitives, all gemini-3.1-pro-preview
   vetted **Standard**, all tensor-lift analogues of historical 1D primitives
@@ -176,17 +179,20 @@ Fisher-decay facts have all been proved.
 
 ### General/SchwartzConvolution
 
-Surfaced **unregistered** during the repo-wide axiom audit on
-2026-05-16. The module docstring self-marks it
-"AXIOM (vetting-required textbook bridge)"; no Gemini/Codex vetting
-is on record, so it is rated **Needs review** and tagged
-**NOT VERIFIED** until a vetting pass is run. It has no internal
-consumers (standalone utility), so no proved theorem in the repo
-transitively depends on it.
+**Unregistered in this audit doc** until the repo-wide sweep on
+2026-05-16 — but **vetted in its file docstring**: `gemini-2.5-pro`
+returned **Standard** and `gemini-3.1-pro-preview` returned **Likely
+correct** (both 2026-05-12), the latter prompting a real revision
+(integrand swapped to `K(x−y)·f y` so differentiation-under-the-
+integral applies directly, since `f` is only measurable). It has no
+internal consumers (staged infrastructure; the OU smoothing fact
+`ouSemigroup_contDiff` was ultimately discharged by the Path-C
+Hermite-IBP route, not via this axiom), so no proved theorem in the
+repo transitively depends on it.
 
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `contDiff_top_convolution_schwartzKernel` | [`General/SchwartzConvolution.lean:103`](../MarkovSemigroups/General/SchwartzConvolution.lean#L103) | Folland *Real Analysis* (2nd ed.) Ch. 8 §2 (Convolution); Reed-Simon I §V | Needs review (NOT VERIFIED) | — (none on record; discovered unregistered 2026-05-16) | For a `C^∞` kernel `K` with all iterated derivatives Lebesgue-integrable and bounded measurable `f`, `x ↦ ∫ K(x−y)·f(y) dy` is `C^∞`. Discharge: extend Mathlib's compact-support convolution-smoothing to integrable-derivative kernels via differentiation under the integral (dominated convergence on each `iteratedDeriv`). | None internal (standalone). |
+| `contDiff_top_convolution_schwartzKernel` | [`General/SchwartzConvolution.lean:103`](../MarkovSemigroups/General/SchwartzConvolution.lean#L103) | Lieb–Loss *Analysis* (2nd ed.) Thm 2.16; Folland *Real Analysis* (2nd ed.) Ch. 8 §2; Reed–Simon I Thm V.4 | Likely correct | GR (gemini-2.5-pro 2026-05-12 **Standard**; gemini-3.1-pro-preview 2026-05-12 **Likely correct**, integrand revised `K(x−y)·f y` per 3.1-pro; hypotheses confirmed tight = Sobolev `W^{∞,1}×L^∞`) | For a `C^∞` kernel `K` with all iterated derivatives Lebesgue-integrable and bounded measurable `f`, `x ↦ ∫ K(x−y)·f(y) dy` is `C^∞`. Discharge (~200–400 lines): induction on differentiation order via Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le`, derivative falling on the smooth factor `K`. | None internal (staged; OU smoothing discharged via Path-C instead). |
 
 ### Gaussian1D BGL Ch. 2 (0 axioms — instance is axiom-free)
 
