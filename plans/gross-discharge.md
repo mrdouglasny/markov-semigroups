@@ -1,138 +1,193 @@
-# Discharge the abstract Gross axiom (`gross_lsi_implies_hypercontractive`)
+# Discharging the Gross axiom — route decision + corrected Route A
 
-**Status:** scoped, not started (as of 2026-05-16).
+**Status:** scoped, not started. **Revised 2026-05-16 after Gemini
+deep-think vetting** (which found two fatal analytical traps in the
+original abstract plan and corrected the route justification).
 
-**Goal:** replace the axiom
-`gross_lsi_implies_hypercontractive`
+**Recommendation (revised 2026-05-16 per user directive "we want the
+most general result which is feasible"): execute the corrected
+Route A** — the abstract BGL §5.2 theorem on
+`DirichletMarkovSemigroup`, with a `hille-yosida` generator bridge and
+`stroock_varopoulos` as a theorem hypothesis. This is the *most general
+feasible* deliverable and **also unblocks pphi2** (the GaussianFin
+instance discharges the S–V hypothesis with the cheap concrete Gaussian
+chain rule). Route B
+([`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md))
+is demoted to **fallback** (sound, but yields *no general result* —
+only the Gaussian instance).
+
+**Why this is "most general feasible," precisely.** Three generality
+tiers: (1) concrete Gaussian (Route B) — not general; (2) abstract
+symmetric-Markov Dirichlet form with S–V as bundled data (this plan) —
+general, = the textbook BGL theorem; (3) abstract with S–V *derived*
+from a carré-du-champ / Beurling–Deny representation — strictly more
+general but **infeasible/circular here** (the repo axiomatizes
+Beurling–Deny; cf. [`beurling-deny.md`](beurling-deny.md)). Tier 2 is
+the maximum feasible. Carrying S–V as a theorem hypothesis is *not* a generality
+compromise — every symmetric Markov Dirichlet form satisfies it, so
+requiring it is how the general theorem is correctly stated; only the
+*proof obligation* is deferred to instances (Gaussian: ~10 lines).
+
+**Goal (unchanged):** remove `gross_lsi_implies_hypercontractive`
 ([`Abstract/Hypercontractivity.lean:269`](../MarkovSemigroups/Abstract/Hypercontractivity.lean))
-with a Lean theorem, together with its load-bearing dependency
-`stroock_varopoulos` ([:242](../MarkovSemigroups/Abstract/Hypercontractivity.lean)).
-This is **Route A** (discharge the abstract axiom on the
-`DirichletMarkovSemigroup` carrier), as opposed to **Route B** (the
-concrete Gaussian route in
-[`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md)).
-
-**Why Route A is the relevant one.** Verified 2026-05-16: the live
-pphi2 dependency chain bottoms out in the *abstract* axiom, not a
-concrete Gaussian1D instance —
-`gaussian-hilbert/GaussianHilbert/HypercontractivityFromBE.lean:204`
-applies `gross_lsi_implies_hypercontractive` to a GaussianFin-built
-`DirichletMarkovSemigroup` to prove the now-theorem
-`ouSemigroupAct_eLpNorm_hypercontractive` (:314), consumed by
-`polynomial_chaos_concentration` → pphi2. So **discharging the
-abstract axiom directly makes the pphi2 path Gross-axiom-free with no
-re-plumbing of gaussian-hilbert**; the Route-B concrete plan would
-instead require rerouting gaussian-hilbert off the abstract axiom.
-
-**Cross-repo scope:** internal to `markov-semigroups`, but Phase 0 is
-a **breaking structure change** — every `DirichletMarkovSemigroup`
-instance (incl. the GaussianFin one in gaussian-hilbert's reach) must
-supply the new field. Coordinated like any structure refactor.
-
-**Estimated total:** ~1700–3000 lines, multi-week (consistent with
-the `AXIOM_AUDIT.md` 2000–4000 line estimate for this axiom).
+from the live pphi2 axiom chain.
 
 ---
 
-## Mathematical content (already algebraically closed)
+## Route decision (corrected)
 
-Gross's differentiation method. For `f ≥ 0` in core, `u(t)=P_t f`,
-`q(t)=1+(p-1)e^{2ρt}` (so `q(0)=p`, `q'=2ρ(q-1)`),
-`N(t)=‖u(t)‖_{q(t)}`:
+My original Route-A justification — "Route B requires re-plumbing
+gaussian-hilbert" — was a **false economy** (Gemini, correct):
 
-    d/dt log N(t) ≤ 0  ⟺  q'·Ent_μ(u�q) ≤ q²·E(u, u^{q-1}).
+- `gaussian-hilbert`'s `ouSemigroupAct_eLpNorm_hypercontractive`
+  (`HypercontractivityFromBE.lean:314`) is a **theorem with a fixed
+  signature**. Whether its *proof* invokes the abstract Gross axiom or
+  a concrete Route-B theorem is internal to that one file. Swapping it
+  is a localized change; `PolynomialChaosConcentration` and **pphi2
+  are untouched** (they consume only the theorem's type).
+- In the concrete Mehler-kernel setting of Route B, **both Route-A
+  analytical traps evaporate**: pointwise `t`-derivatives under the
+  integral are legitimate (explicit smooth kernel), and
+  Stroock–Varopoulos is a ~10-line application of the spatial chain
+  rule for the explicit Gaussian Dirichlet form `∫∇u·∇v dγ`.
 
-Chain: **LSI** on `v=u^{q/2}` (`ρ·Ent_μ(u�q) ≤ 2·E(u^{q/2},u^{q/2})`)
-⊕ **Stroock–Varopoulos** (`(4(q-1)/q²)·E(u^{q/2},u^{q/2}) ≤
-E(u,u^{q-1})`) ⊕ the exponent ODE `q'=2ρ(q-1)` closes it with
-equality in the bound. The algebra is `ring`/`nlinarith`; the cost is
-entirely the analysis/Lean machinery below.
-
----
-
-## Dependency chain
-
-```
-gross_lsi_implies_hypercontractive  (axiom → theorem)        [Phase 3]
-   ↑ uses
- • d/dt of ∫ (P_t f)^{q(t)} dμ  + eLpNorm bridge             [Phase 2]
- • generator–form identity at all t (bootstrap)              [Phase 1]
- • stroock_varopoulos  (axiom → theorem)                     [Phase 4]
- • LSI (SatisfiesLogSobolev — hypothesis, given)
-   ↑ all require
- DirichletMarkovSemigroup + core-invariance field            [Phase 0]
-```
+Route B's total cost (the ~1900–3200-line concrete Gaussian Gross
+build) is unchanged and real; but it is **sound**, whereas Route A is
+analytically much harder at the abstract carrier (below). Net: Route B
+for pphi2; Route A only if the *general* abstract theorem is wanted
+for its own sake (e.g. Mathlib upstreaming).
 
 ---
 
-## Phase 0 — Structure augmentation (breaking change)
+## `hille-yosida` leverage (project dependency)
 
-`DirichletMarkovSemigroup` (Hypercontractivity.lean:149) currently
-exposes `energy_eq_deriv` only at **t=0⁺** and asserts **no**
-core-invariance under `P_t`. Gross's proof needs `u=P_tf` and its
-powers `u^{q/2}`, `u^{q-1}` in the core (to apply S–V and the form).
+The `hille-yosida` dep (`StronglyContinuousSemigroup`,
+`ContractingSemigroup`, generator, `resolvent`,
+`hilleYosidaResolventBound`) **materially de-risks Route A, but only
+for two of the three traps**:
 
-Add one field:
-```lean
-IsCore_semigroup : ∀ t, 0 ≤ t → ∀ {g}, IsCore g → IsCore (P t g)
-```
-(plus reuse the existing power-closure hypotheses S–V already takes).
+- **Trap 3 — dissolved.** With a genuine C₀ generator `A`, for
+  `f ∈ D(A)` the orbit `t ↦ P_t f` is *two-sided* differentiable for
+  `t > 0` with `d/dt P_t f = A P_t f` (one-sidedness is only at
+  `t=0`). The right-derivative-only restriction was an artifact of
+  the fragile 0⁺-bootstrap, **not** intrinsic. Using hille-yosida's
+  generator gives genuine `HasDerivAt` for `t > 0`.
+- **Trap 1 — downgraded from "hallucination" to "standard".** The
+  generator gives the *linear* orbit derivative rigorously and the
+  form duality `⟨φ, A g⟩ = -E(φ, g)` on the core. The Gross
+  computation `d/dt ∫(P_tf)ᵍ = q'∫uᵍ log u + q∫u^{q-1}·A u` then
+  proceeds at the *form* level — exactly the standard BGL §5.2
+  argument, not the unprovable pointwise route. The residual
+  difficulty (justifying `d/dt` through the integral for the
+  *nonlinear* `(·)ᵍ`) remains and still needs the difference-quotient
+  / convexity handling — hille-yosida does **not** remove Phase 2's
+  bottleneck, it makes it standard rather than a trap.
+- **Trap 2 — unaffected.** S–V is nonlinear / carré-du-champ-kernel
+  structure, orthogonal to linear C₀-semigroup theory. hille-yosida
+  gives `A` and the resolvent, not the pointwise convexity
+  representation. S–V stays a theorem hypothesis (Phase 0).
 
-- **Breaking:** every instance must fill it. The GaussianFin instance
-  already has `ouSemigroupFin_preserves_IsCore` (an axiom) to discharge
-  it; the abstract `MarkovSemigroup`-only users supply it as data.
-- **Open design question (vet first — see Risks):** is core-invariance
-  *sufficient*, or is an explicit differentiability/continuity-of
-  `t ↦ ⟨φ, P_t g⟩` beyond 0⁺ also required as a field? Phase 1's
-  bootstrap argument is supposed to derive it from the semigroup law +
-  `energy_eq_deriv`; this must be confirmed sound before Phase 0 is
-  finalized (a wrong field set wastes the whole effort).
+**Precondition (real cost):** this leverage requires actually wiring
+`DirichletMarkovSemigroup` to hille-yosida's
+`StronglyContinuousSemigroup` — generator `A`, `core ⊆ D(A)`, and the
+form duality `⟨g, A h⟩ = -E(g,h)`. `L2Semigroup.lean` is currently an
+explicit *stub* for exactly this bridge; building it is a Phase-0-
+scale undertaking, but on firm, reusable footing rather than a
+0⁺-bootstrap. Net effect: Gemini's "abort Route A" is **too strong** —
+with hille-yosida, Route A's Phases 0/1 collapse to a standard
+generator bridge and Trap 3 vanishes. Route B is still preferred for
+pphi2 (Trap 2 + the Phase-2 nonlinear bottleneck remain either way,
+and Route-B consumption is cheap), but Route A is materially less
+infeasible than the abstract framing suggested.
 
-**Estimate:** ~100–200 lines + instance fixups. **2–4 days.**
+## Gemini-identified traps in the original Route-A plan
 
-## Phase 1 — Generator–form identity at all `t` (bootstrap)
+These corrections are folded into the Route-A spec below. They are
+*not* shallow — each matches established practice in this repo.
 
-For `t₀>0`, `φ,g` core: `d/dt|_{t₀} ⟨φ,P_t g⟩
-= d/ds|_{0⁺} ⟨φ, P_s(P_{t₀}g)⟩ = -E(φ, P_{t₀}g)` — using the
-semigroup law `P_{t₀+s}=P_{t₀}∘P_s`, `energy_eq_deriv` (0⁺ form), and
-Phase 0 core-invariance (`P_{t₀}g` core). Only the existing fields +
-Phase 0; **no generator field needed**.
+1. **No pointwise `t`-differentiation of an abstract orbit.** An
+   abstract symmetric Markov semigroup gives *strong* (L²-norm)
+   differentiability of `t ↦ P_t f`, never pointwise-a.e.-in-`x`.
+   `hasDerivAt_integral_of_dominated_loc_of_deriv_le` is unusable
+   here. Use **weak-L² difference quotients + the convexity bound
+   `xᵍ − yᵍ ≤ q·x^{q-1}(x−y)}`** to decouple the moving exponent from
+   the orbit and trigger the weak energy-form definition.
+2. **Stroock–Varopoulos cannot be proved at the abstract carrier.**
+   The pointwise S–V proof needs an *integral representation* of the
+   Dirichlet form — i.e. the **Beurling–Deny decomposition**
+   ([`beurling-deny.md`](beurling-deny.md)), which this repo
+   axiomatizes. Proving S–V abstractly is circular. It must remain a
+   structural field / hypothesis (which is why it is already an
+   axiom). **Original Phase 4 deleted.**
+3. **Bootstrap yields right-derivatives only.** `IsCore_semigroup`
+   is mathematically sufficient (answering the original design
+   question), but the semigroup-law bootstrap gives
+   `HasDerivWithinAt … (Set.Ici t)` only; two-sided `HasDerivAt`
+   would need analytic-semigroup theory. Target right-derivatives and
+   close via `antitone_on_of_hasDerivWithinAt_nonpos` — the same
+   pattern the OU-entropy discharge already used
+   (`hasDerivWithinAt_Ici_…`).
 
-**Estimate:** ~300–500 lines. **1 week.**
+---
 
-## Phase 2 — `Lpᵍ`/`eLpNorm` calculus (the bottleneck)
+## Corrected Route-A spec (the harder, abstract option)
 
-(a) Bridge `eLpNorm (P t f) (ofReal q) μ` ↔ `(∫ |P t f|^q dμ)^{1/q}`
-(`MemLp`, `q≥1`, ENNReal/Real coercions — the "Bochner trap" noted in
-the file). (b) Parametric derivative of `F(t)=∫ (P_t f)^{q(t)} dμ`:
-`F' = q'∫uᵍ log u dμ - q²E(u,u^{q-1})`, via
-`hasDerivAt_integral_of_dominated_loc_of_deriv_le` with a moving
-exponent; dominators on `uᵍ log u`, integrability of `u^{q-1}`.
+### Phase 0 — Structure augmentation (breaking change)
 
-**Estimate:** ~800–1500 lines. **2–4 weeks** (the dominant cost).
+Add to `DirichletMarkovSemigroup` (breaking; needed for *being* a
+usable DMS):
+- `IsCore_semigroup : ∀ t, 0 ≤ t → ∀ {g}, IsCore g → IsCore (P t g)`
+- An **L∞ / Markov contractivity field** giving `ε ≤ P_t f ≤ M` for
+  `ε ≤ f ≤ M`, to keep `log u`, `u^{q-1}` integrable (matches the
+  existing `g ≥ ε > 0` requirement in the OU axioms).
 
-## Phase 3 — Algebraic closure → `IsHypercontractive`
+**Stroock–Varopoulos: a hypothesis to the theorem, NOT a structure
+field** (Trap 2 — cannot be proved abstractly; would need the
+Beurling–Deny representation). Design decision (def-study
+leaf-placement): `gross_lsi_implies_hypercontractive` takes an
+explicit `h_sv : StroockVaropoulos D` argument. Rationale: a DMS is a
+valid DMS without S–V; only the Gross implication needs it, so
+bundling it onto the structure would burden every construction
+needlessly and reduce generality of the structure. Instances satisfy
+`h_sv` at the call-site — GaussianFin via the ~10-line explicit
+Gaussian chain rule; the existing `stroock_varopoulos` axiom supplies
+it generically in the meantime. *Alternative:* a bundled
+`IsStroockVaropoulos` mixin class — adopt only if S–V gains multiple
+independent consumers.
 
-Phase 2 derivative ⊕ LSI ⊕ `stroock_varopoulos` (Phase 4) ⊕
-`q'=2ρ(q-1)` ⇒ `d/dt log N ≤ 0`; Mathlib antitone-from-nonpositive
--derivative ⇒ `N(t) ≤ N(0)`; unwrap to the `IsHypercontractive`
-predicate (note the `0<ρ` firewall — Hypercontractivity.lean:262).
-Reduction general `f` → `|f|` → `f≥0` via `P_positivity`.
+Every instance must fill the two new fields (GaussianFin uses
+`ouSemigroupFin_preserves_IsCore` + explicit bounds). **~150–250
+lines + fixups, 3–5 d.**
 
-**Estimate:** ~200–400 lines. **3–5 days.**
+### Phase 1 — Right-derivative generator–form identity
 
-## Phase 4 — Discharge `stroock_varopoulos`
+`HasDerivWithinAt (fun t => ⟨φ, P_t g⟩) (-E(φ, P_{t₀}g)) (Set.Ici t₀)`
+for `φ,g` core, via semigroup law + `energy_eq_deriv` (0⁺) + Phase 0
+core-invariance. **Right-derivatives only; no two-sided `HasDerivAt`.**
+**~300–500 lines, 1 wk.**
 
-The pointwise convexity inequality
-`(a-b)(a^{p-1}-b^{p-1}) ≥ (4(p-1)/p²)(a^{p/2}-b^{p/2})²` (`a,b≥0`,
-`p≥2`; reduces to `(p-2)²≥0` at `b=0`, general case by `u=a/b`
-substitution) integrated against the symmetric Markov kernel via the
-right-derivative form of `energy`. **This is the same real-variable
-lemma as Phase 1 of the Route-B plan** — reuse it. Per `AXIOM_AUDIT.md`
-discharge plan for `stroock_varopoulos`.
+### Phase 2 — Weak-L² difference-quotient derivative (the bottleneck)
 
-**Estimate:** ~400–600 lines. **1–2 weeks.** Independent of Phases
-1–3; can run in parallel.
+`d⁺/dt N(t)` via difference quotients, **not** pointwise
+differentiation under the integral. Split the increment:
+`∫(P_{t+h}f)^{q(t+h)} − ∫(P_t f)^{q(t)}` into (i) an exponent
+difference at fixed spatial function (1D calculus) and (ii) an orbit
+difference bounded by the convexity inequality
+`xᵍ − yᵍ ≤ q·x^{q-1}(x−y)}`, whose `h→0⁺` limit is the weak energy
+form `−q·E(uᵍ⁻¹·…)` via Phase 1. eLpNorm↔`(∫·ᵍ)^{1/q}` bridge as
+before. **~700–1300 lines, 2–4 wk.**
+
+### Phase 3 — Algebraic closure (right-derivative monotonicity)
+
+Phase 2 ⊕ LSI ⊕ S–V hypothesis ⊕ `q'=2ρ(q-1)` ⇒ `d⁺/dt log N ≤ 0`;
+`antitone_on_of_hasDerivWithinAt_nonpos` ⇒ `N(t) ≤ N(0)`; unwrap to
+`IsHypercontractive` (`0<ρ` firewall). **~200–400 lines, 3–5 d.**
+
+### ~~Phase 4~~ — deleted (Trap 2)
+
+S–V is a theorem hypothesis (Phase 0), discharged by concrete
+instances. Abstract proof would require the Beurling–Deny
+representation — circular here.
 
 ---
 
@@ -140,38 +195,25 @@ discharge plan for `stroock_varopoulos`.
 
 | Phase | Deliverable | Lines | Time |
 |---|---|---|---|
-| 0 | `IsCore_semigroup` field + instance fixups | 100–200 | 2–4 d |
-| 1 | generator–form identity at all `t` | 300–500 | 1 wk |
-| 2 | `eLpNorm`/parametric-derivative machinery | 800–1500 | 2–4 wk |
-| 3 | algebraic closure → `IsHypercontractive` | 200–400 | 3–5 d |
-| 4 | `stroock_varopoulos` theorem | 400–600 | 1–2 wk |
-| **Total** | | **~1700–3000** | **multi-week** |
+| 0 | `IsCore_semigroup` + L∞ fields; S–V as theorem hypothesis | 150–250 | 3–5 d |
+| 1 | right-derivative generator–form identity | 300–500 | 1 wk |
+| 2 | weak-L² difference-quotient derivative | 700–1300 | 2–4 wk |
+| 3 | right-derivative monotonicity → `IsHypercontractive` | 200–400 | 3–5 d |
+| **Route A total** | (S–V deferred to instances) | **~1350–2450** | multi-week |
 
 ## Risks
 
-- **Phase 0 design (highest leverage).** Whether core-invariance alone
-  suffices vs. needing an explicit regularity field is the one
-  decision that wastes weeks if wrong. **Mitigation (do first):**
-  Gemini deep-think + Codex review of the Phase-0 field set and the
-  Phase-1 bootstrap soundness on the `Lp ℝ 2 μ` carrier, *before*
-  touching the structure (per `~/.claude/CLAUDE.md` long-path policy).
-- **Phase 0 breaking change** ripples to every `DirichletMarkovSemigroup`
-  instance; the GaussianFin one (gaussian-hilbert's reach) needs its
-  `IsCore_semigroup` filled from `ouSemigroupFin_preserves_IsCore`.
-- **Phase 2** is the classic Lp-differentiation-under-the-integral
-  grind; expect many 50–100 line Mathlib bridging lemmas.
-- Discharging only `gross_lsi_implies_hypercontractive` still leaves
-  the **3 GaussianFin axioms** on the pphi2 chain (they supply the LSI
-  / BE-instance inputs). Their discharge is tracked separately in
-  `AXIOM_AUDIT.md` (tensor-lift of already-discharged 1D facts). Full
-  pphi2-Gross-axiom-freedom = this plan **+** GaussianFin discharge.
+- Route A remains analytically heavier and depends on the Phase-0
+  structure refactor rippling to every instance. Route B avoids all
+  three traps natively — **prefer Route B for pphi2**.
+- Either route still leaves the **3 GaussianFin axioms** on the pphi2
+  chain (they supply the LSI/BE-instance inputs); tracked in
+  `AXIOM_AUDIT.md`.
 
 ## Done =
 
-`gross_lsi_implies_hypercontractive` and `stroock_varopoulos` are
-theorems; `lake build` green; `#print axioms` on gaussian-hilbert's
-`ouSemigroupAct_eLpNorm_hypercontractive` no longer lists either;
-`AXIOM_AUDIT.md` / `status.md` / `README.md` counts updated in the
-same commit; this file → `plans/archive/` + `plans/history.md` entry.
-(`gross_hypercontractive_implies_lsi` — the reverse direction, no
-pphi2 consumer — is out of scope here.)
+(Route B path) `gaussian-hilbert`'s
+`ouSemigroupAct_eLpNorm_hypercontractive` proved from the concrete
+Route-B theorem; `#print axioms` no longer lists
+`gross_lsi_implies_hypercontractive` / `stroock_varopoulos`;
+`AXIOM_AUDIT.md`/`status.md`/`README.md` updated same commit.

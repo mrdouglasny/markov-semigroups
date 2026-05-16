@@ -18,15 +18,19 @@ lessons learned.
 
 ## Active plans
 
-* [`gross-discharge.md`](gross-discharge.md) — **Route A**: discharge
-  the abstract `gross_lsi_implies_hypercontractive` (+ `stroock_varopoulos`)
-  on the `DirichletMarkovSemigroup` carrier. This is the binding axiom
-  on the live pphi2 chain (verified 2026-05-16). Structure-augmentation
-  + 5 phases, ~1700–3000 lines, multi-week.
+* [`gross-discharge.md`](gross-discharge.md) — **RECOMMENDED (most
+  general feasible).** Corrected Route A after Gemini deep-think
+  vetting (2026-05-16): discharge the abstract
+  `gross_lsi_implies_hypercontractive` on `DirichletMarkovSemigroup`
+  via a `hille-yosida` generator bridge, with `stroock_varopoulos` as
+  a theorem hypothesis (S–V unprovable abstractly — needs
+  Beurling–Deny). Yields the general BGL §5.2 theorem *and* unblocks
+  pphi2 (GaussianFin discharges the S–V hypothesis concretely).
+  ~1350–2450 lines, multi-week.
 * [`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md) —
-  **SUPERSEDED** as the pphi2-unblocking path (reconciled 2026-05-16);
-  retained as the Route-B concrete-Gaussian alternative + reusable
-  techniques. See its reconciliation note; prefer `gross-discharge.md`.
+  **FALLBACK only** (Route B, concrete Gaussian). Sound but yields no
+  general result; reconciled 2026-05-16. Retained for its reusable
+  Stroock–Varopoulos / Mehler-kernel techniques.
 * [`beurling-deny.md`](beurling-deny.md) — Formulate Beurling–Deny
   decomposition; prove finite-state case sorry-free, axiomatize general
   case (one vetted axiom), finite certified as instance of the shared
