@@ -36,8 +36,15 @@ of `Diffusion/CarreDuChamp.lean`).
 
 Reference access: FOT §3.2 — local copy in
 `refs/Fukushima-Oshima-Takeda-2011-dirichlet-forms-symmetric-markov-processes-2ed.pdf`
-(institutional access; untracked). The Γ-calculus context is in
-Ledoux's free 2000 NUMDAM survey (`refs/Ledoux-2000-*.pdf`).
+(institutional access; untracked). **Exact location (body-verified):
+Ch. 3 §3.2 "Formulae of Beurling–Deny and LeJan"; Thm 3.2.1 stated
+top of p. 120, proof pp. 120–123 (uniqueness, J as vague limit,
+construction of k and Eᶜ); LeJan energy measure μ⟨u⟩ + Lemmas
+3.2.1–3.2.2 pp. 123–130 (the out-of-scope refinement).** Chapter
+summary: `refs/summaries/Fukushima-Oshima-Takeda/03-scope-of-dirichlet-forms.md`.
+The Γ-calculus context is in Ledoux's free 2000 NUMDAM survey
+(`refs/Ledoux-2000-*.pdf`); the LeJan energy-measure refinement
+corresponds to Cor 4.3 / §1 there.
 
 ## Why finite + axiom (not full proof)
 
