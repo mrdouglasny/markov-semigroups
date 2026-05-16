@@ -23,6 +23,11 @@ lessons learned.
   `gaussian_hypercontractivity_continuum`, via Gaussian1D + multivariate
   OU Gross discharge. 6 phases internal to
   `markov-semigroups`/`gaussian-hilbert`, ~1900–3200 lines, 6–9 weeks.
+* [`beurling-deny.md`](beurling-deny.md) — Formulate Beurling–Deny
+  decomposition; prove finite-state case sorry-free, axiomatize general
+  case (one vetted axiom), finite certified as instance of the shared
+  predicate. New `Abstract/BeurlingDeny.lean`, ~250–400 lines, 3–6 days.
+  Criteria/spectral strand decoupled (consumes quantumlib later).
 
 ## History
 
