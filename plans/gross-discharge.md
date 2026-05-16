@@ -1,8 +1,18 @@
 # Discharging the Gross axiom — route decision + corrected Route A
 
-**Status:** scoped, not started. **Revised 2026-05-16 after Gemini
-deep-think vetting** (which found two fatal analytical traps in the
-original abstract plan and corrected the route justification).
+**Status:** scoped, not started. **Vetting trail (2026-05-16):**
+Gemini deep-think pass 1 found two analytical traps + the route
+misjudgment (folded in: weak-L² difference quotients; S–V as
+hypothesis; hille-yosida bridge). Gemini pass 2 **green-lit for Codex
+handoff** subject to 4 fixes — all now applied: (1) deleted the
+right-derivative-only constraint, two-sided interior via the
+hille-yosida bridge; (2) integrability discharged free from the
+structural `hμ : IsProbabilityMeasure μ` (`L^∞⊂L²⊂L¹`); (3) `ε≤P_tf≤M`
+derived from existing `P_positivity`+`P_conservation`, not a bespoke
+field; (4) `Done =` already Route-A. Gemini explicitly endorsed
+S–V-as-hypothesis as the correct Lean 4 pattern. **Next: re-vet the
+concrete `generator_compat` statement (0b) with Gemini before
+engineering.**
 
 **Recommendation (revised 2026-05-16 per user directive "we want the
 most general result which is feasible"): execute the corrected
@@ -119,14 +129,18 @@ These corrections are folded into the Route-A spec below. They are
    axiomatizes. Proving S–V abstractly is circular. It must remain a
    structural field / hypothesis (which is why it is already an
    axiom). **Original Phase 4 deleted.**
-3. **Bootstrap yields right-derivatives only.** `IsCore_semigroup`
-   is mathematically sufficient (answering the original design
-   question), but the semigroup-law bootstrap gives
-   `HasDerivWithinAt … (Set.Ici t)` only; two-sided `HasDerivAt`
-   would need analytic-semigroup theory. Target right-derivatives and
-   close via `antitone_on_of_hasDerivWithinAt_nonpos` — the same
-   pattern the OU-entropy discharge already used
-   (`hasDerivWithinAt_Ici_…`).
+3. **(Resolved by the hille-yosida bridge — NOT right-derivative
+   only.)** The *original 0⁺-bootstrap* idea yielded only
+   `HasDerivWithinAt … (Set.Ici t)`. But Phase 0c uses hille-yosida's
+   genuine C₀ generator, which gives a **two-sided `HasDerivAt` for
+   every `t > 0`** (one-sidedness only at `t=0`, which the interior
+   ODE never touches). Gemini point 1 (accepted): the earlier
+   "target right-derivatives only / `antitone_on_of_hasDerivWithinAt_nonpos`"
+   instruction is **deleted** — it contradicted the bridge and would
+   needlessly complicate Phase 2/3's product & chain rules. Use
+   standard two-sided `deriv` on the interior; right value at `t=0` is
+   only the boundary. `IsCore_semigroup` remains required (answers the
+   original design question: sufficient).
 
 ---
 
@@ -154,7 +168,8 @@ difference-quotient + the commutation `A(S t x) = S t (A x)`.
 
 `MarkovSemigroup`'s fields map directly onto `ContractingSemigroup
 (Lp ℝ 2 S.μ)`: `P_zero↔at_zero`, `P_semigroup↔semigroup`,
-`P_strong_cont↔strong_cont`, `P_l2_contraction↔contracting`.
+`P_strong_cont↔strong_cont`, `P_contraction↔contracting` (the field
+is `P_contraction`, not `P_l2_contraction`).
 Deliverable: `def MarkovSemigroup.toContractingSemigroup :
 HilleYosida.ContractingSemigroup (Lp ℝ 2 S.μ)`, modulo coercion/defeq.
 **~50–120 lines, 1–2 d. Low risk.**
@@ -171,33 +186,73 @@ Beurling–Deny ([`beurling-deny.md`](beurling-deny.md)) and the
 quantumlib dependency (memory `quantumlib-unbounded-spectral-theorem`).
 **Not feasible to derive abstractly here.**
 
-Resolution (consistent with project philosophy — `energy_eq_deriv` is
-*already* a postulated compatibility field): **strengthen the
-compatibility field** to a `generator_compat` postulating `core ⊆
-D(A)` + the form identification, discharged **per instance**
-(GaussianFin: the explicit OU generator `A f = f'' − x·f'`, fully
-concrete; abstract users supply it as data). This factors the one
-Kato-hard piece out as a structural obligation — exactly as the repo
-already does for `energy_eq_deriv`. **Field + GaussianFin discharge:
-~150–300 lines, 3–5 d. This is Phase 0's real risk** (see Risks).
+Resolution (project precedent: `energy_eq_deriv` is *already* a
+postulated compatibility field): **replace `energy_eq_deriv` with a
+strengthened `generator_compat`**, discharged **per instance**
+(GaussianFin: explicit OU generator `A f = f″ − x·f′`). Proposed
+statement — mirrors the existing `coreToL2`/`⟪·,·⟫_ℝ` idiom and
+hille-yosida's `.generator` filter *verbatim*:
+
+```lean
+/-- Generator–form compatibility (STRONG form). Strengthens
+`energy_eq_deriv`: `coreToL2 f ∈ dom(A)` with the difference
+quotient converging in **L²-norm** (not merely weakly), and the
+generator value `Af` pinned by the form against every core test
+function. The Kato obligation, postulated; discharged per instance. -/
+generator_compat : ∀ {f : X → ℝ} (hf : IsCore f),
+  ∃ Af : Lp ℝ 2 μ,
+    Filter.Tendsto
+      (fun t : ℝ => (1 / t) • (P t (coreToL2 hf) - coreToL2 hf))
+      (nhdsWithin 0 (Set.Ioi 0)) (nhds Af)
+    ∧ ∀ {g : X → ℝ} (hg : IsCore g),
+        ⟪coreToL2 hg, Af⟫_ℝ = - energy g f
+```
+
+Notes for the Gemini soundness pass:
+- Sign: `A` = generator (`lim (P_t−I)/t`); the form's nonneg
+  self-adjoint operator is `−A`, so `⟨g,Af⟩ = −E(g,f)` — consistent
+  with `energy_eq_deriv`'s sign and `P_symmetric` (`energy_symm` ⇒
+  `⟨g,Af⟩=⟨f,Ag⟩` on core).
+- **`generator_compat ⇒ energy_eq_deriv`**: pair the strong limit
+  with `coreToL2 hg` through the continuous functional
+  `⟪coreToL2 hg, ·⟫_ℝ`; so `energy_eq_deriv` becomes a derived
+  corollary (drop it from the structure).
+- Uses hille-yosida's *exact* filter `nhdsWithin 0 (Set.Ioi 0)` and
+  quotient, so `.generator`, `semigroup_maps_domain`,
+  `semigroup_generator_comm` apply with zero re-derivation.
+- `[IsProbabilityMeasure μ]` is **already** a structure field
+  (`MarkovSemigroup.hμ`, an `instance`); the `⟪·,·⟫_ℝ` pairing of an
+  L^∞-bounded test function is therefore automatically well-defined.
+
+**Field + GaussianFin discharge: ~150–300 lines, 3–5 d. Phase 0's
+make-or-break risk** — vet *this statement* before engineering.
 
 #### 0c — Derivative-at-`t` lemma (hille-yosida lacks it)
 
 From `semigroup_maps_domain` + `semigroup_generator_comm` +
-`.generator`, derive `HasDerivWithinAt (fun t => ⟪φ, S.P t (coreToL2
-f)⟫) (-(energy φ (P_t f))) (Set.Ici t₀) t₀` for `t₀≥0`, `φ,f` core
-(**right**-derivative; two-sided for `t>0` is a true but extra
-derivation — right-derivative + `antitone` suffices, Trap 3). A
-genuine deliverable: hille-yosida packages maps-domain/comm but **not**
-this `HasDeriv*`. **~200–400 lines, ~1 wk.**
+`generator_compat`, derive a **two-sided**
+`HasDerivAt (fun t => ⟪coreToL2 hφ, S.P t (coreToL2 hf)⟫_ℝ)
+(-(energy φ (P_t f))) t` for every **`t > 0`** (`φ,f` core). Gemini
+point 1 (accepted): the hille-yosida bridge gives genuine two-sided
+differentiability on the interior — **do not** restrict to
+right-derivatives there; that only complicates Phase 2's product/
+chain rule with needless `derivWithin`/`Set.Ici` juggling. The
+one-sided right value is needed *only* at the boundary `t = 0`, which
+the interior ODE never touches. hille-yosida packages
+maps-domain/comm but **not** this `HasDeriv*` — a genuine deliverable.
+**~200–400 lines, ~1 wk.**
 
-#### 0d — Remaining structural fields
+#### 0d — Remaining structural change
 
-Add to `DirichletMarkovSemigroup` (breaking):
+Besides replacing `energy_eq_deriv` with `generator_compat` (0b),
+only **one** genuinely new field is needed:
 - `IsCore_semigroup : ∀ t, 0 ≤ t → ∀ {g}, IsCore g → IsCore (P t g)`
-- An **L∞ / Markov contractivity field** giving `ε ≤ P_t f ≤ M` for
-  `ε ≤ f ≤ M`, to keep `log u`, `u^{q-1}` integrable (matches the
-  existing `g ≥ ε > 0` requirement in the OU axioms).
+
+The `ε ≤ P_t f ≤ M` bound is **not** a bespoke field (Gemini point 3,
+accepted): derive it as a ~3-line lemma from the *existing*
+`P_positivity` + `P_conservation` (`P_t 1 = 1`) —
+`f − ε·1 ≥ 0 ⇒ P_t(f − ε·1) ≥ 0 ⇒ P_t f ≥ ε·1`, dually `≤ M`. Keeps
+`DirichletMarkovSemigroup` Mathlib-standard.
 
 **Stroock–Varopoulos: a hypothesis to the theorem, NOT a structure
 field** (Trap 2 — cannot be proved abstractly; would need the
@@ -222,25 +277,34 @@ lines + fixups, 3–5 d.**
 The original Phase 1 (`HasDerivWithinAt (fun t => ⟨φ,P_t g⟩)
 (-E(φ,P_{t₀}g)) (Set.Ici t₀)` via a fragile `energy_eq_deriv` 0⁺
 **bootstrap**) is replaced by **Phase 0c**, which derives the same
-right-derivative directly from the hille-yosida generator
+two-sided interior derivative directly from the hille-yosida generator
 (`semigroup_generator_comm` + `generator_compat`). Cleaner and on firm
 C₀-semigroup footing rather than a bootstrap.
 
 ### Phase 2 — Weak-L² difference-quotient derivative (the bottleneck)
 
-`d⁺/dt N(t)` via difference quotients, **not** pointwise
-differentiation under the integral. Split the increment:
-`∫(P_{t+h}f)^{q(t+h)} − ∫(P_t f)^{q(t)}` into (i) an exponent
-difference at fixed spatial function (1D calculus) and (ii) an orbit
-difference bounded by the convexity inequality
-`xᵍ − yᵍ ≤ q·x^{q-1}(x−y)}`, whose `h→0⁺` limit is the weak energy
-form `−q·E(uᵍ⁻¹·…)` via Phase 1. eLpNorm↔`(∫·ᵍ)^{1/q}` bridge as
-before. **~700–1300 lines, 2–4 wk.**
+`d/dt N(t)` (**two-sided, `t > 0`** — Gemini point 1) via difference
+quotients, **not** pointwise differentiation under the integral.
+Split the increment `∫(P_{t+h}f)^{q(t+h)} − ∫(P_t f)^{q(t)}` into (i)
+an exponent difference at fixed spatial function (1D calculus) and
+(ii) an orbit difference bounded by the convexity inequality
+`xᵍ − yᵍ ≤ q·x^{q-1}(x−y)}`, whose `h→0` limit is the weak energy
+form `−q·E(uᵍ⁻¹·…)` via **Phase 0c**.
 
-### Phase 3 — Algebraic closure (right-derivative monotonicity)
+*Integrability is free here* (Gemini point 2, accepted): with the
+structural `hμ : IsProbabilityMeasure μ`, `L^∞(μ) ⊂ L²(μ) ⊂ L¹(μ)`,
+so the L²-bounded `u^{q-1}` (Phase 0d markov bound) pairs validly and
+`∫ log u` is finite — zero generality cost (LSI is a probability-
+measure notion; pphi2's Gaussian space is one). eLpNorm↔`(∫·ᵍ)^{1/q}`
+bridge as before. **~700–1300 lines, 2–4 wk.**
 
-Phase 2 ⊕ LSI ⊕ S–V hypothesis ⊕ `q'=2ρ(q-1)` ⇒ `d⁺/dt log N ≤ 0`;
-`antitone_on_of_hasDerivWithinAt_nonpos` ⇒ `N(t) ≤ N(0)`; unwrap to
+### Phase 3 — Algebraic closure (monotonicity)
+
+Phase 2 ⊕ LSI ⊕ S–V hypothesis ⊕ `q'=2ρ(q-1)` ⇒ `d/dt log N ≤ 0` on
+`(0,∞)`; then `N` is `AntitoneOn [0,∞)` via continuity on the closed
+ray (strong continuity + the Phase-0d bounds) + nonpositive *two-sided*
+interior derivative (Mathlib `antitoneOn_of_deriv_nonpos`-style — **no**
+`derivWithin` juggling); ⇒ `N(t) ≤ N(0)`; unwrap to
 `IsHypercontractive` (`0<ρ` firewall). **~200–400 lines, 3–5 d.**
 
 ### ~~Phase 4~~ — deleted (Trap 2)
@@ -258,9 +322,9 @@ representation — circular here.
 | 0a | `MarkovSemigroup.toContractingSemigroup` (repackage) | 50–120 | 1–2 d |
 | 0b | `generator_compat` field (Kato-factored) + GaussianFin discharge | 150–300 | 3–5 d |
 | 0c | derivative-at-`t` lemma (**subsumes old Phase 1**) | 200–400 | 1 wk |
-| 0d | `IsCore_semigroup` + L∞ fields | 80–150 | 2–3 d |
-| 2 | weak-L² difference-quotient derivative | 700–1300 | 2–4 wk |
-| 3 | right-derivative monotonicity → `IsHypercontractive` | 200–400 | 3–5 d |
+| 0d | `IsCore_semigroup` field (ε≤·≤M derived, not a field) | 60–120 | 2–3 d |
+| 2 | weak-L² two-sided difference-quotient derivative | 700–1300 | 2–4 wk |
+| 3 | monotonicity (two-sided interior) → `IsHypercontractive` | 200–400 | 3–5 d |
 | **Route A total** | S–V a theorem hypothesis (instance-discharged) | **~1380–2670** | multi-week |
 
 Old "Phase 1" (0⁺-bootstrap of the generator–form identity) is
