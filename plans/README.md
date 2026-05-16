@@ -18,15 +18,19 @@ lessons learned.
 
 ## Active plans
 
-* [`gross-discharge.md`](gross-discharge.md) — **RECOMMENDED (most
-  general feasible).** Corrected Route A after Gemini deep-think
-  vetting (2026-05-16): discharge the abstract
-  `gross_lsi_implies_hypercontractive` on `DirichletMarkovSemigroup`
-  via a `hille-yosida` generator bridge, with `stroock_varopoulos` as
-  a theorem hypothesis (S–V unprovable abstractly — needs
-  Beurling–Deny). Yields the general BGL §5.2 theorem *and* unblocks
-  pphi2 (GaussianFin discharges the S–V hypothesis concretely).
-  ~1350–2450 lines, multi-week.
+* [`gross-discharge.md`](gross-discharge.md) — **RECOMMENDED;
+  reconciled 2026-05-16 against branch
+  `feat/lp-carrier-stdGaussianFin-dirichletmarkov`** (the rev
+  gaussian-hilbert pins). G3 / Phase 0a / the GaussianFin DMS
+  instance are **already done sorry-free** on that branch; the
+  hille-yosida bridge + structure-strengthening framing is dropped
+  (a structure break would damage a working shipped instance).
+  Reconciled design: prove the general
+  `gross_lsi_implies_hypercontractive` with the strong-generator
+  facts + S–V as **theorem hypotheses** (no structural change),
+  discharged for GaussianFin at the call-site. Remaining: H0 + G1 +
+  G2 + G4 + Phases 2/3 + wiring, ~1450–2600 lines, multi-week, all
+  off that branch. See `plans/gaussianfin-0b-readiness.md`.
 * [`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md) —
   **FALLBACK only** (Route B, concrete Gaussian). Sound but yields no
   general result; reconciled 2026-05-16. Retained for its reusable
