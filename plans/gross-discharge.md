@@ -25,7 +25,9 @@ endorsed. Ready for execution.
 **Execution progress:** H0 ✅ done (branch
 `feat/lp-carrier-stdGaussianFin-dirichletmarkov` commit `64f3c44` —
 3 predicates + hypothesis-parameterised theorem with documented
-`sorry`; build green, axiom footprint clean, non-breaking). Next: G1.
+`sorry`; build green, axiom footprint clean, non-breaking).
+H0 ✅ (`64f3c44`). G1 ✅ (`924c405` — fully proved, no sorry/custom
+axioms; named generator + restated heat-eqn + γ-IBP). Next: G2/G4.
 
 ---
 
@@ -129,7 +131,7 @@ Base every change on `feat/lp-carrier-stdGaussianFin-dirichletmarkov`.
 | # | Item | Where | Status / effort |
 |---|------|-------|-----------------|
 | H0 | Define the 3 predicates (`CoreSemigroupInvariant`, `GeneratorCompat`, `StroockVaropoulos`) + restate the theorem with them as hypotheses | `Abstract/Hypercontractivity.lean` | **✅ DONE** — branch commit `64f3c44`; build green, `#print axioms` clean (no custom axioms), non-breaking |
-| G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | EuclideanStein/EuclideanFin | low, ~80 L |
+| G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | new `EuclideanGenerator.lean` | **✅ DONE** — branch `924c405`; fully proved (no sorry, `#print axioms` clean), incl. named restatements of the proved heat-eqn + γ-IBP; non-breaking |
 | G2 | Strong-L² linear limit for GaussianFin: `t→0⁺` endpoint of the proved 1D `hasDerivAt_t_ouSemigroup` + pointwise→L² (DCT, repo-standard) + nD lift ⇒ discharges `GeneratorCompat` for the branch instance | new, off branch | moderate-routine, ~250–450 L |
 | G4 | nD γ-IBP: tensor-lift the proved 1D `gaussian_dirichlet_form_bilinear` ⇒ the form-id half of `h_gen` + the generator-paired `h_sv` | new, off branch | moderate-routine, ~150–300 L |
 | P2 | The Gross ODE: weak-L² **right**-difference-quotient derivative of `∫(P_tf)^{q(t)}` (Gemini Trap-1 method; `L^∞⊂L²⊂L¹` free from `hμ`). **Right-derivative only** (Gemini pass-4 — see ‡): at `t`, `lim_{h→0⁺} h⁻¹(P_h(P_tf)−P_tf)`; by `h_core` `P_tf∈core`, so `h_gen` gives the strong limit `A(P_tf)` directly — self-contained, no analytic-semigroup theory | `Abstract/` | bottleneck, ~700–1300 L, 2–4 wk |
