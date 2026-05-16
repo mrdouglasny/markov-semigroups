@@ -1,8 +1,32 @@
 # Gaussian OU hypercontractivity: full discharge chain
 
-**Status:** scoped, not started (as of 2026-05-13).
+**Status:** SUPERSEDED as the pphi2-unblocking path (reconciled
+2026-05-16). Not started; retained as the **Route-B alternative** and
+for its reusable techniques (Phase 1 Stroock–Varopoulos pointwise
+lemma, Mehler-kernel representation).
 
-**Goal:** discharge the chain of axioms blocking `pphi2`'s
+> **Reconciliation (2026-05-16).** Reality diverged from this plan's
+> strategy. This plan's Phases 5–6 are *done in the codebase*, but via
+> a **different route than Phases 1–4 propose**: gaussian-hilbert's
+> `HypercontractivityFromBE.lean` discharged the local
+> `ouSemigroupAct_eLpNorm_hypercontractive` (now a theorem, :314) and
+> `polynomial_chaos_concentration` (now a theorem) by **consuming the
+> abstract `gross_lsi_implies_hypercontractive` axiom + the 3
+> GaussianFin axioms** on a GaussianFin-built
+> `DirichletMarkovSemigroup` — *not* by building the concrete
+> `Gaussian1D.dirichletMarkovSemigroup` of Phases 1–4. So this plan's
+> strategic note ("the abstract axioms are not removed / not used") is
+> **false in the as-built code**: the abstract Gross axiom is now the
+> binding axiom on the live pphi2 chain. Consequently the actual work
+> remaining to make pphi2 Gross-axiom-free is **Route A —
+> [`gross-discharge.md`](gross-discharge.md)** (discharge the abstract
+> `gross_lsi_implies_hypercontractive` + `stroock_varopoulos`
+> directly), **plus** discharging the 3 GaussianFin axioms (tracked in
+> `AXIOM_AUDIT.md`). Phases 1–4 here remain a valid *alternative*
+> (concrete Gaussian1D Gross) but would additionally require rerouting
+> gaussian-hilbert off the abstract axiom, so Route A is preferred.
+
+**Goal (original):** discharge the chain of axioms blocking `pphi2`'s
 `gaussian_hypercontractivity_continuum`, replacing them with theorems
 proved from the explicit Gaussian Ornstein-Uhlenbeck Mehler kernel.
 

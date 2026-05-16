@@ -18,11 +18,15 @@ lessons learned.
 
 ## Active plans
 
+* [`gross-discharge.md`](gross-discharge.md) — **Route A**: discharge
+  the abstract `gross_lsi_implies_hypercontractive` (+ `stroock_varopoulos`)
+  on the `DirichletMarkovSemigroup` carrier. This is the binding axiom
+  on the live pphi2 chain (verified 2026-05-16). Structure-augmentation
+  + 5 phases, ~1700–3000 lines, multi-week.
 * [`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md) —
-  Full chain from `stroock_varopoulos` to pphi2's
-  `gaussian_hypercontractivity_continuum`, via Gaussian1D + multivariate
-  OU Gross discharge. 6 phases internal to
-  `markov-semigroups`/`gaussian-hilbert`, ~1900–3200 lines, 6–9 weeks.
+  **SUPERSEDED** as the pphi2-unblocking path (reconciled 2026-05-16);
+  retained as the Route-B concrete-Gaussian alternative + reusable
+  techniques. See its reconciliation note; prefer `gross-discharge.md`.
 * [`beurling-deny.md`](beurling-deny.md) — Formulate Beurling–Deny
   decomposition; prove finite-state case sorry-free, axiomatize general
   case (one vetted axiom), finite certified as instance of the shared
