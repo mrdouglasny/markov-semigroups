@@ -26,12 +26,16 @@ endorsed. Ready for execution.
 `feat/lp-carrier-stdGaussianFin-dirichletmarkov` commit `64f3c44` —
 3 predicates + hypothesis-parameterised theorem with documented
 `sorry`; build green, axiom footprint clean, non-breaking).
-H0 ✅ (`64f3c44`). G1 ✅ (`924c405` — fully proved, no sorry/custom
-axioms; named generator + restated heat-eqn + γ-IBP). G2 🟡 skeleton
-(`7c5f7c6` — assembling theorem real; 3 documented sub-lemma sorries;
-G4 folded in as `ouGeneratorFin_ibp`). Pushed; gaussian-hilbert
-rebuilds clean against `924c405` (non-breaking confirmed). Next:
-fill the 3 G2 sub-lemmas (DCT limit is the heavy one).
+H0 ✅ (`64f3c44`). G1 ✅ (`924c405` — fully proved). G2 🟡 in
+progress, branch pushed **`6b3c9c6`**: 3-file split; assembling
+theorem real; `memLp_ouGeneratorFin` ✅ **proved** (`17130ac`, clean
+axioms). Codex (2026-05-16) precisely localized the true blocker —
+the missing **nD pointwise OU heat equation** — now isolated as
+`hasDerivWithinAt_t_ouSemigroupFin_zero` (`6b3c9c6`); Codex re-aimed
+at it + the DCT endgame (prompt v2 handed off). gaussian-hilbert
+unaffected (new `EuclideanGenerator*` files outside its import
+closure). Remaining: nD-heat-eqn + `diffQuot` (Codex),
+`ouGeneratorFin_ibp`=G4 (Claude). Then P2/P3/W.
 
 ---
 
@@ -136,7 +140,7 @@ Base every change on `feat/lp-carrier-stdGaussianFin-dirichletmarkov`.
 |---|------|-------|-----------------|
 | H0 | Define the 3 predicates (`CoreSemigroupInvariant`, `GeneratorCompat`, `StroockVaropoulos`) + restate the theorem with them as hypotheses | `Abstract/Hypercontractivity.lean` | **✅ DONE** — branch commit `64f3c44`; build green, `#print axioms` clean (no custom axioms), non-breaking |
 | G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | new `EuclideanGenerator.lean` | **✅ DONE** — branch `924c405`; fully proved (no sorry, `#print axioms` clean), incl. named restatements of the proved heat-eqn + γ-IBP; non-breaking |
-| G2 | Strong-L² linear limit for GaussianFin: `t→0⁺` endpoint of the proved 1D `hasDerivAt_t_ouSemigroup` + pointwise→L² (DCT, repo-standard) + nD lift ⇒ discharges `GeneratorCompat` for the branch instance | new `EuclideanGeneratorCompat.lean` | **🟡 SKELETON** — branch `7c5f7c6`; `generatorCompat_stdGaussianFin` assembled (real), 3 documented `sorry` sub-lemmas remain: `memLp_ouGeneratorFin`, `ouGeneratorFin_ibp` (=G4), `ouSemigroupFinLp_diffQuot_tendsto` (DCT, the hard one) |
+| G2 | Strong-L² limit for GaussianFin ⇒ discharges `GeneratorCompat` | 3-file split: `EuclideanGenerator{Lp,Limit,Compat}.lean` | **🟡 IN PROGRESS** — branch pushed `6b3c9c6`. `generatorCompat_stdGaussianFin` assembled (real). Sub-lemmas: `memLp_ouGeneratorFin` **✅ proved** (`17130ac`, clean axioms); `hasDerivWithinAt_t_ouSemigroupFin_zero` ⬜ (the nD pointwise heat-eqn — Codex-identified true blocker, isolated `6b3c9c6`); `ouSemigroupFinLp_diffQuot_tendsto` ⬜ (DCT endgame, given the prior — Codex); `ouGeneratorFin_ibp`=G4 ⬜ (Claude) |
 | G4 | nD γ-IBP: tensor-lift the proved 1D `gaussian_dirichlet_form_bilinear` ⇒ the form-id half of `h_gen` + the generator-paired `h_sv` | new, off branch | moderate-routine, ~150–300 L |
 | P2 | The Gross ODE: weak-L² **right**-difference-quotient derivative of `∫(P_tf)^{q(t)}` (Gemini Trap-1 method; `L^∞⊂L²⊂L¹` free from `hμ`). **Right-derivative only** (Gemini pass-4 — see ‡): at `t`, `lim_{h→0⁺} h⁻¹(P_h(P_tf)−P_tf)`; by `h_core` `P_tf∈core`, so `h_gen` gives the strong limit `A(P_tf)` directly — self-contained, no analytic-semigroup theory | `Abstract/` | bottleneck, ~700–1300 L, 2–4 wk |
 | P3 | Algebraic closure: P2 ⊕ `h_lsi` ⊕ `h_sv` ⊕ `q'=2ρ(q-1)` ⇒ `d⁺/dt log N ≤ 0` on `[0,∞)`; close via Mathlib `antitoneOn_of_hasDerivWithinAt_nonpos` on `Set.Ici 0` (continuity on `[0,∞)` + nonpositive **right**-derivative ⇒ `N(t) ≤ N(0)`) ⇒ `IsHypercontractive` (`0<ρ` firewall) | `Abstract/` | ~200–400 L, 3–5 d |
