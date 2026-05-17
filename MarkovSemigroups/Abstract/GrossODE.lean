@@ -133,22 +133,86 @@ def grossLogNormDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
           ^ (grossExponent ρ p s - 1))
       / grossPow D hf ρ p s
 
+/-- `∫ |u_s|^{q(s)} · log |u_s| dμ` — the entropy-carrying integral
+that appears in `F'` and in the entropy identity. -/
+def grossLogIntegral (D : DirichletMarkovSemigroup X) {f : X → ℝ}
+    (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
+  ∫ x, |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ grossExponent ρ p s
+      * Real.log |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ∂D.μ
+
+/-- `F'(s) = q'(s)·∫ uq log u − q(s)·E(u, u^{q-1})` — the right
+derivative of `grossPow`. The first term is the exponent-path
+contribution (`∂_s |u|^{q(s)} = |u|^{q} log|u| · q'`); the second is
+the semigroup contribution (`∂_s u = A u`, `∫ u^{q-1} A u =
+−E(u,u^{q-1})` by `GeneratorCompat`). -/
+def grossPowDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
+    (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
+  2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s
+    - grossExponent ρ p s
+        * D.energy ((D.P s (D.coreToL2 hf) : X → ℝ))
+            (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+              ^ (grossExponent ρ p s - 1))
+
+/-- `F(s) = ∫ |u_s|^{q(s)} > 0`. Holds whenever `P_s f` is not μ-a.e.
+zero (`f ≢ 0`; the `f ≡ 0` case is handled separately in the
+assembly). **Status: documented `sorry`.** -/
+theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
+    (hρ : 0 < ρ) (hp : 1 < p) {f : X → ℝ} (hf : D.IsCore f)
+    (hf_nonneg : ∀ x, 0 ≤ f x) {s : ℝ} (hs : 0 ≤ s) :
+    0 < grossPow D hf ρ p s := by
+  sorry
+
+/-- **Entropy identity.** `Entμ(u^q) = q · (∫ uq log u) − F · log F`,
+i.e. `D.toDirichletSpace.entropy (|u|^q) = q · grossLogIntegral −
+grossPow · log grossPow`. Pure log-of-power algebra on the definition
+`entropy g = ∫ g log g − (∫ g)·log(∫ g)` (with `g = |u|^q`,
+`log(|u|^q) = q log|u|`, `∫ g = F`). **Status: documented `sorry`**
+(needs the integrability of `g log g` from the core `L^∞` bounds). -/
+theorem grossEntropy_eq (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
+    {f : X → ℝ} (hf : D.IsCore f) {s : ℝ} :
+    D.toDirichletSpace.entropy
+        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+          ^ grossExponent ρ p s)
+      = grossExponent ρ p s * grossLogIntegral D hf ρ p s
+        - grossPow D hf ρ p s * Real.log (grossPow D hf ρ p s) := by
+  sorry
+
+/-- **P2 core — the differentiation-under-the-integral.**
+`grossPow` has right derivative `grossPowDeriv` on `[0,∞)`. This is
+the genuine analytic bottleneck (`plans/gross-discharge.md` P2,
+~700–1300 L): differentiate `s ↦ ∫ |P_s f|^{q(s)}` jointly in the
+exponent path and the semigroup, using
+
+* `h_core` ⇒ `P_s f ∈ core` so the integrand is regular;
+* `h_gen` (`GeneratorCompat`) for the strong-`L²` right derivative
+  `∂_s (P_s f) = A(P_s f)` and the form pairing
+  `∫ u^{q-1} A u = −E(u, u^{q-1})`;
+* dominated convergence (core `L^∞` bounds) to pass the right
+  difference quotient inside the integral;
+* the pointwise `∂_s |·|^{q(s)} = |·|^{q} log|·| · q'` for the
+  exponent-path term.
+
+**Status: documented `sorry` — the bottleneck.** -/
+theorem grossPow_hasDerivWithinAt
+    (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
+    (h_core : CoreSemigroupInvariant D)
+    (h_gen : GeneratorCompat D)
+    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    {s : ℝ} (hs : 0 ≤ s) :
+    HasDerivWithinAt (grossPow D hf ρ p)
+      (grossPowDeriv D hf ρ p s) (Set.Ici 0) s := by
+  sorry
+
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
-core `f` with `ρ > 0`, `p > 1`, the log-norm `Λ` has a right
-derivative on `[0,∞)` equal to the Gross expression
+core `f` with `ρ > 0`, `p > 1`, the log-norm `Λ(s) = q(s)⁻¹ log F(s)`
+has right derivative `grossLogNormDeriv` on `[0,∞)`.
 
-  `Λ'(s) = (q'/(q² F))·Entμ(u^q) − E(u, u^{q-1})/F`
-
-(`u = P_s f`, `q = q(s)`, `F = grossPow`). Obtained from
-`GeneratorCompat` (the strong-`L²` right difference quotient:
-`h_core` ⇒ `P_s f ∈ core` ⇒ `h_gen` supplies `A(P_s f)` directly,
-self-contained — no `C₀`-semigroup theory) plus the `x ↦ x^{q(s)}`
-chain rule and `∫ u^{q-1} A u = −E(u, u^{q-1})` from `h_gen`'s
-form-pairing.
-
-**Status: `sorry` — the analytic bottleneck (`plans/gross-discharge.md`
-P2, ~700–1300 L).** The derivative *value* is pinned here so P3's
-algebra and the `antitoneOn` closure compile against it. -/
+**Assembled (proved here)** from `grossPow_hasDerivWithinAt` (`F'`,
+the bottleneck), `grossPow_pos` (`F > 0`), `hasDerivAt_grossExponent`
+(`q' = 2ρ(q-1)`) and `grossEntropy_eq` via the chain rule for
+`q⁻¹ · log F`: the resulting `−(q'/q²)log F + q⁻¹·F'/F` equals
+`grossLogNormDeriv = (q'/(q²F))·Ent(uq) − E/F` after substituting
+`Ent(uq) = q·∫uq log u − F log F` and `F' = q'·∫uq log u − q·E`. -/
 theorem grossLogNorm_hasDerivWithinAt
     (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
     (h_core : CoreSemigroupInvariant D)
@@ -157,7 +221,50 @@ theorem grossLogNorm_hasDerivWithinAt
     {s : ℝ} (hs : 0 ≤ s) :
     HasDerivWithinAt (grossLogNorm D hf ρ p)
       (grossLogNormDeriv D hf ρ p s) (Set.Ici 0) s := by
-  sorry
+  set q := grossExponent ρ p s with hq_def
+  have hqpos : 0 < q := grossExponent_pos hp ρ s
+  have hqne : q ≠ 0 := ne_of_gt hqpos
+  have hFpos : 0 < grossPow D hf ρ p s :=
+    grossPow_pos D ρ p hρ hp hf hf_nonneg hs
+  have hFne : grossPow D hf ρ p s ≠ 0 := ne_of_gt hFpos
+  -- q has the within-derivative `q' = 2ρ(q-1)`.
+  have hq : HasDerivWithinAt (grossExponent ρ p)
+      (2 * ρ * (q - 1)) (Set.Ici 0) s :=
+    (hasDerivAt_grossExponent ρ p s).hasDerivWithinAt
+  -- 1/q has within-derivative `-(q')/q²`.
+  have hinv : HasDerivWithinAt (fun s => (grossExponent ρ p s)⁻¹)
+      (-(2 * ρ * (q - 1)) / q ^ 2) (Set.Ici 0) s := by
+    simpa using hq.inv hqne
+  -- F = grossPow has within-derivative `F' = grossPowDeriv`.
+  have hF : HasDerivWithinAt (grossPow D hf ρ p)
+      (grossPowDeriv D hf ρ p s) (Set.Ici 0) s :=
+    grossPow_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg hs
+  -- log F has within-derivative `F'/F`.
+  have hlog : HasDerivWithinAt
+      (fun s => Real.log (grossPow D hf ρ p s))
+      ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s)
+      (Set.Ici 0) s := by
+    simpa [mul_comm] using
+      (Real.hasDerivAt_log hFne).comp_hasDerivWithinAt s hF
+  -- Λ = (1/q) · log F by the product rule; reconcile the chain value
+  -- with `grossLogNormDeriv` via the entropy identity.
+  have hmul := hinv.mul hlog
+  have hval : (-(2 * ρ * (q - 1)) / q ^ 2)
+        * Real.log (grossPow D hf ρ p s)
+      + (grossExponent ρ p s)⁻¹
+        * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s)
+      = grossLogNormDeriv D hf ρ p s := by
+    rw [grossLogNormDeriv, grossEntropy_eq D ρ p hf, grossPowDeriv,
+      grossLogIntegral, ← hq_def]
+    field_simp
+    ring
+  have : HasDerivWithinAt (grossLogNorm D hf ρ p)
+      ((-(2 * ρ * (q - 1)) / q ^ 2) * Real.log (grossPow D hf ρ p s)
+        + (grossExponent ρ p s)⁻¹
+          * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s))
+      (Set.Ici 0) s := by
+    simpa [grossLogNorm] using hmul
+  rwa [hval] at this
 
 /-! ## P3 — algebraic closure -/
 
