@@ -274,24 +274,44 @@ count remains **11**.
 
 ### Gross-discharge: OU general textbook axioms
 
-Added 2026-05-16 as the strategic unblock of the Gross-discharge G2
-chain (`plans/gross-discharge.md`): the two deep cruxes (Codex
-stalled twice on the first) are promoted to **general, Mathlib-native**
-textbook axioms — stated with `fderiv`/`Pi.single`/`Real.exp`/
-`MeasureTheory.Measure.pi`/`ProbabilityTheory.gaussianReal`, **no
-project definitions** — so they are reusable and vetting-amenable.
-The project lemmas (`hasDerivWithinAt_t_ouSemigroupFin_zero`,
-`ouGeneratorFin_ibp_integral`) are **proved theorems** discharged from
-these axioms by unfolding the thin project defns (`#print axioms` per
-lemma = the 3 Lean built-ins + the one relevant axiom; no `sorryAx`,
-no other custom axioms). *(Branch summary count above is the older
+Added 2026-05-16/17 as the strategic unblock of the Gross-discharge
+G2 chain (`plans/gross-discharge.md`): the **three** deep analytic
+cruxes (Codex stalled twice on the first, twice on the third) are
+promoted to **general, Mathlib-native** textbook axioms — stated with
+`fderiv`/`Pi.single`/`Real.exp`/`MeasureTheory.Measure.pi`/
+`ProbabilityTheory.gaussianReal`/`MemLp`/`Lp` (the third
+operator-parameterized over `P` with a generic Mehler a.e.
+characterization), **no project definitions** — so they are reusable
+and vetting-amenable. The project lemmas
+(`hasDerivWithinAt_t_ouSemigroupFin_zero`,
+`ouGeneratorFin_ibp_integral`, `ouSemigroupFinLp_diffQuot_tendsto`)
+are **proved theorems** discharged from these axioms by unfolding the
+thin project defns / instantiating `P:=ouSemigroupFinLp` (`#print
+axioms` per lemma = the 3 Lean built-ins + the one relevant axiom; no
+`sorryAx`, no other custom axioms). Net for the Gross chain: the
+*abstract* `gross_lsi_implies_hypercontractive` axiom leaves pphi2's
+live path, replaced by concrete general Standard-vetted axioms (each
+with a recorded discharge route) — conscious abstract→concrete-vetted
+trade, user-approved 2026-05-17.
+
+**Live critical path (verified `#print axioms`
+`GaussianFin.generatorCompat_stdGaussianFin`, 2026-05-17):** exactly
+**two** custom axioms — `gaussianFin_diffQuot_tendsto_Lp` and
+`gaussianFin_integrationByParts` (+ the 3 Lean built-ins; no
+`sorryAx`). The DCT-upgrade axiom delivers the strong-`L²` limit
+directly, so `gaussianOU_heatEquation_within_zero` (and its derived
+`hasDerivWithinAt_t_ouSemigroupFin_zero`) is **no longer on
+`generatorCompat`'s critical path** — it stays as vetted, reusable
+textbook infrastructure (the pointwise endpoint form) but is
+subsumed there by the third axiom. *(Branch summary count above is the older
 branch-side narrative; the canonical reconciled count lives on `main`
 post-merge `ba9a8de` — these add to it.)*
 
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `gaussianOU_heatEquation_within_zero` | [`Instances/WorkInProgress/EuclideanGeneratorLimit.lean`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanGeneratorLimit.lean) | Bakry-Gentil-Ledoux *Analysis and Geometry of Markov Diffusion Operators* (2014) §2.7 (OU/heat semigroup + generator); Mehler's formula | **Standard / Likely correct** | GR (gemini-3-pro-preview, 2026-05-16 — deep-think model unavailable, used the GR-tier model as for prior project axiom vettings). Confirmed: (a) well-formed (`fderiv`+`Pi.single`=∂ᵢ, nested=∂ᵢ², `Measure.pi gaussianReal 0 1`=std Gaussian, `HasDerivWithinAt … Ici 0`=right-deriv); (b) matches BGL §2.7 — OU SDE `dX=−X dt+√2 dW`, transition law `e^{−t}X₀+√(1−e^{−2t})Y`, generator `Δ−x·∇`; Mehler constants self-consistent with variance 1 (no rescaling); (c) non-vacuous (`sin x₁+cos x₂` etc., M=1, substantive); (d) **pure-second-partial bounds sufficient** — via Itô/Dynkin `Pₜf−f=∫₀ᵗPₛ(Lf)ds` the martingale term vanishes in expectation so only `|∇f|`,`|Δf|` bounded needed; **no mixed-partial / third-derivative / growth hypotheses required**; right-derivative endpoint form correct. No revision. | Right endpoint `t=0⁺` of the Mehler-semigroup time derivative: for `C^∞` `f` with bounded `f, ∂ᵢf, ∂ᵢ²f`, `HasDerivWithinAt (t ↦ ∫ f(e^{-t}x+√(1-e^{-2t})y) d(⊗ⁿN(0,1))) (Δf(x)-x·∇f(x)) (Ici 0) 0`. Discharge route (recorded on the project lemma docstring): parametric differentiation under the integral with the Pi-valued chain rule through the Mehler shift + the scaling identity `∂ᵢ²(Pₜf)=e^{-2t}Pₜ(∂ᵢ²f)` via `section_secondDeriv*`. | `GaussianFin.hasDerivWithinAt_t_ouSemigroupFin_zero` (proved from it); transitively the planned `ouSemigroupFinLp_diffQuot_tendsto` → `GeneratorCompat` → Gross-discharge G2. |
+| `gaussianOU_heatEquation_within_zero` | [`Instances/WorkInProgress/EuclideanGeneratorLimit.lean`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanGeneratorLimit.lean) | Bakry-Gentil-Ledoux *Analysis and Geometry of Markov Diffusion Operators* (2014) §2.7 (OU/heat semigroup + generator); Mehler's formula | **Standard / Likely correct** | GR (gemini-3-pro-preview, 2026-05-16 — deep-think model unavailable, used the GR-tier model as for prior project axiom vettings). Confirmed: (a) well-formed (`fderiv`+`Pi.single`=∂ᵢ, nested=∂ᵢ², `Measure.pi gaussianReal 0 1`=std Gaussian, `HasDerivWithinAt … Ici 0`=right-deriv); (b) matches BGL §2.7 — OU SDE `dX=−X dt+√2 dW`, transition law `e^{−t}X₀+√(1−e^{−2t})Y`, generator `Δ−x·∇`; Mehler constants self-consistent with variance 1 (no rescaling); (c) non-vacuous (`sin x₁+cos x₂` etc., M=1, substantive); (d) **pure-second-partial bounds sufficient** — via Itô/Dynkin `Pₜf−f=∫₀ᵗPₛ(Lf)ds` the martingale term vanishes in expectation so only `|∇f|`,`|Δf|` bounded needed; **no mixed-partial / third-derivative / growth hypotheses required**; right-derivative endpoint form correct. No revision. | Right endpoint `t=0⁺` of the Mehler-semigroup time derivative: for `C^∞` `f` with bounded `f, ∂ᵢf, ∂ᵢ²f`, `HasDerivWithinAt (t ↦ ∫ f(e^{-t}x+√(1-e^{-2t})y) d(⊗ⁿN(0,1))) (Δf(x)-x·∇f(x)) (Ici 0) 0`. Discharge route (recorded on the project lemma docstring): parametric differentiation under the integral with the Pi-valued chain rule through the Mehler shift + the scaling identity `∂ᵢ²(Pₜf)=e^{-2t}Pₜ(∂ᵢ²f)` via `section_secondDeriv*`. | `GaussianFin.hasDerivWithinAt_t_ouSemigroupFin_zero` (proved from it). **No longer on the live `generatorCompat` critical path** (2026-05-17): the DCT-upgrade axiom `gaussianFin_diffQuot_tendsto_Lp` delivers the strong-`L²` limit directly, subsuming the pointwise endpoint here. Retained as vetted, reusable textbook infrastructure. |
 | `gaussianFin_integrationByParts` | [`Instances/WorkInProgress/EuclideanGeneratorLp.lean`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanGeneratorLp.lean) | Bakry-Gentil-Ledoux (2014) §1.6/§2.7 (the OU generator's Dirichlet form: `∫ g·Lf = −E(g,f)`, `E(g,f)=∫⟨∇g,∇f⟩`); Gaussian integration by parts (Stein) | **Standard / Likely correct** | GR (gemini-3-pro-preview, 2026-05-16; deep-think unavailable, GR-tier as for prior vettings). Confirmed: (a) well-formed; (b) sign/normalization **exact** — `∇φ/φ=−x` for `N(0,I)` organically yields the `−x·∇f` drift with coefficient 1, `∫ g·(Δf−x·∇f)dγ=−∫Σᵢ∂ᵢg·∂ᵢf dγ`, no factor-2/variance rescale; (c) non-vacuous (`f=g=sin x₀` ⇒ both sides `−∫cos²(x₀)dγ<0`); (d) pure-second-partial bounds + boundedness sufficient — Gaussian moments absorb the linear-growth `g·(x·∇f)` term, IBP is coordinatewise-Fubini so no mixed/third partials; `hg`'s pure-2nd-partial bound is mathematically superfluous-but-harmless (kept for core-class symmetry, safely droppable if generalized). No revision. | `GaussianFin.ouGeneratorFin_ibp_integral` (proved from it) → `ouGeneratorFin_ibp` → `GeneratorCompat` → Gross-discharge G2. |
+| `gaussianFin_diffQuot_tendsto_Lp` | [`Instances/WorkInProgress/EuclideanGeneratorLimit.lean`](../MarkovSemigroups/Instances/WorkInProgress/EuclideanGeneratorLimit.lean) | Bakry-Gentil-Ledoux (2014) §2.7/§1.6 (OU strongly continuous on `L²(γ)`; on the smooth core `t⁻¹(Pₜf−f) → Lf` strongly in `L²`); `Lf=Δf−x·∇f` | **Standard / Likely correct** | GR (gemini-3-pro-preview, 2026-05-17; deep-think unavailable, GR-tier as for the prior two Gross-discharge axioms). Confirmed: (a) well-formed, normalization exact for variance-1 (`∇log ρ=−x`, generator `Δ−x·∇`, Mehler constants self-consistent, no factor-2/variance rescale; `𝓝[>]0`=right limit, `Lp ℝ 2 μ`=norm topology); (b) matches BGL §2.7 `L²` strong convergence on the core; (c) non-vacuous (`f=Σ sin xᵢ`; the genuine OU `Lp` semigroup satisfies `hP`, so the parametric `P`-characterization is consistent, not contradictory); (d) hypotheses **sufficient** — value+first+unmixed-second bounds give `f, Lf∈L²(μ)` (`Lf` ≤ linear growth, Gaussian integrates all polynomials) and the strong `L²` (norm) limit follows from `Pₜf−f=∫₀ᵗPₛ(Lf)ds`; **no mixed partials / third derivatives / growth hypotheses required**; one-sided `t→0⁺` form appropriate. No revision. | Operator-parameterized DCT upgrade of the pointwise heat equation: for `C^∞` `f` with bounded `f, ∂ᵢf, ∂ᵢ²f` and any `P` with the generic Mehler a.e. action `hP`, `Tendsto (t ↦ t⁻¹•(P t [f] − [f])) (𝓝[>]0) (𝓝 [Δf−x·∇f])` in `Lp ℝ 2 (⊗ⁿN(0,1))`. Discharge route (recorded on the project lemma docstring): pointwise heat equation `gaussianOU_heatEquation_within_zero` + segment-wide uniform-`L²` dominator (the precise Codex 2026-05-16 obstruction) ⇒ DCT. | `GaussianFin.ouSemigroupFinLp_diffQuot_tendsto` (proved from it, instantiating `P:=ouSemigroupFinLp`, `hP:=ouSemigroupFinLp_coeFn_ae`) → `GeneratorCompat` → Gross-discharge G2. |
 
 ### Dobrushin-Zegarlinski
 

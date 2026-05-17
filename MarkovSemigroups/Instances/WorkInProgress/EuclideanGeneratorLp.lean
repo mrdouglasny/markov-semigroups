@@ -185,18 +185,28 @@ theorem ouGeneratorFin_ibp {f g : (Fin n → ℝ) → ℝ}
     ⟪(stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hg,
         ouGeneratorFinLp hf⟫_ℝ
       = - ouEnergyFin g f := by
-  -- Pure `Lp` wiring (no math): reduces to `ouGeneratorFin_ibp_integral`
-  -- via the exact `EuclideanFinLp.lean:1076` incantation —
-  --   `rw [MeasureTheory.L2.inner_def]; refine integral_congr_ae ?_;`
-  --   `filter_upwards [(isCoreFin_memLp g hg).coeFn_toLp,`
-  --     `(memLp_ouGeneratorFin hf).coeFn_toLp] with x hgx hfx;`
-  --   `rw [hgx, hfx]; change RCLike.re (b x * star (a x)) = a x * b x;`
-  --   `simp [mul_comm]`
-  -- modulo the `coreToL2`/`ouGeneratorFinLp` wrapper-coe normal form
-  -- (the `rw [hgx,hfx]` pattern match), deliberately left as a
-  -- documented `sorry`: it is Mathlib coercion plumbing, not the
-  -- analytic content (that is `ouGeneratorFin_ibp_integral`).
-  sorry
+  -- Pure `Lp` wiring (no math): the analytic content is
+  -- `ouGeneratorFin_ibp_integral`. Force `coreToL2`/`ouGeneratorFinLp`
+  -- to their `.toLp` normal form (`rfl`), then mirror the proven
+  -- `EuclideanFinLp` `L².inner_def` incantation via a hand-written
+  -- `have` so the `coeFn_toLp` rewrites match syntactically.
+  show ⟪(isCoreFin_memLp g hg).toLp g,
+        (memLp_ouGeneratorFin hf).toLp (ouGeneratorFin f)⟫_ℝ
+      = - ouEnergyFin g f
+  rw [MeasureTheory.L2.inner_def]
+  have hint :
+      ∫ a, ⟪((isCoreFin_memLp g hg).toLp g) a,
+          ((memLp_ouGeneratorFin hf).toLp (ouGeneratorFin f)) a⟫_ℝ
+        ∂γFin n
+        = ∫ x, g x * ouGeneratorFin f x ∂γFin n := by
+    refine integral_congr_ae ?_
+    filter_upwards [(isCoreFin_memLp g hg).coeFn_toLp,
+      (memLp_ouGeneratorFin hf).coeFn_toLp] with x hgx hfx
+    simp only [hgx, hfx]
+    change RCLike.re (ouGeneratorFin f x * star (g x))
+      = g x * ouGeneratorFin f x
+    simp [mul_comm]
+  rw [hint, ouGeneratorFin_ibp_integral hf hg]
 
 end GaussianFin
 
