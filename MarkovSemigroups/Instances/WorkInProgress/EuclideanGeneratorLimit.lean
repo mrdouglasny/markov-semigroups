@@ -133,19 +133,107 @@ theorem hasDerivWithinAt_t_ouSemigroupFin_zero {f : (Fin n → ℝ) → ℝ}
     ouGeneratorFin_apply, secondPartial, partialDeriv] using
     gaussianOU_heatEquation_within_zero (n := n) f hsm M hM x
 
+/-- **OU difference-quotient `→` generator, strong `L²`** (the DCT
+upgrade of the pointwise heat equation — third Gross-discharge crux).
+
+For `f : (Fin n → ℝ) → ℝ` that is `C^∞` with uniformly bounded value,
+first and second coordinate derivatives, and *any* operator family
+`P` acting on `Lp ℝ 2 (⊗ⁿ N(0,1))` whose a.e. representative is the
+Mehler integral, the right difference quotient
+`t⁻¹ • (P t [f] − [f])` converges in `L²`-norm as `t → 0⁺` to the
+`Lp` class of the OU generator `Δf − x·∇f`.
+
+**General (no project definitions).** Stated purely in Mathlib terms
+— `fderiv`, `Pi.single`, `Real.exp`/`Real.sqrt`,
+`MeasureTheory.Measure.pi`, `ProbabilityTheory.gaussianReal`,
+`MemLp`/`MemLp.toLp`, `Lp`, `Filter.Tendsto`, `nhdsWithin` — with the
+semigroup supplied as a parameter `P` characterized only by its
+generic Mehler a.e. action `hP`, so it is a reusable,
+vetting-amenable textbook statement rather than a project-specific
+stopgap. The project lemma `ouSemigroupFinLp_diffQuot_tendsto` is
+derived from it by instantiating `P := ouSemigroupFinLp` and
+`hP := ouSemigroupFinLp_coeFn_ae` and unfolding the thin project
+definitions.
+
+Reference: Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
+Diffusion Operators* (2014), §2.7 / §1.6 (the OU semigroup is
+strongly continuous on `L²(γ)` with generator `L = Δ − x·∇` on the
+smooth core; the difference quotient converges to `Lf` in `L²`).
+Strategy: the pointwise right limit `(P_t f − f)/t → Lf` is the heat
+equation `gaussianOU_heatEquation_within_zero`; the quotient is
+dominated by a fixed `L²(γ)` function (mean-value bound from the
+*segment-wide* positive-time derivative + core `IsCoreFin` bounds and
+Mehler contraction), so dominated convergence upgrades the pointwise
+limit to the strong `L²` limit. The segment uniform-`L²` dominator —
+the precise Lean obstruction (Codex, 2026-05-16) — is the content
+promoted here. **Vetted Standard / Likely correct** (Gemini
+`gemini-3-pro-preview`, 2026-05-17; deep-think unavailable, GR-tier
+as for the prior two Gross-discharge axioms; recorded in
+`AXIOM_AUDIT.md`): well-formed; normalization exact for variance-1
+(`∇log ρ = −x`, generator `Δ − x·∇`, Mehler constants self-consistent,
+no factor-2/variance rescale); matches BGL §2.7 `L²` strong
+convergence on the core; non-vacuous (`f = Σ sin xᵢ`; the genuine OU
+`Lp` semigroup satisfies `hP`, so the `P`-characterization is
+consistent, not contradictory); hypotheses **sufficient** — value +
+first + unmixed-second bounds give `f, Lf ∈ L²(μ)` (Gaussian
+integrates all polynomials, `Lf` has ≤ linear growth) and the strong
+`L²` limit follows from `Pₜf − f = ∫₀ᵗ Pₛ(Lf) ds` (no mixed partials,
+third derivatives, or growth hypotheses required); right-limit
+`𝓝[>] 0` form appropriate. No revision. -/
+axiom gaussianFin_diffQuot_tendsto_Lp {n : ℕ}
+    (f : (Fin n → ℝ) → ℝ) (hf_smooth : ContDiff ℝ ∞ f) (M : ℝ)
+    (hf_bd : ∀ x : Fin n → ℝ,
+      ‖f x‖ ≤ M ∧
+      (∀ i : Fin n, ‖fderiv ℝ f x (Pi.single i 1)‖ ≤ M) ∧
+      (∀ i : Fin n,
+        ‖fderiv ℝ (fun z => fderiv ℝ f z (Pi.single i 1)) x
+            (Pi.single i 1)‖ ≤ M))
+    (hf_mem : MemLp f 2
+      (MeasureTheory.Measure.pi
+        (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)))
+    (hLf_mem : MemLp
+      (fun x : Fin n → ℝ =>
+        (∑ i : Fin n,
+            fderiv ℝ (fun z => fderiv ℝ f z (Pi.single i 1)) x
+              (Pi.single i 1))
+          - ∑ i : Fin n, x i * fderiv ℝ f x (Pi.single i 1)) 2
+      (MeasureTheory.Measure.pi
+        (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)))
+    (P : ℝ →
+      (Lp ℝ 2
+          (MeasureTheory.Measure.pi
+            (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)) →L[ℝ]
+        Lp ℝ 2
+          (MeasureTheory.Measure.pi
+            (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1))))
+    (hP : ∀ t : ℝ, 0 ≤ t →
+      ∀ φ : Lp ℝ 2
+          (MeasureTheory.Measure.pi
+            (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)),
+        (P t φ : (Fin n → ℝ) → ℝ)
+            =ᵐ[MeasureTheory.Measure.pi
+                (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)]
+          (fun x => ∫ y,
+            (φ : (Fin n → ℝ) → ℝ)
+                (fun i => Real.exp (-t) * x i
+                  + Real.sqrt (1 - Real.exp (-2 * t)) * y i)
+            ∂(MeasureTheory.Measure.pi
+                (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)))) :
+    Filter.Tendsto
+      (fun t : ℝ => t⁻¹ • (P t (hf_mem.toLp f) - hf_mem.toLp f))
+      (nhdsWithin (0 : ℝ) (Set.Ioi 0))
+      (nhds (hLf_mem.toLp _))
+
 /-- **G2 (a) — strong-`L²` difference-quotient limit.** For core `f`,
 `t⁻¹ • (P_t [f] − [f]) → [ouGeneratorFin f]` in `Lp ℝ 2 (γFin n)` as
 `t → 0⁺` (right limit, matching `GeneratorCompat`'s `𝓝[>] 0`).
 
-Strategy (Gross-discharge plan, Gemini-vetted): from the now-explicit
-prerequisite `hasDerivWithinAt_t_ouSemigroupFin_zero`, the pointwise
-right limit `(P_t f(x) − f(x))/t → ouGeneratorFin f x` is immediate;
-the difference quotient is dominated by a fixed `L²(γFin n)` function
-(core `IsCoreFin` bounds + Mehler contraction
-`ouSemigroupFin_preserves_*`), so dominated convergence upgrades the
-pointwise limit to the strong `L²` limit. Same DCT pattern as the
-existing `ouSemigroupFin_l2_sq_hasDerivWithinAt` /
-`gaussian1D_pairing_hasDerivWithinAt_zero` discharges. -/
+Discharged from the general, Mathlib-native, Gemini-vetted axiom
+`gaussianFin_diffQuot_tendsto_Lp` by instantiating the operator
+parameter with `ouSemigroupFinLp` and its generic Mehler a.e.
+characterization `ouSemigroupFinLp_coeFn_ae`, then unfolding the thin
+project definitions (`#print axioms` = the 3 Lean built-ins + that one
+axiom only; no `sorryAx`, no other custom axioms). -/
 theorem ouSemigroupFinLp_diffQuot_tendsto {f : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) :
     Tendsto
@@ -154,7 +242,17 @@ theorem ouSemigroupFinLp_diffQuot_tendsto {f : (Fin n → ℝ) → ℝ}
             ((stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hf)
           - (stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hf))
       (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (ouGeneratorFinLp hf)) := by
-  sorry
+  obtain ⟨hsm, M, hM⟩ := hf
+  have hfc : IsCoreFin f := ⟨hsm, M, hM⟩
+  simpa only [γFin, Gaussian1D.γ, ouGeneratorFin_apply, secondPartial,
+    partialDeriv] using
+    gaussianFin_diffQuot_tendsto_Lp (n := n) f hsm M hM
+      (isCoreFin_memLp f hfc) (memLp_ouGeneratorFin hfc)
+      (ouSemigroupFinLp (n := n))
+      (fun t ht φ => by
+        refine (ouSemigroupFinLp_coeFn_ae (n := n) t ht φ).trans ?_
+        simp only [ouSemigroupFin, ouShiftFin, γFin, Gaussian1D.γ]
+        exact Filter.EventuallyEq.rfl)
 
 end GaussianFin
 
