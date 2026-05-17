@@ -60,12 +60,18 @@ from it by unfolding the (thin) project definitions.
 
 Reference: Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
 Diffusion Operators* (2014), §2.7 (the Ornstein–Uhlenbeck/heat
-semigroup and its generator); Mehler's formula. **(NOT VERIFIED)** —
-recorded in `AXIOM_AUDIT.md`; discharge route: parametric
-differentiation under the integral with the Pi-valued chain rule
-through the Mehler shift + the scaling identity
-`∂ᵢ²(Pₜf) = e^{-2t} Pₜ(∂ᵢ²f)` (see the two-interface obstacle note
-on the project lemma below). -/
+semigroup and its generator); Mehler's formula. **Vetted Standard /
+Likely correct** (Gemini `gemini-3-pro-preview`, 2026-05-16; recorded
+in `AXIOM_AUDIT.md`): well-formed; matches BGL §2.7 with
+self-consistent variance-1 Mehler constants (no rescaling); non-vacuous;
+**pure-second-partial bounds sufficient** — via Itô/Dynkin
+`Pₜf − f = ∫₀ᵗ Pₛ(Lf) ds` the martingale term vanishes in
+expectation, so only `|∇f|`,`|Δf|` boundedness is needed (no mixed-
+partial, third-derivative, or growth hypotheses); right-derivative
+endpoint form correct. Discharge route: parametric differentiation
+under the integral with the Pi-valued chain rule through the Mehler
+shift + the scaling identity `∂ᵢ²(Pₜf) = e^{-2t} Pₜ(∂ᵢ²f)` (see the
+two-interface obstacle note on the project lemma below). -/
 axiom gaussianOU_heatEquation_within_zero {n : ℕ}
     (f : (Fin n → ℝ) → ℝ) (hf_smooth : ContDiff ℝ ∞ f) (M : ℝ)
     (hf_bd : ∀ x : Fin n → ℝ,
