@@ -26,6 +26,22 @@ namespace GaussianFin
 
 variable {n : ℕ}
 
+/-- **`Fin n`-generic Stein/Gaussian-IBP wrapper** (Codex, 2026-05-16).
+`EuclideanFin.stein_partialDeriv_ouShiftFin` is stated only for
+`Fin (n+1)`; this lifts it to generic `Fin n` by case-splitting
+(`n = 0`: `i : Fin 0` is vacuous via `Fin.elim0`; `n = m+1`: the
+existing lemma). Unblocks the `Fin n` endpoint theorem below. -/
+private theorem stein_partialDeriv_ouShiftFin_all {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (t : ℝ) (i : Fin n) (x : Fin n → ℝ) :
+    ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin n =
+      Real.sqrt (1 - Real.exp (-2 * t)) *
+        ouSemigroupFin t (secondPartial i f) x := by
+  cases n with
+  | zero => exact (Fin.elim0 i)
+  | succ m =>
+      simpa using
+        (stein_partialDeriv_ouShiftFin (n := m) (f := f) hf t i x)
+
 /-- **The precise blocker (Codex 2026-05-16): the nD pointwise OU
 heat equation at `t = 0⁺`.** The branch controls *spatial*
 derivatives of `ouSemigroupFin t f` and has the scalar/L²-continuity
@@ -42,7 +58,20 @@ Proof route: tensor/Fubini lift of the proved 1D
 (`hasDerivWithinAt_Ici_of_tendsto_deriv`, as used for the 1D /
 quadratic discharges). This is the genuine analytic crux; isolated as
 its own target so it can be filled (Codex) independently of the DCT
-upgrade below. -/
+upgrade below.
+
+**Remaining obstacle (Codex, 2026-05-16; the `Fin n` Stein wrapper
+above is done).** Two specific Lean interfaces fight the parametric
+heat-equation proof: (1) the `HasDerivAt`-under-the-integral for
+`τ ↦ ouSemigroupFin τ f x` needs a *Pi-valued chain rule through
+`ouShiftFin`*, with the derivative integrand `F'` presented to
+simultaneously satisfy `hasDerivAt_integral_of_dominated_loc_of_deriv_le`,
+finite-sum measurability, and the later integral algebra; (2) then the
+Mehler-scaling identity
+`secondPartial i (ouSemigroupFin t f) x
+  = exp (-2*t) * ouSemigroupFin t (secondPartial i f) x`
+must be bridged through `section_secondDeriv` /
+`section_secondDeriv_ouSemigroupFin_eq`. -/
 theorem hasDerivWithinAt_t_ouSemigroupFin_zero {f : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) (x : Fin n → ℝ) :
     HasDerivWithinAt (fun t : ℝ => ouSemigroupFin t f x)
