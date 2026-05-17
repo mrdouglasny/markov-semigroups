@@ -18,7 +18,7 @@ work in `EuclideanGeneratorCompat`.
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanGeneratorLp
 
 open MeasureTheory Filter
-open scoped BigOperators Topology InnerProductSpace
+open scoped BigOperators Topology InnerProductSpace ContDiff
 
 noncomputable section
 
@@ -41,6 +41,52 @@ private theorem stein_partialDeriv_ouShiftFin_all {f : (Fin n → ℝ) → ℝ}
   | succ m =>
       simpa using
         (stein_partialDeriv_ouShiftFin (n := m) (f := f) hf t i x)
+
+/-- **Ornstein–Uhlenbeck pointwise heat equation at `t = 0⁺`** (the
+right-endpoint of the Mehler-semigroup time derivative).
+
+For `f : (Fin n → ℝ) → ℝ` that is `C^∞` with uniformly bounded value,
+first and second coordinate derivatives, the explicit Mehler integral
+`t ↦ ∫ f(e^{-t}x + √(1-e^{-2t})·y) d(⊗ⁿ N(0,1))(y)` has right
+derivative at `0` equal to the OU generator `Lf(x) = Δf(x) − x·∇f(x)`.
+
+**General (no project definitions).** Stated purely in Mathlib terms
+— `fderiv`, `Pi.single`, `Real.exp`/`Real.sqrt`,
+`MeasureTheory.Measure.pi`, `ProbabilityTheory.gaussianReal`,
+`HasDerivWithinAt`, `Set.Ici` — so it is a reusable, vetting-amenable
+textbook statement rather than a project-specific stopgap. The
+project-specific `hasDerivWithinAt_t_ouSemigroupFin_zero` is derived
+from it by unfolding the (thin) project definitions.
+
+Reference: Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
+Diffusion Operators* (2014), §2.7 (the Ornstein–Uhlenbeck/heat
+semigroup and its generator); Mehler's formula. **(NOT VERIFIED)** —
+recorded in `AXIOM_AUDIT.md`; discharge route: parametric
+differentiation under the integral with the Pi-valued chain rule
+through the Mehler shift + the scaling identity
+`∂ᵢ²(Pₜf) = e^{-2t} Pₜ(∂ᵢ²f)` (see the two-interface obstacle note
+on the project lemma below). -/
+axiom gaussianOU_heatEquation_within_zero {n : ℕ}
+    (f : (Fin n → ℝ) → ℝ) (hf_smooth : ContDiff ℝ ∞ f) (M : ℝ)
+    (hf_bd : ∀ x : Fin n → ℝ,
+      ‖f x‖ ≤ M ∧
+      (∀ i : Fin n, ‖fderiv ℝ f x (Pi.single i 1)‖ ≤ M) ∧
+      (∀ i : Fin n,
+        ‖fderiv ℝ (fun z => fderiv ℝ f z (Pi.single i 1)) x
+            (Pi.single i 1)‖ ≤ M))
+    (x : Fin n → ℝ) :
+    HasDerivWithinAt
+      (fun t : ℝ =>
+        ∫ y,
+          f (fun i => Real.exp (-t) * x i
+              + Real.sqrt (1 - Real.exp (-2 * t)) * y i)
+          ∂(MeasureTheory.Measure.pi
+              (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)))
+      ((∑ i : Fin n,
+          fderiv ℝ (fun z => fderiv ℝ f z (Pi.single i 1)) x
+            (Pi.single i 1))
+        - ∑ i : Fin n, x i * fderiv ℝ f x (Pi.single i 1))
+      (Set.Ici 0) 0
 
 /-- **The precise blocker (Codex 2026-05-16): the nD pointwise OU
 heat equation at `t = 0⁺`.** The branch controls *spatial*
@@ -76,7 +122,10 @@ theorem hasDerivWithinAt_t_ouSemigroupFin_zero {f : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) (x : Fin n → ℝ) :
     HasDerivWithinAt (fun t : ℝ => ouSemigroupFin t f x)
       (ouGeneratorFin f x) (Set.Ici 0) 0 := by
-  sorry
+  obtain ⟨hsm, M, hM⟩ := hf
+  simpa only [ouSemigroupFin, ouShiftFin, γFin, Gaussian1D.γ,
+    ouGeneratorFin_apply, secondPartial, partialDeriv] using
+    gaussianOU_heatEquation_within_zero (n := n) f hsm M hM x
 
 /-- **G2 (a) — strong-`L²` difference-quotient limit.** For core `f`,
 `t⁻¹ • (P_t [f] − [f]) → [ouGeneratorFin f]` in `Lp ℝ 2 (γFin n)` as
