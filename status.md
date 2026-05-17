@@ -1,3 +1,11 @@
+> **Note (2026-05-17):** the historical headline below predates the
+> Lp-carrier / Gross-discharge work. **Current state is the
+> 2026-05-17 dated section** ("Gross-discharge — G2 complete")
+> further down; `AXIOM_AUDIT.md` is canonical for the registered
+> axiom set. On the branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`
+> there are 19 declared `.lean` axioms and 9 `sorry` decls (8 in the
+> WIP `Abstract/GrossODE.lean`, 1 quarantined in `TwoPoint.lean`).
+
 **11 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
 jump processes — validates that the diffusion axiom is a real
@@ -73,16 +81,68 @@ as a Phase 2.5 cleanup (~1.5 days, would drop the count to 10).
 `HypercontractivityFromBE.lean`): the bundle is reachable and slots
 into `gross_lsi_implies_hypercontractive` cleanly.
 
+**2026-05-17: Gross-discharge — G2 complete; abstract Gross
+relocated + scaffolded.** Branch
+`feat/lp-carrier-stdGaussianFin-dirichletmarkov`, tip `9c7da37`.
+
+*G2 done.* `GaussianFin.generatorCompat_stdGaussianFin` is
+**sorry-free**. Verified `#print axioms` = `propext`,
+`Classical.choice`, `Quot.sound` + exactly **two** custom axioms:
+`gaussianFin_diffQuot_tendsto_Lp` and `gaussianFin_integrationByParts`
+— both *general, Mathlib-native* (no project defs; operator/`fderiv`/
+`Measure.pi gaussianReal`), Gemini-vetted **Standard / Likely
+correct**, recorded in `AXIOM_AUDIT.md`. A third Gross-discharge
+axiom, `gaussianOU_heatEquation_within_zero` (also Standard-vetted),
+was subsumed by the DCT axiom and is **off** `generatorCompat`'s live
+critical path (retained as reusable textbook infrastructure). These
+discharged the deep `EuclideanGenerator{Lp,Limit}` cruxes (heat
+equation, γ-IBP, DCT) that Codex stalled on; the prior
+`ouGeneratorFin_ibp` Lp-coercion bridge is also closed.
+
+*Abstract Gross relocated + scaffolded.*
+`gross_lsi_implies_hypercontractive_of_hypotheses` moved out of
+`Abstract/Hypercontractivity.lean` (the `CoreSemigroupInvariant` /
+`GeneratorCompat` / `StroockVaropoulos` predicates stay there) into a
+new `Abstract/GrossODE.lean`. The legacy
+`gross_lsi_implies_hypercontractive` axiom is retained (non-breaking;
+gaussian-hilbert keeps compiling) until P2/P3 close and the call-site
+is rewired (**W**). In `GrossODE.lean`: the exponent-path calculus
+(`grossExponent`, `hasDerivAt_grossExponent` = the `q'=2ρ(q-1)`
+coupling), the **P2 chain-rule assembly** (`grossLogNorm_hasDerivWithinAt`
+from F'/Ent via `field_simp;ring`), the **P3 `antitoneOn` closure**
+(`antitoneOn_of_hasDerivWithinAt_nonpos` on `Set.Ici 0`), and the
+elementary `hasDerivAt_abs_rpow_exponent` are **proved**. The P2
+bottleneck is **decomposed (no axiom — that would be circular)** into
+a general Mathlib-native exponent-path Leibniz lemma (its pointwise
+core proved) and a general Mathlib-native Bochner–Leibniz lemma
+through a strong-`L²` derivative (the reusable kernel, *to be
+proved*, not axiomatized).
+
+*Accurate inventory (this branch; supersedes the stale headline —
+`AXIOM_AUDIT.md` is canonical for the registered set).* 19 declared
+`.lean` axioms (incl. the 3 Gross-discharge general axioms, 3
+`EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
+axioms, the legacy abstract Gross/S–V trio, Dobrushin–Zegarliński,
+Schwartz-convolution, diamagnetic). 9 `sorry` declarations: **8 in
+`Abstract/GrossODE.lean`** (the documented P2/P3 work items —
+`grossPow_pos`, `grossEntropy_eq`, the two general Leibniz lemmas,
+the `grossPow_hasDerivWithinAt` glue, `grossLogNorm_deriv_nonpos`
+(P3 algebra), the `antitoneOn` continuity bridge, and the final
+`eLpNorm↔∫·^q` reduction) + **1 in `TwoPoint.lean`** (quarantined,
+mathematically false for jump processes). Remaining Gross endgame:
+P2 (the one general Leibniz kernel + thin glue) → P3 algebra → W.
+
 ## Project structure
 
 | Module | Files | Sorry's | Axioms | Description |
 |---|---|---|---|---|
-| Abstract/ | 6 | 0 | 4 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross, Borell-Herbst concentration, LSI⇒Poincaré |
+| Abstract/ | 7 | 8 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (predicates + relocated theorem in `GrossODE.lean`: P2/P3 scaffold, 8 documented WIP sorries), Borell-Herbst concentration, LSI⇒Poincaré |
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
 | Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance is **axiom-free**; the 3 atomic Bakry-Émery axioms (Fisher info decay + de Bruijn identity) live in `MarkovSemigroups/General/OUEntropyDecomposition.lean`. All 9 original Mehler-kernel axioms discharged. |
+| Instances/WorkInProgress/EuclideanFin (+EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 6 | 0 | 6 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 3 BE tensor-lift axioms (`ouSemigroupFin_*`) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free** (2 axioms on its live path). |
 | Matrix/ | 4 | 0 | 2 | Heat kernel, Trotter, diamagnetic inequality |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
 | Dobrushin/ | 5 | 0 | 0 | Gibbs specs, uniqueness, Neumann series, B3 correlation decay |
