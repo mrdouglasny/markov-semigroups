@@ -47,8 +47,11 @@ Format and conventions for this audit doc:
 
 ## Summary
 
-12 registered axioms total (was 11; +1 on 2026-05-16 when the
-repo-wide audit surfaced a previously-undocumented General axiom).
+13 registered axioms total (11 → 12 on 2026-05-16 when the repo-wide
+audit surfaced a previously-undocumented General axiom; → 13 same day
+when the `feat/lp-carrier-stdGaussianFin-dirichletmarkov` merge
+(`ba9a8de`) added the vetted general `gaussianOU_heatEquation_within_zero`
+— see the "Gross-discharge: OU pointwise heat equation" section below).
 Of these:
 - **2 core hypercontractivity** axioms (Gross 1975) — abstract LSI ↔ HC
 - **1 Stroock-Varopoulos** axiom — intermediate-step lemma for Gross,

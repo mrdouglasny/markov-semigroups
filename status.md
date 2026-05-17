@@ -38,14 +38,31 @@ of the proved 1D BE chain:
   preservation)
 - `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, entropy decay)
 
-Registered axiom count: **12** (9 non-WIP + 3 WIP GaussianFin) —
-see canonical `AXIOM_AUDIT.md`. History: 8 → 11 at the N1 merge
-(commit `8ed9e52`, 2026-05-13); → 12 on 2026-05-16 when the repo-wide
-audit registered the previously-undocumented (but already
-Gemini-vetted, Likely correct) `contDiff_top_convolution_schwartzKernel`
-(`General/SchwartzConvolution`, no consumers). A further 4
-`EuclideanTests` test-scaffolding axioms are excluded by policy
-(WorkInProgress, not consumed by the main tree).
+> **POST-MERGE RECONCILIATION (2026-05-16, commit `ba9a8de`).** The
+> `feat/lp-carrier-stdGaussianFin-dirichletmarkov` branch was merged
+> into `main` (Lp-carrier `stdGaussianFin` DMS + Gross H0/G1/G2).
+> **Merged `main` builds green** (lib 3202 jobs + WIP generator stack
+> 3110 jobs, 0 errors); downstream insulated (pphi2N/lgt pin frozen
+> commits, gaussian-hilbert pins the branch). The git 3-way auto-merge
+> stitched divergent doc narratives — **this line is the canonical
+> count; older stitched paragraphs above/below (e.g. "11 axioms",
+> "unchanged at 11") are superseded.**
+
+Registered axiom count: **13** (9 non-WIP + 4 WIP). History: 8 → 11
+at the N1 merge (commit `8ed9e52`, 2026-05-13); → 12 on 2026-05-16
+(repo-wide audit registered `contDiff_top_convolution_schwartzKernel`,
+`General/SchwartzConvolution`, no consumers); → **13 on 2026-05-16**
+when the branch merge added the **vetted general**
+`gaussianOU_heatEquation_within_zero`
+(`Instances/WorkInProgress/EuclideanGeneratorLimit.lean`; BGL §2.7;
+GR-vetted Standard/Likely correct; discharges the Gross-G2 blocker
+`hasDerivWithinAt_t_ouSemigroupFin_zero` as a *proved* theorem). WIP
+breakdown: 3 GaussianFin + 1 `gaussianOU`. A further 4 `EuclideanTests`
+test-scaffolding axioms remain excluded by policy (WorkInProgress, not
+consumed by the main tree). The merge also added 3 documented WIP
+sorries in `Instances/WorkInProgress/EuclideanGenerator{Lp,Limit}`
+(`ouGeneratorFin_ibp_integral`, `ouGeneratorFin_ibp` bridge,
+`ouSemigroupFinLp_diffQuot_tendsto`) — Gross-G2 in progress.
 **Zero sorry's in the main tree** (Abstract/, Diffusion/,
 Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
