@@ -18,19 +18,16 @@ lessons learned.
 
 ## Active plans
 
-* [`gross-discharge.md`](gross-discharge.md) — **RECOMMENDED;
-  reconciled 2026-05-16 against branch
-  `feat/lp-carrier-stdGaussianFin-dirichletmarkov`** (the rev
-  gaussian-hilbert pins). G3 / Phase 0a / the GaussianFin DMS
-  instance are **already done sorry-free** on that branch; the
-  hille-yosida bridge + structure-strengthening framing is dropped
-  (a structure break would damage a working shipped instance).
-  Reconciled design: prove the general
-  `gross_lsi_implies_hypercontractive` with the strong-generator
-  facts + S–V as **theorem hypotheses** (no structural change),
-  discharged for GaussianFin at the call-site. Remaining: H0 + G1 +
-  G2 + G4 + Phases 2/3 + wiring, ~1450–2600 lines, multi-week, all
-  off that branch. See `plans/gaussianfin-0b-readiness.md`.
+* [`gross-discharge.md`](gross-discharge.md) — **RECOMMENDED; in
+  progress** on branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`
+  (tip `aa9cc47`; the rev gaussian-hilbert pins). **As of 2026-05-17:
+  H0 ✅, G1 ✅, G2 ✅ (sorry-free, 2 general Gemini-vetted axioms),
+  G4 ✅; abstract Gross relocated to `Abstract/GrossODE.lean`; P3
+  scaffolded + P2 decomposed.** Remaining: one general Mathlib-native
+  Bochner–Leibniz kernel (`hasDerivWithinAt_integral_of_strongL2Deriv`,
+  to be proved — *not* axiomatized) + thin glue, the P3 cancellation
+  algebra, and **W** (rewire gaussian-hilbert). 8 documented `sorry`s
+  in `GrossODE.lean`; gaussian-hilbert unaffected.
 * [`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md) —
   **FALLBACK only** (Route B, concrete Gaussian). Sound but yields no
   general result; reconciled 2026-05-16. Retained for its reusable
