@@ -19,6 +19,7 @@ import MarkovSemigroups.Instances.BrascampLieb
 
 -- Work-in-progress instances (contain sorries — see README)
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinLp
 import MarkovSemigroups.Instances.WorkInProgress.TwoPoint
 
 -- Matrix semigroup theory (diamagnetic inequality)

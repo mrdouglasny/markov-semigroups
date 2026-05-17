@@ -51,6 +51,35 @@ Convergence/, Coupling/, Dobrushin/, DobrushinZegarlinski/, Matrix/,
 and the three sorry-free concrete instances in `Instances/`:
 BrascampLieb, Torus, GFFIdentification).
 
+**2026-05-15: Lp-carrier Phase 2 — concrete `DirichletMarkovSemigroup`
+on `Lp ℝ 2 (γFin n)`.** `Instances/WorkInProgress/EuclideanFinLp.lean`
+(branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`, commit
+`6782dc7`) provides the concrete `MarkovSemigroup` and
+`DirichletMarkovSemigroup` bundles for the multivariate standard
+Gaussian OU semigroup on the new `Lp ℝ 2 (γFin n)` carrier. All seven
+operator-valued semigroup laws (P_zero, P_semigroup, P_strong_cont,
+P_contraction, P_conservation, P_positivity, P_symmetric) are proved
+theorems. The bundle `GaussianFin.stdGaussianFin_dirichletMarkovSemigroup
+n : DirichletMarkovSemigroup (Fin n → ℝ)` is the BE → DirichletMarkovSemigroup
+bridge that the gaussian-hilbert hypercontractivity discharge plan
+called "N3"; its delivery collapses the remaining
+`ouSemigroupAct_eLpNorm_hypercontractive` discharge to ~1-2 days of
+adapter code (E.1 + E.2 in the
+[gaussian-hilbert plan](https://github.com/mrdouglasny/gaussian-hilbert/blob/main/docs/hypercontractivity-discharge-plan.md)).
+
+The bundle's `energy_eq_deriv` field is currently obtained by
+polarization from the existing `ouSemigroupFin_l2_sq_hasDerivWithinAt`
+axiom (an interim deviation from the brief's preferred fresh-Fubini
+lift, fully documented in `AXIOM_AUDIT.md`); active axiom count is
+unchanged at **11**, but that axiom is temporarily load-bearing at the
+public bundle boundary. Replacement by the fresh-Fubini lift is tracked
+as a Phase 2.5 cleanup (~1.5 days, would drop the count to 10).
+
+**Phase 3 wire-in smoke test verified upstream** in gaussian-hilbert
+(branch `phase-3-smoke-test`, commit `0f0c5eb`,
+`HypercontractivityFromBE.lean`): the bundle is reachable and slots
+into `gross_lsi_implies_hypercontractive` cleanly.
+
 ## Project structure
 
 | Module | Files | Sorry's | Axioms | Description |
