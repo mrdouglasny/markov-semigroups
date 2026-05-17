@@ -346,30 +346,17 @@ def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
         D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
       ≤ ⟪D.coreToL2 hu_one, - Au⟫_ℝ
 
-/-- **Gross 1975, Theorem 1 — hypothesis-parameterised (Route A
-target).** LSI ⇒ hypercontractivity for any `DirichletMarkovSemigroup`
-additionally satisfying core-invariance, generator–form
-compatibility, and Stroock–Varopoulos. No structural change; the
-existing `gross_lsi_implies_hypercontractive` axiom is retained
-(non-breaking — downstream `gaussian-hilbert` keeps compiling) until
-this theorem is proved and the call-site is rewired.
-
-`hρ : 0 < ρ` firewalls the `ρ ≤ 0` soundness trap (see the axiom's
-docstring).
-
-**Proof status: WIP** — the body is the Gross differentiation
-argument, Phases P2 (weak-`L²` right-difference-quotient derivative
-of `∫(P_tf)^{q(t)}`) and P3 (algebraic closure via LSI ⊕ `h_sv` ⊕
-`q'=2ρ(q-1)`, monotonicity by `antitoneOn_…nonpos` on `Set.Ici 0`)
-of `plans/gross-discharge.md`. -/
-theorem gross_lsi_implies_hypercontractive_of_hypotheses
-    (D : DirichletMarkovSemigroup X) (ρ : ℝ) (hρ : 0 < ρ)
-    (h_lsi : D.SatisfiesLogSobolev ρ)
-    (h_core : CoreSemigroupInvariant D)
-    (h_gen : GeneratorCompat D)
-    (h_sv : StroockVaropoulos D) :
-    D.toMarkovSemigroup.IsHypercontractive ρ := by
-  sorry
+/-! **Gross 1975, Theorem 1 — hypothesis-parameterised (Route A
+target).** The predicates `CoreSemigroupInvariant` / `GeneratorCompat`
+/ `StroockVaropoulos` (above) live here; the **theorem and its proof**
+`gross_lsi_implies_hypercontractive_of_hypotheses` (LSI ⇒
+hypercontractivity given those three; Gross's differentiation
+argument — Phases P2/P3 of `plans/gross-discharge.md`) are relocated
+to `MarkovSemigroups.Abstract.GrossODE` (which imports this file), so
+the heavy ODE scaffolding does not bloat this module. The existing
+`gross_lsi_implies_hypercontractive` axiom is retained (non-breaking —
+downstream `gaussian-hilbert` keeps compiling) until the relocated
+theorem is proved and the call-site is rewired. -/
 
 namespace DirichletMarkovSemigroup
 

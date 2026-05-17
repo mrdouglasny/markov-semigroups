@@ -4,6 +4,7 @@ import MarkovSemigroups.Abstract.Poincare
 import MarkovSemigroups.Abstract.LogSobolev
 import MarkovSemigroups.Abstract.HolleyStroock
 import MarkovSemigroups.Abstract.Hypercontractivity
+import MarkovSemigroups.Abstract.GrossODE
 import MarkovSemigroups.Abstract.Concentration
 
 -- Diffusion semigroups (Riemannian structure)
