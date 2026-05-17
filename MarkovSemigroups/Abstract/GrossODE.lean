@@ -177,22 +177,128 @@ theorem grossEntropy_eq (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
         - grossPow D hf ρ p s * Real.log (grossPow D hf ρ p s) := by
   sorry
 
+/-! ### Decomposition of the P2 bottleneck
+
+`grossPow_hasDerivWithinAt` differentiates `F(s) = ∫ |u_s|^{q(s)}`
+where *both* the exponent path `q(s)` and the semigroup orbit
+`u_s = P_s f` move. We split it (no axiom — axiomatizing the Gross
+differentiation itself would be circular) into:
+
+* **`hasDerivAt_integral_rpow_exponent`** — *general, Mathlib-native*:
+  the exponent-path half, orbit frozen. Elementary parametric-integral
+  calculus (pointwise `rpow`-exponent derivative + a constant
+  dominator on a finite measure since `|w| ≤ M`). Reusable; no
+  semigroup theory.
+
+* **`hasDerivWithinAt_integral_of_strongL2Deriv`** — *general,
+  Mathlib-native*: a Bochner–Leibniz rule passing a strong-`L²` right
+  derivative of the integrand through `∫ ψ(·)`. The semigroup half,
+  exponent frozen. To be **proved** from Mathlib's
+  `hasDerivAt_integral_of_dominated_loc_of_deriv_le` family + the
+  `L² → L¹` Cauchy–Schwarz step — *not* an axiom (it is generic
+  infrastructure, not the Gross theorem).
+
+`grossPow_hasDerivWithinAt` is then thin glue: the diagonal
+`σ ↦ H(σ,σ)` total derivative `= ∂₁ + ∂₂` of the two halves, with the
+semigroup half's `∫ ψ'(u)·(A u)` rewritten as `−q·E(u, u^{q-1})` by
+`h_gen`'s form pairing (`u' = A u` from `GeneratorCompat`, `u ∈ core`
+from `h_core`). -/
+
+/-- **Pointwise `rpow`-exponent derivative** (the elementary calculus
+core, fully proved). For `c : ℝ` and a path `a` with
+`HasDerivAt a a' s`, all values of `a` positive,
+`∂_σ |c|^{a σ} = |c|^{a s} · log|c| · a'` at `s`. The `|c| = 0` case
+is the constant `0` (`0^{a σ} = 0` since `a > 0`), consistent with
+`0^{a s}·log 0·a' = 0`. -/
+theorem hasDerivAt_abs_rpow_exponent (c : ℝ) {a : ℝ → ℝ} {a' s : ℝ}
+    (ha : HasDerivAt a a' s) (ha_pos : ∀ σ, 0 < a σ) :
+    HasDerivAt (fun σ => |c| ^ a σ)
+      (|c| ^ a s * Real.log |c| * a') s := by
+  rcases eq_or_lt_of_le (abs_nonneg c) with hc | hc
+  · -- `|c| = 0`: the function is constantly `0`.
+    have hzero : (fun σ => |c| ^ a σ) = fun _ => (0 : ℝ) := by
+      funext σ; rw [← hc, Real.zero_rpow (ha_pos σ).ne']
+    rw [hzero]
+    have hd : HasDerivAt (fun _ : ℝ => (0 : ℝ)) 0 s := hasDerivAt_const s 0
+    convert hd using 1
+    rw [← hc, Real.zero_rpow (ha_pos s).ne']; ring
+  · -- `|c| > 0`: `|c|^{a σ} = exp (log|c| · a σ)`.
+    have hrw : (fun σ => |c| ^ a σ)
+        = fun σ => Real.exp (Real.log |c| * a σ) := by
+      funext σ; rw [Real.rpow_def_of_pos hc]
+    rw [hrw]
+    have hmul : HasDerivAt (fun σ => Real.log |c| * a σ)
+        (Real.log |c| * a') s := ha.const_mul _
+    have hexp := (Real.hasDerivAt_exp (Real.log |c| * a s)).comp s hmul
+    convert hexp using 1
+    rw [Real.rpow_def_of_pos hc]; ring
+
+/-- **General (Mathlib-native): parametric `rpow`-exponent Leibniz.**
+For a bounded measurable `w` on a finite measure space and a
+differentiable positive exponent path `a`,
+`σ ↦ ∫ |w|^{a σ}` is differentiable with derivative
+`a'(s) · ∫ |w|^{a s} · log|w|`. Elementary: the pointwise exponent
+derivative is `∂_σ |w y|^{a σ} = |w y|^{a σ} · log|w y| · a'`
+(Mathlib `rpow`; the `w y = 0` case is the constant `0` since
+`a > 0`), dominated by the constant `(sup_{[0,M]} t^{a} |log t|)·|a'|`
+which is `ν`-integrable as `ν` is finite. No project structure.
+
+**Status: documented `sorry` — elementary parametric-integral
+plumbing (`hasDerivAt_integral_of_dominated_loc_of_deriv_le`).** -/
+theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
+    [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
+    {w : Y → ℝ} (hw : Measurable w) {M : ℝ} (hM : ∀ y, |w y| ≤ M)
+    {a : ℝ → ℝ} {a' s : ℝ} (ha : HasDerivAt a a' s)
+    (ha_pos : ∀ σ, 0 < a σ) :
+    HasDerivAt (fun σ => ∫ y, |w y| ^ a σ ∂ν)
+      (a' * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν) s := by
+  sorry
+
+/-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
+right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
+derivative `u'` at `s` on `[0,∞)`, and `ψ : ℝ → ℝ` is `C¹` with `ψ'`
+bounded on the range of `u s` (so `ψ' ∘ u s ∈ L² ⊆ L¹`), then
+`σ ↦ ∫ ψ(u_σ)` has the right derivative `∫ ψ'(u_s)·u'`.
+
+This is **not an axiom** — it is generic measure-theory
+infrastructure (a Leibniz/Duhamel rule), to be discharged from
+Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le` plus the
+`L² → L¹` Cauchy–Schwarz bound from `IsFiniteMeasure ν`. Stated with
+no project definitions so it is reusable and vetting-amenable.
+
+**Status: documented `sorry` — the reusable analytic kernel of P2
+(to be proved, ~400–700 L).** -/
+theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
+    [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
+    (u : ℝ → Lp ℝ 2 ν) (u' : Lp ℝ 2 ν) {s : ℝ} (hs : 0 ≤ s)
+    (hu : HasDerivWithinAt u u' (Set.Ici 0) s)
+    (ψ : ℝ → ℝ) (hψ : ContDiff ℝ 1 ψ)
+    {Cψ : ℝ} (hψ' : ∀ y : Y, |deriv ψ ((u s : Y → ℝ) y)| ≤ Cψ) :
+    HasDerivWithinAt (fun σ => ∫ y, ψ ((u σ : Y → ℝ) y) ∂ν)
+      (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
+      (Set.Ici 0) s := by
+  sorry
+
 /-- **P2 core — the differentiation-under-the-integral.**
-`grossPow` has right derivative `grossPowDeriv` on `[0,∞)`. This is
-the genuine analytic bottleneck (`plans/gross-discharge.md` P2,
-~700–1300 L): differentiate `s ↦ ∫ |P_s f|^{q(s)}` jointly in the
-exponent path and the semigroup, using
+`grossPow` has right derivative `grossPowDeriv` on `[0,∞)`.
 
-* `h_core` ⇒ `P_s f ∈ core` so the integrand is regular;
-* `h_gen` (`GeneratorCompat`) for the strong-`L²` right derivative
-  `∂_s (P_s f) = A(P_s f)` and the form pairing
-  `∫ u^{q-1} A u = −E(u, u^{q-1})`;
-* dominated convergence (core `L^∞` bounds) to pass the right
-  difference quotient inside the integral;
-* the pointwise `∂_s |·|^{q(s)} = |·|^{q} log|·| · q'` for the
-  exponent-path term.
+**Decomposed** (no axiom): the diagonal total derivative of
+`H(σ,τ) = ∫ |u_σ|^{q(τ)}` is `∂₂H(s,s) + ∂₁H(s,s)` where
 
-**Status: documented `sorry` — the bottleneck.** -/
+* `∂₂H(s,s) = q'(s)·∫ |u_s|^{q(s)} log|u_s|` — exponent half, from
+  the general `hasDerivAt_integral_rpow_exponent` (orbit frozen at
+  `w := u_s`, `a := q`);
+* `∂₁H(s,s) = ∫ ψ'(u_s)·A(u_s)` with `ψ = |·|^{q(s)}` — semigroup
+  half, from the general `hasDerivWithinAt_integral_of_strongL2Deriv`
+  (`u' = A(u_s)` supplied by `h_gen`; `u_s ∈ core` by `h_core`),
+  rewritten `= −q(s)·E(u_s, u_s^{q(s)-1})` via `h_gen`'s form
+  pairing.
+
+The remaining glue is the standard partial-⇒-total step (continuity
+of one partial) plus matching `∫ ψ'·(A u)` to the `energy` pairing.
+
+**Status: documented `sorry` — now reduced to two isolated general
+lemmas + this glue.** -/
 theorem grossPow_hasDerivWithinAt
     (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
     (h_core : CoreSemigroupInvariant D)
