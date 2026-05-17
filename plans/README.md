@@ -41,6 +41,28 @@ lessons learned.
   predicate. New `Abstract/BeurlingDeny.lean`, ~250–400 lines, 3–6 days.
   Criteria/spectral strand decoupled (consumes quantumlib later).
 
+### Codex briefs (in [`../docs/`](../docs/), cross-referenced here)
+
+Historical reason: these existed in `docs/` before the `plans/`
+convention was set up. They are *active* plans and belong in this index.
+
+* [`docs/stage-n-detailed-plan.md`](../docs/stage-n-detailed-plan.md) —
+  Detailed N1/N2/N3 plan for the multivariate Gaussian
+  Bakry-Émery instance, with progress dates from 2026-05-12/13. N1 has
+  merged (`stdGaussianFin.bakryEmerySpace n` + 3 placeholder
+  axioms); N2/N3 (gaussian-hilbert wire-in to discharge
+  `ouSemigroupAct_eLpNorm_hypercontractive`) are in progress.
+* [`docs/stage-n-phase-2-codex-brief.md`](../docs/stage-n-phase-2-codex-brief.md)
+  — Builds the concrete `DirichletMarkovSemigroup (Fin n → ℝ)`
+  instance on the Lp-carrier. **DELIVERED** — landed as
+  `EuclideanFinLp.lean`'s `stdGaussianFin_dirichletMarkovSemigroup`,
+  now on `main` via the Lp-carrier merge `ba9a8de` (2026-05-16); the
+  brief itself is historical.
+* [`docs/lp-carrier-refactor-design.md`](../docs/lp-carrier-refactor-design.md)
+  — Technical design doc for the 2026-05-13 Lp-carrier refactor (now
+  largely historical; merged at `e1e2011`). Kept for reference on
+  why the abstract carrier shape changed.
+
 ## History
 
 [`history.md`](history.md) — chronological log of completed
