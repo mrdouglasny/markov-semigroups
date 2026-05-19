@@ -3124,6 +3124,142 @@ theorem entropy_sub_eq_boltzmann_sub {n : ℕ}
   rw [h_mean]
   ring
 
+/-- The coordinate-`i` partial of `f² + ε` is `2 f ∂_i f`. -/
+theorem partialDeriv_sq_add_const {n : ℕ} (i : Fin n)
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (ε : ℝ) :
+    partialDeriv i (fun x => f x * f x + ε) =
+      fun x => 2 * f x * partialDeriv i f x := by
+  have hmul : partialDeriv i (fun x => f x * f x) =
+      fun x => partialDeriv i f x * f x + f x * partialDeriv i f x := by
+    have := partialDeriv_mul (n := n) i hf.contDiff hf.contDiff
+    simpa [Pi.mul_def] using this
+  funext x
+  have hadd : partialDeriv i (fun x => f x * f x + ε) x =
+      partialDeriv i (fun x => f x * f x) x := by
+    unfold partialDeriv
+    rw [show (fun x => f x * f x + ε) =
+      (fun x => f x * f x) + (fun _ => ε) from rfl]
+    have hd1 : DifferentiableAt ℝ (fun x => f x * f x) x :=
+      ((hf.contDiff.mul hf.contDiff).differentiable (by simp)).differentiableAt
+    rw [fderiv_add hd1 (by simp), ContinuousLinearMap.add_apply]
+    simp
+  rw [hadd, hmul]
+  ring
+
+/-- **Per-`ε` energy bookkeeping (T3).** For `IsCoreFin f` and `ε > 0`,
+`Σ_i I_i(f² + ε) ≤ 4 · ouEnergyFin f f`, because
+`(∂_i(f²+ε))² / (f²+ε) = 4 f² (∂_i f)² / (f²+ε) ≤ 4 (∂_i f)²`. -/
+theorem sum_fisherInfoFinCoord_sq_add_const_le {n : ℕ}
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) {ε : ℝ} (hε : 0 < ε) :
+    ∑ i : Fin n, fisherInfoFinCoord i (fun x => f x * f x + ε) ≤
+      4 * ouEnergyFin f f := by
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  have hden_pos : ∀ x : Fin n → ℝ, 0 < f x * f x + ε := fun x => by
+    have : 0 ≤ f x * f x := mul_self_nonneg _
+    linarith
+  -- Pointwise: `(∂_i(f²+ε))²/(f²+ε) ≤ 4 (∂_i f)²`.
+  have h_ptwise : ∀ i (x : Fin n → ℝ),
+      (partialDeriv i (fun x => f x * f x + ε) x) ^ 2 /
+        (f x * f x + ε) ≤ 4 * (partialDeriv i f x) ^ 2 := by
+    intro i x
+    rw [partialDeriv_sq_add_const i hf ε]
+    have hdp : 0 < f x * f x + ε := hden_pos x
+    have hnum : (2 * f x * partialDeriv i f x) ^ 2 =
+        4 * (f x * f x) * (partialDeriv i f x) ^ 2 := by ring
+    rw [hnum]
+    have hfrac : f x * f x / (f x * f x + ε) ≤ 1 := by
+      rw [div_le_one hdp]; nlinarith [mul_self_nonneg (f x)]
+    have hpd_nn : 0 ≤ (partialDeriv i f x) ^ 2 := sq_nonneg _
+    have hrw : 4 * (f x * f x) * (partialDeriv i f x) ^ 2 /
+        (f x * f x + ε) =
+        (f x * f x / (f x * f x + ε)) * (4 * (partialDeriv i f x) ^ 2) := by
+      rw [mul_comm (f x * f x / (f x * f x + ε)) _, ← mul_div_assoc]
+      ring_nf
+    rw [hrw]
+    nlinarith [hfrac, hpd_nn]
+  -- Uniform `M`-bounds on `|f|` and `|∂_i f|`.
+  have hf_le : ∀ x, |f x| ≤ M := fun x => by
+    rw [← Real.norm_eq_abs]; exact (hM x).1
+  have hpd_le : ∀ i x, |partialDeriv i f x| ≤ M := fun i x => by
+    rw [← Real.norm_eq_abs]; exact (hM x).2.1 i
+  -- Measurability.
+  have hf_meas : Measurable f := hf.measurable
+  have hpd_meas : ∀ i, Measurable (partialDeriv i f) := fun i =>
+    hf.partial_measurable i
+  -- Integrability of each numerator/denominator quotient: bounded by
+  -- `(2 M²)² / ε`.
+  have h_int_lhs : ∀ i, Integrable
+      (fun x => (partialDeriv i (fun x => f x * f x + ε) x) ^ 2 /
+        (f x * f x + ε)) (γFin n) := by
+    intro i
+    refine Integrable.mono' (integrable_const ((2 * M ^ 2) ^ 2 / ε)) ?_ ?_
+    · have hpdc : Measurable
+          (partialDeriv i (fun x => f x * f x + ε)) := by
+        rw [partialDeriv_sq_add_const i hf ε]
+        exact (measurable_const.mul hf_meas).mul (hpd_meas i)
+      have hden : Measurable (fun x => f x * f x + ε) :=
+        (hf_meas.mul hf_meas).add_const ε
+      exact ((hpdc.pow_const 2).div hden).aestronglyMeasurable
+    · filter_upwards with x
+      have hdp : 0 < f x * f x + ε := hden_pos x
+      have hquot_nn : 0 ≤ (partialDeriv i (fun x => f x * f x + ε) x) ^ 2 /
+          (f x * f x + ε) := div_nonneg (sq_nonneg _) hdp.le
+      rw [Real.norm_eq_abs, abs_of_nonneg hquot_nn]
+      rw [partialDeriv_sq_add_const i hf ε]
+      have hnum_bd : (2 * f x * partialDeriv i f x) ^ 2 ≤ (2 * M ^ 2) ^ 2 := by
+        have h1 : |2 * f x * partialDeriv i f x| ≤ 2 * M ^ 2 := by
+          rw [abs_mul, abs_mul]
+          have : (2 : ℝ) * |f x| * |partialDeriv i f x| ≤ 2 * M * M := by
+            have := hf_le x; have := hpd_le i x
+            nlinarith [abs_nonneg (f x), abs_nonneg (partialDeriv i f x)]
+          simpa [abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)] using
+            le_trans this (by nlinarith)
+        nlinarith [abs_nonneg (2 * f x * partialDeriv i f x),
+          sq_abs (2 * f x * partialDeriv i f x)]
+      calc (2 * f x * partialDeriv i f x) ^ 2 / (f x * f x + ε)
+          ≤ (2 * M ^ 2) ^ 2 / (f x * f x + ε) :=
+            div_le_div_of_nonneg_right hnum_bd hdp.le
+        _ ≤ (2 * M ^ 2) ^ 2 / ε :=
+            div_le_div_of_nonneg_left (sq_nonneg _) hε
+              (by nlinarith [mul_self_nonneg (f x)])
+  have h_int_rhs : Integrable
+      (fun x => ∑ i : Fin n, 4 * (partialDeriv i f x) ^ 2) (γFin n) := by
+    refine integrable_finset_sum _ (fun i _ => ?_)
+    refine Integrable.mono' (integrable_const (4 * M ^ 2)) ?_ ?_
+    · exact (((hpd_meas i).pow_const 2).const_mul 4).aestronglyMeasurable
+    · filter_upwards with x
+      rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+      have : (partialDeriv i f x) ^ 2 ≤ M ^ 2 := by
+        have := hpd_le i x
+        nlinarith [abs_nonneg (partialDeriv i f x), sq_abs (partialDeriv i f x)]
+      nlinarith
+  -- Combine: sum of integrals, pointwise bound, then `∫ Σ 4 (∂_i f)²`.
+  simp only [fisherInfoFinCoord]
+  rw [← integral_finset_sum _ (fun i _ => h_int_lhs i)]
+  have hsum_le : ∀ x,
+      ∑ i : Fin n, (partialDeriv i (fun x => f x * f x + ε) x) ^ 2 /
+        (f x * f x + ε) ≤ ∑ i : Fin n, 4 * (partialDeriv i f x) ^ 2 :=
+    fun x => Finset.sum_le_sum (fun i _ => h_ptwise i x)
+  have hstep : ∫ x, (∑ i : Fin n,
+      (partialDeriv i (fun x => f x * f x + ε) x) ^ 2 /
+        (f x * f x + ε)) ∂γFin n ≤
+      ∫ x, (∑ i : Fin n, 4 * (partialDeriv i f x) ^ 2) ∂γFin n :=
+    integral_mono (integrable_finset_sum _ (fun i _ => h_int_lhs i))
+      h_int_rhs hsum_le
+  refine le_trans hstep ?_
+  -- `∫ Σ 4 (∂_i f)² = 4 · ouEnergyFin f f`.
+  have henergy : ∫ x, (∑ i : Fin n, 4 * (partialDeriv i f x) ^ 2) ∂γFin n =
+      4 * ouEnergyFin f f := by
+    unfold ouEnergyFin ouGammaFin
+    rw [← integral_const_mul]
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun x => ?_))
+    simp only [Finset.mul_sum]
+    refine Finset.sum_congr rfl (fun i _ => ?_)
+    ring
+  exact le_of_eq henergy
+
 /-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2,
 n-dim Gaussian case).**
 
@@ -3145,13 +3281,37 @@ theorem ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
   -- Step 1 (proved): reduce the centered entropy difference to the
   -- Boltzmann difference via macroscopic-term cancellation.
   rw [entropy_sub_eq_boltzmann_sub f t ht hf]
-  -- Remaining: the Boltzmann telescoping bound.
-  -- `boltzmannEntropyFin (f²) - boltzmannEntropyFin (P_t f²)`
-  --   ≤ 2 (1 - e^{-2t}) · ouEnergyFin f f.
-  -- Telescope over per-coordinate `ouCoord` factors of `ouSemigroupFin`,
-  -- bound each step by the 1D `boltzmannEntropy_ouSemigroup_decay_le`,
-  -- and control the per-coordinate Fisher informations by
-  -- `4 · ouEnergyFin f f` via orthogonal Fisher monotonicity.
+  -- Remaining: the Boltzmann telescoping bound
+  --   `boltzmannEntropyFin (f²) - boltzmannEntropyFin (P_t f²)`
+  --     ≤ 2 (1 - e^{-2t}) · ouEnergyFin f f.
+  --
+  -- The per-coordinate step bound is now a proved theorem
+  -- (`boltzmannEntropyFin_ouCoord_step_le`):
+  --   `BE(h) - BE(ouCoord k t h) ≤ (1-e^{-2t})/2 · I_k(h)`
+  -- for `C^∞ h` with `ε ≤ h ≤ M` and `|∂_k h| ≤ M`.
+  --
+  -- The remaining telescoping assembly needs three more sub-lemmas:
+  --
+  -- (T1) **Factorization** `ouSemigroupFin t = ouCoord (n-1) t ∘ … ∘
+  --      ouCoord 0 t` (as functions on `Fin n → ℝ`). By induction on `n`
+  --      via `ouSemigroupFin_insertNth_eq` (the (n+1)-OU equals the
+  --      1D-OU on coordinate `i` composed with the n-OU on the rest).
+  --
+  -- (T2) **Orthogonal Fisher monotonicity** `I_k (ouCoord j t h) ≤
+  --      I_k h` for `j ≠ k`. Commutation `∂_k (ouCoord j t h) =
+  --      ouCoord j t (∂_k h)` (the derivative is orthogonal to the
+  --      flow, so no `e^{-t}` factor) plus the pointwise Jensen/CS
+  --      inequality `(P u)² / (P v) ≤ P (u²/v)` for the 1D Mehler
+  --      probability kernel `P = ouCoord j t`.
+  --
+  -- (T3) **Energy bookkeeping** `Σ_k I_k (f²+ε) ≤ 4 · ouEnergyFin f f`
+  --      from `∂_k (f²+ε) = 2 f ∂_k f` and `f²/(f²+ε) ≤ 1`, then the
+  --      `ε → 0` limit by dominated convergence (`s ↦ s log s` bounded
+  --      on `[0, M²+1]`), exactly mirroring the proved 1D `ε`-argument.
+  --
+  -- Telescoping `BE(g) - BE(P_t g) = Σ_k [BE(Q_{k-1} g) - BE(Q_k g)]`
+  -- with `Q_k` the composition of the first `k` `ouCoord` factors,
+  -- bounding each difference by (T1)+step-lemma, then (T2)+(T3).
   sorry
 
 end GaussianFin
