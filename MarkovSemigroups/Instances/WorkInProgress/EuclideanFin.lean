@@ -2717,6 +2717,41 @@ def boltzmannEntropyFin (h : (Fin n → ℝ) → ℝ) : ℝ :=
 def fisherInfoFinCoord (i : Fin n) (h : (Fin n → ℝ) → ℝ) : ℝ :=
   ∫ x, (partialDeriv i h x) ^ 2 / h x ∂γFin n
 
+/-- The 1D slice of `g` along coordinate `i` (other coordinates `y`)
+equals the coordinate section based at `i.insertNth 0 y`. -/
+theorem slice_eq_coordSection {n : ℕ} (i : Fin (n + 1))
+    (g : (Fin (n + 1) → ℝ) → ℝ) (y : Fin n → ℝ) :
+    (fun r => g (Fin.insertNth (α := fun _ => ℝ) i r y)) =
+      coordSection i (Fin.insertNth (α := fun _ => ℝ) i 0 y) g := by
+  funext r
+  unfold coordSection
+  rw [update_insertNth_same i y 0 r]
+
+/-- **Per-coordinate Boltzmann-entropy step bound.**
+
+For a `C^∞` function `g` with `ε ≤ g ≤ M` and coordinate-`i` partial
+derivative bounded by `M`, and `t ≥ 0`,
+`BE(g) - BE(ouCoord i t g) ≤ (1 - e^{-2t})/2 · I_i(g)`.
+
+This is the 1D bound `Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le`
+applied to each coordinate-`i` slice and integrated over the remaining
+coordinates via `integral_γFin_succAbove`. The sectionwise hypotheses
+transfer through `coordSection`/`section_deriv`; the Fubini
+integrability of the dominating slices follows from the uniform bounds.
+
+**Strategy:** rewrite `BE` via `integral_γFin_succAbove i`; identify the
+inner 1D integral as the 1D Boltzmann entropy of the slice `G_y` and
+`ouCoord` as `Gaussian1D.ouSemigroup` of `G_y` (`ouCoord_insertNth_eq`);
+apply the 1D lemma slicewise and `integral_mono` over `γ_n`; finally
+identify `∫ I(G_y) dγ_n = I_i(g)` via `section_deriv`. -/
+theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
+    (g : (Fin (n + 1) → ℝ) → ℝ) (hg : ContDiff ℝ ∞ g) {ε M : ℝ}
+    (hε : 0 < ε) (hg_lo : ∀ x, ε ≤ g x) (hg_hi : ∀ x, g x ≤ M)
+    (hg'_bd : ∀ x, |partialDeriv i g x| ≤ M) (t : ℝ) (ht : 0 ≤ t) :
+    boltzmannEntropyFin g - boltzmannEntropyFin (ouCoord i t g) ≤
+      (1 - Real.exp (-2 * t)) / 2 * fisherInfoFinCoord i g := by
+  sorry
+
 /-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
 `f`, the centered entropy difference of `g = f²` and `P_t g` equals
 their Boltzmann-entropy difference, because the multivariate OU
