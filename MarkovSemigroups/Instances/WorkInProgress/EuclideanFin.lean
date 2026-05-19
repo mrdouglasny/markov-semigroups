@@ -2849,6 +2849,160 @@ theorem ouSemigroupFin_eq_cmKernel (t : ℝ) (ht : 0 < t)
           refine integral_congr_ae (Filter.Eventually.of_forall (fun w => ?_))
           simp only [hG, hs]
 
+/-! ### Gaussian integrability helpers for OU-semigroup smoothing -/
+
+-- 1D helper (proved earlier).
+theorem exp_abs_gamma_integrable (K : ℝ) :
+    Integrable (fun u : ℝ => Real.exp (K * |u|)) Gaussian1D.γ := by
+  have h1 : Integrable (fun u : ℝ => Real.exp (K * u)) Gaussian1D.γ := by
+    simpa using ProbabilityTheory.integrable_exp_mul_gaussianReal (μ := 0) (v := 1) K
+  have h2 : Integrable (fun u : ℝ => Real.exp (-K * u)) Gaussian1D.γ := by
+    simpa using ProbabilityTheory.integrable_exp_mul_gaussianReal (μ := 0) (v := 1) (-K)
+  refine (h1.add h2).mono ?_ ?_
+  · exact (Real.continuous_exp.comp (continuous_const.mul continuous_abs)).aestronglyMeasurable
+  · filter_upwards with u
+    rw [Real.norm_eq_abs, abs_of_pos (Real.exp_pos _)]
+    have hpos1 : 0 < Real.exp (K*u) := Real.exp_pos _
+    have hpos2 : 0 < Real.exp (-K*u) := Real.exp_pos _
+    rcases abs_cases u with ⟨h, _⟩ | ⟨h, _⟩
+    · rw [h]
+      calc Real.exp (K*u) ≤ Real.exp (K*u) + Real.exp (-K*u) := by linarith
+        _ = ‖Real.exp (K*u) + Real.exp (-K*u)‖ := by
+            rw [Real.norm_eq_abs, abs_of_pos (by linarith)]
+    · rw [h, show K * -u = -K * u from by ring]
+      calc Real.exp (-K*u) ≤ Real.exp (K*u) + Real.exp (-K*u) := by linarith
+        _ = ‖Real.exp (K*u) + Real.exp (-K*u)‖ := by
+            rw [Real.norm_eq_abs, abs_of_pos (by linarith)]
+
+-- multivariate exp(K‖w‖), K≥0
+theorem exp_norm_gammaFin_integrable (K : ℝ) (hK : 0 ≤ K) :
+    Integrable (fun w : Fin n → ℝ => Real.exp (K * ‖w‖)) (γFin n) := by
+  have hprod : Integrable
+      (fun w : Fin n → ℝ => ∏ j, Real.exp (K * |w j|)) (γFin n) :=
+    MeasureTheory.Integrable.fintype_prod
+      (f := fun j u => Real.exp (K * |u|)) (μ := fun _ => Gaussian1D.γ)
+      (fun j => exp_abs_gamma_integrable K)
+  refine hprod.mono ?_ ?_
+  · exact (Real.continuous_exp.comp (continuous_const.mul continuous_norm)).aestronglyMeasurable
+  · filter_upwards with w
+    have hnorm_le : ‖w‖ ≤ ∑ j, |w j| := by
+      rw [pi_norm_le_iff_of_nonneg (Finset.sum_nonneg (fun j _ => abs_nonneg _))]
+      intro j
+      calc ‖w j‖ = |w j| := Real.norm_eq_abs _
+        _ ≤ ∑ k, |w k| := Finset.single_le_sum (f := fun k => |w k|)
+            (fun k _ => abs_nonneg _) (Finset.mem_univ j)
+    have hle : Real.exp (K * ‖w‖) ≤ ∏ j, Real.exp (K * |w j|) := by
+      rw [← Real.exp_sum, show (∑ j, K * |w j|) = K * ∑ j, |w j| from by rw [Finset.mul_sum]]
+      exact Real.exp_le_exp.mpr (by nlinarith [hnorm_le])
+    rw [Real.norm_eq_abs, abs_of_pos (Real.exp_pos _)]
+    calc Real.exp (K * ‖w‖) ≤ ∏ j, Real.exp (K * |w j|) := hle
+      _ = ‖∏ j, Real.exp (K * |w j|)‖ := by
+          rw [Real.norm_eq_abs, abs_of_pos (Finset.prod_pos (fun j _ => Real.exp_pos _))]
+
+-- (1+‖w‖)^d ≤ exp(d ‖w‖)
+theorem poly_le_exp (d : ℕ) (w : Fin n → ℝ) :
+    (1 + ‖w‖) ^ d ≤ Real.exp (d * ‖w‖) := by
+  have h1 : (1 : ℝ) + ‖w‖ ≤ Real.exp ‖w‖ := by
+    have := Real.add_one_le_exp ‖w‖; linarith
+  calc (1 + ‖w‖) ^ d ≤ (Real.exp ‖w‖) ^ d :=
+        pow_le_pow_left₀ (by positivity) h1 d
+    _ = Real.exp (d * ‖w‖) := by rw [← Real.exp_nat_mul]
+
+def PolyBdd (F : (Fin n → ℝ) → ℝ) : Prop :=
+  Continuous F ∧ ∃ (Cf : ℝ) (d : ℕ), 0 ≤ Cf ∧ ∀ w, |F w| ≤ Cf * (1 + ‖w‖) ^ d
+
+theorem polyBdd_mul_exp_integrable {F : (Fin n → ℝ) → ℝ} (hF : PolyBdd F) (K : ℝ) :
+    Integrable (fun w => F w * Real.exp (K * ‖w‖)) (γFin n) := by
+  obtain ⟨hF_cont, Cf, d, hCf, hbd⟩ := hF
+  set K' : ℝ := |K| + d with hK'
+  have hK'_nn : 0 ≤ K' := by positivity
+  have hbase := exp_norm_gammaFin_integrable (n := n) K' hK'_nn
+  refine (hbase.const_mul Cf).mono ?_ ?_
+  · exact (hF_cont.mul (Real.continuous_exp.comp
+      (continuous_const.mul continuous_norm))).aestronglyMeasurable
+  · filter_upwards with w
+    have hw_nn : 0 ≤ ‖w‖ := norm_nonneg _
+    rw [Real.norm_eq_abs, abs_mul, abs_of_pos (Real.exp_pos _)]
+    have hpoly : (1 + ‖w‖) ^ d ≤ Real.exp (d * ‖w‖) := poly_le_exp d w
+    have hKle : Real.exp (K * ‖w‖) ≤ Real.exp (|K| * ‖w‖) :=
+      Real.exp_le_exp.mpr (by nlinarith [le_abs_self K, abs_nonneg K])
+    calc |F w| * Real.exp (K * ‖w‖)
+        ≤ (Cf * (1 + ‖w‖) ^ d) * Real.exp (|K| * ‖w‖) := by
+          apply mul_le_mul (hbd w) hKle (Real.exp_pos _).le
+          exact mul_nonneg hCf (by positivity)
+      _ ≤ (Cf * Real.exp (d * ‖w‖)) * Real.exp (|K| * ‖w‖) := by
+          apply mul_le_mul_of_nonneg_right _ (Real.exp_pos _).le
+          exact mul_le_mul_of_nonneg_left hpoly hCf
+      _ = Cf * Real.exp (K' * ‖w‖) := by
+          rw [hK', mul_assoc, ← Real.exp_add]
+          congr 2; ring
+      _ = ‖Cf * Real.exp (K' * ‖w‖)‖ := by
+          rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+
+
+/-- Bound `|⟨x,w⟩| ≤ n · ‖x‖ · ‖w‖` on `Fin n → ℝ` (sup norm). -/
+theorem abs_sum_mul_le (x w : Fin n → ℝ) :
+    |∑ i, x i * w i| ≤ n * (‖x‖ * ‖w‖) := by
+  calc |∑ i, x i * w i| ≤ ∑ i, |x i * w i| := Finset.abs_sum_le_sum_abs _ _
+    _ ≤ ∑ _i : Fin n, ‖x‖ * ‖w‖ := by
+        refine Finset.sum_le_sum (fun i _ => ?_)
+        rw [abs_mul]
+        exact mul_le_mul (by rw [← Real.norm_eq_abs]; exact norm_le_pi_norm x i)
+          (by rw [← Real.norm_eq_abs]; exact norm_le_pi_norm w i) (abs_nonneg _) (norm_nonneg _)
+    _ = n * (‖x‖ * ‖w‖) := by
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin]; ring
+
+/-! ### Laplace-family helpers for OU-semigroup smoothing -/
+
+-- continuity/measurability of (x,w) ↦ exp(α ∑ xᵢwᵢ)
+theorem cont_expInner (α : ℝ) :
+    Continuous (fun p : (Fin n → ℝ) × (Fin n → ℝ) =>
+      Real.exp (α * ∑ i, p.1 i * p.2 i)) := by
+  refine Real.continuous_exp.comp (continuous_const.mul ?_)
+  exact continuous_finset_sum _ (fun i _ =>
+    ((continuous_apply i).comp continuous_fst).mul ((continuous_apply i).comp continuous_snd))
+
+-- The base integrand x ↦ ∫ w, F w * exp(α ∑ xᵢwᵢ) is well-defined: integrability for each x.
+theorem laplace_integrable {F : (Fin n → ℝ) → ℝ} (hF : PolyBdd F) (α : ℝ) (x : Fin n → ℝ) :
+    Integrable (fun w => F w * Real.exp (α * ∑ i, x i * w i)) (γFin n) := by
+  have hbase := polyBdd_mul_exp_integrable (n := n) hF (|α| * n * ‖x‖)
+  refine hbase.mono ?_ ?_
+  · obtain ⟨hFc, _⟩ := hF
+    exact (hFc.mul ((cont_expInner α).comp
+      (continuous_const.prodMk continuous_id'))).aestronglyMeasurable
+  · filter_upwards with w
+    obtain ⟨hFc, Cf, d, hCf, hbd⟩ := hF
+    rw [Real.norm_eq_abs, abs_mul, abs_of_pos (Real.exp_pos _),
+        Real.norm_eq_abs, abs_mul, abs_of_pos (Real.exp_pos _)]
+    apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
+    apply Real.exp_le_exp.mpr
+    calc α * ∑ i, x i * w i ≤ |α * ∑ i, x i * w i| := le_abs_self _
+      _ = |α| * |∑ i, x i * w i| := by rw [abs_mul]
+      _ ≤ |α| * (n * (‖x‖ * ‖w‖)) :=
+          mul_le_mul_of_nonneg_left (abs_sum_mul_le x w) (abs_nonneg _)
+      _ = |α| * n * ‖x‖ * ‖w‖ := by ring
+
+-- weight w ↦ α * w j * F w is poly-bounded when F is.
+theorem polyBdd_smul_coord {F : (Fin n → ℝ) → ℝ} (hF : PolyBdd F) (α : ℝ) (j : Fin n) :
+    PolyBdd (fun w => α * w j * F w) := by
+  obtain ⟨hFc, Cf, d, hCf, hbd⟩ := hF
+  refine ⟨(continuous_const.mul (continuous_apply j)).mul hFc,
+    |α| * Cf, d + 1, by positivity, fun w => ?_⟩
+  have hwj : |w j| ≤ 1 + ‖w‖ := by
+    have : |w j| ≤ ‖w‖ := by rw [← Real.norm_eq_abs]; exact norm_le_pi_norm w j
+    have := norm_nonneg w; linarith
+  calc |α * w j * F w| = |α| * |w j| * |F w| := by rw [abs_mul, abs_mul]
+    _ ≤ |α| * (1 + ‖w‖) * (Cf * (1 + ‖w‖) ^ d) := by
+        have h1 : (0:ℝ) ≤ |α| := abs_nonneg _
+        have hpos : (0:ℝ) ≤ 1 + ‖w‖ := by positivity
+        apply mul_le_mul
+        · exact mul_le_mul_of_nonneg_left hwj h1
+        · exact hbd w
+        · exact abs_nonneg _
+        · positivity
+    _ = |α| * Cf * (1 + ‖w‖) ^ (d + 1) := by ring
+
+
 /-! ### N1.5 textbook axiom: `C^∞` core preservation under the multivariate OU semigroup
 
 After the `IsCoreFin` harmonization from `ContDiff ℝ ⊤` to `ContDiff ℝ ∞`,
