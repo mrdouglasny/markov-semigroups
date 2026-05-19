@@ -6,6 +6,21 @@
 > there are 18 declared `.lean` axioms and 9 `sorry` decls (8 in the
 > WIP `Abstract/GrossODE.lean`, 1 quarantined in `TwoPoint.lean`).
 
+> **Update (2026-05-19, Workstream N1.c, branch
+> `discharge/n1c-entropy-decay`):** the GaussianFin axiom
+> `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, n-dim
+> entropy decay for `f²`) has been **converted from `axiom` to
+> `theorem`** with the vetted telescoping route partially formalized.
+> Four key supporting lemmas are **fully proved and axiom-free**
+> (`Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le`,
+> `entropy_sub_eq_boltzmann_sub`, `boltzmannEntropyFin_ouCoord_step_le`,
+> `sum_fisherInfoFinCoord_sq_add_const_le`), plus the `ouCoord`
+> operator and its bridges. **One documented `sorry` remains** for the
+> telescoping assembly (T1 coordinate factorization + T2 orthogonal
+> Fisher monotonicity + ε-limit). Full `lake build` green;
+> `#print axioms ouSemigroupFin_entropy_sq_decay_bound = [propext,
+> sorryAx, Classical.choice, Quot.sound]`. See `AXIOM_AUDIT.md` row.
+
 **11 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
 jump processes — validates that the diffusion axiom is a real
