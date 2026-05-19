@@ -6,29 +6,27 @@
 > there are 18 declared `.lean` axioms and 9 `sorry` decls (8 in the
 > WIP `Abstract/GrossODE.lean`, 1 quarantined in `TwoPoint.lean`).
 
-> **Update (2026-05-19, Workstream N1.c, branch
-> `discharge/n1c-entropy-decay`):** the GaussianFin axiom
+> **Update (2026-05-19, Workstreams N1.b + N1.c):** two GaussianFin
+> axioms discharged. **N1.b** (`discharge/n1b-preserves-iscore`):
+> `ouSemigroupFin_preserves_IsCore` (BGL §2.7.1+§3) **fully proved**
+> via the Cameron–Martin kernel route (`cameronMartin1D` →
+> `gaussianFin_cameronMartin` → `ouSemigroupFin_eq_cmKernel` →
+> `contDiff_laplaceFamily` → `contDiff_ouSemigroupFin_of_bounded`);
+> axiom-free. **N1.c** (`discharge/n1c-entropy-decay`, merged N1.b):
 > `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, n-dim
-> entropy decay for `f²`) has been **converted from `axiom` to
-> `theorem`** with the vetted telescoping route partially formalized.
-> Four key supporting lemmas are **fully proved and axiom-free**
+> entropy decay for `f²`) **fully proved** via the telescoping route.
+> Supporting lemmas all axiom-free
 > (`Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le`,
 > `entropy_sub_eq_boltzmann_sub`, `boltzmannEntropyFin_ouCoord_step_le`,
-> `sum_fisherInfoFinCoord_sq_add_const_le`), plus the `ouCoord`
-> operator and its bridges. **2026-05-19 follow-up:** the **ε→0 DCT
-> tail** is now discharged as the axiom-free lemma
-> `boltzmannSubFin_le_of_perEps` (plus helper
-> `ouSemigroupFin_sq_add_const`), and the **T1 factorization
-> scaffolding** `setShift`/`ouCoordSet` (with `ouCoordSet_empty = id`,
-> `ouCoordSet_univ = ouSemigroupFin`) is in place — all axiom-free. The
-> main theorem now discharges Step 1 (entropy→Boltzmann) and Step 2
-> (ε-reduction) in its body; the **one documented `sorry`** is now the
-> per-ε telescoping core only (T1 composition step + T2 orthogonal
-> Fisher monotonicity; T3 already proved). Full `lake build` green;
-> `#print axioms ouSemigroupFin_entropy_sq_decay_bound = [propext,
-> sorryAx, Classical.choice, Quot.sound]`. See `AXIOM_AUDIT.md` row.
+> `sum_fisherInfoFinCoord_sq_add_const_le`, `boltzmannSubFin_le_of_perEps`,
+> `ouSemigroupFin_sq_add_const`); T1 (`ouCoordSet` induction) and T2
+> (orthogonal Fisher monotonicity, regularity via the merged N1.b
+> Cameron–Martin C^∞ infrastructure) completed and telescoped. Full
+> `lake build` green; `#print axioms
+> ouSemigroupFin_entropy_sq_decay_bound = [propext, Classical.choice,
+> Quot.sound]`. See `AXIOM_AUDIT.md` rows.
 
-**11 axioms. 2 sorry's total**, all quarantined in
+**9 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
 jump processes — validates that the diffusion axiom is a real
 constraint). The Euclidean (Gaussian1D) instance previously held 9
@@ -188,7 +186,7 @@ P2 (the one general Leibniz kernel + thin glue) → P3 algebra → W.
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
 | Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance **axiom-free**; the de Bruijn / Fisher-info entropy-decay facts are **discharged as theorems** in `General/OUEntropyDecomposition.lean` (itself axiom-free — AXIOM_AUDIT.md confirms). All 9 original Mehler-kernel axioms discharged. |
-| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 7 | 0 | 5 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 2 remaining BE tensor-lift axioms (`ouSemigroupFin_preserves_IsCore`, `ouSemigroupFin_entropy_sq_decay_bound`) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free**; `ouSemigroupFin_l2_sq_hasDerivWithinAt` is now a theorem in `EuclideanFinBE.lean`. |
+| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 6 | 0 | 5 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 1 remaining BE tensor-lift axiom (`ouSemigroupFin_entropy_sq_decay_bound`; `ouSemigroupFin_preserves_IsCore` **DISCHARGED 2026-05-19 via the Cameron–Martin kernel route**, Workstream N1.b) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free**; `ouSemigroupFin_l2_sq_hasDerivWithinAt` is now a theorem in `EuclideanFinBE.lean`. |
 | Instances/WorkInProgress/EuclideanTests | 1 | 0 | 4 | Scaffolding axioms (`gaussianResolvent*`, `gaussianBochner_identity`) — excluded by policy, not consumed by main tree |
 | Matrix/ | 4 | 0 | 1 | Heat kernel, Trotter, diamagnetic inequality (`m_matrix_inverse_nonneg` now imported from `SpectralPositivity` as a theorem) |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
