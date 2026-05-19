@@ -2678,11 +2678,44 @@ theorem ouCoord_eq_ouSemigroup_coordSection (i : Fin n) (t : ℝ)
   unfold ouCoord Gaussian1D.ouSemigroup coordSection
   rfl
 
+/-- Bridge: updating coordinate `i` of `i.insertNth a y` to `b` gives
+`i.insertNth b y`. Connects `ouCoord` (defined via `Function.update`)
+to the `insertNth`-based Fubini lemma `integral_γFin_succAbove`. -/
+theorem update_insertNth_same {n : ℕ} (i : Fin (n + 1)) (y : Fin n → ℝ)
+    (a b : ℝ) :
+    Function.update (Fin.insertNth (α := fun _ => ℝ) i a y) i b
+      = Fin.insertNth (α := fun _ => ℝ) i b y := by
+  funext j
+  rcases eq_or_ne j i with h | h
+  · subst h; simp
+  · obtain ⟨k, rfl⟩ := Fin.exists_succAbove_eq h
+    rw [Function.update_of_ne (Fin.succAbove_ne i k)]
+    simp
+
+/-- `ouCoord` in `insertNth` coordinates: the single-coordinate OU on
+coordinate `i`, evaluated at `i.insertNth s y`, is the 1D OU semigroup
+applied to the 1D slice `r ↦ g (i.insertNth r y)`, at the point `s`. -/
+theorem ouCoord_insertNth_eq {n : ℕ} (i : Fin (n + 1)) (t : ℝ)
+    (g : (Fin (n + 1) → ℝ) → ℝ) (s : ℝ) (y : Fin n → ℝ) :
+    ouCoord i t g (Fin.insertNth (α := fun _ => ℝ) i s y) =
+      Gaussian1D.ouSemigroup t
+        (fun r => g (Fin.insertNth (α := fun _ => ℝ) i r y)) s := by
+  unfold ouCoord Gaussian1D.ouSemigroup
+  have hi : (Fin.insertNth (α := fun _ => ℝ) i s y) i = s := by simp
+  rw [hi]
+  refine integral_congr_ae (Filter.Eventually.of_forall ?_)
+  intro u
+  simp only [update_insertNth_same]
+
 /-- The multivariate Boltzmann entropy `∫ h log h dγ_n` (no
 `(∫h)log(∫h)` centering — the centered form is `DirichletSpace.entropy`
 under `dirichletSpaceFin`). -/
 def boltzmannEntropyFin (h : (Fin n → ℝ) → ℝ) : ℝ :=
   ∫ x, h x * Real.log (h x) ∂γFin n
+
+/-- Per-coordinate Fisher information `∫ (∂_i h)² / h dγ_n`. -/
+def fisherInfoFinCoord (i : Fin n) (h : (Fin n → ℝ) → ℝ) : ℝ :=
+  ∫ x, (partialDeriv i h x) ^ 2 / h x ∂γFin n
 
 /-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
 `f`, the centered entropy difference of `g = f²` and `P_t g` equals
