@@ -553,6 +553,258 @@ theorem ouSemigroupFin_l2_decay_bound {n : ℕ}
   rw [hEf_rw]
   linarith
 
+
+/-! ### Restored DirichletMarkovSemigroup bundle (re-homed from the
+deleted `EuclideanFinLp.lean` tail; depends on the discharged theorem
+`ouSemigroupFin_l2_sq_hasDerivWithinAt` above, not an axiom). -/
+
+
+private theorem ouSemigroupFinLp_half_normSq_hasDerivWithinAt
+    {h : (Fin n → ℝ) → ℝ} (hh : IsCoreFin h) :
+    HasDerivWithinAt
+      (fun t : ℝ =>
+        ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) h hh).toLp h)‖ ^ 2)
+      (-ouEnergyFin h h) (Set.Ici 0) 0 := by
+  obtain ⟨M, hM⟩ := hh.bound_exists
+  let h_mem : MemLp h 2 (γFin n) := isCoreFin_memLp (n := n) h hh
+  let ψ : ℝ → ℝ := fun s => ∫ x, (ouSemigroupFin s h x) ^ 2 ∂γFin n
+  have hψ : HasDerivWithinAt ψ (-2 * ouEnergyFin h h) (Set.Ici 0) 0 := by
+    simpa [ψ, ouEnergyFin, ouSemigroupFin_zero] using
+      ouSemigroupFin_l2_sq_hasDerivWithinAt (n := n) h 0 le_rfl hh
+  have hhalf : HasDerivWithinAt (fun t : ℝ => t / 2) (1 / 2) (Set.Ici 0) 0 := by
+    simpa using ((hasDerivAt_id 0).div_const (2 : ℝ)).hasDerivWithinAt
+  have hcomp :
+      HasDerivWithinAt (fun t : ℝ => ψ (t / 2))
+        ((-2 * ouEnergyFin h h) * (1 / 2)) (Set.Ici 0) 0 := by
+    refine HasDerivWithinAt.comp_of_eq (x := 0) (s := Set.Ici 0) (s' := Set.Ici 0)
+      (h := fun t : ℝ => t / 2) (h₂ := ψ) hψ hhalf ?_ ?_
+    intro t ht
+    show 0 ≤ t / 2
+    have ht0 : 0 ≤ t := ht
+    nlinarith
+    ring
+  have hEq := by
+    have hIci : ∀ᶠ t : ℝ in nhdsWithin 0 (Set.Ici 0), t ∈ Set.Ici 0 :=
+      eventually_mem_of_tendsto_nhdsWithin tendsto_id
+    filter_upwards [hIci] with t ht
+    have ht2 : 0 ≤ t / 2 := div_nonneg ht zero_le_two
+    calc
+      ‖ouSemigroupFinLp (n := n) (t / 2) (h_mem.toLp h)‖ ^ 2
+          = ‖(ouSemigroupFin_memLp_of_bound (n := n) (t / 2) hh.measurable hM).toLp
+              (ouSemigroupFin (t / 2) h)‖ ^ 2 := by
+                rw [ouSemigroupFinLp_eq_toLp_of_bound (n := n) (t / 2) ht2 hh.measurable hM]
+      _ = ψ (t / 2) := by
+            simpa [ψ] using
+              (norm_sq_toLp_eq_integral_sq (n := n)
+                (ouSemigroupFin_memLp_of_bound (n := n) (t / 2) hh.measurable hM))
+  have hmain :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) h hh).toLp h)‖ ^ 2)
+        ((-2 * ouEnergyFin h h) * (1 / 2)) (Set.Ici 0) 0 :=
+    hcomp.congr_of_eventuallyEq hEq (by
+      simpa [ψ, ouSemigroupFin_zero, ouSemigroupFinLp_zero] using
+        (norm_sq_toLp_eq_integral_sq (n := n) h_mem))
+  convert hmain using 1 <;> ring
+
+private theorem ouSemigroupFinLp_pairing_eq_polarization
+    (t : ℝ) (ht : 0 ≤ t) (f g : Lp ℝ 2 (γFin n)) :
+    4 * ⟪f, ouSemigroupFinLp (n := n) t g⟫_ℝ =
+      ‖ouSemigroupFinLp (n := n) (t / 2) (f + g)‖ ^ 2 -
+        ‖ouSemigroupFinLp (n := n) (t / 2) (f - g)‖ ^ 2 := by
+  have ht2 : 0 ≤ t / 2 := div_nonneg ht zero_le_two
+  let u := ouSemigroupFinLp (n := n) (t / 2) f
+  let v := ouSemigroupFinLp (n := n) (t / 2) g
+  have hpair :
+      ⟪f, ouSemigroupFinLp (n := n) t g⟫_ℝ = ⟪u, v⟫_ℝ := by
+    rw [show t = t / 2 + t / 2 by ring]
+    rw [ouSemigroupFinLp_semigroup (n := n) (t / 2) (t / 2) ht2 ht2]
+    simpa [u, v] using
+      (ouSemigroupFinLp_symmetric (n := n) (t / 2) ht2 f
+        (ouSemigroupFinLp (n := n) (t / 2) g))
+  have hadd :
+      ouSemigroupFinLp (n := n) (t / 2) (f + g) = u + v := by
+    simp [u, v]
+  have hsub :
+      ouSemigroupFinLp (n := n) (t / 2) (f - g) = u - v := by
+    simp [u, v]
+  calc
+    4 * ⟪f, ouSemigroupFinLp (n := n) t g⟫_ℝ = 4 * ⟪u, v⟫_ℝ := by rw [hpair]
+    _ = ‖u + v‖ ^ 2 - ‖u - v‖ ^ 2 := by
+          linarith [norm_add_sq_real u v, norm_sub_sq_real u v]
+    _ = ‖ouSemigroupFinLp (n := n) (t / 2) (f + g)‖ ^ 2 -
+          ‖ouSemigroupFinLp (n := n) (t / 2) (f - g)‖ ^ 2 := by
+            rw [hadd, hsub]
+
+private theorem ouEnergyFin_polarization
+    {f g : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (hg : IsCoreFin g) :
+    ouEnergyFin (f - g) (f - g) - ouEnergyFin (f + g) (f + g) = -4 * ouEnergyFin f g := by
+  have hplus : IsCoreFin (f + g) := IsCoreFin_add hf hg
+  have hneg : IsCoreFin ((-1 : ℝ) • g) := IsCoreFin_smul (-1 : ℝ) hg
+  have hminus : IsCoreFin (f - g) := by
+    simpa [sub_eq_add_neg] using IsCoreFin_add hf hneg
+  have hΓ :
+      (fun x => ouGammaFin (f - g) (f - g) x - ouGammaFin (f + g) (f + g) x) =
+        fun x => -4 * ouGammaFin f g x := by
+    ext x
+    unfold ouGammaFin
+    calc
+      (∑ i : Fin n, partialDeriv i (f - g) x * partialDeriv i (f - g) x) -
+          ∑ i : Fin n, partialDeriv i (f + g) x * partialDeriv i (f + g) x
+          = ∑ i : Fin n,
+              (partialDeriv i (f - g) x * partialDeriv i (f - g) x -
+                partialDeriv i (f + g) x * partialDeriv i (f + g) x) := by
+              rw [Finset.sum_sub_distrib]
+        _ = ∑ i : Fin n,
+              ((partialDeriv i f x - partialDeriv i g x) *
+                  (partialDeriv i f x - partialDeriv i g x) -
+                (partialDeriv i f x + partialDeriv i g x) *
+                  (partialDeriv i f x + partialDeriv i g x)) := by
+              refine Finset.sum_congr rfl ?_
+              intro i hi
+              rw [show partialDeriv i (f - g) x = partialDeriv i f x - partialDeriv i g x by
+                    have hsub : partialDeriv i (f - g) = fun x => partialDeriv i f x - partialDeriv i g x := by
+                      funext x
+                      rw [sub_eq_add_neg]
+                      have hnegfun : (-g : (Fin n → ℝ) → ℝ) = (-1 : ℝ) • g := by
+                        funext y
+                        simp
+                      rw [hnegfun, partialDeriv_add i hf.contDiff hneg.contDiff, partialDeriv_smul]
+                      ring
+                    simpa using congrFun hsub x,
+                  partialDeriv_add i hf.contDiff hg.contDiff]
+        _ = ∑ i : Fin n, -4 * (partialDeriv i f x * partialDeriv i g x) := by
+              refine Finset.sum_congr rfl ?_
+              intro i hi
+              ring
+        _ = -4 * ∑ i : Fin n, partialDeriv i f x * partialDeriv i g x := by
+              rw [Finset.mul_sum]
+  calc
+    ouEnergyFin (f - g) (f - g) - ouEnergyFin (f + g) (f + g)
+        = ∫ x, (ouGammaFin (f - g) (f - g) x - ouGammaFin (f + g) (f + g) x) ∂γFin n := by
+            rw [ouEnergyFin, ouEnergyFin,
+              integral_sub (hminus.integrable_gamma hminus) (hplus.integrable_gamma hplus)]
+    _ = ∫ x, -4 * ouGammaFin f g x ∂γFin n := by rw [hΓ]
+    _ = -4 * ouEnergyFin f g := by rw [ouEnergyFin, integral_const_mul]
+
+theorem ouSemigroupFin_energy_eq_deriv (f g : (Fin n → ℝ) → ℝ)
+    (hf : IsCoreFin f) (hg : IsCoreFin g) :
+    HasDerivWithinAt
+      (fun t : ℝ => ⟪(isCoreFin_memLp (n := n) f hf).toLp f,
+                     ouSemigroupFinLp (n := n) t ((isCoreFin_memLp (n := n) g hg).toLp g)⟫_ℝ)
+      (-(ouEnergyFin f g)) (Set.Ici 0) 0 := by
+  let fLp : Lp ℝ 2 (γFin n) := (isCoreFin_memLp (n := n) f hf).toLp f
+  let gLp : Lp ℝ 2 (γFin n) := (isCoreFin_memLp (n := n) g hg).toLp g
+  let hf_mem : MemLp f 2 (γFin n) := isCoreFin_memLp (n := n) f hf
+  let hg_mem : MemLp g 2 (γFin n) := isCoreFin_memLp (n := n) g hg
+  have hplus : IsCoreFin (f + g) := IsCoreFin_add hf hg
+  have hneg : IsCoreFin ((-1 : ℝ) • g) := IsCoreFin_smul (-1 : ℝ) hg
+  have hminus : IsCoreFin (f - g) := by
+    simpa [sub_eq_add_neg] using IsCoreFin_add hf hneg
+  have hplusD :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) (f + g) hplus).toLp
+            (f + g))‖ ^ 2)
+        (-ouEnergyFin (f + g) (f + g)) (Set.Ici 0) 0 :=
+    ouSemigroupFinLp_half_normSq_hasDerivWithinAt (n := n) hplus
+  have hminusD :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          ‖ouSemigroupFinLp (n := n) (t / 2) ((isCoreFin_memLp (n := n) (f - g) hminus).toLp
+            (f - g))‖ ^ 2)
+        (-ouEnergyFin (f - g) (f - g)) (Set.Ici 0) 0 :=
+    ouSemigroupFinLp_half_normSq_hasDerivWithinAt (n := n) hminus
+  have hpol :
+      HasDerivWithinAt
+        (fun t : ℝ =>
+          (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f + g) hplus).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f - g) hminus).toLp (f - g))‖ ^ 2))
+        ((1 / 4) * ((-ouEnergyFin (f + g) (f + g)) - (-ouEnergyFin (f - g) (f - g))))
+        (Set.Ici 0) 0 := by
+    exact (hplusD.sub hminusD).const_mul (1 / 4)
+  have hEq :
+      (fun t : ℝ => ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ) =ᶠ[nhdsWithin 0 (Set.Ici 0)]
+        (fun t : ℝ =>
+          (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f + g) hplus).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (t / 2)
+                ((isCoreFin_memLp (n := n) (f - g) hminus).toLp (f - g))‖ ^ 2)) := by
+    have hIci : ∀ᶠ t : ℝ in nhdsWithin 0 (Set.Ici 0), t ∈ Set.Ici 0 :=
+      eventually_mem_of_tendsto_nhdsWithin tendsto_id
+    filter_upwards [hIci] with t ht
+    have hpair := ouSemigroupFinLp_pairing_eq_polarization (n := n) t ht fLp gLp
+    have hplusLp : ((hf_mem.add hg_mem).toLp (f + g)) = fLp + gLp :=
+      MemLp.toLp_add hf_mem hg_mem
+    have hminusLp : ((hf_mem.sub hg_mem).toLp (f - g)) = fLp - gLp :=
+      MemLp.toLp_sub hf_mem hg_mem
+    calc
+      ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ
+          = (1 / 4) * (4 * ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ) := by ring
+      _ = (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (t / 2)
+                ((hf_mem.add hg_mem).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (t / 2)
+                ((hf_mem.sub hg_mem).toLp (f - g))‖ ^ 2) := by
+              rw [hpair, ← hplusLp, ← hminusLp]
+  have h0eq :
+      ⟪fLp, ouSemigroupFinLp (n := n) 0 gLp⟫_ℝ =
+        (1 / 4) *
+          (‖ouSemigroupFinLp (n := n) (0 / 2)
+              ((isCoreFin_memLp (n := n) (f + g) hplus).toLp (f + g))‖ ^ 2 -
+            ‖ouSemigroupFinLp (n := n) (0 / 2)
+              ((isCoreFin_memLp (n := n) (f - g) hminus).toLp (f - g))‖ ^ 2) := by
+    have hpair := ouSemigroupFinLp_pairing_eq_polarization (n := n) 0 le_rfl fLp gLp
+    have hplusLp : ((hf_mem.add hg_mem).toLp (f + g)) = fLp + gLp :=
+      MemLp.toLp_add hf_mem hg_mem
+    have hminusLp : ((hf_mem.sub hg_mem).toLp (f - g)) = fLp - gLp :=
+      MemLp.toLp_sub hf_mem hg_mem
+    calc
+      ⟪fLp, ouSemigroupFinLp (n := n) 0 gLp⟫_ℝ
+          = (1 / 4) * (4 * ⟪fLp, ouSemigroupFinLp (n := n) 0 gLp⟫_ℝ) := by ring
+      _ = (1 / 4) *
+            (‖ouSemigroupFinLp (n := n) (0 / 2)
+                ((hf_mem.add hg_mem).toLp (f + g))‖ ^ 2 -
+              ‖ouSemigroupFinLp (n := n) (0 / 2)
+                ((hf_mem.sub hg_mem).toLp (f - g))‖ ^ 2) := by
+              rw [hpair, ← hplusLp, ← hminusLp]
+  have hmain :
+      HasDerivWithinAt
+        (fun t : ℝ => ⟪fLp, ouSemigroupFinLp (n := n) t gLp⟫_ℝ)
+        ((1 / 4) * ((-ouEnergyFin (f + g) (f + g)) - (-ouEnergyFin (f - g) (f - g))))
+        (Set.Ici 0) 0 :=
+    hpol.congr_of_eventuallyEq hEq h0eq
+  convert hmain using 1
+  have hE := ouEnergyFin_polarization (n := n) hf hg
+  linarith
+
+/-- The multivariate Gaussian OU semigroup on `L²(γFin n)`, bundled
+with the canonical Dirichlet form data.
+
+TODO: replace the current `energy_eq_deriv` proof by the direct
+Fubini lift of the discharged 1D boundary derivative identity, so this
+bundle no longer depends on
+`ouSemigroupFin_l2_sq_hasDerivWithinAt`. -/
+noncomputable def stdGaussianFin_dirichletMarkovSemigroup (n : ℕ) :
+    DirichletMarkovSemigroup (Fin n → ℝ) where
+  toMarkovSemigroup := markovSemigroup n
+  energy := ouEnergyFin
+  energy_symm := (dirichletSpaceFin n).energy_symm
+  energy_nonneg := (dirichletSpaceFin n).energy_nonneg
+  IsCore := IsCoreFin
+  IsCore_const := IsCoreFin_const
+  IsCore_add := fun hf hg => IsCoreFin_add hf hg
+  IsCore_smul := fun c _ hf => IsCoreFin_smul c hf
+  energy_add_left := (dirichletSpaceFin n).energy_add_left
+  energy_smul_left := (dirichletSpaceFin n).energy_smul_left
+  energy_const := (dirichletSpaceFin n).energy_const
+  IsCore_memLp := fun {_f} hf => isCoreFin_memLp (n := n) _ hf
+  energy_eq_deriv := fun f g hf hg => ouSemigroupFin_energy_eq_deriv (n := n) f g hf hg
+
 end GaussianFin
 
 namespace stdGaussianFin

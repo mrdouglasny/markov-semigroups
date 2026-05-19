@@ -901,7 +901,7 @@ private theorem memLp_two_of_bound {f : (Fin n → ℝ) → ℝ}
     MemLp f 2 (γFin n) :=
   MemLp.of_bound hf_meas.aestronglyMeasurable M (Filter.Eventually.of_forall hM)
 
-private theorem ouSemigroupFin_memLp_of_bound (t : ℝ) {f : (Fin n → ℝ) → ℝ}
+theorem ouSemigroupFin_memLp_of_bound (t : ℝ) {f : (Fin n → ℝ) → ℝ}
     (hf_meas : Measurable f) {M : ℝ} (hM : ∀ x, ‖f x‖ ≤ M) :
     MemLp (ouSemigroupFin t f) 2 (γFin n) :=
   MemLp.of_bound (stronglyMeasurable_ouSemigroupFin (n := n) t hf_meas).aestronglyMeasurable M
@@ -915,7 +915,7 @@ private theorem integral_mul_toLp_eq_integral_mul {f g : (Fin n → ℝ) → ℝ
   filter_upwards [hf.coeFn_toLp, hg.coeFn_toLp] with x hfx hgx
   simp [hfx, hgx]
 
-private theorem norm_sq_toLp_eq_integral_sq {f : (Fin n → ℝ) → ℝ}
+theorem norm_sq_toLp_eq_integral_sq {f : (Fin n → ℝ) → ℝ}
     (hf : MemLp f 2 (γFin n)) :
     ‖hf.toLp f‖ ^ 2 = ∫ x, (f x) ^ 2 ∂γFin n := by
   have hmulpow :
@@ -1025,7 +1025,7 @@ private theorem ouSemigroupFin_ae_eq_of_aeEq (t : ℝ) (ht : 0 ≤ t)
   rw [ouSemigroupFin, ouSemigroupFin]
   exact integral_congr_ae hx
 
-private theorem ouSemigroupFinLp_eq_toLp_of_bound (t : ℝ) (ht : 0 ≤ t)
+theorem ouSemigroupFinLp_eq_toLp_of_bound (t : ℝ) (ht : 0 ≤ t)
     {f : (Fin n → ℝ) → ℝ} (hf_meas : Measurable f) {M : ℝ} (hM : ∀ x, ‖f x‖ ≤ M) :
     ouSemigroupFinLp (n := n) t ((memLp_two_of_bound (n := n) hf_meas hM).toLp f) =
       (ouSemigroupFin_memLp_of_bound (n := n) t hf_meas hM).toLp (ouSemigroupFin t f) := by
