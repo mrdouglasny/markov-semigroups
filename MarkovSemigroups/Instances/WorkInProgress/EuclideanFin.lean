@@ -2727,6 +2727,38 @@ theorem slice_eq_coordSection {n : ℕ} (i : Fin (n + 1))
   unfold coordSection
   rw [update_insertNth_same i y 0 r]
 
+/-- **Swapped Fubini split for `γFin (n+1)`.** For a bounded measurable
+`h`, the integral splits as the outer integral over the `n` remaining
+coordinates of the inner 1D integral over coordinate `i`. The dominating
+constant makes the product integrand integrable, so the order of
+`integral_γFin_succAbove` can be swapped via `integral_integral_swap`. -/
+theorem integral_γFin_succAbove_swap {n : ℕ} (i : Fin (n + 1))
+    {h : (Fin (n + 1) → ℝ) → ℝ} (hh_meas : Measurable h) {C : ℝ}
+    (hh_bd : ∀ z, ‖h z‖ ≤ C) :
+    ∫ x, h x ∂γFin (n + 1) =
+      ∫ y, ∫ s, h (Fin.insertNth (α := fun _ => ℝ) i s y)
+        ∂Gaussian1D.γ ∂γFin n := by
+  have hh_int : Integrable h (γFin (n + 1)) := integrable_of_bound hh_meas hh_bd
+  rw [integral_γFin_succAbove (n := n) (i := i) hh_int]
+  -- Joint integrability of `(s, y) ↦ h (i.insertNth s y)` on `γ × γFin n`.
+  set F : ℝ → (Fin n → ℝ) → ℝ :=
+    fun s y => h (Fin.insertNth (α := fun _ => ℝ) i s y) with hF
+  have hF_meas : Measurable (Function.uncurry F) := by
+    have hcont : Continuous (fun p : ℝ × (Fin n → ℝ) =>
+        Fin.insertNth (α := fun _ => ℝ) i p.1 p.2) :=
+      Continuous.finInsertNth i continuous_fst continuous_snd
+    have : Measurable (fun p : ℝ × (Fin n → ℝ) =>
+        h (Fin.insertNth (α := fun _ => ℝ) i p.1 p.2)) :=
+      hh_meas.comp hcont.measurable
+    simpa [Function.uncurry, hF] using this
+  have hF_int : Integrable (Function.uncurry F)
+      (Gaussian1D.γ.prod (γFin n)) := by
+    refine Integrable.mono' (integrable_const C)
+      hF_meas.aestronglyMeasurable ?_
+    filter_upwards with p
+    simpa [Function.uncurry, hF] using hh_bd _
+  exact MeasureTheory.integral_integral_swap hF_int
+
 /-- **Per-coordinate Boltzmann-entropy step bound.**
 
 For a `C^∞` function `g` with `ε ≤ g ≤ M` and coordinate-`i` partial
@@ -2750,6 +2782,57 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
     (hg'_bd : ∀ x, |partialDeriv i g x| ≤ M) (t : ℝ) (ht : 0 ≤ t) :
     boltzmannEntropyFin g - boltzmannEntropyFin (ouCoord i t g) ≤
       (1 - Real.exp (-2 * t)) / 2 * fisherInfoFinCoord i g := by
+  classical
+  have hε_nn : (0 : ℝ) ≤ ε := hε.le
+  have hεM : ε ≤ M := le_trans (hg_lo (fun _ => 0)) (hg_hi (fun _ => 0))
+  have hM_pos : 0 < M := lt_of_lt_of_le hε hεM
+  -- The coordinate-`i` slice and its packaged 1D facts.
+  set G : (Fin n → ℝ) → ℝ → ℝ :=
+    fun y r => g (Fin.insertNth (α := fun _ => ℝ) i r y) with hG
+  have hG_eq : ∀ y, G y = coordSection i (Fin.insertNth (α := fun _ => ℝ) i 0 y) g :=
+    fun y => slice_eq_coordSection i g y
+  have hG_C1 : ∀ y, ContDiff ℝ 1 (G y) := by
+    intro y
+    rw [hG_eq y]
+    exact (section_contDiff hg i _).of_le (by simp)
+  have hG_lo : ∀ y r, ε ≤ G y r := fun y r => hg_lo _
+  have hG_hi : ∀ y r, G y r ≤ M := fun y r => hg_hi _
+  have hG_deriv : ∀ y, deriv (G y) =
+      fun r => partialDeriv i g (Fin.insertNth (α := fun _ => ℝ) i r y) := by
+    intro y
+    rw [hG_eq y, section_deriv hg i _]
+    funext r
+    rw [update_insertNth_same i y 0 r]
+  have hG'_bd : ∀ y r, |deriv (G y) r| ≤ M := by
+    intro y r
+    rw [hG_deriv y]
+    exact hg'_bd _
+  -- 1D entropy-decay bound applied to each slice.
+  have h1D : ∀ y, Gaussian1D.boltzmannEntropy (G y) -
+      Gaussian1D.boltzmannEntropy (Gaussian1D.ouSemigroup t (G y)) ≤
+      (1 - Real.exp (-2 * t)) / 2 * Gaussian1D.fisherInfo (G y) := fun y =>
+    Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le (G y) (hG_C1 y) hε
+      (hG_lo y) (hG_hi y) (hG'_bd y) t ht
+  have hg_meas : Measurable g := hg.continuous.measurable
+  -- Uniform `|s log s|` bound on `[0, M]` (covers the slice ranges).
+  obtain ⟨B, hB_nn, hB⟩ : ∃ B : ℝ, 0 ≤ B ∧
+      ∀ s ∈ Set.Icc (0 : ℝ) M, |s * Real.log s| ≤ B := by
+    have h_compact : IsCompact (Set.Icc (0 : ℝ) M) := isCompact_Icc
+    have h_cont_abs : Continuous (fun s => |s * Real.log s|) :=
+      Real.continuous_mul_log.abs
+    obtain ⟨B, hB⟩ := (h_compact.image h_cont_abs).bddAbove
+    exact ⟨max B 0, le_max_right _ _, fun s hs =>
+      (hB ⟨s, hs, rfl⟩).trans (le_max_left _ _)⟩
+  -- (1) `boltzmannEntropyFin g = ∫_y boltzmannEntropy (G y) dγ_n`.
+  have hBE_g : boltzmannEntropyFin g =
+      ∫ y, Gaussian1D.boltzmannEntropy (G y) ∂γFin n := by
+    unfold boltzmannEntropyFin Gaussian1D.boltzmannEntropy
+    rw [integral_γFin_succAbove_swap (n := n) (i := i)
+      (h := fun x => g x * Real.log (g x))
+      (hg_meas.mul (Real.measurable_log.comp hg_meas)) (C := B)
+      (fun z => by
+        rw [Real.norm_eq_abs]
+        exact hB _ ⟨le_trans hε_nn (hg_lo z), hg_hi z⟩)]
   sorry
 
 /-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
