@@ -3260,6 +3260,156 @@ theorem sum_fisherInfoFinCoord_sq_add_const_le {n : ℕ}
     ring
   exact le_of_eq henergy
 
+/-- The multivariate OU semigroup commutes with adding a constant on the
+square: `P_t (f² + ε) = P_t (f²) + ε`, because `P_t` is an average
+against a probability kernel (`γFin n` is a probability measure). -/
+theorem ouSemigroupFin_sq_add_const {n : ℕ} {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (ε : ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    ouSemigroupFin t (fun x => f x * f x + ε) =
+      fun x => ouSemigroupFin t (fun x => f x * f x) x + ε := by
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+  have hf_meas : Measurable f := hf.measurable
+  funext x
+  have hsq_bd : ∀ z : Fin n → ℝ, ‖f z * f z‖ ≤ M ^ 2 := by
+    intro z
+    have hz : |f z| ≤ M := by rw [← Real.norm_eq_abs]; exact hM z
+    rw [Real.norm_eq_abs, abs_of_nonneg (mul_self_nonneg _)]
+    nlinarith [abs_nonneg (f z), sq_abs (f z)]
+  have h_int_sq : Integrable
+      (fun y : Fin n → ℝ => f (ouShiftFin t x y) * f (ouShiftFin t x y)) (γFin n) := by
+    have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+      continuity
+    refine integrable_of_bound (M := M ^ 2)
+      ((hf_meas.comp hcont_shift.measurable).mul
+        (hf_meas.comp hcont_shift.measurable)) ?_
+    intro y
+    exact hsq_bd (ouShiftFin t x y)
+  show ∫ y, (f (ouShiftFin t x y) * f (ouShiftFin t x y) + ε) ∂γFin n
+      = (∫ y, f (ouShiftFin t x y) * f (ouShiftFin t x y) ∂γFin n) + ε
+  rw [integral_add h_int_sq (integrable_const ε)]
+  simp
+
+/-- **ε → 0 reduction (n-dim DCT tail).** If for every `ε > 0` the
+regularized Boltzmann difference of `g_ε = f² + ε` is bounded by the
+target constant, then the un-regularized Boltzmann difference of `f²` is
+bounded by the same constant.
+
+The map `s ↦ s log s` is continuous, hence bounded on the compact value
+range `[0, M²+1]` (with `M` the `IsCoreFin` bound on `f`), so dominated
+convergence over `ε ∈ 𝓝[>] 0` carries the bound to the limit. This is
+the exact `n`-dim analogue of the proved 1D ε-tail in
+`Gaussian1D.ouSemigroup_entropy_sq_decay_bound_proved`. -/
+theorem boltzmannSubFin_le_of_perEps {n : ℕ}
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (t : ℝ) (ht : 0 ≤ t)
+    {C : ℝ}
+    (hEps : ∀ ε : ℝ, 0 < ε →
+      boltzmannEntropyFin (fun x => f x * f x + ε) -
+        boltzmannEntropyFin
+          (fun x => ouSemigroupFin t (fun x => f x * f x) x + ε) ≤ C) :
+    boltzmannEntropyFin (fun x => f x * f x) -
+      boltzmannEntropyFin (ouSemigroupFin t (fun x => f x * f x)) ≤ C := by
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+  have hf_meas : Measurable f := hf.measurable
+  set g : (Fin n → ℝ) → ℝ := fun x => f x * f x with hg_def
+  have hg_meas : Measurable g := hf_meas.mul hf_meas
+  have hg_nn : ∀ x, 0 ≤ g x := fun x => mul_self_nonneg _
+  have hg_bdd : ∀ x, g x ≤ M ^ 2 := by
+    intro x
+    have hx : |f x| ≤ M := by rw [← Real.norm_eq_abs]; exact hM x
+    have : g x = f x * f x := rfl
+    nlinarith [abs_nonneg (f x), sq_abs (f x)]
+  -- `P_t g` is in `[0, M²]` pointwise.
+  have hPg_bdd : ∀ x, 0 ≤ ouSemigroupFin t g x ∧ ouSemigroupFin t g x ≤ M ^ 2 := by
+    intro x
+    have hint : Integrable (fun y => g (ouShiftFin t x y)) (γFin n) := by
+      have hcont_shift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      refine integrable_of_bound (M := M ^ 2)
+        (hg_meas.comp hcont_shift.measurable) ?_
+      intro y
+      rw [Real.norm_eq_abs, abs_of_nonneg (hg_nn _)]; exact hg_bdd _
+    refine ⟨?_, ?_⟩
+    · show 0 ≤ ∫ y, g (ouShiftFin t x y) ∂γFin n
+      exact integral_nonneg (fun y => hg_nn _)
+    · show ∫ y, g (ouShiftFin t x y) ∂γFin n ≤ M ^ 2
+      calc ∫ y, g (ouShiftFin t x y) ∂γFin n
+          ≤ ∫ _y, M ^ 2 ∂γFin n :=
+            integral_mono hint (integrable_const _) (fun y => hg_bdd _)
+        _ = M ^ 2 := by simp
+  have hPg_meas : Measurable (ouSemigroupFin t g) := by
+    have hcont : Continuous (fun p : (Fin n → ℝ) × (Fin n → ℝ) =>
+        ouShiftFin t p.1 p.2) := by
+      unfold ouShiftFin; fun_prop
+    exact ((hg_meas.comp hcont.measurable).stronglyMeasurable.integral_prod_right').measurable
+  -- Uniform `|s log s|` bound on `[0, M²+1]`.
+  obtain ⟨B, hB_nn, hB⟩ : ∃ B : ℝ, 0 ≤ B ∧
+      ∀ s ∈ Set.Icc (0 : ℝ) (M ^ 2 + 1), |s * Real.log s| ≤ B := by
+    have h_compact : IsCompact (Set.Icc (0 : ℝ) (M ^ 2 + 1)) := isCompact_Icc
+    obtain ⟨B, hB⟩ := (h_compact.image Real.continuous_mul_log.abs).bddAbove
+    exact ⟨max B 0, le_max_right _ _, fun s hs =>
+      (hB ⟨s, hs, rfl⟩).trans (le_max_left _ _)⟩
+  -- DCT: regularized Boltzmann entropies converge as `ε → 0⁺`.
+  have h_lim_g : Tendsto
+      (fun ε : ℝ => boltzmannEntropyFin (fun x => g x + ε))
+      (nhdsWithin 0 (Set.Ioi 0)) (nhds (boltzmannEntropyFin g)) := by
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => B) ?_ ?_ (integrable_const _) ?_
+    · filter_upwards [self_mem_nhdsWithin] with ε _
+      exact ((hg_meas.add_const ε).mul
+        (Real.measurable_log.comp (hg_meas.add_const ε))).aestronglyMeasurable
+    · filter_upwards [Ioo_mem_nhdsGT (one_pos : (0 : ℝ) < 1)] with ε hε_range
+      filter_upwards with x
+      have h_range : g x + ε ∈ Set.Icc (0 : ℝ) (M ^ 2 + 1) :=
+        ⟨by linarith [hg_nn x, hε_range.1], by linarith [hg_bdd x, hε_range.2.le]⟩
+      rw [Real.norm_eq_abs]; exact hB _ h_range
+    · filter_upwards with x
+      have h_tendsto : Tendsto (fun ε : ℝ => g x + ε)
+          (nhdsWithin 0 (Set.Ioi 0)) (nhds (g x)) := by
+        have hh : Tendsto (fun ε : ℝ => g x + ε) (nhds 0) (nhds (g x + 0)) :=
+          (tendsto_const_nhds (x := g x)).add tendsto_id
+        simpa using hh.mono_left nhdsWithin_le_nhds
+      exact (Real.continuous_mul_log.tendsto (g x)).comp h_tendsto
+  have h_lim_Pg : Tendsto
+      (fun ε : ℝ => boltzmannEntropyFin (fun x => ouSemigroupFin t g x + ε))
+      (nhdsWithin 0 (Set.Ioi 0)) (nhds (boltzmannEntropyFin (ouSemigroupFin t g))) := by
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => B) ?_ ?_ (integrable_const _) ?_
+    · filter_upwards [self_mem_nhdsWithin] with ε _
+      have : Measurable (fun x => (ouSemigroupFin t g x + ε) *
+          Real.log (ouSemigroupFin t g x + ε)) :=
+        (hPg_meas.add_const ε).mul (Real.measurable_log.comp (hPg_meas.add_const ε))
+      exact this.aestronglyMeasurable
+    · filter_upwards [Ioo_mem_nhdsGT (one_pos : (0 : ℝ) < 1)] with ε hε_range
+      filter_upwards with x
+      have hb := hPg_bdd x
+      have h_range : ouSemigroupFin t g x + ε ∈
+          Set.Icc (0 : ℝ) (M ^ 2 + 1) :=
+        ⟨by linarith [hb.1, hε_range.1],
+         by linarith [hb.2, hε_range.2.le]⟩
+      rw [Real.norm_eq_abs]; exact hB _ h_range
+    · filter_upwards with x
+      have h_tendsto : Tendsto (fun ε : ℝ => ouSemigroupFin t g x + ε)
+          (nhdsWithin 0 (Set.Ioi 0)) (nhds (ouSemigroupFin t g x)) := by
+        have hh : Tendsto (fun ε : ℝ => ouSemigroupFin t g x + ε) (nhds 0)
+            (nhds (ouSemigroupFin t g x + 0)) :=
+          (tendsto_const_nhds (x := ouSemigroupFin t g x)).add tendsto_id
+        simpa using hh.mono_left nhdsWithin_le_nhds
+      exact (Real.continuous_mul_log.tendsto (ouSemigroupFin t g x)).comp h_tendsto
+  have h_lim : Tendsto
+      (fun ε : ℝ => boltzmannEntropyFin (fun x => g x + ε) -
+        boltzmannEntropyFin (fun x => ouSemigroupFin t g x + ε))
+      (nhdsWithin 0 (Set.Ioi 0))
+      (nhds (boltzmannEntropyFin g - boltzmannEntropyFin (ouSemigroupFin t g))) :=
+    h_lim_g.sub h_lim_Pg
+  have h_ev : ∀ᶠ ε in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+      boltzmannEntropyFin (fun x => g x + ε) -
+        boltzmannEntropyFin (fun x => ouSemigroupFin t g x + ε) ≤ C := by
+    filter_upwards [self_mem_nhdsWithin] with ε hε_pos
+    exact hEps ε hε_pos
+  exact le_of_tendsto h_lim h_ev
+
 /-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2,
 n-dim Gaussian case).**
 
