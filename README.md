@@ -267,7 +267,7 @@ uses them will see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 Stroock-Varopoulos + 1 matrix + 2 DZ + 2 concentration/Poincaré + 3 GaussianFin = 11 total)
+### Postulated as textbook axioms (2 core + 1 Stroock-Varopoulos + 1 matrix + 2 DZ + 2 concentration/Poincaré + 2 GaussianFin = 10 total)
 
 *See [`AXIOM_AUDIT.md`](AXIOM_AUDIT.md) for the per-axiom vetting
 verdicts (Standard / Likely correct / Placeholder / etc.), review

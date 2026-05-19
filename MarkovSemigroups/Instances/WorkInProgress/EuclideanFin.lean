@@ -3003,44 +3003,395 @@ theorem polyBdd_smul_coord {F : (Fin n → ℝ) → ℝ} (hF : PolyBdd F) (α : 
     _ = |α| * Cf * (1 + ‖w‖) ^ (d + 1) := by ring
 
 
-/-! ### N1.5 textbook axiom: `C^∞` core preservation under the multivariate OU semigroup
+/-! ### Kernel-smoothing: C^∞ of the OU semigroup on bounded functions -/
 
-After the `IsCoreFin` harmonization from `ContDiff ℝ ⊤` to `ContDiff ℝ ∞`,
-the remaining nontrivial part of semigroup-core preservation is the
-`C^∞` smoothing statement. The boundedness half is already proved by
-`ouSemigroupFin_preserves_core_bounds`. What remains is the standard
-kernel-smoothing fact that Mehler convolution preserves `C^∞`. -/
+-- The linear functional Λ(w) := α • ∑ⱼ wⱼ • projⱼ  (the x-derivative direction of exp).
+noncomputable def lapDir (α : ℝ) (w : Fin n → ℝ) : (Fin n → ℝ) →L[ℝ] ℝ :=
+  α • ∑ j, w j • (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)
+
+theorem hasFDerivAt_expInner (α : ℝ) (w x : Fin n → ℝ) :
+    HasFDerivAt (fun x : Fin n → ℝ => Real.exp (α * ∑ i, x i * w i))
+      (Real.exp (α * ∑ i, x i * w i) • lapDir α w) x := by
+  have hbil : HasFDerivAt (fun x : Fin n → ℝ => ∑ i, x i * w i)
+      (∑ j, w j • (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)) x := by
+    have hpt : (fun x : Fin n → ℝ => ∑ i, x i * w i)
+        = ∑ i : Fin n, (fun x : Fin n → ℝ => x i * w i) := by
+      funext x; simp [Finset.sum_apply]
+    rw [hpt]
+    apply HasFDerivAt.sum
+    intro j _
+    have hproj : HasFDerivAt (fun x : Fin n → ℝ => x j)
+        (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ) x := by
+      simpa using (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ).hasFDerivAt
+    simpa [mul_comm] using hproj.mul_const (w j)
+  have hlin : HasFDerivAt (fun x : Fin n → ℝ => α * ∑ i, x i * w i)
+      (α • ∑ j, w j • (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)) x := by
+    simpa using hbil.const_mul α
+  have hcomp := (Real.hasDerivAt_exp (α * ∑ i, x i * w i)).comp_hasFDerivAt x hlin
+  have : HasFDerivAt (fun x : Fin n → ℝ => Real.exp (α * ∑ i, x i * w i))
+      (Real.exp (α * ∑ i, x i * w i) • (α • ∑ j, w j •
+        (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ))) x := by
+    convert hcomp using 1
+  simpa [lapDir] using this
+
+-- ‖lapDir α w‖ ≤ |α| * n * ‖w‖
+theorem norm_lapDir_le (α : ℝ) (w : Fin n → ℝ) :
+    ‖lapDir α w‖ ≤ |α| * (n * ‖w‖) := by
+  unfold lapDir
+  rw [norm_smul, Real.norm_eq_abs]
+  apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
+  calc ‖∑ j, w j • (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)‖
+      ≤ ∑ j, ‖w j • (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)‖ :=
+        norm_sum_le _ _
+    _ ≤ ∑ _j : Fin n, ‖w‖ := by
+        refine Finset.sum_le_sum (fun j _ => ?_)
+        rw [norm_smul, Real.norm_eq_abs]
+        calc |w j| * ‖(ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ)‖
+            ≤ ‖w‖ * 1 := by
+              apply mul_le_mul
+              · rw [← Real.norm_eq_abs]; exact norm_le_pi_norm w j
+              · refine ContinuousLinearMap.opNorm_le_bound _ zero_le_one (fun v => ?_)
+                simpa using norm_le_pi_norm v j
+              · positivity
+              · exact norm_nonneg _
+          _ = ‖w‖ := by ring
+    _ = n * ‖w‖ := by rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin]; ring
+
+set_option maxHeartbeats 800000 in
+theorem hasFDerivAt_laplaceFamily {F : (Fin n → ℝ) → ℝ} (hF : PolyBdd F) (α : ℝ)
+    (x₀ : Fin n → ℝ) :
+    HasFDerivAt (fun x : Fin n → ℝ => ∫ w, F w * Real.exp (α * ∑ i, x i * w i) ∂γFin n)
+      (∫ w, F w • (Real.exp (α * ∑ i, x₀ i * w i) • lapDir α w) ∂γFin n) x₀ := by
+  obtain ⟨hFc, Cf, d, hCf, hbd⟩ := hF
+  set R : ℝ := ‖x₀‖ + 1 with hR
+  set Fn : (Fin n → ℝ) → (Fin n → ℝ) → ℝ :=
+    fun x w => F w * Real.exp (α * ∑ i, x i * w i) with hFn
+  set Fn' : (Fin n → ℝ) → (Fin n → ℝ) → ((Fin n → ℝ) →L[ℝ] ℝ) :=
+    fun x w => F w • (Real.exp (α * ∑ i, x i * w i) • lapDir α w) with hFn'
+  set bnd : (Fin n → ℝ) → ℝ :=
+    fun w => Cf * (1 + ‖w‖) ^ d * Real.exp (|α| * n * R * ‖w‖) * (|α| * (n * ‖w‖)) with hbnd
+  have hball : Metric.ball x₀ 1 ∈ nhds x₀ := Metric.ball_mem_nhds x₀ one_pos
+  have hFn_meas : ∀ x, AEStronglyMeasurable (Fn x) (γFin n) := fun x =>
+    (hFc.mul ((cont_expInner α).comp
+      (continuous_const.prodMk continuous_id'))).aestronglyMeasurable
+  have hFn_int : Integrable (Fn x₀) (γFin n) := laplace_integrable ⟨hFc,Cf,d,hCf,hbd⟩ α x₀
+  have hcont_lapDir : Continuous (fun w : Fin n → ℝ => lapDir α w) := by
+    unfold lapDir
+    exact continuous_const.smul (continuous_finset_sum _
+      (fun j _ => (continuous_apply j).smul continuous_const))
+  have hcont_expInner_x0 : Continuous
+      (fun w : Fin n → ℝ => Real.exp (α * ∑ i, x₀ i * w i)) :=
+    Real.continuous_exp.comp (continuous_const.mul (continuous_finset_sum _
+      (fun i _ => continuous_const.mul (continuous_apply i))))
+  have hFn'_meas : AEStronglyMeasurable (Fn' x₀) (γFin n) := by
+    have hc : Continuous (Fn' x₀) := by
+      rw [hFn']
+      exact hFc.smul (hcont_expInner_x0.smul hcont_lapDir)
+    exact hc.aestronglyMeasurable
+  -- bound integrable: PolyBdd weight times exp
+  have hbnd_int : Integrable bnd (γFin n) := by
+    have hpb : PolyBdd (fun w : Fin n → ℝ =>
+        Cf * (1 + ‖w‖) ^ d * (|α| * (n * ‖w‖))) := by
+      refine ⟨(continuous_const.mul ((continuous_const.add
+        continuous_norm).pow d)).mul (continuous_const.mul
+          (continuous_const.mul continuous_norm)),
+        Cf * (|α| * n), d + 1, by positivity, fun w => ?_⟩
+      have hwle : ‖w‖ ≤ 1 + ‖w‖ := by have := norm_nonneg w; linarith
+      rw [abs_of_nonneg (by positivity)]
+      calc Cf * (1 + ‖w‖) ^ d * (|α| * (n * ‖w‖))
+          = (Cf * (|α| * n)) * ((1 + ‖w‖) ^ d * ‖w‖) := by ring
+        _ ≤ (Cf * (|α| * n)) * ((1 + ‖w‖) ^ d * (1 + ‖w‖)) := by
+            apply mul_le_mul_of_nonneg_left _ (by positivity)
+            apply mul_le_mul_of_nonneg_left hwle (by positivity)
+        _ = Cf * (|α| * n) * (1 + ‖w‖) ^ (d + 1) := by ring
+    have := polyBdd_mul_exp_integrable (n := n) hpb (|α| * n * R)
+    refine this.congr ?_
+    filter_upwards with w
+    rw [hbnd]; ring
+  -- HasFDerivAt for the integrand at each x, and the norm bound on the ball
+  refine hasFDerivAt_integral_of_dominated_of_fderiv_le (bound := bnd)
+    (F' := Fn') hball (Filter.Eventually.of_forall hFn_meas) hFn_int hFn'_meas
+    ?_ hbnd_int ?_
+  · filter_upwards with w
+    intro x hx
+    have hxR : ‖x‖ ≤ R := by
+      rw [hR]
+      have hb : ‖x - x₀‖ < 1 := by simpa [dist_eq_norm] using hx
+      calc ‖x‖ ≤ ‖x - x₀‖ + ‖x₀‖ := by
+            have := norm_add_le (x - x₀) x₀; simpa using this
+        _ ≤ 1 + ‖x₀‖ := by linarith
+        _ = ‖x₀‖ + 1 := by ring
+    rw [hFn', norm_smul, Real.norm_eq_abs, norm_smul, Real.norm_eq_abs]
+    have hexp_le : Real.exp (α * ∑ i, x i * w i)
+        ≤ Real.exp (|α| * n * R * ‖w‖) := by
+      apply Real.exp_le_exp.mpr
+      calc α * ∑ i, x i * w i ≤ |α| * |∑ i, x i * w i| := by
+            rw [← abs_mul]; exact le_abs_self _
+        _ ≤ |α| * (n * (‖x‖ * ‖w‖)) :=
+            mul_le_mul_of_nonneg_left (abs_sum_mul_le x w) (abs_nonneg _)
+        _ ≤ |α| * (n * (R * ‖w‖)) := by
+            apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
+            apply mul_le_mul_of_nonneg_left _ (by positivity)
+            exact mul_le_mul_of_nonneg_right hxR (norm_nonneg _)
+        _ = |α| * n * R * ‖w‖ := by ring
+    rw [hbnd]
+    have h1 : |Real.exp (α * ∑ i, x i * w i)| ≤ Real.exp (|α| * n * R * ‖w‖) := by
+      rw [abs_of_pos (Real.exp_pos _)]; exact hexp_le
+    have h2 : ‖lapDir α w‖ ≤ |α| * (n * ‖w‖) := norm_lapDir_le α w
+    calc |F w| * (|Real.exp (α * ∑ i, x i * w i)| * ‖lapDir α w‖)
+        ≤ (Cf * (1 + ‖w‖) ^ d) *
+            (Real.exp (|α| * n * R * ‖w‖) * (|α| * (n * ‖w‖))) := by
+          apply mul_le_mul (hbd w) _ (by positivity)
+            (mul_nonneg hCf (by positivity))
+          exact mul_le_mul h1 h2 (norm_nonneg _) (Real.exp_pos _).le
+      _ = Cf * (1 + ‖w‖) ^ d * Real.exp (|α| * n * R * ‖w‖) * (|α| * (n * ‖w‖)) := by ring
+  · filter_upwards with w
+    intro x _
+    show HasFDerivAt (fun x : Fin n → ℝ => F w * Real.exp (α * ∑ i, x i * w i))
+      (F w • (Real.exp (α * ∑ i, x i * w i) • lapDir α w)) x
+    have hd := (hasFDerivAt_expInner α w x).const_smul (F w)
+    simpa [smul_eq_mul] using hd
+
+-- The integral derivative equals ∑ⱼ J_{α wⱼ F}(x₀) • projⱼ.
+set_option maxHeartbeats 800000 in
+theorem laplace_fderiv_eq_sum {F : (Fin n → ℝ) → ℝ} (hF : PolyBdd F) (α : ℝ)
+    (x₀ : Fin n → ℝ) :
+    (∫ w, F w • (Real.exp (α * ∑ i, x₀ i * w i) • lapDir α w) ∂γFin n)
+      = ∑ j, (∫ w, (fun w => α * w j * F w) w
+          * Real.exp (α * ∑ i, x₀ i * w i) ∂γFin n) •
+          (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ) := by
+  obtain ⟨hFc, Cf, d, hCf, hbd⟩ := hF
+  -- pointwise: integrand = ∑ⱼ (α wⱼ F · exp) • projⱼ
+  have hpt : ∀ w : Fin n → ℝ,
+      F w • (Real.exp (α * ∑ i, x₀ i * w i) • lapDir α w)
+        = ∑ j, ((α * w j * F w) * Real.exp (α * ∑ i, x₀ i * w i)) •
+            (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ) := by
+    intro w
+    simp only [lapDir, smul_smul, Finset.smul_sum]
+    refine Finset.sum_congr rfl ?_
+    rintro j -
+    congr 1
+    ring
+  rw [show (fun w => F w • (Real.exp (α * ∑ i, x₀ i * w i) • lapDir α w))
+        = fun w => ∑ j, ((α * w j * F w) * Real.exp (α * ∑ i, x₀ i * w i)) •
+            (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ) from funext hpt]
+  -- integrability of each term
+  have hterm_int : ∀ j : Fin n, Integrable
+      (fun w => ((α * w j * F w) * Real.exp (α * ∑ i, x₀ i * w i))) (γFin n) :=
+    fun j => laplace_integrable (polyBdd_smul_coord ⟨hFc,Cf,d,hCf,hbd⟩ α j) α x₀
+  rw [integral_finset_sum _ (fun j _ => (hterm_int j).smul_const _)]
+  refine Finset.sum_congr rfl (fun j _ => ?_)
+  rw [integral_smul_const]
+
+set_option maxHeartbeats 1200000 in
+theorem contDiff_laplaceFamily (k : ℕ) (F : (Fin n → ℝ) → ℝ) (hF : PolyBdd F) (α : ℝ) :
+    ContDiff ℝ (k : WithTop ℕ∞)
+      (fun x : Fin n → ℝ => ∫ w, F w * Real.exp (α * ∑ i, x i * w i) ∂γFin n) := by
+  induction k generalizing F α with
+  | zero =>
+      obtain ⟨hFc, Cf, d, hCf, hbd⟩ := hF
+      have hcont : Continuous
+          (fun x : Fin n → ℝ => ∫ w, F w * Real.exp (α * ∑ i, x i * w i) ∂γFin n) := by
+        refine continuous_iff_continuousAt.mpr (fun x₀ => ?_)
+        set R : ℝ := ‖x₀‖ + 1 with hR
+        set bound : (Fin n → ℝ) → ℝ :=
+          fun w => Cf * (1 + ‖w‖) ^ d * Real.exp (|α| * n * R * ‖w‖) with hbound
+        have hbound_int : Integrable bound (γFin n) := by
+          have hpb : PolyBdd (fun w : Fin n → ℝ => Cf * (1 + ‖w‖) ^ d) :=
+            ⟨continuous_const.mul ((continuous_const.add continuous_norm).pow d),
+              Cf, d, hCf, fun w => by rw [abs_of_nonneg (by positivity)]⟩
+          have := polyBdd_mul_exp_integrable (n := n) hpb (|α| * n * R)
+          simpa [hbound, mul_assoc] using this
+        refine MeasureTheory.continuousAt_of_dominated ?_ ?_ hbound_int ?_
+        · filter_upwards with x
+          exact (hFc.mul ((cont_expInner α).comp
+            (continuous_const.prodMk continuous_id'))).aestronglyMeasurable
+        · filter_upwards [Metric.ball_mem_nhds x₀ (by norm_num : (0:ℝ) < 1)] with x hx
+          filter_upwards with w
+          have hxR : ‖x‖ ≤ R := by
+            rw [hR]
+            have hb : ‖x - x₀‖ < 1 := by simpa [dist_eq_norm] using hx
+            calc ‖x‖ ≤ ‖x - x₀‖ + ‖x₀‖ := by
+                  have := norm_add_le (x - x₀) x₀; simpa using this
+              _ ≤ 1 + ‖x₀‖ := by linarith
+              _ = ‖x₀‖ + 1 := by ring
+          rw [Real.norm_eq_abs, abs_mul, abs_of_pos (Real.exp_pos _)]
+          have hexp_le : Real.exp (α * ∑ i, x i * w i)
+              ≤ Real.exp (|α| * n * R * ‖w‖) := by
+            apply Real.exp_le_exp.mpr
+            calc α * ∑ i, x i * w i ≤ |α| * |∑ i, x i * w i| := by
+                  rw [← abs_mul]; exact le_abs_self _
+              _ ≤ |α| * (n * (‖x‖ * ‖w‖)) :=
+                  mul_le_mul_of_nonneg_left (abs_sum_mul_le x w) (abs_nonneg _)
+              _ ≤ |α| * (n * (R * ‖w‖)) := by
+                  apply mul_le_mul_of_nonneg_left _ (abs_nonneg _)
+                  apply mul_le_mul_of_nonneg_left _ (by positivity)
+                  exact mul_le_mul_of_nonneg_right hxR (norm_nonneg _)
+              _ = |α| * n * R * ‖w‖ := by ring
+          calc |F w| * Real.exp (α * ∑ i, x i * w i)
+              ≤ (Cf * (1 + ‖w‖) ^ d) * Real.exp (|α| * n * R * ‖w‖) := by
+                refine mul_le_mul (hbd w) hexp_le (Real.exp_pos _).le ?_
+                positivity
+            _ = bound w := by simp only [hbound, mul_assoc]
+        · filter_upwards with w
+          have hcx : Continuous (fun x : Fin n → ℝ =>
+              F w * Real.exp (α * ∑ i, x i * w i)) :=
+            continuous_const.mul (Real.continuous_exp.comp
+              (continuous_const.mul (continuous_finset_sum _
+                (fun i _ => (continuous_apply i).mul continuous_const))))
+          exact hcx.continuousAt
+      have hz : ((0:ℕ) : WithTop ℕ∞) = 0 := by norm_cast
+      rw [hz]
+      exact contDiff_zero.mpr hcont
+  | succ k ih =>
+      show ContDiff ℝ ((k : WithTop ℕ∞) + 1)
+        (fun x : Fin n → ℝ => ∫ w, F w * Real.exp (α * ∑ i, x i * w i) ∂γFin n)
+      rw [contDiff_succ_iff_fderiv]
+      refine ⟨fun x => (hasFDerivAt_laplaceFamily hF α x).differentiableAt, ?_, ?_⟩
+      · intro h; exact absurd h (by exact_mod_cast WithTop.natCast_ne_top k)
+      · have hfd : fderiv ℝ
+            (fun x : Fin n → ℝ => ∫ w, F w * Real.exp (α * ∑ i, x i * w i) ∂γFin n)
+            = fun x => ∑ j, (∫ w, (fun w => α * w j * F w) w
+                * Real.exp (α * ∑ i, x i * w i) ∂γFin n) •
+                (ContinuousLinearMap.proj j : (Fin n → ℝ) →L[ℝ] ℝ) := by
+          funext x
+          rw [(hasFDerivAt_laplaceFamily hF α x).fderiv]
+          exact laplace_fderiv_eq_sum hF α x
+        rw [hfd]
+        apply ContDiff.sum
+        intro j _
+        have hpb : PolyBdd (fun w : Fin n → ℝ => α * w j * F w) :=
+          polyBdd_smul_coord hF α j
+        have hck := ih (fun w => α * w j * F w) hpb α
+        exact hck.smul_const _
+
+-- g(b•·) is PolyBdd when g is continuous bounded.
+theorem polyBdd_comp_smul {g : (Fin n → ℝ) → ℝ} (hg : Continuous g) {M : ℝ}
+    (hM : ∀ z, ‖g z‖ ≤ M) (b : ℝ) :
+    PolyBdd (fun w => g (fun i => b * w i)) := by
+  refine ⟨hg.comp (continuous_pi (fun i => continuous_const.mul (continuous_apply i))),
+    M, 0, (norm_nonneg _).trans (hM 0), fun w => ?_⟩
+  rw [pow_zero, mul_one, ← Real.norm_eq_abs]
+  exact hM _
+
+set_option maxHeartbeats 800000 in
+theorem contDiff_ouSemigroupFin_of_bounded (t : ℝ) (ht : 0 < t)
+    {g : (Fin n → ℝ) → ℝ} (hg : Continuous g) {M : ℝ} (hM : ∀ z, ‖g z‖ ≤ M) :
+    ContDiff ℝ (∞ : WithTop ℕ∞) (ouSemigroupFin t g) := by
+  set a : ℝ := Real.exp (-t) with ha
+  set b : ℝ := Real.sqrt (1 - Real.exp (-2 * t)) with hb
+  have hb_pos : 0 < b := by
+    rw [hb]; apply Real.sqrt_pos.mpr
+    have : Real.exp (-2 * t) < 1 := Real.exp_lt_one_iff.mpr (by linarith)
+    linarith
+  have hb_ne : b ≠ 0 := ne_of_gt hb_pos
+  -- the kernel form
+  have hrep : ouSemigroupFin t g
+      = fun x => Real.exp (- (∑ i, (a / b * x i) ^ 2) / 2)
+          * ∫ w, (fun w => g (fun i => b * w i)) w
+              * Real.exp ((a / b) * ∑ i, x i * w i) ∂γFin n := by
+    funext x
+    rw [ouSemigroupFin_eq_cmKernel (n := n) t ht hg hM x]
+    rw [← integral_const_mul]
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun w => ?_))
+    simp only [← ha, ← hb]
+    have hS : (∑ i, (a / b * x i) * w i) = (a / b) * ∑ i, x i * w i := by
+      rw [Finset.mul_sum]; refine Finset.sum_congr rfl (fun i _ => by ring)
+    rw [hS, Real.exp_sub, div_eq_mul_inv, ← Real.exp_neg]
+    rw [show (-((∑ i, (a / b * x i) ^ 2) / 2)) = (-∑ i, (a / b * x i) ^ 2) / 2 from by ring]
+    set Aexp := Real.exp (a / b * ∑ i, x i * w i)
+    set Bexp := Real.exp ((-∑ i, (a / b * x i) ^ 2) / 2)
+    ring
+  rw [hrep]
+  have hJ : ContDiff ℝ (∞ : WithTop ℕ∞)
+      (fun x : Fin n → ℝ => ∫ w, (fun w => g (fun i => b * w i)) w
+          * Real.exp ((a / b) * ∑ i, x i * w i) ∂γFin n) := by
+    rw [contDiff_infty]
+    intro k
+    exact contDiff_laplaceFamily k (fun w => g (fun i => b * w i))
+      (polyBdd_comp_smul hg hM b) (a / b)
+  have hpref : ContDiff ℝ (∞ : WithTop ℕ∞)
+      (fun x : Fin n → ℝ => Real.exp (- (∑ i, (a / b * x i) ^ 2) / 2)) := by
+    apply Real.contDiff_exp.comp
+    apply ContDiff.div_const
+    apply ContDiff.neg
+    have hpt2 : (fun x : Fin n → ℝ => ∑ i, (a / b * x i) ^ 2)
+        = (fun x => ∑ i ∈ (Finset.univ : Finset (Fin n)),
+            (fun x : Fin n → ℝ => (a / b * x i) ^ 2) x) := rfl
+    rw [hpt2]
+    refine ContDiff.sum (fun i _ => ?_)
+    exact ((contDiff_const.mul (contDiff_apply ℝ ℝ i))).pow 2
+  exact hpref.mul hJ
+
+/-! ### N1.b discharged: `C^∞` core preservation under the multivariate OU semigroup
+
+The former textbook axiom `ouSemigroupFin_preserves_IsCore` is now a theorem,
+discharged via the vetted Cameron–Martin kernel route (Workstream N1.b,
+2026-05-19). See `contDiff_ouSemigroupFin_of_bounded` and the supporting
+Cameron–Martin / Laplace-family infrastructure above. -/
+/-- For a `C^∞` function `g`, the pure second coordinate derivative equals the
+second derivative of the `i`-th coordinate section, evaluated at `x i`. This is
+the smoothness-only analogue of `section_secondDeriv` (which assumes the
+project-level `IsCoreFin`); it lets us transfer the section-wise second-derivative
+bound from `ouSemigroupFin_preserves_core_bounds` to the `secondPartial` clause
+of `IsCoreFin` for `ouSemigroupFin t f`. -/
+theorem secondPartial_eq_section_deriv_of_contDiff {n : ℕ} {g : (Fin n → ℝ) → ℝ}
+    (hg : ContDiff ℝ ∞ g) (i : Fin n) (x : Fin n → ℝ) :
+    secondPartial i g x
+      = deriv (deriv (fun s => g (Function.update x i s))) (x i) := by
+  have hpartial_C1 : ContDiff ℝ ∞ (partialDeriv i g) := by
+    unfold partialDeriv
+    simpa using (hg.fderiv_right (m := ∞) (by simp)).clm_apply contDiff_const
+  have hsec : deriv (deriv (fun s => g (Function.update x i s)))
+      = fun s => secondPartial i g (Function.update x i s) := by
+    funext s
+    have hsd : deriv (fun s => g (Function.update x i s))
+        = fun s => partialDeriv i g (Function.update x i s) := by
+      funext r
+      have h_update := hasDerivAt_update x i r
+      have h_f : HasFDerivAt g (fderiv ℝ g (Function.update x i r))
+          (Function.update x i r) :=
+        ((hg.differentiable (by simp)).differentiableAt).hasFDerivAt
+      simpa [partialDeriv] using (h_f.comp_hasDerivAt r h_update).deriv
+    rw [hsd]
+    have h_update := hasDerivAt_update x i s
+    have h_f : HasFDerivAt (partialDeriv i g)
+        (fderiv ℝ (partialDeriv i g) (Function.update x i s))
+        (Function.update x i s) :=
+      ((hpartial_C1.differentiable (by simp)).differentiableAt).hasFDerivAt
+    simpa [secondPartial] using (h_f.comp_hasDerivAt s h_update).deriv
+  rw [hsec]
+  simp
 
 /-- **Multivariate OU smoothing preserves the `IsCoreFin` test algebra.**
 
-For `t ≥ 0`, if `f` is `IsCoreFin`, then `P_t f` is again `IsCoreFin`.
+For `t ≥ 0`, if `f` is `IsCoreFin`, then `ouSemigroupFin t f` is again
+`IsCoreFin`. The `C^∞` regularity comes from the Cameron–Martin kernel
+representation (`contDiff_ouSemigroupFin_of_bounded` for `t > 0`, and
+`ouSemigroupFin_zero` for `t = 0`); the uniform bounds come from
+`ouSemigroupFin_preserves_core_bounds`, with the section-wise second
+derivative bound transferred to the `secondPartial` clause via
+`secondPartial_eq_section_deriv_of_contDiff`.
 
-Post-harmonization this means `C^∞` regularity plus the same uniform
-bounds on the function, coordinate first partials, and coordinate
-sectionwise second derivatives. The bounds portion is already proved in
-`ouSemigroupFin_preserves_core_bounds`; the remaining load-bearing input
-is the `C^∞` smoothing of the explicit Mehler kernel in the spatial
-variable.
-
-**Reference:** BGL §2.7 (OU kernel smoothing), applied coordinatewise to
-the finite product Gaussian setting.
-
-**Vetting:** gemini-3.1-pro-preview, 2026-05-13, verdict
-**Flagged** pre-harmonization and **Standard / Likely correct**
-post-harmonization to `ContDiff ℝ ∞`. The vet specifically confirmed
-that no mixed-derivative bounds are needed for this `IsCoreFin`
-predicate: the pure second partials commute with the semigroup up to the
-expected `exp (-2t)` factor, so only the `C^∞` smoothing remains to be
-discharged.
-
-**Discharge plan:** rewrite `P_t f` against the explicit shifted
-Gaussian density `ρ_t (x, z)`, then apply `ContDiff.integral` to push
-spatial derivatives onto the kernel rather than onto `f`. This avoids
-the multi-index Hermite formalization burden and matches the recommended
-kernel-based proof route from the vet. -/
-axiom ouSemigroupFin_preserves_IsCore {n : ℕ}
+Discharged 2026-05-19 (Workstream N1.b) via the vetted Cameron–Martin
+kernel route. -/
+theorem ouSemigroupFin_preserves_IsCore {n : ℕ}
     (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
-    IsCoreFin (ouSemigroupFin t f)
+    IsCoreFin (ouSemigroupFin t f) := by
+  have hf_cont : Continuous f := hf.continuous
+  obtain ⟨Mf, hMf⟩ := hf.bound_exists
+  -- C^∞ regularity of `ouSemigroupFin t f`
+  have hsmooth : ContDiff ℝ ∞ (ouSemigroupFin t f) := by
+    rcases eq_or_lt_of_le ht with ht0 | htpos
+    · rw [← ht0, ouSemigroupFin_zero]
+      exact hf.contDiff
+    · exact contDiff_ouSemigroupFin_of_bounded (n := n) t htpos hf_cont hMf
+  -- uniform bounds
+  obtain ⟨M, hMbound, hMpartial, hMsec⟩ :=
+    ouSemigroupFin_preserves_core_bounds (n := n) t ht hf
+  refine ⟨hsmooth, M, fun x => ⟨hMbound x, fun i => hMpartial i x, fun i => ?_⟩⟩
+  rw [secondPartial_eq_section_deriv_of_contDiff hsmooth i x]
+  exact hMsec i x (x i)
 
 /-! ### N1.5 textbook axiom: multivariate entropy decay for `f²`
 

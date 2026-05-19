@@ -6,7 +6,7 @@
 > there are 18 declared `.lean` axioms and 9 `sorry` decls (8 in the
 > WIP `Abstract/GrossODE.lean`, 1 quarantined in `TwoPoint.lean`).
 
-**11 axioms. 2 sorry's total**, all quarantined in
+**10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
 jump processes — validates that the diffusion axiom is a real
 constraint). The Euclidean (Gaussian1D) instance previously held 9
@@ -166,7 +166,7 @@ P2 (the one general Leibniz kernel + thin glue) → P3 algebra → W.
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
 | Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance **axiom-free**; the de Bruijn / Fisher-info entropy-decay facts are **discharged as theorems** in `General/OUEntropyDecomposition.lean` (itself axiom-free — AXIOM_AUDIT.md confirms). All 9 original Mehler-kernel axioms discharged. |
-| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 7 | 0 | 5 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 2 remaining BE tensor-lift axioms (`ouSemigroupFin_preserves_IsCore`, `ouSemigroupFin_entropy_sq_decay_bound`) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free**; `ouSemigroupFin_l2_sq_hasDerivWithinAt` is now a theorem in `EuclideanFinBE.lean`. |
+| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 6 | 0 | 5 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 1 remaining BE tensor-lift axiom (`ouSemigroupFin_entropy_sq_decay_bound`; `ouSemigroupFin_preserves_IsCore` **DISCHARGED 2026-05-19 via the Cameron–Martin kernel route**, Workstream N1.b) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free**; `ouSemigroupFin_l2_sq_hasDerivWithinAt` is now a theorem in `EuclideanFinBE.lean`. |
 | Instances/WorkInProgress/EuclideanTests | 1 | 0 | 4 | Scaffolding axioms (`gaussianResolvent*`, `gaussianBochner_identity`) — excluded by policy, not consumed by main tree |
 | Matrix/ | 4 | 0 | 1 | Heat kernel, Trotter, diamagnetic inequality (`m_matrix_inverse_nonneg` now imported from `SpectralPositivity` as a theorem) |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
