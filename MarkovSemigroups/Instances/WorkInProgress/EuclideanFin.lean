@@ -2899,7 +2899,50 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
     refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
     refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
     simp only [hG, ouCoord_insertNth_eq i t g s y]
-  sorry
+  -- Continuity/measurability of the coordinate-`i` partial of `g`.
+  have h_pd_cont : Continuous (partialDeriv i g) := by
+    unfold partialDeriv
+    simpa using (hg.fderiv_right (m := ∞) (by simp)).clm_apply contDiff_const
+      |>.continuous
+  have h_pd_meas : Measurable (partialDeriv i g) := h_pd_cont.measurable
+  -- (3) `fisherInfoFinCoord i g = ∫_y fisherInfo (G y) dγ_n`.
+  have hFI_g : fisherInfoFinCoord i g =
+      ∫ y, Gaussian1D.fisherInfo (G y) ∂γFin n := by
+    unfold fisherInfoFinCoord Gaussian1D.fisherInfo
+    rw [integral_γFin_succAbove_swap (n := n) (i := i)
+      (h := fun x => (partialDeriv i g x) ^ 2 / g x)
+      ((h_pd_meas.pow_const 2).div hg_meas) (C := M ^ 2 / ε)
+      (fun z => by
+        rw [Real.norm_eq_abs, abs_of_nonneg
+          (div_nonneg (sq_nonneg _) (le_trans hε_nn (hg_lo z)))]
+        have hnum : (partialDeriv i g z) ^ 2 ≤ M ^ 2 := by
+          have := hg'_bd z
+          nlinarith [abs_nonneg (partialDeriv i g z), sq_abs (partialDeriv i g z)]
+        have hden : ε ≤ g z := hg_lo z
+        have hgz_pos : 0 < g z := lt_of_lt_of_le hε hden
+        have hstep1 : (partialDeriv i g z) ^ 2 / g z ≤ M ^ 2 / g z :=
+          div_le_div_of_nonneg_right hnum hgz_pos.le
+        have hstep2 : M ^ 2 / g z ≤ M ^ 2 / ε :=
+          div_le_div_of_nonneg_left (sq_nonneg _) hε hden
+        linarith)]
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
+    have hgd : deriv (G y) s =
+        partialDeriv i g (Fin.insertNth (α := fun _ => ℝ) i s y) := by
+      rw [hG_deriv y]
+    have hgv : G y s = g (Fin.insertNth (α := fun _ => ℝ) i s y) := by
+      simp [hG]
+    simp only []
+    rw [hgd, hgv]
+  -- Assembly: `integral_mono` of the slicewise 1D bound `h1D`.
+  rw [hBE_g, hBE_ouCoord, hFI_g, ← integral_sub, ← integral_const_mul]
+  · refine integral_mono ?_ ?_ (fun y => h1D y)
+    · -- `y ↦ BE(G y) - BE(P_t G y)` is bounded, hence integrable.
+      sorry
+    · -- `y ↦ (1 - e^{-2t})/2 · fisherInfo (G y)` is bounded, hence integrable.
+      sorry
+  · sorry
+  · sorry
 
 /-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
 `f`, the centered entropy difference of `g = f²` and `P_t g` equals
