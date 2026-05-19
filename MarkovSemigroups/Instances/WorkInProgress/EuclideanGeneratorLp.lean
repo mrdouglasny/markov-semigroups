@@ -182,8 +182,7 @@ Lives here (imports only the building base, no `EuclideanGeneratorLimit`)
 so it verifies independently of the parallel limit work. -/
 theorem ouGeneratorFin_ibp {f g : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) (hg : IsCoreFin g) :
-    ⟪(stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hg,
-        ouGeneratorFinLp hf⟫_ℝ
+    ⟪(isCoreFin_memLp g hg).toLp g, ouGeneratorFinLp hf⟫_ℝ
       = - ouEnergyFin g f := by
   -- Pure `Lp` wiring (no math): the analytic content is
   -- `ouGeneratorFin_ibp_integral`. Force `coreToL2`/`ouGeneratorFinLp`
