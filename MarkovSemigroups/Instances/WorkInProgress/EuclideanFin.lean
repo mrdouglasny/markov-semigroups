@@ -2833,6 +2833,72 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
       (fun z => by
         rw [Real.norm_eq_abs]
         exact hB _ ⟨le_trans hε_nn (hg_lo z), hg_hi z⟩)]
+  -- The 1D slice OU is bounded by `M` (1D OU of a function ≤ M).
+  have hPG_bd : ∀ y s, ε ≤ Gaussian1D.ouSemigroup t (G y) s ∧
+      Gaussian1D.ouSemigroup t (G y) s ≤ M := by
+    intro y s
+    have hGy_int : Integrable
+        (fun u => G y (Real.exp (-t) * s +
+          Real.sqrt (1 - Real.exp (-2 * t)) * u)) Gaussian1D.γ := by
+      refine Integrable.mono' (integrable_const M) ?_ ?_
+      · exact (((hG_C1 y).continuous).measurable.comp
+          (measurable_const.add (measurable_const.mul measurable_id))).aestronglyMeasurable
+      · filter_upwards with u
+        rw [Real.norm_eq_abs, abs_le]
+        exact ⟨le_trans (by linarith [hε_nn]) (le_of_lt (lt_of_lt_of_le hε (hG_lo y _))),
+          (hG_hi y _)⟩
+    constructor
+    · show ε ≤ ∫ u, G y (Real.exp (-t) * s +
+        Real.sqrt (1 - Real.exp (-2 * t)) * u) ∂Gaussian1D.γ
+      calc ε = ∫ _u, ε ∂Gaussian1D.γ := by simp
+        _ ≤ _ := integral_mono (integrable_const ε) hGy_int (fun u => hG_lo y _)
+    · show ∫ u, G y (Real.exp (-t) * s +
+        Real.sqrt (1 - Real.exp (-2 * t)) * u) ∂Gaussian1D.γ ≤ M
+      calc ∫ u, _ ∂Gaussian1D.γ
+          ≤ ∫ _u, M ∂Gaussian1D.γ :=
+            integral_mono hGy_int (integrable_const M) (fun u => hG_hi y _)
+        _ = M := by simp
+  -- (2) `boltzmannEntropyFin (ouCoord i t g) = ∫_y BE(P_t (G y)) dγ_n`.
+  have h_ouCoord_meas : Measurable (ouCoord i t g) := by
+    have hupd : Measurable (fun p : (Fin (n + 1) → ℝ) × ℝ =>
+        Function.update p.1 i (Real.exp (-t) * p.1 i +
+          Real.sqrt (1 - Real.exp (-2 * t)) * p.2)) := by
+      have hval : Measurable (fun p : (Fin (n + 1) → ℝ) × ℝ =>
+          Real.exp (-t) * p.1 i +
+            Real.sqrt (1 - Real.exp (-2 * t)) * p.2) :=
+        (measurable_const.mul ((measurable_pi_apply i).comp measurable_fst)).add
+          (measurable_const.mul measurable_snd)
+      exact measurable_update'.comp (measurable_fst.prodMk hval)
+    have hjoint : Measurable (fun p : (Fin (n + 1) → ℝ) × ℝ =>
+        g (Function.update p.1 i (Real.exp (-t) * p.1 i +
+          Real.sqrt (1 - Real.exp (-2 * t)) * p.2))) := hg_meas.comp hupd
+    exact (hjoint.stronglyMeasurable.integral_prod_right').measurable
+  have hBE_ouCoord : boltzmannEntropyFin (ouCoord i t g) =
+      ∫ y, Gaussian1D.boltzmannEntropy
+        (Gaussian1D.ouSemigroup t (G y)) ∂γFin n := by
+    unfold boltzmannEntropyFin Gaussian1D.boltzmannEntropy
+    rw [integral_γFin_succAbove_swap (n := n) (i := i)
+      (h := fun x => ouCoord i t g x * Real.log (ouCoord i t g x))
+      (h_ouCoord_meas.mul (Real.measurable_log.comp h_ouCoord_meas)) (C := B)
+      (fun z => by
+        rw [Real.norm_eq_abs]
+        -- `ouCoord` is itself a 1D OU of a slice, so bounded in `[ε, M]`.
+        have hval : ouCoord i t g z =
+            Gaussian1D.ouSemigroup t
+              (fun r => g (Fin.insertNth (α := fun _ => ℝ) i r
+                (Fin.removeNth i z))) (z i) := by
+          have hz : z = Fin.insertNth (α := fun _ => ℝ) i (z i)
+              (Fin.removeNth i z) := (Fin.insertNth_self_removeNth i z).symm
+          conv_lhs => rw [hz]
+          rw [ouCoord_insertNth_eq i t g (z i) (Fin.removeNth i z)]
+        simp only []
+        rw [hval]
+        have hb := hPG_bd (Fin.removeNth i z) (z i)
+        rw [hG] at hb
+        exact hB _ ⟨le_trans hε_nn hb.1, hb.2⟩)]
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
+    simp only [hG, ouCoord_insertNth_eq i t g s y]
   sorry
 
 /-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
