@@ -6,27 +6,31 @@
 > there are 18 declared `.lean` axioms and 9 `sorry` decls (8 in the
 > WIP `Abstract/GrossODE.lean`, 1 quarantined in `TwoPoint.lean`).
 
-> **Update (2026-05-19, Workstreams N1.b + N1.c):** two GaussianFin
-> axioms discharged. **N1.b** (`discharge/n1b-preserves-iscore`):
-> `ouSemigroupFin_preserves_IsCore` (BGL §2.7.1+§3) **fully proved**
-> via the Cameron–Martin kernel route (`cameronMartin1D` →
-> `gaussianFin_cameronMartin` → `ouSemigroupFin_eq_cmKernel` →
+> **Update (2026-05-19, Workstreams N1.b + N1.c):** **N1.b**
+> (`discharge/n1b-preserves-iscore`):
+> `ouSemigroupFin_preserves_IsCore` (BGL §2.7.1+§3) **fully proved &
+> discharged** via the Cameron–Martin kernel route (`cameronMartin1D`
+> → `gaussianFin_cameronMartin` → `ouSemigroupFin_eq_cmKernel` →
 > `contDiff_laplaceFamily` → `contDiff_ouSemigroupFin_of_bounded`);
-> axiom-free. **N1.c** (`discharge/n1c-entropy-decay`, merged N1.b):
-> `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, n-dim
-> entropy decay for `f²`) **fully proved** via the telescoping route.
-> Supporting lemmas all axiom-free
-> (`Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le`,
-> `entropy_sub_eq_boltzmann_sub`, `boltzmannEntropyFin_ouCoord_step_le`,
-> `sum_fisherInfoFinCoord_sq_add_const_le`, `boltzmannSubFin_le_of_perEps`,
-> `ouSemigroupFin_sq_add_const`); T1 (`ouCoordSet` induction) and T2
-> (orthogonal Fisher monotonicity, regularity via the merged N1.b
-> Cameron–Martin C^∞ infrastructure) completed and telescoped. Full
-> `lake build` green; `#print axioms
-> ouSemigroupFin_entropy_sq_decay_bound = [propext, Classical.choice,
-> Quot.sound]`. See `AXIOM_AUDIT.md` rows.
+> axiom-free. GaussianFin axiom count **11 → 10**. **N1.c**
+> (`discharge/n1c-entropy-decay`, merged N1.b):
+> `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2) — **still
+> PARTIAL (1 documented `sorry`; already a `theorem`, not an `axiom`,
+> so not counted)**. The **T1 factorization is now fully proved &
+> axiom-free** (`Gaussian1D.integral_ouSemigroup_eq`,
+> `integral_ouCoord_eq`, `setShift_insert_update`,
+> `integral_update_swap`, `ouCoord_ouCoordSet`,
+> `measurable_ouCoordSet`, `ouCoordSet_bounds`,
+> `integral_ouCoordSet_eq`). A mathematical blocker was found and
+> documented: the telescope iterates are only `C²` (not `C∞`) under
+> `IsCoreFin`, so the C∞-requiring step lemma cannot consume them; the
+> corrected `C²`-class route (S1–S5) is documented in-file and in
+> `AXIOM_AUDIT.md`. Full `lake build` green; `#print axioms
+> ouSemigroupFin_entropy_sq_decay_bound = [propext, sorryAx,
+> Classical.choice, Quot.sound]`; all new T1 helpers axiom-free. See
+> `AXIOM_AUDIT.md` rows.
 
-**9 axioms. 2 sorry's total**, all quarantined in
+**10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
 jump processes — validates that the diffusion axiom is a real
 constraint). The Euclidean (Gaussian1D) instance previously held 9

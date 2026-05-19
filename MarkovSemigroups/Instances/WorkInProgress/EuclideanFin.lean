@@ -4207,6 +4207,332 @@ theorem boltzmannSubFin_le_of_perEps {n : ℕ}
     exact hEps ε hε_pos
   exact le_of_tendsto h_lim h_ev
 
+/-! ### N1.c telescoping infrastructure (reusable, axiom-free)
+
+The lemmas below build the per-coordinate telescoping scaffolding for the
+multivariate entropy-decay bound: single-coordinate OU mean preservation
+(`integral_ouCoord_eq`), the `ouCoordSet` composition step (T1,
+`ouCoord_ouCoordSet`), `ouCoordSet` bounds and measure preservation. They
+are independent of the still-open regularity question (see the strategy
+comment on `ouSemigroupFin_entropy_sq_decay_bound`). -/
+
+end GaussianFin
+
+namespace Gaussian1D
+
+/-- 1D OU mean preservation: `∫ P_t g dγ = ∫ g dγ` for bounded measurable
+`g`. The OU kernel `(u, v) ↦ e^{-t} u + √(1-e^{-2t}) v` pushes `γ ⊗ γ`
+forward to `γ` (`ou_kernel_map`), so the Gaussian mean is invariant. -/
+theorem integral_ouSemigroup_eq (t : ℝ) (ht : 0 ≤ t)
+    {g : ℝ → ℝ} (hg_meas : Measurable g) {C : ℝ} (hg_bd : ∀ x, ‖g x‖ ≤ C) :
+    ∫ x, ouSemigroup t g x ∂γ = ∫ x, g x ∂γ := by
+  set a := Real.exp (-t)
+  set b := Real.sqrt (1 - Real.exp (-2 * t))
+  set φ : ℝ × ℝ → ℝ := fun p => a * p.1 + b * p.2
+  have hφ : Measurable φ := Measurable.add
+    (measurable_const.mul measurable_fst) (measurable_const.mul measurable_snd)
+  have hmap := ou_kernel_map t ht
+  have hg_int : Integrable g γ :=
+    Integrable.mono' (integrable_const C) hg_meas.aestronglyMeasurable
+      (Filter.Eventually.of_forall hg_bd)
+  have hgφ_int : Integrable (g ∘ φ) (γ.prod γ) := by
+    have hasm' : AEStronglyMeasurable g ((γ.prod γ).map φ) := by
+      rw [hmap]; exact hg_meas.aestronglyMeasurable
+    have hint' : Integrable g ((γ.prod γ).map φ) := by rw [hmap]; exact hg_int
+    exact (integrable_map_measure hasm' hφ.aemeasurable).mp hint'
+  simp only [ouSemigroup]
+  rw [show (∫ x, (∫ y, g (a * x + b * y) ∂γ) ∂γ) = ∫ p, g (φ p) ∂(γ.prod γ) from
+    (integral_prod (g ∘ φ) hgφ_int).symm]
+  have hlaw : HasLaw φ γ (γ.prod γ) := ⟨hφ.aemeasurable, hmap⟩
+  exact hlaw.integral_comp hg_meas.aestronglyMeasurable
+
+end Gaussian1D
+
+namespace GaussianFin
+
+variable {n : ℕ}
+
+/-- `ouCoord` measure-preservation: `∫ ouCoord i t h dγ_{n+1} = ∫ h dγ_{n+1}`
+for bounded measurable `h`. The single-coordinate OU is the 1D OU on the
+`i`-th slice, which preserves the Gaussian mean. -/
+theorem integral_ouCoord_eq {n : ℕ} (i : Fin (n + 1)) (t : ℝ) (ht : 0 ≤ t)
+    {h : (Fin (n + 1) → ℝ) → ℝ} (hh_meas : Measurable h) {C : ℝ}
+    (hh_bd : ∀ z, ‖h z‖ ≤ C) :
+    ∫ x, ouCoord i t h x ∂γFin (n + 1) = ∫ x, h x ∂γFin (n + 1) := by
+  -- `ouCoord i t h` is bounded by `C` (it is a Gaussian average of `h`).
+  have hC_nn : (0 : ℝ) ≤ C := (norm_nonneg _).trans (hh_bd 0)
+  have hou_bd : ∀ x, ‖ouCoord i t h x‖ ≤ C := by
+    intro x
+    have hint : Integrable (fun s => h (Function.update x i
+        (Real.exp (-t) * x i + Real.sqrt (1 - Real.exp (-2 * t)) * s)))
+        Gaussian1D.γ := by
+      have hmeas : Measurable (fun s => h (Function.update x i
+          (Real.exp (-t) * x i + Real.sqrt (1 - Real.exp (-2 * t)) * s))) := by
+        have hval : Measurable (fun s : ℝ =>
+            Real.exp (-t) * x i + Real.sqrt (1 - Real.exp (-2 * t)) * s) :=
+          measurable_const.add (measurable_const.mul measurable_id)
+        exact hh_meas.comp
+          (measurable_update'.comp (measurable_const.prodMk hval))
+      exact Integrable.mono' (integrable_const C) hmeas.aestronglyMeasurable
+        (Filter.Eventually.of_forall (fun s => hh_bd _))
+    show ‖∫ s, h (Function.update x i _) ∂Gaussian1D.γ‖ ≤ C
+    calc ‖∫ s, h (Function.update x i (Real.exp (-t) * x i +
+            Real.sqrt (1 - Real.exp (-2 * t)) * s)) ∂Gaussian1D.γ‖
+        ≤ ∫ s, C ∂Gaussian1D.γ :=
+          norm_integral_le_of_norm_le (integrable_const C)
+            (Filter.Eventually.of_forall (fun s => hh_bd _))
+      _ = C := by simp
+  have hou_meas : Measurable (ouCoord i t h) := by
+    have hupd : Measurable (fun p : (Fin (n + 1) → ℝ) × ℝ =>
+        Function.update p.1 i (Real.exp (-t) * p.1 i +
+          Real.sqrt (1 - Real.exp (-2 * t)) * p.2)) := by
+      have hval : Measurable (fun p : (Fin (n + 1) → ℝ) × ℝ =>
+          Real.exp (-t) * p.1 i + Real.sqrt (1 - Real.exp (-2 * t)) * p.2) :=
+        (measurable_const.mul ((measurable_pi_apply i).comp measurable_fst)).add
+          (measurable_const.mul measurable_snd)
+      exact measurable_update'.comp (measurable_fst.prodMk hval)
+    have hjoint : Measurable (fun p : (Fin (n + 1) → ℝ) × ℝ =>
+        h (Function.update p.1 i (Real.exp (-t) * p.1 i +
+          Real.sqrt (1 - Real.exp (-2 * t)) * p.2))) := hh_meas.comp hupd
+    exact (hjoint.stronglyMeasurable.integral_prod_right').measurable
+  -- Split both sides via `integral_γFin_succAbove_swap` on coordinate `i`.
+  rw [integral_γFin_succAbove_swap (n := n) (i := i) hou_meas hou_bd,
+      integral_γFin_succAbove_swap (n := n) (i := i) hh_meas hh_bd]
+  refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+  -- Inner: `∫_s ouCoord i t h (insertNth i s y) dγ = ∫_s h (insertNth i s y) dγ`.
+  have hslice_meas : Measurable
+      (fun r => h (Fin.insertNth (α := fun _ => ℝ) i r y)) := by
+    have hcont : Continuous (fun r : ℝ =>
+        Fin.insertNth (α := fun _ => ℝ) i r y) :=
+      Continuous.finInsertNth i continuous_id continuous_const
+    exact hh_meas.comp hcont.measurable
+  calc ∫ s, ouCoord i t h (Fin.insertNth (α := fun _ => ℝ) i s y) ∂Gaussian1D.γ
+      = ∫ s, Gaussian1D.ouSemigroup t
+          (fun r => h (Fin.insertNth (α := fun _ => ℝ) i r y)) s ∂Gaussian1D.γ := by
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
+        exact ouCoord_insertNth_eq i t h s y
+    _ = ∫ s, h (Fin.insertNth (α := fun _ => ℝ) i s y) ∂Gaussian1D.γ :=
+        Gaussian1D.integral_ouSemigroup_eq t ht hslice_meas (fun r => hh_bd _)
+
+/-- Pointwise `setShift` peel: for `j ∉ S`, shifting on `S` at the
+`j`-updated point `update x j (e^{-t} x_j + b s)` with displacement `y`
+equals shifting on `insert j S` at `x` with displacement `update y j s`. -/
+theorem setShift_insert_update {n : ℕ} (S : Finset (Fin n)) (j : Fin n)
+    (hj : j ∉ S) (t : ℝ) (x y : Fin n → ℝ) (s : ℝ) :
+    setShift S t (Function.update x j
+        (Real.exp (-t) * x j + Real.sqrt (1 - Real.exp (-2 * t)) * s)) y =
+      setShift (insert j S) t x (Function.update y j s) := by
+  funext i
+  by_cases hij : i = j
+  · subst hij
+    simp [setShift, hj, Finset.mem_insert]
+  · have hi_ne : i ≠ j := hij
+    by_cases hiS : i ∈ S
+    · simp [setShift, hiS, Finset.mem_insert, hi_ne,
+        Function.update_of_ne hi_ne]
+    · simp [setShift, hiS, Finset.mem_insert, hi_ne,
+        Function.update_of_ne hi_ne]
+
+/-- Measure-preservation of `(s, y) ↦ update y j s` on `γ × γ_n → γ_n`:
+the Gaussian product measure is invariant under reinjecting an
+independent Gaussian coordinate. -/
+theorem integral_update_swap {m : ℕ} (j : Fin (m + 1))
+    {G : (Fin (m + 1) → ℝ) → ℝ} (hG_meas : Measurable G) {C : ℝ}
+    (hG_bd : ∀ z, ‖G z‖ ≤ C) :
+    ∫ s, ∫ y, G (Function.update y j s) ∂γFin (m + 1) ∂Gaussian1D.γ =
+      ∫ y, G y ∂γFin (m + 1) := by
+  have hG_int : Integrable G (γFin (m + 1)) := integrable_of_bound hG_meas hG_bd
+  -- Split the RHS via `integral_γFin_succAbove j`.
+  rw [integral_γFin_succAbove (n := m) (i := j) hG_int]
+  -- For each `s`, rewrite the inner `∫_y G (update y j s)`.
+  refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
+  show ∫ y, G (Function.update y j s) ∂γFin (m + 1)
+      = ∫ y, G (Fin.insertNth (α := fun _ => ℝ) j s y) ∂γFin m
+  -- `∫_y G (update y j s)` splits via `integral_γFin_succAbove j` too.
+  have hGupd_meas : Measurable (fun y => G (Function.update y j s)) :=
+    hG_meas.comp (measurable_update_left)
+  have hGupd_int : Integrable (fun y => G (Function.update y j s))
+      (γFin (m + 1)) :=
+    integrable_of_bound hGupd_meas (fun y => hG_bd _)
+  rw [integral_γFin_succAbove (n := m) (i := j) hGupd_int]
+  -- `update (insertNth j r z) j s = insertNth j s z`.
+  have hrw : ∀ r (z : Fin m → ℝ),
+      G (Function.update (Fin.insertNth (α := fun _ => ℝ) j r z) j s) =
+        G (Fin.insertNth (α := fun _ => ℝ) j s z) := by
+    intro r z
+    rw [update_insertNth_same j z r s]
+  calc ∫ r, ∫ z, G (Function.update
+          (Fin.insertNth (α := fun _ => ℝ) j r z) j s) ∂γFin m ∂Gaussian1D.γ
+      = ∫ r, ∫ z, G (Fin.insertNth (α := fun _ => ℝ) j s z)
+          ∂γFin m ∂Gaussian1D.γ := by
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun r => ?_))
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun z => ?_))
+        exact hrw r z
+    _ = ∫ z, G (Fin.insertNth (α := fun _ => ℝ) j s z) ∂γFin m := by
+        simp
+
+/-- **Composition step (T1).** For `j ∉ S` and bounded measurable `g`,
+applying `ouCoord j t` after `ouCoordSet S t` equals `ouCoordSet
+(insert j S) t`. The peel uses `setShift_insert_update` pointwise and the
+measure preservation `integral_update_swap`. -/
+theorem ouCoord_ouCoordSet {m : ℕ} (S : Finset (Fin (m + 1)))
+    (j : Fin (m + 1)) (hj : j ∉ S) (t : ℝ)
+    {g : (Fin (m + 1) → ℝ) → ℝ} (hg_meas : Measurable g) {C : ℝ}
+    (hg_bd : ∀ z, ‖g z‖ ≤ C) :
+    ouCoord j t (ouCoordSet S t g) = ouCoordSet (insert j S) t g := by
+  funext x
+  -- LHS: `∫_s (ouCoordSet S t g)(update x j v_s) dγ(s)` where
+  -- `v_s = e^{-t} x_j + b s`, then unfold `ouCoordSet`.
+  show ∫ s, ouCoordSet S t g (Function.update x j
+      (Real.exp (-t) * x j + Real.sqrt (1 - Real.exp (-2 * t)) * s))
+      ∂Gaussian1D.γ
+    = ∫ y, g (setShift (insert j S) t x y) ∂γFin (m + 1)
+  -- Set `G y := g (setShift (insert j S) t x y)`.
+  set G : (Fin (m + 1) → ℝ) → ℝ :=
+    fun y => g (setShift (insert j S) t x y) with hG_def
+  have hsetShift_meas : ∀ (z : Fin (m + 1) → ℝ),
+      Measurable (fun y => setShift (insert j S) t z y) := by
+    intro z
+    refine measurable_pi_lambda _ (fun i => ?_)
+    by_cases hi : i ∈ insert j S
+    · simp only [setShift, hi, if_true]
+      exact measurable_const.add
+        (measurable_const.mul ((measurable_pi_apply i)))
+    · simp only [setShift, hi, if_false]
+      exact measurable_const
+  have hG_meas : Measurable G :=
+    hg_meas.comp (hsetShift_meas x)
+  have hG_bd : ∀ z, ‖G z‖ ≤ C := fun z => hg_bd _
+  -- Rewrite the LHS inner `ouCoordSet S t g (update x j v_s)`.
+  have hLHS_inner : ∀ s,
+      ouCoordSet S t g (Function.update x j
+          (Real.exp (-t) * x j + Real.sqrt (1 - Real.exp (-2 * t)) * s))
+        = ∫ y, G (Function.update y j s) ∂γFin (m + 1) := by
+    intro s
+    show ∫ y, g (setShift S t (Function.update x j
+        (Real.exp (-t) * x j + Real.sqrt (1 - Real.exp (-2 * t)) * s)) y)
+        ∂γFin (m + 1)
+      = ∫ y, g (setShift (insert j S) t x (Function.update y j s))
+        ∂γFin (m + 1)
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+    show g (setShift S t (Function.update x j
+        (Real.exp (-t) * x j + Real.sqrt (1 - Real.exp (-2 * t)) * s)) y)
+      = g (setShift (insert j S) t x (Function.update y j s))
+    rw [setShift_insert_update S j hj t x y s]
+  calc ∫ s, ouCoordSet S t g (Function.update x j
+        (Real.exp (-t) * x j + Real.sqrt (1 - Real.exp (-2 * t)) * s))
+        ∂Gaussian1D.γ
+      = ∫ s, ∫ y, G (Function.update y j s) ∂γFin (m + 1) ∂Gaussian1D.γ := by
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
+        exact hLHS_inner s
+    _ = ∫ y, G y ∂γFin (m + 1) :=
+        integral_update_swap j hG_meas hG_bd
+
+/-- `setShift` is measurable in its displacement argument. -/
+theorem measurable_setShift {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
+    (x : Fin n → ℝ) : Measurable (fun y => setShift S t x y) := by
+  refine measurable_pi_lambda _ (fun i => ?_)
+  by_cases hi : i ∈ S
+  · simp only [setShift, hi, if_true]
+    exact measurable_const.add (measurable_const.mul (measurable_pi_apply i))
+  · simp only [setShift, hi, if_false]
+    exact measurable_const
+
+/-- `ouCoordSet` preserves a uniform two-sided bound `ε ≤ g ≤ M`
+(it averages `g` against the probability measure `γ_n`). -/
+theorem ouCoordSet_bounds {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
+    {g : (Fin n → ℝ) → ℝ} (hg_meas : Measurable g) {ε M : ℝ}
+    (hg_lo : ∀ x, ε ≤ g x) (hg_hi : ∀ x, g x ≤ M) :
+    ∀ x, ε ≤ ouCoordSet S t g x ∧ ouCoordSet S t g x ≤ M := by
+  intro x
+  have hgshift_meas : Measurable (fun y => g (setShift S t x y)) :=
+    hg_meas.comp (measurable_setShift S t x)
+  have hint : Integrable (fun y => g (setShift S t x y)) (γFin n) := by
+    refine Integrable.mono' (integrable_const (max |ε| |M|))
+      hgshift_meas.aestronglyMeasurable
+      (Filter.Eventually.of_forall (fun y => ?_))
+    rw [Real.norm_eq_abs, abs_le]
+    have h1 := hg_lo (setShift S t x y)
+    have h2 := hg_hi (setShift S t x y)
+    constructor
+    · calc -max |ε| |M| ≤ -|ε| := by
+            simp [neg_le_neg_iff, le_max_left]
+        _ ≤ ε := neg_abs_le ε
+        _ ≤ _ := h1
+    · calc g (setShift S t x y) ≤ M := h2
+        _ ≤ |M| := le_abs_self M
+        _ ≤ _ := le_max_right _ _
+  constructor
+  · show ε ≤ ∫ y, g (setShift S t x y) ∂γFin n
+    calc ε = ∫ _y, ε ∂γFin n := by simp
+      _ ≤ _ := integral_mono (integrable_const ε) hint (fun y => hg_lo _)
+  · show ∫ y, g (setShift S t x y) ∂γFin n ≤ M
+    calc ∫ y, g (setShift S t x y) ∂γFin n
+        ≤ ∫ _y, M ∂γFin n :=
+          integral_mono hint (integrable_const M) (fun y => hg_hi _)
+      _ = M := by simp
+
+/-- `ouCoordSet S t g` is measurable for measurable `g`. -/
+theorem measurable_ouCoordSet {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
+    {g : (Fin n → ℝ) → ℝ} (hg_meas : Measurable g) :
+    Measurable (ouCoordSet S t g) := by
+  have hshift_meas : Measurable
+      (fun p : (Fin n → ℝ) × (Fin n → ℝ) => setShift S t p.1 p.2) := by
+    have key : ∀ i : Fin n, Measurable
+        (fun p : (Fin n → ℝ) × (Fin n → ℝ) => setShift S t p.1 p.2 i) := by
+      intro i
+      by_cases hi : i ∈ S
+      · simp only [setShift, hi, if_true]
+        exact (measurable_const.mul
+            ((measurable_pi_apply (X := fun _ : Fin n => ℝ) i).comp
+              measurable_fst)).add
+          (measurable_const.mul
+            ((measurable_pi_apply (X := fun _ : Fin n => ℝ) i).comp
+              measurable_snd))
+      · simp only [setShift, hi, if_false]
+        exact (measurable_pi_apply (X := fun _ : Fin n => ℝ) i).comp
+          measurable_fst
+    exact (@measurable_pi_iff ((Fin n → ℝ) × (Fin n → ℝ)) (Fin n)
+      (fun _ => ℝ) _ _ _).mpr key
+  have hjoint : Measurable (fun p : (Fin n → ℝ) × (Fin n → ℝ) =>
+      g (setShift S t p.1 p.2)) := hg_meas.comp hshift_meas
+  exact (hjoint.stronglyMeasurable.integral_prod_right').measurable
+
+/-- **`ouCoordSet` measure-preservation.** `∫ ouCoordSet S t g dγ_n =
+∫ g dγ_n` for bounded measurable `g` and `t ≥ 0`: every single-coordinate
+OU preserves the Gaussian mean, so the composition does too. Proved by
+`Finset.induction` peeling one `ouCoord` factor at a time. -/
+theorem integral_ouCoordSet_eq {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
+    (ht : 0 ≤ t) {g : (Fin n → ℝ) → ℝ} (hg_meas : Measurable g) {C : ℝ}
+    (hg_bd : ∀ z, ‖g z‖ ≤ C) :
+    ∫ x, ouCoordSet S t g x ∂γFin n = ∫ x, g x ∂γFin n := by
+  classical
+  cases n with
+  | zero =>
+      -- `Fin 0 → ℝ` is a subsingleton; the only Finset is `∅`.
+      have hS : S = (∅ : Finset (Fin 0)) := Finset.eq_empty_of_isEmpty S
+      subst hS
+      rw [ouCoordSet_empty]
+  | succ m =>
+      induction S using Finset.induction with
+      | empty => rw [ouCoordSet_empty]
+      | insert j S hj ih =>
+          have hou_meas : Measurable (ouCoordSet S t g) :=
+            measurable_ouCoordSet S t hg_meas
+          have hou_bd : ∀ z, ‖ouCoordSet S t g z‖ ≤ C := by
+            intro z
+            have hb := ouCoordSet_bounds S t hg_meas (ε := -C) (M := C)
+              (fun x => by
+                have := hg_bd x
+                rw [Real.norm_eq_abs, abs_le] at this; exact this.1)
+              (fun x => by
+                have := hg_bd x
+                rw [Real.norm_eq_abs, abs_le] at this; exact this.2) z
+            rw [Real.norm_eq_abs, abs_le]; exact ⟨hb.1, hb.2⟩
+          rw [← ouCoord_ouCoordSet S j hj t hg_meas hg_bd]
+          rw [integral_ouCoord_eq j t ht hou_meas hou_bd]
+          exact ih
+
 /-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2,
 n-dim Gaussian case).**
 
@@ -4238,51 +4564,67 @@ theorem ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
   -- and a constant) with `ε ≤ g_ε ≤ M²+ε` and `|∂_k g_ε| = |2 f ∂_k f|`
   -- uniformly bounded; `P_t(f²)+ε = P_t(g_ε)` by `ouSemigroupFin_sq_add_const`.
   --
-  -- Remaining telescoping assembly (the single open `sorry`), now resting
-  -- on the proved scaffolding `setShift` / `ouCoordSet` /
-  -- `ouCoordSet_empty` / `ouCoordSet_univ` and the proved per-coordinate
-  -- step lemma `boltzmannEntropyFin_ouCoord_step_le`:
+  -- Remaining telescoping assembly (the single open `sorry`). The T1
+  -- factorization scaffolding is now FULLY PROVED (axiom-free, above):
+  --   • `ouCoord_ouCoordSet` : `ouCoord j t ∘ ouCoordSet S t =
+  --     ouCoordSet (insert j S) t` for `j ∉ S` (composition step),
+  --   • `integral_ouCoordSet_eq` / `integral_ouCoord_eq` : `ouCoordSet`
+  --     / `ouCoord` preserve the Gaussian mean,
+  --   • `ouCoordSet_bounds`, `measurable_ouCoordSet`, `setShift_insert_update`,
+  --     `integral_update_swap`, `Gaussian1D.integral_ouSemigroup_eq`.
+  -- Together with the in-file `ouCoordSet_empty`/`ouCoordSet_univ`, the
+  -- telescope chain `∅ ⊆ {0} ⊆ … ⊆ univ` and the per-step composition
+  -- `ouCoordSet_univ = P_t` are available; (T3) energy bookkeeping
+  -- `Σ_k I_k(f²+ε) ≤ 4·E` is proved (`sum_fisherInfoFinCoord_sq_add_const_le`).
   --
-  -- (T1) **Factorization** `ouCoordSet univ t = ouSemigroupFin t`
-  --      (proved: `ouCoordSet_univ`). The telescope uses the
-  --      *composition step* `ouCoord j t ∘ ouCoordSet S t =
-  --      ouCoordSet (insert j S) t` for `j ∉ S`. PROOF: pointwise,
-  --      `setShift S t (update x j v) y =
-  --       setShift (insert j S) t x (Function.update y j s)`
-  --      (with `v = e^{-t} x_j + b s`, `j ∉ S`, elementary `funext`),
-  --      followed by the same-dimension Fubini/measure-preservation
-  --      `∫ s, ∫ y, F(update y j s) dγ_n dγ = ∫ y', F y' dγ_n`. The
-  --      latter is `measurePreserving` of `(s,y) ↦ update y j s`
-  --      `γ.prod (γFin n) → γFin n`, obtainable from
-  --      `measurePreserving_piFinSuccAbove`/`integral_γFin_succAbove`
-  --      after casting `j : Fin n` through `Fin.insertNth`/`removeNth`
-  --      (same pattern as the proved `integral_γFin_succAbove_swap`).
+  -- **MATHEMATICAL BLOCKER (corrected architecture, 2026-05-19).** The
+  -- previously documented plan assumed the per-coordinate step lemma
+  -- `boltzmannEntropyFin_ouCoord_step_le` (which requires
+  -- `ContDiff ℝ ∞` of its argument) could be applied to the telescope
+  -- iterates `ouCoordSet S_k t g_ε`, with `IsCoreFin (ouCoord j t g_ε)`
+  -- "the hardest sub-lemma". That sub-lemma is **mathematically FALSE**:
+  -- `ouCoord j` (single-coordinate Mehler) smooths ONLY the integrated
+  -- coordinate; the passthrough coordinates `≠ j` inherit `g`'s
+  -- regularity with NO gain. Under `IsCoreFin` (global bounds only up
+  -- to 2nd order), `ouCoord j t g` is in general **only `C²` jointly,
+  -- not `C^∞`** — for `t > ½ ln 2` the 3rd passthrough derivative can
+  -- diverge (Gaussian weight `e^{-s²/2}` loses to `e^{b² s²}`,
+  -- `b² = 1−e^{−2t} > ½`). Verified by gemini deep-think + gemini-3.1
+  -- (explicit counterexample `g(x_j,y)=ψ(y)[y e^{-x_j²}
+  -- − e^{-2x_j²} sin(e^{x_j²} y)]`, both passes 2026-05-19). The C²
+  -- class WITH global ≤2nd-order bounds **IS** preserved by `ouCoord`
+  -- (`‖∂Qg‖∞ ≤ a‖∂g‖∞` in the j-slot, `≤ ‖∂g‖∞` for passthrough),
+  -- and a "C² step lemma" is mathematically safe.
   --
-  -- (T2) **Orthogonal Fisher monotonicity** `I_k (ouCoord j t h) ≤
-  --      I_k h` for `j ≠ k`. Commutation `∂_k (ouCoord j t h) =
-  --      ouCoord j t (∂_k h)` (no `e^{-t}` factor — coord `k` is frozen
-  --      by `ouCoord j`; differentiate under the integral as in the
-  --      proved `hasDerivAt_coordSection_ouSemigroupFin_C1`) plus the
-  --      pointwise kernel Cauchy–Schwarz `(P u)²/(P v) ≤ P(u²/v)`
-  --      (mirror the proved 1D `Gaussian1D.ouSemigroup_fisher_info_decay`
-  --      and its `cauchy_schwarz_gamma`), then integrate using that
-  --      `ouCoord j t` is `γFin n`-measure-preserving. Composing over
-  --      the `< k` factors of `Q_k` gives `I_k(Q_k g_ε) ≤ I_k(g_ε)`.
-  --      Needs `IsCoreFin (ouCoord j t g_ε)` (regularity preservation),
-  --      the genuinely hardest sub-lemma — parametric-integral `C^∞`
-  --      for the single-coordinate shift, structurally identical to the
-  --      proved `hasFDerivAt_ouSemigroupFin` / `contDiffOne_ouSemigroupFin`
-  --      machinery (port with the diagonal `ouCoord` shift).
-  --
-  -- (T3) **Energy bookkeeping** `Σ_k I_k (f²+ε) ≤ 4 · ouEnergyFin f f`
-  --      (PROVED: `sum_fisherInfoFinCoord_sq_add_const_le`).
-  --
-  -- Telescope `BE(g_ε) - BE(P_t g_ε) =
-  --   Σ_{k<n} [BE(ouCoordSet (range k) g_ε) -
-  --            BE(ouCoordSet (range (k+1)) g_ε)]`
-  -- (`Finset.sum_range_succ`-style), bound each difference by the proved
-  -- step lemma + (T2)+(T3); then `ouSemigroupFin_sq_add_const` rewrites
-  -- `P_t(f²)+ε = P_t(g_ε)` to match the DCT-reduced goal.
+  -- **Corrected route (to discharge the `sorry`):**
+  -- (S1) Define a `C²` core predicate `IsCore2Fin` (= `ContDiff ℝ 2 f`
+  --      ∧ global bounds on `f, ∂_i f, ∂²_i f`), the C² analogue of
+  --      `IsCoreFin`; `IsCoreFin f → IsCore2Fin f`.
+  -- (S2) Prove `ouCoord`/`ouCoordSet` preserves `IsCore2Fin`
+  --      (parametric `C²` under the γ-integral: only TWO `fderiv`
+  --      passes, each dominated by the *global* IsCore2Fin bound — a
+  --      constant, hence γ-integrable since γ is a probability measure;
+  --      far cheaper than the C∞ `hasFDerivAt_ouSemigroupFin` route).
+  -- (S3) Re-prove `boltzmannEntropyFin_ouCoord_step_le` with the
+  --      hypothesis weakened from `ContDiff ℝ ∞ g` to `ContDiff ℝ 2 g`
+  --      (its proof only uses `C¹` slices via `section_contDiff` —
+  --      `contDiff_update` works at any order — and `partialDeriv`
+  --      measurability, both available from `C²`).
+  -- (S4) Orthogonal Fisher monotonicity `I_k(ouCoordSet S t h) ≤ I_k h`
+  --      for `k ∉ S` (Gemini-vetted one-shot, no per-coord induction):
+  --      commutation `∂_k(ouCoordSet S t h) = ouCoordSet S t (∂_k h)`
+  --      for `k ∉ S` (`C¹` + bounded `∂_k h`; in the `x_k`-direction
+  --      `setShift` is the identity) + pointwise kernel Cauchy–Schwarz
+  --      `(∫u)²/(∫v) ≤ ∫(u²/v)` (`MeasureTheory.inner_mul_le_norm_mul_norm`
+  --      style; mirror proved 1D `cauchy_schwarz_gamma`) +
+  --      `integral_ouCoordSet_eq` to cancel the outer operator.
+  -- (S5) Telescope `BE(g_ε) − BE(P_t g_ε) =
+  --      Σ_{k} [BE(ouCoordSet (range k) g_ε) −
+  --             BE(ouCoordSet (range (k+1)) g_ε)]`
+  --      (`Finset.sum_range_succ`), `ouCoordSet (range k) =
+  --      ouCoord (k) ∘ ouCoordSet (range k)` via `ouCoord_ouCoordSet`,
+  --      bound each diff by the (S3) C²-step + (S4)+(S3 bounds), sum,
+  --      then `ouSemigroupFin_sq_add_const` + `ouCoordSet_univ` close.
   sorry
 
 end GaussianFin
