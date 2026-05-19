@@ -166,6 +166,107 @@ private lemma ouSemigroup_sq_add_const {f : ℝ → ℝ} (hf : IsCore f) (ε : �
   rw [integral_add h_int_sq (integrable_const ε)]
   simp
 
+/-- **General 1D Boltzmann-entropy decay bound.**
+
+For a `C¹` function `g` with `ε ≤ g ≤ M` and `|g'| ≤ M` (so the
+Fisher-information regularization hypotheses of A1/A2 hold), and `t ≥ 0`,
+`H(g) - H(P_t g) ≤ (1 - e^{-2t})/2 · I(g)`, where `H` is the Boltzmann
+entropy `∫ g log g dγ` and `I` is the Fisher information `∫ (g')²/g dγ`.
+
+This is the atomic FTC assembly of A1 (`ouSemigroup_fisher_info_decay`)
+and A2 (`hasDerivAt_entropy_ouSemigroup` plus its boundary form). It is
+strictly more general than the squared specialization
+`ouSemigroup_entropy_sq_decay_bound_proved`, which it powers, and is the
+per-coordinate building block for the multivariate tensor lift. -/
+theorem boltzmannEntropy_ouSemigroup_decay_le
+    (g : ℝ → ℝ) (hg : ContDiff ℝ 1 g) {ε M : ℝ} (hε : 0 < ε)
+    (hg_lo : ∀ x, ε ≤ g x) (hg_hi : ∀ x, g x ≤ M)
+    (hg'_bd : ∀ x, |deriv g x| ≤ M) (t : ℝ) (ht : 0 ≤ t) :
+    boltzmannEntropy g - boltzmannEntropy (ouSemigroup t g) ≤
+      (1 - Real.exp (-2 * t)) / 2 * fisherInfo g := by
+  -- The function `H(s) := H(P_s g)` and the Fisher information `I(g)`.
+  set H : ℝ → ℝ := fun s => boltzmannEntropy (ouSemigroup s g) with hH_def
+  set I : ℝ := fisherInfo g with hI_def
+  -- Derivative of `H` on `Ioo 0 t`: by A2, `(d/ds) H(s) = -I(P_s g)`.
+  have hH_deriv_pos : ∀ s ∈ Set.Ioo 0 t,
+      HasDerivWithinAt H (-fisherInfo (ouSemigroup s g)) (Set.Ioi s) s := by
+    intro s hs
+    have h := hasDerivAt_entropy_ouSemigroup g hg hε hg_lo hg_hi hg'_bd hs.1
+    exact h.hasDerivWithinAt
+  -- Boundary right-derivative at 0 is `-I(g)`.
+  have hH_deriv_zero : HasDerivWithinAt H (-I) (Set.Ici 0) 0 := by
+    have h := hasDerivWithinAt_entropy_ouSemigroup_zero g hg hε hg_lo hg_hi hg'_bd
+    exact h
+  -- Continuity of `H` on `Icc 0 t`.
+  have hH_cont : ContinuousOn H (Set.Icc 0 t) := by
+    intro s hs
+    rcases lt_or_eq_of_le hs.1 with hs_pos | hs_zero
+    · have h := hasDerivAt_entropy_ouSemigroup g hg hε hg_lo hg_hi hg'_bd hs_pos
+      exact (h.hasDerivWithinAt (s := Set.Icc 0 t)).continuousWithinAt
+    · have hs_eq : s = 0 := hs_zero.symm
+      subst hs_eq
+      exact hH_deriv_zero.continuousWithinAt.mono (fun x hx => hx.1)
+  -- Pointwise inequality `-e^{-2s} I(g) ≤ -I(P_s g)` for `s ∈ Ioo 0 t`.
+  have h_fisher_le : ∀ s, 0 ≤ s →
+      fisherInfo (ouSemigroup s g) ≤ Real.exp (-2 * s) * I := by
+    intro s hs
+    exact ouSemigroup_fisher_info_decay g hg hε hg_lo hg_hi hg'_bd s hs
+  have h_ineq_pointwise : ∀ s ∈ Set.Ioo 0 t,
+      -Real.exp (-2 * s) * I ≤ -fisherInfo (ouSemigroup s g) := by
+    intro s hs
+    have hfish := h_fisher_le s hs.1.le
+    linarith
+  -- `φ(s) := -e^{-2s} I` is continuous, hence integrable on `Icc 0 t`.
+  set φ : ℝ → ℝ := fun s => -Real.exp (-2 * s) * I with hφ_def
+  have hφ_cont : Continuous φ := by
+    show Continuous (fun s => -Real.exp (-2 * s) * I); fun_prop
+  have hφ_int : MeasureTheory.IntegrableOn φ (Set.Icc 0 t) :=
+    hφ_cont.continuousOn.integrableOn_Icc
+  -- FTC inequality: `∫₀ᵗ φ s ds ≤ H(t) - H(0)`.
+  have hFTC : ∫ s in (0)..t, φ s ≤ H t - H 0 := by
+    refine intervalIntegral.integral_le_sub_of_hasDeriv_right_of_le ht hH_cont ?_
+      hφ_int h_ineq_pointwise
+    intro s hs
+    exact hH_deriv_pos s hs
+  -- Evaluate `∫₀ᵗ -e^{-2s} ds = (e^{-2t} - 1)/2`.
+  have hderiv_exp : ∀ s : ℝ,
+      HasDerivAt (fun u : ℝ => Real.exp (-2 * u) / 2) (-Real.exp (-2 * s)) s := by
+    intro s
+    have h1 : HasDerivAt (fun u : ℝ => -2 * u) (-2 : ℝ) s := by
+      simpa using (hasDerivAt_id s).const_mul (-2 : ℝ)
+    have h2 : HasDerivAt (fun u : ℝ => Real.exp (-2 * u))
+        (Real.exp (-2 * s) * (-2)) s := (Real.hasDerivAt_exp (-2 * s)).comp s h1
+    have h3 : HasDerivAt (fun u : ℝ => Real.exp (-2 * u) / 2)
+        (Real.exp (-2 * s) * (-2) / 2) s := h2.div_const 2
+    convert h3 using 1; ring
+  have hint_phi : ∫ s in (0)..t, -Real.exp (-2 * s) =
+      Real.exp (-2 * t) / 2 - Real.exp (-2 * 0) / 2 :=
+    intervalIntegral.integral_eq_sub_of_hasDerivAt
+      (f := fun u => Real.exp (-2 * u) / 2)
+      (f' := fun u => -Real.exp (-2 * u)) (a := 0) (b := t)
+      (fun s _ => hderiv_exp s)
+      ((Real.continuous_exp.comp
+        (continuous_const.mul continuous_id)).neg.intervalIntegrable 0 t)
+  have hint_phi_simp : ∫ s in (0)..t, -Real.exp (-2 * s) =
+      (Real.exp (-2 * t) - 1) / 2 := by
+    rw [hint_phi]; have : Real.exp (-2 * 0) = 1 := by simp
+    rw [this]; ring
+  have hint_φ : ∫ s in (0)..t, φ s = I * ((Real.exp (-2 * t) - 1) / 2) := by
+    show ∫ s in (0)..t, -Real.exp (-2 * s) * I = I * ((Real.exp (-2 * t) - 1) / 2)
+    rw [intervalIntegral.integral_mul_const, hint_phi_simp]; ring
+  rw [hint_φ] at hFTC
+  -- `H 0 = boltzmannEntropy g` and `H t = boltzmannEntropy (P_t g)`.
+  have hH_0 : H 0 = boltzmannEntropy g := by
+    show boltzmannEntropy (ouSemigroup 0 g) = boltzmannEntropy g
+    rw [ouSemigroup_zero]
+  have hH_t : H t = boltzmannEntropy (ouSemigroup t g) := rfl
+  rw [hH_0, hH_t] at hFTC
+  -- Rearrange: `H(g) - H(P_t g) ≤ I · (1 - e^{-2t})/2`.
+  have he : (1 - Real.exp (-2 * t)) / 2 * I = -(I * ((Real.exp (-2 * t) - 1) / 2)) := by
+    ring
+  rw [he]
+  linarith
+
 /-- **Entropy decay for `f²` under OU (BGL Theorem 5.5.2)** — PROVED
 (was axiom).
 
