@@ -3,7 +3,7 @@
 > 2026-05-17 dated section** ("Gross-discharge — G2 complete")
 > further down; `AXIOM_AUDIT.md` is canonical for the registered
 > axiom set. On the branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`
-> there are 19 declared `.lean` axioms and 9 `sorry` decls (8 in the
+> there are 18 declared `.lean` axioms and 9 `sorry` decls (8 in the
 > WIP `Abstract/GrossODE.lean`, 1 quarantined in `TwoPoint.lean`).
 
 **11 axioms. 2 sorry's total**, all quarantined in
@@ -34,14 +34,16 @@ bilinear Dirichlet form identity, and A2-boundary via A2 interior +
 DCT-based continuity. The entire Gaussian1D + General/OU chain is
 **axiom-free**.
 
-**2026-05-13: Multivariate Gaussian BE-instance landed (Stage N1).**
+**2026-05-13 / 2026-05-19: Multivariate Gaussian BE-instance landed (Stage N1 / Phase 2.5).**
 The new `stdGaussianFin.bakryEmerySpace n : BakryEmerySpace (Fin n → ℝ)`
 in `Instances/WorkInProgress/EuclideanFin.lean` (commit `8ed9e52`,
-~2850 lines, 0 sorries) carries 3 textbook axioms — all
+~2850 lines, 0 sorries) originally carried 3 textbook axioms — all
 gemini-3.1-pro-preview vetted **Standard**, all tensor-lift analogues
-of the proved 1D BE chain:
-- `ouSemigroupFin_l2_sq_hasDerivWithinAt` (BGL Prop 4.7.1, multivariate
-  de Bruijn-style L²-derivative identity)
+of the proved 1D BE chain. As of **2026-05-19**, Phase 2.5 discharges
+`ouSemigroupFin_l2_sq_hasDerivWithinAt` as a theorem in
+`Instances/WorkInProgress/EuclideanFinBE.lean` via the existing G2
+axioms `gaussianFin_diffQuot_tendsto_Lp` and
+`gaussianFin_integrationByParts`, so the remaining BE axioms are:
 - `ouSemigroupFin_preserves_IsCore` (BGL §2.7.1 + §3, Mehler smoothing
   preservation)
 - `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2, entropy decay)
@@ -92,13 +94,11 @@ called "N3"; its delivery collapses the remaining
 adapter code (E.1 + E.2 in the
 [gaussian-hilbert plan](https://github.com/mrdouglasny/gaussian-hilbert/blob/main/docs/hypercontractivity-discharge-plan.md)).
 
-The bundle's `energy_eq_deriv` field is currently obtained by
-polarization from the existing `ouSemigroupFin_l2_sq_hasDerivWithinAt`
-axiom (an interim deviation from the brief's preferred fresh-Fubini
-lift, fully documented in `AXIOM_AUDIT.md`); active axiom count is
-unchanged at **11**, but that axiom is temporarily load-bearing at the
-public bundle boundary. Replacement by the fresh-Fubini lift is tracked
-as a Phase 2.5 cleanup (~1.5 days, would drop the count to 10).
+The bundle's `energy_eq_deriv` field is now obtained from the proved
+`ouSemigroupFin_l2_sq_hasDerivWithinAt` theorem. The dependency
+surfaces through the already-counted G2 axioms rather than a dedicated
+GaussianFin de Bruijn axiom, so this Phase 2.5 discharge drops the
+branch-local declared axiom count by one: **19 → 18**.
 
 **Phase 3 wire-in smoke test verified upstream** in gaussian-hilbert
 (branch `phase-3-smoke-test`, commit `0f0c5eb`,
@@ -143,9 +143,9 @@ through a strong-`L²` derivative (the reusable kernel, *to be
 proved*, not axiomatized).
 
 *Accurate inventory (this branch; supersedes the stale headline —
-`AXIOM_AUDIT.md` is canonical for the registered set).* 19 declared
-`.lean` axioms (incl. the 3 Gross-discharge general axioms, 3
-`EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
+`AXIOM_AUDIT.md` is canonical for the registered set).* 18 declared
+`.lean` axioms (incl. the 3 Gross-discharge general axioms, 2
+remaining `EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
 axioms, the legacy abstract Gross/S–V trio, Dobrushin–Zegarliński,
 Schwartz-convolution, diamagnetic). 9 `sorry` declarations: **8 in
 `Abstract/GrossODE.lean`** (the documented P2/P3 work items —
@@ -166,7 +166,7 @@ P2 (the one general Leibniz kernel + thin glue) → P3 algebra → W.
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
 | Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
 | Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance **axiom-free**; the de Bruijn / Fisher-info entropy-decay facts are **discharged as theorems** in `General/OUEntropyDecomposition.lean` (itself axiom-free — AXIOM_AUDIT.md confirms). All 9 original Mehler-kernel axioms discharged. |
-| Instances/WorkInProgress/EuclideanFin (+EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 6 | 0 | 6 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 3 BE tensor-lift axioms (`ouSemigroupFin_*`) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free** (2 axioms on its live path). |
+| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 7 | 0 | 5 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 2 remaining BE tensor-lift axioms (`ouSemigroupFin_preserves_IsCore`, `ouSemigroupFin_entropy_sq_decay_bound`) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free**; `ouSemigroupFin_l2_sq_hasDerivWithinAt` is now a theorem in `EuclideanFinBE.lean`. |
 | Instances/WorkInProgress/EuclideanTests | 1 | 0 | 4 | Scaffolding axioms (`gaussianResolvent*`, `gaussianBochner_identity`) — excluded by policy, not consumed by main tree |
 | Matrix/ | 4 | 0 | 1 | Heat kernel, Trotter, diamagnetic inequality (`m_matrix_inverse_nonneg` now imported from `SpectralPositivity` as a theorem) |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |

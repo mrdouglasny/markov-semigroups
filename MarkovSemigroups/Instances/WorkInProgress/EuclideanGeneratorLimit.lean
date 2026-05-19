@@ -238,9 +238,8 @@ theorem ouSemigroupFinLp_diffQuot_tendsto {f : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) :
     Tendsto
       (fun t : ℝ => t⁻¹ •
-        ((stdGaussianFin_dirichletMarkovSemigroup n).P t
-            ((stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hf)
-          - (stdGaussianFin_dirichletMarkovSemigroup n).coreToL2 hf))
+        (ouSemigroupFinLp (n := n) t ((isCoreFin_memLp f hf).toLp f)
+          - (isCoreFin_memLp f hf).toLp f))
       (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (ouGeneratorFinLp hf)) := by
   obtain ⟨hsm, M, hM⟩ := hf
   have hfc : IsCoreFin f := ⟨hsm, M, hM⟩
