@@ -15,9 +15,16 @@
 > (`Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le`,
 > `entropy_sub_eq_boltzmann_sub`, `boltzmannEntropyFin_ouCoord_step_le`,
 > `sum_fisherInfoFinCoord_sq_add_const_le`), plus the `ouCoord`
-> operator and its bridges. **One documented `sorry` remains** for the
-> telescoping assembly (T1 coordinate factorization + T2 orthogonal
-> Fisher monotonicity + ε-limit). Full `lake build` green;
+> operator and its bridges. **2026-05-19 follow-up:** the **ε→0 DCT
+> tail** is now discharged as the axiom-free lemma
+> `boltzmannSubFin_le_of_perEps` (plus helper
+> `ouSemigroupFin_sq_add_const`), and the **T1 factorization
+> scaffolding** `setShift`/`ouCoordSet` (with `ouCoordSet_empty = id`,
+> `ouCoordSet_univ = ouSemigroupFin`) is in place — all axiom-free. The
+> main theorem now discharges Step 1 (entropy→Boltzmann) and Step 2
+> (ε-reduction) in its body; the **one documented `sorry`** is now the
+> per-ε telescoping core only (T1 composition step + T2 orthogonal
+> Fisher monotonicity; T3 already proved). Full `lake build` green;
 > `#print axioms ouSemigroupFin_entropy_sq_decay_bound = [propext,
 > sorryAx, Classical.choice, Quot.sound]`. See `AXIOM_AUDIT.md` row.
 

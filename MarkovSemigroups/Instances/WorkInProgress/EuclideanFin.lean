@@ -3260,6 +3260,52 @@ theorem sum_fisherInfoFinCoord_sq_add_const_le {n : ℕ}
     ring
   exact le_of_eq henergy
 
+/-! ### T1: factorization of `ouSemigroupFin` into single-coordinate OUs
+
+The multivariate OU Mehler kernel factors over coordinates, so the
+`n`-dimensional operator equals the composition of the `n`
+single-coordinate `ouCoord` operators (in any order). We formalize this
+through a coordinate-set–indexed operator `ouCoordSet S` (OU applied on
+the coordinates in `S`, freezing the rest), with `ouCoordSet ∅ = id`,
+`ouCoordSet univ = ouSemigroupFin`, and the one-coordinate composition
+step `ouCoord j (ouCoordSet S) = ouCoordSet (insert j S)` for `j ∉ S`. -/
+
+/-- The OU Mehler shift restricted to a coordinate set `S`: coordinates
+in `S` are pushed through the 1D Mehler map `xᵢ ↦ e^{-t}xᵢ + b yᵢ`,
+coordinates outside `S` are frozen. -/
+def setShift (S : Finset (Fin n)) (t : ℝ) (x y : Fin n → ℝ) : Fin n → ℝ :=
+  fun i => if i ∈ S then
+      Real.exp (-t) * x i + Real.sqrt (1 - Real.exp (-2 * t)) * y i
+    else x i
+
+/-- The OU semigroup applied on the coordinate subset `S` only. -/
+def ouCoordSet (S : Finset (Fin n)) (t : ℝ) (f : (Fin n → ℝ) → ℝ) :
+    (Fin n → ℝ) → ℝ :=
+  fun x => ∫ y, f (setShift S t x y) ∂γFin n
+
+theorem setShift_empty (t : ℝ) (x y : Fin n → ℝ) :
+    setShift (∅ : Finset (Fin n)) t x y = x := by
+  funext i; simp [setShift]
+
+theorem setShift_univ (t : ℝ) (x y : Fin n → ℝ) :
+    setShift (Finset.univ : Finset (Fin n)) t x y = ouShiftFin t x y := by
+  funext i; simp [setShift, ouShiftFin]
+
+theorem ouCoordSet_empty (t : ℝ) {f : (Fin n → ℝ) → ℝ} :
+    ouCoordSet (∅ : Finset (Fin n)) t f = f := by
+  funext x
+  unfold ouCoordSet
+  simp only [setShift_empty]
+  simp
+
+theorem ouCoordSet_univ (t : ℝ) {f : (Fin n → ℝ) → ℝ} :
+    ouCoordSet (Finset.univ : Finset (Fin n)) t f = ouSemigroupFin t f := by
+  funext x
+  show (∫ y, f (setShift Finset.univ t x y) ∂γFin n) =
+    ∫ y, f (ouShiftFin t x y) ∂γFin n
+  refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+  exact congrArg f (setShift_univ t x y)
+
 /-- The multivariate OU semigroup commutes with adding a constant on the
 square: `P_t (f² + ε) = P_t (f²) + ε`, because `P_t` is an average
 against a probability kernel (`γFin n` is a probability measure). -/
@@ -3431,37 +3477,61 @@ theorem ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
   -- Step 1 (proved): reduce the centered entropy difference to the
   -- Boltzmann difference via macroscopic-term cancellation.
   rw [entropy_sub_eq_boltzmann_sub f t ht hf]
-  -- Remaining: the Boltzmann telescoping bound
-  --   `boltzmannEntropyFin (f²) - boltzmannEntropyFin (P_t f²)`
-  --     ≤ 2 (1 - e^{-2t}) · ouEnergyFin f f.
+  -- Step 2 (proved): reduce to the per-ε regularized Boltzmann bound
+  -- via the n-dim DCT tail `boltzmannSubFin_le_of_perEps`. After this,
+  -- it suffices to bound, for every `ε > 0`,
+  --   `BE(f²+ε) - BE(P_t(f²) + ε) ≤ 2 (1 - e^{-2t}) · ouEnergyFin f f`.
+  refine boltzmannSubFin_le_of_perEps (n := n) hf t ht ?_
+  intro ε hε
+  -- The per-ε goal. `g_ε := f²+ε` is `IsCoreFin` (sum of `IsCoreFin`
+  -- and a constant) with `ε ≤ g_ε ≤ M²+ε` and `|∂_k g_ε| = |2 f ∂_k f|`
+  -- uniformly bounded; `P_t(f²)+ε = P_t(g_ε)` by `ouSemigroupFin_sq_add_const`.
   --
-  -- The per-coordinate step bound is now a proved theorem
-  -- (`boltzmannEntropyFin_ouCoord_step_le`):
-  --   `BE(h) - BE(ouCoord k t h) ≤ (1-e^{-2t})/2 · I_k(h)`
-  -- for `C^∞ h` with `ε ≤ h ≤ M` and `|∂_k h| ≤ M`.
+  -- Remaining telescoping assembly (the single open `sorry`), now resting
+  -- on the proved scaffolding `setShift` / `ouCoordSet` /
+  -- `ouCoordSet_empty` / `ouCoordSet_univ` and the proved per-coordinate
+  -- step lemma `boltzmannEntropyFin_ouCoord_step_le`:
   --
-  -- The remaining telescoping assembly needs three more sub-lemmas:
-  --
-  -- (T1) **Factorization** `ouSemigroupFin t = ouCoord (n-1) t ∘ … ∘
-  --      ouCoord 0 t` (as functions on `Fin n → ℝ`). By induction on `n`
-  --      via `ouSemigroupFin_insertNth_eq` (the (n+1)-OU equals the
-  --      1D-OU on coordinate `i` composed with the n-OU on the rest).
+  -- (T1) **Factorization** `ouCoordSet univ t = ouSemigroupFin t`
+  --      (proved: `ouCoordSet_univ`). The telescope uses the
+  --      *composition step* `ouCoord j t ∘ ouCoordSet S t =
+  --      ouCoordSet (insert j S) t` for `j ∉ S`. PROOF: pointwise,
+  --      `setShift S t (update x j v) y =
+  --       setShift (insert j S) t x (Function.update y j s)`
+  --      (with `v = e^{-t} x_j + b s`, `j ∉ S`, elementary `funext`),
+  --      followed by the same-dimension Fubini/measure-preservation
+  --      `∫ s, ∫ y, F(update y j s) dγ_n dγ = ∫ y', F y' dγ_n`. The
+  --      latter is `measurePreserving` of `(s,y) ↦ update y j s`
+  --      `γ.prod (γFin n) → γFin n`, obtainable from
+  --      `measurePreserving_piFinSuccAbove`/`integral_γFin_succAbove`
+  --      after casting `j : Fin n` through `Fin.insertNth`/`removeNth`
+  --      (same pattern as the proved `integral_γFin_succAbove_swap`).
   --
   -- (T2) **Orthogonal Fisher monotonicity** `I_k (ouCoord j t h) ≤
   --      I_k h` for `j ≠ k`. Commutation `∂_k (ouCoord j t h) =
-  --      ouCoord j t (∂_k h)` (the derivative is orthogonal to the
-  --      flow, so no `e^{-t}` factor) plus the pointwise Jensen/CS
-  --      inequality `(P u)² / (P v) ≤ P (u²/v)` for the 1D Mehler
-  --      probability kernel `P = ouCoord j t`.
+  --      ouCoord j t (∂_k h)` (no `e^{-t}` factor — coord `k` is frozen
+  --      by `ouCoord j`; differentiate under the integral as in the
+  --      proved `hasDerivAt_coordSection_ouSemigroupFin_C1`) plus the
+  --      pointwise kernel Cauchy–Schwarz `(P u)²/(P v) ≤ P(u²/v)`
+  --      (mirror the proved 1D `Gaussian1D.ouSemigroup_fisher_info_decay`
+  --      and its `cauchy_schwarz_gamma`), then integrate using that
+  --      `ouCoord j t` is `γFin n`-measure-preserving. Composing over
+  --      the `< k` factors of `Q_k` gives `I_k(Q_k g_ε) ≤ I_k(g_ε)`.
+  --      Needs `IsCoreFin (ouCoord j t g_ε)` (regularity preservation),
+  --      the genuinely hardest sub-lemma — parametric-integral `C^∞`
+  --      for the single-coordinate shift, structurally identical to the
+  --      proved `hasFDerivAt_ouSemigroupFin` / `contDiffOne_ouSemigroupFin`
+  --      machinery (port with the diagonal `ouCoord` shift).
   --
   -- (T3) **Energy bookkeeping** `Σ_k I_k (f²+ε) ≤ 4 · ouEnergyFin f f`
-  --      from `∂_k (f²+ε) = 2 f ∂_k f` and `f²/(f²+ε) ≤ 1`, then the
-  --      `ε → 0` limit by dominated convergence (`s ↦ s log s` bounded
-  --      on `[0, M²+1]`), exactly mirroring the proved 1D `ε`-argument.
+  --      (PROVED: `sum_fisherInfoFinCoord_sq_add_const_le`).
   --
-  -- Telescoping `BE(g) - BE(P_t g) = Σ_k [BE(Q_{k-1} g) - BE(Q_k g)]`
-  -- with `Q_k` the composition of the first `k` `ouCoord` factors,
-  -- bounding each difference by (T1)+step-lemma, then (T2)+(T3).
+  -- Telescope `BE(g_ε) - BE(P_t g_ε) =
+  --   Σ_{k<n} [BE(ouCoordSet (range k) g_ε) -
+  --            BE(ouCoordSet (range (k+1)) g_ε)]`
+  -- (`Finset.sum_range_succ`-style), bound each difference by the proved
+  -- step lemma + (T2)+(T3); then `ouSemigroupFin_sq_add_const` rewrites
+  -- `P_t(f²)+ε = P_t(g_ε)` to match the DCT-reduced goal.
   sorry
 
 end GaussianFin
