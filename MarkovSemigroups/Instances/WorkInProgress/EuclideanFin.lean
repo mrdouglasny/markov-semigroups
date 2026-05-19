@@ -18,6 +18,7 @@ import Mathlib.Analysis.Calculus.Rademacher
 import Mathlib.Analysis.Normed.Operator.Prod
 import Mathlib.MeasureTheory.Constructions.Pi
 import Mathlib.MeasureTheory.Integral.Pi
+import Mathlib.MeasureTheory.Measure.Haar.NormedSpace
 import Mathlib.Probability.Distributions.Gaussian.Real
 
 open MeasureTheory Filter Set Real ProbabilityTheory
@@ -2602,6 +2603,251 @@ theorem ouSemigroupFin_entropy_sq_ergodic (f : (Fin n → ℝ) → ℝ) (hf : Is
 `ouSemigroupFin_l2_decay_bound` are proved in the later module
 `EuclideanFinBE.lean`, which can import the `L²` generator-limit
 infrastructure without creating an import cycle. -/
+
+/-! ### Cameron–Martin kernel infrastructure for OU-semigroup smoothing -/
+
+/-- **1D Cameron–Martin / Girsanov shift for the standard Gaussian.**
+
+For the standard Gaussian `Gaussian1D.γ = gaussianReal 0 1` and any `s : ℝ`,
+`∫ ψ(u + s) dγ(u) = ∫ ψ(w) · exp(s·w − s²/2) dγ(w)`.
+
+This is the density of the translated Gaussian relative to the reference
+Gaussian; no integrability hypothesis on `ψ` is needed because the identity
+is proved through the Lebesgue-translation invariance of the underlying
+density representation. -/
+theorem cameronMartin1D (s : ℝ) (ψ : ℝ → ℝ) :
+    ∫ u, ψ (u + s) ∂Gaussian1D.γ
+      = ∫ w, ψ w * Real.exp (s * w - s ^ 2 / 2) ∂Gaussian1D.γ := by
+  have hγ : (Gaussian1D.γ : Measure ℝ)
+      = (volume : Measure ℝ).withDensity (gaussianPDF 0 1) := by
+    show gaussianReal 0 1 = _
+    exact gaussianReal_of_var_ne_zero 0 one_ne_zero
+  have htop : ∀ᵐ x : ℝ ∂(volume : Measure ℝ), gaussianPDF 0 1 x < (⊤ : ENNReal) :=
+    Filter.Eventually.of_forall (fun _ => gaussianPDF_lt_top)
+  rw [hγ, integral_withDensity_eq_integral_toReal_smul (measurable_gaussianPDF 0 1) htop,
+    integral_withDensity_eq_integral_toReal_smul (measurable_gaussianPDF 0 1) htop]
+  rw [show (fun u => (gaussianPDF 0 1 u).toReal • ψ (u + s))
+        = (fun u => (gaussianPDF 0 1 u).toReal * ψ (u + s)) from rfl]
+  rw [show (fun w => (gaussianPDF 0 1 w).toReal • (ψ w * Real.exp (s * w - s ^ 2 / 2)))
+        = (fun w => (gaussianPDF 0 1 w).toReal * ψ w
+            * Real.exp (s * w - s ^ 2 / 2)) from by
+        funext w; rw [smul_eq_mul]; ring]
+  rw [← integral_add_right_eq_self
+      (fun u => (gaussianPDF 0 1 u).toReal * ψ (u + s)) (-s)]
+  simp only [neg_add_cancel_right]
+  congr 1
+  funext w
+  have hkey : (gaussianPDF 0 1 (w - s)).toReal
+      = (gaussianPDF 0 1 w).toReal * Real.exp (s * w - s ^ 2 / 2) := by
+    simp only [gaussianPDF, ENNReal.toReal_ofReal (gaussianPDFReal_nonneg _ _ _)]
+    unfold gaussianPDFReal
+    have hcombine :
+        Real.exp (-(w - 0) ^ 2 / (2 * (1:NNReal)))
+            * Real.exp (s * w - s ^ 2 / 2)
+          = Real.exp (-(w - s - 0) ^ 2 / (2 * (1:NNReal))) := by
+      rw [← Real.exp_add]; congr 1; push_cast; ring
+    rw [← hcombine]; ring
+  rw [show w - s = w + -s from by ring] at *
+  rw [hkey]; ring
+
+/-- **Multivariate Cameron–Martin shift for the product Gaussian.**
+
+For the standard product Gaussian `γFin n` on `Fin n → ℝ` and any shift
+`s : Fin n → ℝ`,
+`∫ G(y + s) dγFin(y) = ∫ G(w) · exp(⟨s,w⟩ − ‖s‖²/2) dγFin(w)`,
+where `⟨s,w⟩ = ∑ᵢ sᵢ wᵢ` and `‖s‖² = ∑ᵢ sᵢ²`.
+
+Proved by induction on `n`, peeling one coordinate with
+`integral_γFin_succAbove` and applying the 1D Cameron–Martin shift
+`cameronMartin1D` in that coordinate. -/
+theorem gaussianFin_cameronMartin : ∀ (n : ℕ) (s : Fin n → ℝ)
+    (G : (Fin n → ℝ) → ℝ) (_ : Continuous G) {MG : ℝ} (_ : ∀ z, ‖G z‖ ≤ MG),
+    ∫ y, G (y + s) ∂γFin n
+      = ∫ w, G w * Real.exp ((∑ i, s i * w i) - (∑ i, s i ^ 2) / 2) ∂γFin n := by
+  intro n
+  induction n with
+  | zero =>
+      intro s G hG MG hMG
+      have hsub : ∀ z : Fin 0 → ℝ, G z = G ![] := fun z => by
+        congr 1; exact Subsingleton.elim _ _
+      simp only [Finset.sum_empty, Finset.univ_eq_empty]
+      rw [show (fun y : Fin 0 → ℝ => G (y + s)) = fun _ => G ![] from by
+            funext y; rw [hsub]]
+      rw [show (fun w : Fin 0 → ℝ => G w * Real.exp (0 - 0 / 2))
+            = fun _ => G ![] from by funext w; rw [hsub w]; norm_num]
+  | succ m ih =>
+      intro s G hG MG hMG
+      classical
+      set s0 : ℝ := s 0 with hs0
+      set s' : Fin m → ℝ := Fin.tail s with hs'
+      have hcons_s : s = Fin.cons s0 s' := by
+        rw [hs0, hs']; exact (Fin.cons_self_tail s).symm
+      have hcons_add : ∀ (a b : ℝ) (p q : Fin m → ℝ),
+          (Fin.cons a p : Fin (m+1) → ℝ) + Fin.cons b q = Fin.cons (a + b) (p + q) := by
+        intro a b p q
+        funext j
+        refine Fin.cases ?_ (fun k => ?_) j
+        · simp only [Pi.add_apply, Fin.cons_zero]
+        · simp only [Pi.add_apply, Fin.cons_succ]
+      have hpeel : ∀ (F : (Fin (m+1) → ℝ) → ℝ), Integrable F (γFin (m+1)) →
+          ∫ y, F y ∂γFin (m + 1)
+            = ∫ u, ∫ y', F (Fin.cons u y') ∂γFin m ∂Gaussian1D.γ := by
+        intro F hF
+        have h := integral_γFin_succAbove (n := m) (0 : Fin (m+1)) hF
+        rw [h]
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun u => ?_))
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun y' => ?_))
+        show F (Fin.insertNth 0 u y') = F (Fin.cons u y')
+        rw [Fin.insertNth_zero']
+      have hsum_split : ∀ (u : ℝ) (w' : Fin m → ℝ),
+          (∑ j, s j * (Fin.cons u w' : Fin (m+1) → ℝ) j)
+            = s0 * u + ∑ k, s' k * w' k := by
+        intro u w'
+        rw [Fin.sum_univ_succ]
+        have hhead : s 0 * (Fin.cons u w' : Fin (m+1) → ℝ) 0 = s0 * u := by
+          simp [hs0]
+        have htail : ∀ k : Fin m,
+            s k.succ * (Fin.cons u w' : Fin (m+1) → ℝ) k.succ = s' k * w' k := by
+          intro k; simp [hs', Fin.tail]
+        rw [hhead, Finset.sum_congr rfl (fun k _ => htail k)]
+      have hnorm_split : (∑ j, s j ^ 2) = s0 ^ 2 + ∑ k, s' k ^ 2 := by
+        rw [Fin.sum_univ_succ]
+        have hhead : s 0 ^ 2 = s0 ^ 2 := by simp [hs0]
+        have htail : ∀ k : Fin m, s k.succ ^ 2 = s' k ^ 2 := by
+          intro k; simp [hs', Fin.tail]
+        rw [hhead, Finset.sum_congr rfl (fun k _ => htail k)]
+      have hcont_shift : Continuous (fun y : Fin (m+1) → ℝ => G (y + s)) :=
+        hG.comp (continuous_id.add continuous_const)
+      have hInt_lhs : Integrable (fun y : Fin (m+1) → ℝ => G (y + s)) (γFin (m+1)) :=
+        integrable_of_bound hcont_shift.measurable (fun y => hMG (y + s))
+      have hGcons_cont : ∀ u : ℝ,
+          Continuous (fun w' : Fin m → ℝ => G (Fin.cons u w')) :=
+        fun u => hG.comp (Continuous.finCons continuous_const continuous_id)
+      have hstepL :
+          ∫ y, G (y + s) ∂γFin (m + 1)
+            = ∫ u, (∫ w', G (Fin.cons (u + s0) w')
+                * Real.exp ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2) ∂γFin m)
+                ∂Gaussian1D.γ := by
+        rw [hpeel _ hInt_lhs]
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun u => ?_))
+        simp only []
+        have harg : (fun y' : Fin m → ℝ => G (Fin.cons u y' + s))
+            = fun y' => G (Fin.cons (u + s0) (y' + s')) := by
+          funext y'
+          rw [hcons_s, hcons_add u s0 y' s']
+        rw [harg]
+        exact ih s' (fun w' => G (Fin.cons (u + s0) w')) (hGcons_cont (u + s0))
+          (MG := MG) (fun z => hMG _)
+      have hstepCM :
+          ∫ u, (∫ w', G (Fin.cons (u + s0) w')
+                * Real.exp ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2) ∂γFin m)
+                ∂Gaussian1D.γ
+            = ∫ v, (∫ w', G (Fin.cons v w')
+                * Real.exp ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2) ∂γFin m)
+                * Real.exp (s0 * v - s0 ^ 2 / 2) ∂Gaussian1D.γ := by
+        have hcm := cameronMartin1D s0
+          (fun v => ∫ w', G (Fin.cons v w')
+            * Real.exp ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2) ∂γFin m)
+        simpa using hcm
+      have hRHSpeel :
+          ∫ w, G w * Real.exp ((∑ j, s j * w j) - (∑ j, s j ^ 2) / 2) ∂γFin (m + 1)
+            = ∫ v, (∫ w', G (Fin.cons v w')
+                * Real.exp ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2) ∂γFin m)
+                * Real.exp (s0 * v - s0 ^ 2 / 2) ∂Gaussian1D.γ := by
+        have hInt_rhs : Integrable
+            (fun w : Fin (m+1) → ℝ =>
+              G w * Real.exp ((∑ j, s j * w j) - (∑ j, s j ^ 2) / 2)) (γFin (m+1)) := by
+          -- exp(⟨s,w⟩) = ∏ⱼ exp(sⱼ wⱼ) is γFin-integrable; G is bounded.
+          have hexp_prod : Integrable
+              (fun w : Fin (m+1) → ℝ => ∏ j, Real.exp (s j * w j)) (γFin (m+1)) := by
+            refine MeasureTheory.Integrable.fintype_prod
+              (f := fun j u => Real.exp (s j * u))
+              (μ := fun _ => Gaussian1D.γ) (fun j => ?_)
+            show Integrable (fun u => Real.exp (s j * u)) Gaussian1D.γ
+            simpa using
+              (ProbabilityTheory.integrable_exp_mul_gaussianReal (μ := 0) (v := 1) (s j))
+          have hrewrite : (fun w : Fin (m+1) → ℝ =>
+                G w * Real.exp ((∑ j, s j * w j) - (∑ j, s j ^ 2) / 2))
+              = fun w => Real.exp (- (∑ j, s j ^ 2) / 2)
+                  * (G w * ∏ j, Real.exp (s j * w j)) := by
+            funext w
+            rw [show (∑ j, s j * w j) - (∑ j, s j ^ 2) / 2
+                  = (- (∑ j, s j ^ 2) / 2) + (∑ j, s j * w j) from by ring]
+            rw [Real.exp_add, Real.exp_sum]
+            ring
+          rw [hrewrite]
+          refine Integrable.const_mul ?_ _
+          exact hexp_prod.bdd_mul (c := MG) hG.aestronglyMeasurable
+            (Filter.Eventually.of_forall (fun w => hMG w))
+        rw [hpeel _ hInt_rhs]
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun u => ?_))
+        simp only []
+        rw [← integral_mul_const]
+        refine integral_congr_ae (Filter.Eventually.of_forall (fun w' => ?_))
+        show G (Fin.cons u w')
+              * Real.exp ((∑ j, s j * (Fin.cons u w' : Fin (m+1) → ℝ) j)
+                  - (∑ j, s j ^ 2) / 2)
+            = G (Fin.cons u w')
+              * Real.exp ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2)
+              * Real.exp (s0 * u - s0 ^ 2 / 2)
+        rw [hsum_split u w', hnorm_split]
+        rw [show (s0 * u + ∑ k, s' k * w' k) - (s0 ^ 2 + ∑ k, s' k ^ 2) / 2
+              = ((∑ k, s' k * w' k) - (∑ k, s' k ^ 2) / 2) + (s0 * u - s0 ^ 2 / 2) from by
+              ring]
+        rw [Real.exp_add]
+        ring
+      rw [hstepL, hstepCM, ← hRHSpeel]
+
+/-- **Cameron–Martin / kernel representation of the multivariate OU semigroup.**
+
+For `t > 0` (so `b := √(1−e^{−2t}) > 0`) and any continuous bounded `g`,
+`(P_t g)(x) = ∫ w, g(b·w) · exp(⟨s,w⟩ − ‖s‖²/2) dγFin(w)` where
+`s = (e^{−t}/b)·x`.
+
+The spatial variable `x` enters only through the smooth Gaussian-type weight,
+which is the key to differentiating under the integral without any
+smoothness or growth control on `g`. -/
+theorem ouSemigroupFin_eq_cmKernel (t : ℝ) (ht : 0 < t)
+    {g : (Fin n → ℝ) → ℝ} (hg : Continuous g) {M : ℝ} (hM : ∀ z, ‖g z‖ ≤ M)
+    (x : Fin n → ℝ) :
+    ouSemigroupFin t g x
+      = ∫ w, g (fun i => Real.sqrt (1 - Real.exp (-2 * t)) * w i)
+          * Real.exp ((∑ i, (Real.exp (-t) / Real.sqrt (1 - Real.exp (-2 * t)) * x i) * w i)
+              - (∑ i, (Real.exp (-t) / Real.sqrt (1 - Real.exp (-2 * t)) * x i) ^ 2) / 2)
+          ∂γFin n := by
+  set a : ℝ := Real.exp (-t) with ha
+  set b : ℝ := Real.sqrt (1 - Real.exp (-2 * t)) with hb
+  have hb_pos : 0 < b := by
+    rw [hb]
+    apply Real.sqrt_pos.mpr
+    have : Real.exp (-2 * t) < 1 := by
+      apply Real.exp_lt_one_iff.mpr; linarith
+    linarith
+  have hb_ne : b ≠ 0 := ne_of_gt hb_pos
+  set s : Fin n → ℝ := fun i => a / b * x i with hs
+  set G : (Fin n → ℝ) → ℝ := fun z => g (fun i => b * z i) with hG
+  have hG_cont : Continuous G := by
+    refine hg.comp ?_
+    exact continuous_pi (fun i => continuous_const.mul (continuous_apply i))
+  have hG_bd : ∀ z, ‖G z‖ ≤ M := fun z => hM _
+  have hrw : (fun y : Fin n → ℝ => g (ouShiftFin t x y))
+      = fun y => G (y + s) := by
+    funext y
+    show g (ouShiftFin t x y) = g (fun i => b * (y + s) i)
+    congr 1
+    funext i
+    show a * x i + b * y i = b * (y i + a / b * x i)
+    field_simp
+    ring
+  have hcm := gaussianFin_cameronMartin n s G hG_cont (MG := M) hG_bd
+  calc
+    ouSemigroupFin t g x
+        = ∫ y, g (ouShiftFin t x y) ∂γFin n := rfl
+    _ = ∫ y, G (y + s) ∂γFin n := by rw [hrw]
+    _ = ∫ w, G w * Real.exp ((∑ i, s i * w i) - (∑ i, s i ^ 2) / 2) ∂γFin n := hcm
+    _ = _ := by
+          refine integral_congr_ae (Filter.Eventually.of_forall (fun w => ?_))
+          simp only [hG, hs]
 
 /-! ### N1.5 textbook axiom: `C^∞` core preservation under the multivariate OU semigroup
 
