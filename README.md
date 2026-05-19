@@ -267,7 +267,7 @@ uses them will see the axiom/sorry surface honestly.
 - **Weighted Young's inequality** from Hessian symmetry
 - **Variance nonnegativity** via Mathlib's `ProbabilityTheory.variance_nonneg`
 
-### Postulated as textbook axioms (2 core + 1 Stroock-Varopoulos + 1 matrix + 2 DZ + 2 concentration/Poincaré + 2 GaussianFin = 10 total)
+### Postulated as textbook axioms (2 core + 1 Stroock-Varopoulos + 1 matrix + 2 DZ + 2 concentration/Poincaré + 0 GaussianFin = 8 total)
 
 *See [`AXIOM_AUDIT.md`](AXIOM_AUDIT.md) for the per-axiom vetting
 verdicts (Standard / Likely correct / Placeholder / etc.), review
@@ -285,17 +285,18 @@ and links to the discharge plans.*
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
 | `herbst_mgf_bound` | BGL §5.4.1 (Herbst's lemma); Ledoux (2001) §1; Otto-Villani (2000) JFA 173 §3 |
 | `poincare_of_lsi` | BGL Proposition 5.1.3 (LSI ⇒ Poincaré with same constant) |
-| `ouSemigroupFin_preserves_IsCore` | BGL §2.7.1 + §3 (Mehler smoothing preservation; **Standard** by gemini-3.1-pro 2026-05-13; multivariate analogue of 1D Path-C Hermite-IBP discharge) |
-| `ouSemigroupFin_entropy_sq_decay_bound` | BGL Thm 5.5.2 (multivariate entropy decay for f²; **Standard** by gemini-3.1-pro 2026-05-13; telescoping-based tensor-lift of proved 1D entropy decay) |
 
 The Gaussian1D concrete instance and the abstract
 `MarkovSemigroups/General/OUEntropyDecomposition.lean` are both now
 **axiom-free**: all BGL Ch. 2 and §5.5 facts for the Gaussian OU
-semigroup have been discharged. As of **2026-05-19**, the multivariate
-de Bruijn derivative `ouSemigroupFin_l2_sq_hasDerivWithinAt` is also a
-theorem (in `Instances/WorkInProgress/EuclideanFinBE.lean`), so the
-remaining multivariate Gaussian BE axioms are `ouSemigroupFin_preserves_IsCore`
-and `ouSemigroupFin_entropy_sq_decay_bound`.
+semigroup have been discharged. As of **2026-05-19**, all multivariate
+Gaussian BE axioms are discharged to axiom-free theorems: the de Bruijn
+derivative `ouSemigroupFin_l2_sq_hasDerivWithinAt` (in
+`Instances/WorkInProgress/EuclideanFinBE.lean`),
+`ouSemigroupFin_preserves_IsCore` (Workstream N1.b, Cameron–Martin
+kernel route), and `ouSemigroupFin_entropy_sq_decay_bound` (Workstream
+N1.c, the 1-parameter telescoping route) — leaving **0 GaussianFin
+axioms**.
 
 **Discharged 2026-05-12:**
 * `ouSemigroup_fisher_info_decay` (A1, BGL Proposition 5.5.2) — the

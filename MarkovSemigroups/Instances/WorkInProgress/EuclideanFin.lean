@@ -241,6 +241,37 @@ theorem section_secondDeriv {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
   rw [section_deriv hf.contDiff i x]
   exact (partialDeriv_update_hasDerivAt hf i x s).deriv
 
+/-- `C¹`-order companion of `section_contDiff`: the coordinate section of a
+`ContDiff ℝ 1` function is again `ContDiff ℝ 1`. Used for telescope iterates
+which are only `C¹` (not `C^∞`). -/
+theorem section_contDiff_one {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ 1 f)
+    (i : Fin n) (x : Fin n → ℝ) :
+    ContDiff ℝ 1 (coordSection i x f) := by
+  unfold coordSection
+  exact hf.comp (contDiff_update 1 x i)
+
+/-- `C¹`-order companion of `section_hasDerivAt`: the derivative of the
+coordinate section is the coordinate partial. Only differentiability of `f`
+is needed. -/
+theorem section_hasDerivAt_of_differentiable {f : (Fin n → ℝ) → ℝ}
+    (hf : Differentiable ℝ f) (i : Fin n) (x : Fin n → ℝ) (s : ℝ) :
+    HasDerivAt (coordSection i x f)
+      (partialDeriv i f (Function.update x i s)) s := by
+  unfold coordSection partialDeriv
+  have h_update := hasDerivAt_update x i s
+  have h_f : HasFDerivAt f (fderiv ℝ f (Function.update x i s))
+      (Function.update x i s) :=
+    (hf (Function.update x i s)).hasFDerivAt
+  simpa [partialDeriv] using h_f.comp_hasDerivAt s h_update
+
+/-- `C¹`-order companion of `section_deriv`. -/
+theorem section_deriv_of_differentiable {f : (Fin n → ℝ) → ℝ}
+    (hf : Differentiable ℝ f) (i : Fin n) (x : Fin n → ℝ) :
+    deriv (coordSection i x f) =
+      fun s => partialDeriv i f (Function.update x i s) := by
+  funext s
+  exact (section_hasDerivAt_of_differentiable hf i x s).deriv
+
 theorem stein_partialDeriv_ouShiftFin {n : ℕ} {f : (Fin (n + 1) → ℝ) → ℝ}
     (hf : IsCoreFin f) (t : ℝ) (i : Fin (n + 1)) (x : Fin (n + 1) → ℝ) :
     ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin (n + 1) =
@@ -3512,27 +3543,48 @@ theorem integral_γFin_succAbove_swap {n : ℕ} (i : Fin (n + 1))
 
 /-- **Per-coordinate Boltzmann-entropy step bound.**
 
-For a `C^∞` function `g` with `ε ≤ g ≤ M` and coordinate-`i` partial
-derivative bounded by `M`, and `t ≥ 0`,
-`BE(g) - BE(ouCoord i t g) ≤ (1 - e^{-2t})/2 · I_i(g)`.
+For a measurable `g` whose coordinate-`i` 1D slices are `C¹` with slice
+derivative `D` (a supplied measurable function with `|D| ≤ M`),
+`ε ≤ g ≤ M`, and `t ≥ 0`,
+`BE(g) - BE(ouCoord i t g) ≤ (1 - e^{-2t})/2 · ∫ D²/g dγ`.
 
 This is the 1D bound `Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le`
 applied to each coordinate-`i` slice and integrated over the remaining
-coordinates via `integral_γFin_succAbove`. The sectionwise hypotheses
-transfer through `coordSection`/`section_deriv`; the Fubini
-integrability of the dominating slices follows from the uniform bounds.
+coordinates via `integral_γFin_succAbove`. The Fubini integrability of
+the dominating slices follows from the uniform bounds.
+
+The hypotheses are stated at the level of 1D slices (not joint `C^∞`):
+`ouCoord j` smooths only the integrated coordinate, so telescope
+iterates `ouCoordSet S t g` are in general only `C¹` jointly along the
+passthrough coordinates. The slice-level `C¹` hypotheses are exactly
+what the internal 1-parameter analysis needs (Gemini deep-think +
+3.1-pro vetted, 2026-05-19).
 
 **Strategy:** rewrite `BE` via `integral_γFin_succAbove i`; identify the
 inner 1D integral as the 1D Boltzmann entropy of the slice `G_y` and
 `ouCoord` as `Gaussian1D.ouSemigroup` of `G_y` (`ouCoord_insertNth_eq`);
 apply the 1D lemma slicewise and `integral_mono` over `γ_n`; finally
-identify `∫ I(G_y) dγ_n = I_i(g)` via `section_deriv`. -/
+identify `∫ I(G_y) dγ_n` with `∫ D²/g dγ` via the supplied slice
+derivative.
+
+The coordinate-`i` slice derivative is supplied abstractly as `D` (with
+`h_slice_deriv : deriv (slice y) = D ∘ insertNth i · y`). For the
+telescope iterates `g = ouCoordSet S t g_ε`, `D = ouCoordSet S t (∂_k
+g_ε)` via the 1-parameter commutation `hasDerivAt_slice_ouCoordSet`,
+which never forms the (potentially ill-behaved) joint Fréchet partial of
+the iterate. -/
 theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
-    (g : (Fin (n + 1) → ℝ) → ℝ) (hg : ContDiff ℝ ∞ g) {ε M : ℝ}
+    (g D : (Fin (n + 1) → ℝ) → ℝ) (hg_meas : Measurable g)
+    (h_slice_C1 : ∀ y : Fin n → ℝ,
+      ContDiff ℝ 1 (fun r => g (Fin.insertNth (α := fun _ => ℝ) i r y)))
+    (h_slice_deriv : ∀ y : Fin n → ℝ,
+      deriv (fun r => g (Fin.insertNth (α := fun _ => ℝ) i r y)) =
+        fun r => D (Fin.insertNth (α := fun _ => ℝ) i r y))
+    (hD_meas : Measurable D) {ε M : ℝ}
     (hε : 0 < ε) (hg_lo : ∀ x, ε ≤ g x) (hg_hi : ∀ x, g x ≤ M)
-    (hg'_bd : ∀ x, |partialDeriv i g x| ≤ M) (t : ℝ) (ht : 0 ≤ t) :
+    (hD_bd : ∀ x, |D x| ≤ M) (t : ℝ) (ht : 0 ≤ t) :
     boltzmannEntropyFin g - boltzmannEntropyFin (ouCoord i t g) ≤
-      (1 - Real.exp (-2 * t)) / 2 * fisherInfoFinCoord i g := by
+      (1 - Real.exp (-2 * t)) / 2 * ∫ x, (D x) ^ 2 / g x ∂γFin (n + 1) := by
   classical
   have hε_nn : (0 : ℝ) ≤ ε := hε.le
   have hεM : ε ≤ M := le_trans (hg_lo (fun _ => 0)) (hg_hi (fun _ => 0))
@@ -3540,31 +3592,22 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
   -- The coordinate-`i` slice and its packaged 1D facts.
   set G : (Fin n → ℝ) → ℝ → ℝ :=
     fun y r => g (Fin.insertNth (α := fun _ => ℝ) i r y) with hG
-  have hG_eq : ∀ y, G y = coordSection i (Fin.insertNth (α := fun _ => ℝ) i 0 y) g :=
-    fun y => slice_eq_coordSection i g y
-  have hG_C1 : ∀ y, ContDiff ℝ 1 (G y) := by
-    intro y
-    rw [hG_eq y]
-    exact (section_contDiff hg i _).of_le (by simp)
+  have hG_C1 : ∀ y, ContDiff ℝ 1 (G y) := h_slice_C1
   have hG_lo : ∀ y r, ε ≤ G y r := fun y r => hg_lo _
   have hG_hi : ∀ y r, G y r ≤ M := fun y r => hg_hi _
   have hG_deriv : ∀ y, deriv (G y) =
-      fun r => partialDeriv i g (Fin.insertNth (α := fun _ => ℝ) i r y) := by
-    intro y
-    rw [hG_eq y, section_deriv hg i _]
-    funext r
-    rw [update_insertNth_same i y 0 r]
+      fun r => D (Fin.insertNth (α := fun _ => ℝ) i r y) :=
+    h_slice_deriv
   have hG'_bd : ∀ y r, |deriv (G y) r| ≤ M := by
     intro y r
     rw [hG_deriv y]
-    exact hg'_bd _
+    exact hD_bd _
   -- 1D entropy-decay bound applied to each slice.
   have h1D : ∀ y, Gaussian1D.boltzmannEntropy (G y) -
       Gaussian1D.boltzmannEntropy (Gaussian1D.ouSemigroup t (G y)) ≤
       (1 - Real.exp (-2 * t)) / 2 * Gaussian1D.fisherInfo (G y) := fun y =>
     Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le (G y) (hG_C1 y) hε
       (hG_lo y) (hG_hi y) (hG'_bd y) t ht
-  have hg_meas : Measurable g := hg.continuous.measurable
   -- Uniform `|s log s|` bound on `[0, M]` (covers the slice ranges).
   obtain ⟨B, hB_nn, hB⟩ : ∃ B : ℝ, 0 ≤ B ∧
       ∀ s ∈ Set.Icc (0 : ℝ) M, |s * Real.log s| ≤ B := by
@@ -3650,28 +3693,22 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
     refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
     refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
     simp only [hG, ouCoord_insertNth_eq i t g s y]
-  -- Continuity/measurability of the coordinate-`i` partial of `g`.
-  have h_pd_cont : Continuous (partialDeriv i g) := by
-    unfold partialDeriv
-    simpa using (hg.fderiv_right (m := ∞) (by simp)).clm_apply contDiff_const
-      |>.continuous
-  have h_pd_meas : Measurable (partialDeriv i g) := h_pd_cont.measurable
-  -- (3) `fisherInfoFinCoord i g = ∫_y fisherInfo (G y) dγ_n`.
-  have hFI_g : fisherInfoFinCoord i g =
+  -- (3) `∫ D²/g dγ = ∫_y fisherInfo (G y) dγ_n`.
+  have hFI_g : (∫ x, (D x) ^ 2 / g x ∂γFin (n + 1)) =
       ∫ y, Gaussian1D.fisherInfo (G y) ∂γFin n := by
-    unfold fisherInfoFinCoord Gaussian1D.fisherInfo
+    unfold Gaussian1D.fisherInfo
     rw [integral_γFin_succAbove_swap (n := n) (i := i)
-      (h := fun x => (partialDeriv i g x) ^ 2 / g x)
-      ((h_pd_meas.pow_const 2).div hg_meas) (C := M ^ 2 / ε)
+      (h := fun x => (D x) ^ 2 / g x)
+      ((hD_meas.pow_const 2).div hg_meas) (C := M ^ 2 / ε)
       (fun z => by
         rw [Real.norm_eq_abs, abs_of_nonneg
           (div_nonneg (sq_nonneg _) (le_trans hε_nn (hg_lo z)))]
-        have hnum : (partialDeriv i g z) ^ 2 ≤ M ^ 2 := by
-          have := hg'_bd z
-          nlinarith [abs_nonneg (partialDeriv i g z), sq_abs (partialDeriv i g z)]
+        have hnum : (D z) ^ 2 ≤ M ^ 2 := by
+          have := hD_bd z
+          nlinarith [abs_nonneg (D z), sq_abs (D z)]
         have hden : ε ≤ g z := hg_lo z
         have hgz_pos : 0 < g z := lt_of_lt_of_le hε hden
-        have hstep1 : (partialDeriv i g z) ^ 2 / g z ≤ M ^ 2 / g z :=
+        have hstep1 : (D z) ^ 2 / g z ≤ M ^ 2 / g z :=
           div_le_div_of_nonneg_right hnum hgz_pos.le
         have hstep2 : M ^ 2 / g z ≤ M ^ 2 / ε :=
           div_le_div_of_nonneg_left (sq_nonneg _) hε hden
@@ -3679,7 +3716,7 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
     refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
     refine integral_congr_ae (Filter.Eventually.of_forall (fun s => ?_))
     have hgd : deriv (G y) s =
-        partialDeriv i g (Fin.insertNth (α := fun _ => ℝ) i s y) := by
+        D (Fin.insertNth (α := fun _ => ℝ) i s y) := by
       rw [hG_deriv y]
     have hgv : G y s = g (Fin.insertNth (α := fun _ => ℝ) i s y) := by
       simp [hG]
@@ -3733,11 +3770,11 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
       have hd : Measurable (fun p : (Fin n → ℝ) × ℝ =>
           deriv (G p.1) p.2) := by
         have : (fun p : (Fin n → ℝ) × ℝ => deriv (G p.1) p.2) =
-            fun p => partialDeriv i g
+            fun p => D
               (Fin.insertNth (α := fun _ => ℝ) i p.2 p.1) := by
           funext p; rw [hG_deriv p.1]
         rw [this]
-        exact h_pd_meas.comp h_insert_cont.measurable
+        exact hD_meas.comp h_insert_cont.measurable
       have hgj : Measurable (fun p : (Fin n → ℝ) × ℝ => G p.1 p.2) := by
         simpa [hG] using hg_meas.comp h_insert_cont.measurable
       exact (hd.pow_const 2).div hgj
@@ -4533,6 +4570,580 @@ theorem integral_ouCoordSet_eq {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
           rw [integral_ouCoord_eq j t ht hou_meas hou_bd]
           exact ih
 
+/-! ### S2/S4: 1-parameter slice analysis of `ouCoordSet` along a frozen coord
+
+For `k ∉ S`, `setShift S t (·) (·)` leaves coordinate `k` of its first
+argument untouched, so the only dependence of `g (setShift S t x y)` on
+`x k` is through coordinate `k` of `g` itself. This decouples the slice
+analysis of `ouCoordSet S t g` along coordinate `k` into a *single
+real-parameter* differentiation under the γ-integral — no joint
+multivariate `C²`, no mixed partials. (Gemini deep-think + 3.1-pro
+vetted, 2026-05-19.) -/
+
+/-- **Frozen-slot identity.** For `k ∉ S`, shifting on `S` of the
+`k`-updated point equals updating coordinate `k` of the shifted point. -/
+theorem setShift_update_notMem {n : ℕ} (S : Finset (Fin n)) (k : Fin n)
+    (hk : k ∉ S) (t : ℝ) (x y : Fin n → ℝ) (r : ℝ) :
+    setShift S t (Function.update x k r) y =
+      Function.update (setShift S t x y) k r := by
+  funext i
+  by_cases hik : i = k
+  · subst hik
+    simp [setShift, hk]
+  · have hi_ne : i ≠ k := hik
+    by_cases hiS : i ∈ S
+    · simp [setShift, hiS, Function.update_of_ne hi_ne]
+    · simp [setShift, hiS, Function.update_of_ne hi_ne]
+
+/-- **S2-core: 1-parameter commutation `HasDerivAt`.** For `k ∉ S` and
+`g` differentiable with coordinate-`k` partial bounded by `M`, the slice
+`r ↦ ouCoordSet S t g (update x k r)` is differentiable at `x k` with
+derivative `ouCoordSet S t (∂_k g) x`. The proof differentiates a single
+real parameter under the probability-measure γ-integral with the
+*constant* dominator `M` (`hasDerivAt_integral_of_dominated_loc_of_deriv_le`). -/
+theorem hasDerivAt_slice_ouCoordSet {n : ℕ} (S : Finset (Fin n)) (k : Fin n)
+    (hk : k ∉ S) (t : ℝ) {g : (Fin n → ℝ) → ℝ}
+    (hg_diff : Differentiable ℝ g) (hg_meas : Measurable g)
+    (h_pd_meas : Measurable (partialDeriv k g)) {M : ℝ}
+    (hg_bd : ∀ z, ‖g z‖ ≤ M) (h_pd_bd : ∀ z, |partialDeriv k g z| ≤ M)
+    (x : Fin n → ℝ) :
+    HasDerivAt (fun r => ouCoordSet S t g (Function.update x k r))
+      (ouCoordSet S t (partialDeriv k g) x) (x k) := by
+  classical
+  -- Rewrite the slice through the frozen-slot identity.
+  have hslice_eq : (fun r => ouCoordSet S t g (Function.update x k r)) =
+      fun r => ∫ y, g (Function.update (setShift S t x y) k r) ∂γFin n := by
+    funext r
+    show (∫ y, g (setShift S t (Function.update x k r) y) ∂γFin n) =
+      ∫ y, g (Function.update (setShift S t x y) k r) ∂γFin n
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+    exact congrArg g (setShift_update_notMem S k hk t x y r)
+  rw [hslice_eq]
+  -- Differentiate under the integral (single real parameter `r`).
+  set F : ℝ → (Fin n → ℝ) → ℝ :=
+    fun r y => g (Function.update (setShift S t x y) k r) with hF
+  set F' : ℝ → (Fin n → ℝ) → ℝ :=
+    fun r y => partialDeriv k g (Function.update (setShift S t x y) k r) with hF'
+  have hsetShift_meas : Measurable (fun y => setShift S t x y) :=
+    measurable_setShift S t x
+  -- Pointwise derivative in `r`: the coordinate-`k` section of `g`.
+  have h_diff_ptwise : ∀ y : Fin n → ℝ, ∀ r : ℝ,
+      HasDerivAt (fun r => F r y) (F' r y) r := by
+    intro y r
+    have := section_hasDerivAt_of_differentiable hg_diff k (setShift S t x y) r
+    simpa [hF, hF', coordSection] using this
+  have hF_int : Integrable (F (x k)) (γFin n) := by
+    have hmeas : Measurable (F (x k)) := by
+      have : Measurable (fun y => Function.update (setShift S t x y) k (x k)) :=
+        measurable_update'.comp (hsetShift_meas.prodMk measurable_const)
+      exact hg_meas.comp this
+    exact integrable_of_bound hmeas (fun y => hg_bd _)
+  have hF'_meas : AEStronglyMeasurable (F' (x k)) (γFin n) := by
+    have : Measurable (fun y => Function.update (setShift S t x y) k (x k)) :=
+      measurable_update'.comp (hsetShift_meas.prodMk measurable_const)
+    exact (h_pd_meas.comp this).aestronglyMeasurable
+  have h_bound : ∀ᵐ y ∂γFin n, ∀ r ∈ Set.univ, ‖F' r y‖ ≤ M :=
+    Filter.Eventually.of_forall (fun y r _ => by
+      rw [hF', Real.norm_eq_abs]; exact h_pd_bd _)
+  have hF_meas_ev : ∀ᶠ r in nhds (x k),
+      AEStronglyMeasurable (F r) (γFin n) := by
+    filter_upwards with r
+    have : Measurable (fun y => Function.update (setShift S t x y) k r) :=
+      measurable_update'.comp (hsetShift_meas.prodMk measurable_const)
+    exact (hg_meas.comp this).aestronglyMeasurable
+  have hkey :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le
+      (μ := γFin n) (F := F) (F' := F') (x₀ := x k)
+      (bound := fun _ => M) (s := Set.univ)
+      Filter.univ_mem hF_meas_ev hF_int hF'_meas h_bound
+      (integrable_const M)
+      (Filter.Eventually.of_forall (fun y r _ => h_diff_ptwise y r))
+  -- The derivative value: `update (setShift ..) k (x k) = setShift ..`
+  -- since `k ∉ S` already freezes coordinate `k` to `x k`.
+  have hval : (∫ y, F' (x k) y ∂γFin n) = ouCoordSet S t (partialDeriv k g) x := by
+    show (∫ y, partialDeriv k g
+        (Function.update (setShift S t x y) k (x k)) ∂γFin n) =
+      ∫ y, partialDeriv k g (setShift S t x y) ∂γFin n
+    refine integral_congr_ae (Filter.Eventually.of_forall (fun y => ?_))
+    have hupd : Function.update (setShift S t x y) k (x k) = setShift S t x y := by
+      funext i
+      by_cases hik : i = k
+      · subst hik; simp [setShift, hk]
+      · simp [Function.update_of_ne hik]
+    exact congrArg (partialDeriv k g) hupd
+  rw [← hval]
+  exact hkey.2
+
+/-- `ouCoordSet S t g` is (jointly) continuous for continuous bounded `g`:
+it is a γ-average of `g ∘ (continuous affine shift)`, dominated by the
+constant bound. -/
+theorem continuous_ouCoordSet {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
+    {g : (Fin n → ℝ) → ℝ} (hg_cont : Continuous g) {M : ℝ}
+    (hg_bd : ∀ z, ‖g z‖ ≤ M) :
+    Continuous (ouCoordSet S t g) := by
+  have hshift_cont : Continuous
+      (fun p : (Fin n → ℝ) × (Fin n → ℝ) => setShift S t p.1 p.2) := by
+    refine continuous_pi (fun i => ?_)
+    by_cases hi : i ∈ S
+    · simp only [setShift, hi, if_true]
+      exact (continuous_const.mul ((continuous_apply i).comp continuous_fst)).add
+        (continuous_const.mul ((continuous_apply i).comp continuous_snd))
+    · simp only [setShift, hi, if_false]
+      exact (continuous_apply i).comp continuous_fst
+  refine continuous_of_dominated (μ := γFin n) (bound := fun _ => M)
+    (fun x => ?_) (fun x => ?_) (integrable_const M)
+    (Filter.Eventually.of_forall (fun y => ?_))
+  · exact (hg_cont.comp (hshift_cont.comp
+      (continuous_const.prodMk continuous_id))).aestronglyMeasurable
+  · exact Filter.Eventually.of_forall (fun y => hg_bd _)
+  · exact hg_cont.comp (hshift_cont.comp (continuous_id.prodMk continuous_const))
+
+/-- **Slice `C¹` + slice derivative for `ouCoordSet`.** For `k ∉ S` and
+`g` `C¹` with continuous bounded `∂_k g`, the coordinate-`k` 1D slice of
+`ouCoordSet S t g` is `C¹` with derivative the slice of
+`ouCoordSet S t (∂_k g)`. This packages the 1-parameter commutation
+(`hasDerivAt_slice_ouCoordSet`) with continuity of the derivative
+(`continuous_ouCoordSet` of `∂_k g`) — exactly the slice-level inputs of
+`boltzmannEntropyFin_ouCoord_step_le`. -/
+theorem ouCoordSet_slice_contDiff_one {n : ℕ} (S : Finset (Fin (n + 1)))
+    (k : Fin (n + 1)) (hk : k ∉ S) (t : ℝ) {g : (Fin (n + 1) → ℝ) → ℝ}
+    (hg_C1 : ContDiff ℝ 1 g) (h_pd_cont : Continuous (partialDeriv k g))
+    {M : ℝ} (hg_bd : ∀ z, ‖g z‖ ≤ M) (h_pd_bd : ∀ z, |partialDeriv k g z| ≤ M)
+    (y : Fin n → ℝ) :
+    ContDiff ℝ 1
+      (fun r => ouCoordSet S t g (Fin.insertNth (α := fun _ => ℝ) k r y)) ∧
+    deriv (fun r => ouCoordSet S t g (Fin.insertNth (α := fun _ => ℝ) k r y)) =
+      fun r => ouCoordSet S t (partialDeriv k g)
+        (Fin.insertNth (α := fun _ => ℝ) k r y) := by
+  classical
+  have hg_diff : Differentiable ℝ g := hg_C1.differentiable (by norm_num)
+  have hg_meas : Measurable g := hg_C1.continuous.measurable
+  have h_pd_meas : Measurable (partialDeriv k g) := h_pd_cont.measurable
+  set base : Fin (n + 1) → ℝ := Fin.insertNth (α := fun _ => ℝ) k 0 y with hbase
+  -- The slice rewritten through `update`-based form.
+  have hslice_eq : (fun r => ouCoordSet S t g
+        (Fin.insertNth (α := fun _ => ℝ) k r y)) =
+      fun r => ouCoordSet S t g (Function.update base k r) := by
+    funext r
+    rw [hbase, update_insertNth_same k y 0 r]
+  -- HasDerivAt at every `r`, via `hasDerivAt_slice_ouCoordSet` based at
+  -- `update base k r` (so the basepoint's `k`-coordinate is `r`).
+  have h_hasDeriv : ∀ r : ℝ,
+      HasDerivAt (fun s => ouCoordSet S t g (Function.update base k s))
+        (ouCoordSet S t (partialDeriv k g) (Function.update base k r)) r := by
+    intro r
+    have hx := hasDerivAt_slice_ouCoordSet S k hk t hg_diff hg_meas
+      h_pd_meas hg_bd h_pd_bd (Function.update base k r)
+    -- `(update base k r) k = r` and `update (update base k r) k = update base k`.
+    have hxk : (Function.update base k r) k = r := by simp
+    have hupd : (fun s => ouCoordSet S t g
+        (Function.update (Function.update base k r) k s)) =
+        fun s => ouCoordSet S t g (Function.update base k s) := by
+      funext s; rw [Function.update_idem]
+    rw [hxk, hupd] at hx
+    exact hx
+  -- Continuity of the derivative `r ↦ ouCoordSet S t (∂_k g) (update base k r)`.
+  have h_pd_ouCoordSet_cont : Continuous (ouCoordSet S t (partialDeriv k g)) :=
+    continuous_ouCoordSet S t h_pd_cont
+      (fun z => by rw [Real.norm_eq_abs]; exact h_pd_bd z)
+  have h_deriv_cont : Continuous
+      (fun r => ouCoordSet S t (partialDeriv k g)
+        (Function.update base k r)) :=
+    h_pd_ouCoordSet_cont.comp (continuous_const.update k continuous_id)
+  refine ⟨?_, ?_⟩
+  · rw [hslice_eq]
+    rw [contDiff_one_iff_deriv]
+    refine ⟨fun r => (h_hasDeriv r).differentiableAt, ?_⟩
+    have hderiv_eq : deriv (fun s => ouCoordSet S t g
+        (Function.update base k s)) =
+        fun r => ouCoordSet S t (partialDeriv k g)
+          (Function.update base k r) := by
+      funext r; exact (h_hasDeriv r).deriv
+    rw [hderiv_eq]; exact h_deriv_cont
+  · rw [hslice_eq]
+    funext r
+    rw [(h_hasDeriv r).deriv, hbase, update_insertNth_same k y 0 r]
+
+/-- **Cauchy–Schwarz for an arbitrary measure** (the measure-general
+analogue of the 1D `Gaussian1D.cauchy_schwarz_gamma`). For `A, B` with
+`A·B`, `A²`, `B²` all `μ`-integrable,
+`(∫ A·B dμ)² ≤ (∫ A² dμ)·(∫ B² dμ)`. Proved via the polynomial
+discriminant. -/
+theorem cauchy_schwarz_measure {α : Type*} [MeasurableSpace α]
+    (μ : Measure α) (A B : α → ℝ)
+    (hAB : Integrable (fun y => A y * B y) μ)
+    (hA2 : Integrable (fun y => A y ^ 2) μ)
+    (hB2 : Integrable (fun y => B y ^ 2) μ) :
+    (∫ y, A y * B y ∂μ) ^ 2 ≤ (∫ y, A y ^ 2 ∂μ) * (∫ y, B y ^ 2 ∂μ) := by
+  set IA := ∫ y, A y ^ 2 ∂μ with hIA
+  set IB := ∫ y, B y ^ 2 ∂μ with hIB
+  set IAB := ∫ y, A y * B y ∂μ with hIAB
+  have hIA_nn : 0 ≤ IA := integral_nonneg (fun y => sq_nonneg _)
+  have hIB_nn : 0 ≤ IB := integral_nonneg (fun y => sq_nonneg _)
+  by_cases hIB0 : IB = 0
+  · have hB_ae : (fun y => B y ^ 2) =ᵐ[μ] 0 := by
+      have h_nn_ae : ∀ᵐ y ∂μ, 0 ≤ B y ^ 2 :=
+        Filter.Eventually.of_forall (fun y => sq_nonneg _)
+      exact (integral_eq_zero_iff_of_nonneg_ae h_nn_ae hB2).mp hIB0
+    have hAB_ae : (fun y => A y * B y) =ᵐ[μ] 0 := by
+      filter_upwards [hB_ae] with y hy
+      have : B y = 0 := sq_eq_zero_iff.mp hy
+      simp [this]
+    have hIAB0 : IAB = 0 := by
+      rw [hIAB]; exact integral_eq_zero_of_ae hAB_ae
+    rw [hIAB0, hIB0]; simp
+  · have hIB_pos : 0 < IB := lt_of_le_of_ne hIB_nn (Ne.symm hIB0)
+    set lam : ℝ := IAB / IB with h_lam_def
+    have h_expand : ∫ y, (A y - lam * B y) ^ 2 ∂μ
+        = IA - 2 * lam * IAB + lam ^ 2 * IB := by
+      have h_eq : ∀ y, (A y - lam * B y) ^ 2
+          = A y ^ 2 - 2 * lam * (A y * B y) + lam ^ 2 * B y ^ 2 := fun y => by ring
+      calc ∫ y, (A y - lam * B y) ^ 2 ∂μ
+          = ∫ y, A y ^ 2 - 2 * lam * (A y * B y) + lam ^ 2 * B y ^ 2 ∂μ :=
+            integral_congr_ae (Filter.Eventually.of_forall h_eq)
+        _ = (∫ y, A y ^ 2 - 2 * lam * (A y * B y) ∂μ) + ∫ y, lam ^ 2 * B y ^ 2 ∂μ :=
+            integral_add (hA2.sub (hAB.const_mul (2 * lam))) (hB2.const_mul (lam ^ 2))
+        _ = ((∫ y, A y ^ 2 ∂μ) - ∫ y, 2 * lam * (A y * B y) ∂μ)
+            + ∫ y, lam ^ 2 * B y ^ 2 ∂μ := by
+            rw [integral_sub hA2 (hAB.const_mul (2 * lam))]
+        _ = IA - 2 * lam * IAB + lam ^ 2 * IB := by
+            rw [integral_const_mul, integral_const_mul]
+    have h_nn : 0 ≤ ∫ y, (A y - lam * B y) ^ 2 ∂μ :=
+      integral_nonneg (fun y => sq_nonneg _)
+    rw [h_expand] at h_nn
+    have h_nn' : 0 ≤ IA - IAB ^ 2 / IB := by
+      have h_alg : IA - 2 * lam * IAB + lam ^ 2 * IB = IA - IAB ^ 2 / IB := by
+        rw [h_lam_def]; field_simp; ring
+      linarith [h_alg ▸ h_nn]
+    have h_step : IAB ^ 2 / IB ≤ IA := by linarith
+    have := mul_le_mul_of_nonneg_right h_step hIB_nn
+    rwa [div_mul_cancel₀ _ hIB0] at this
+
+/-- **Pointwise kernel Cauchy–Schwarz.** For `k ∉ S`, with `g ≥ ε > 0`
+and `∂_k g` bounded, at every `x`:
+`(ouCoordSet S t (∂_k g) x)² / (ouCoordSet S t g x) ≤
+   ouCoordSet S t ((∂_k g)²/g) x`,
+the Cauchy–Schwarz on the probability kernel `y ↦ setShift S t x y`. -/
+theorem ouCoordSet_kernel_cauchy_schwarz {n : ℕ} (S : Finset (Fin n))
+    (t : ℝ) {g D : (Fin n → ℝ) → ℝ}
+    (hg_meas : Measurable g) (hD_meas : Measurable D)
+    {ε Mg MD : ℝ} (hε : 0 < ε)
+    (hg_lo : ∀ z, ε ≤ g z) (hg_hi : ∀ z, g z ≤ Mg)
+    (hD_bd : ∀ z, |D z| ≤ MD) (x : Fin n → ℝ) :
+    (ouCoordSet S t D x) ^ 2 / (ouCoordSet S t g x) ≤
+      ouCoordSet S t (fun z => (D z) ^ 2 / g z) x := by
+  classical
+  have hshift_meas : Measurable (fun y => setShift S t x y) :=
+    measurable_setShift S t x
+  set u : (Fin n → ℝ) → ℝ := fun y => D (setShift S t x y) with hu
+  set v : (Fin n → ℝ) → ℝ := fun y => g (setShift S t x y) with hv
+  have hu_meas : Measurable u := hD_meas.comp hshift_meas
+  have hv_meas : Measurable v := hg_meas.comp hshift_meas
+  have hv_pos : ∀ y, 0 < v y := fun y => lt_of_lt_of_le hε (hg_lo _)
+  have hv_lo : ∀ y, ε ≤ v y := fun y => hg_lo _
+  have hv_hi : ∀ y, v y ≤ Mg := fun y => hg_hi _
+  have hu_bd : ∀ y, |u y| ≤ MD := fun y => hD_bd _
+  -- `A := u/√v`, `B := √v`.
+  set A : (Fin n → ℝ) → ℝ := fun y => u y / Real.sqrt (v y) with hA
+  set B : (Fin n → ℝ) → ℝ := fun y => Real.sqrt (v y) with hB
+  have hsqrt_v_pos : ∀ y, 0 < Real.sqrt (v y) :=
+    fun y => Real.sqrt_pos.mpr (hv_pos y)
+  have hAB_eq : ∀ y, A y * B y = u y := by
+    intro y
+    rw [hA, hB, div_mul_cancel₀ _ (ne_of_gt (hsqrt_v_pos y))]
+  have hA2_eq : ∀ y, A y ^ 2 = (u y) ^ 2 / v y := by
+    intro y
+    rw [hA, div_pow, Real.sq_sqrt (hv_pos y).le]
+  have hB2_eq : ∀ y, B y ^ 2 = v y := by
+    intro y; rw [hB, Real.sq_sqrt (hv_pos y).le]
+  -- Integrability facts (all bounded, `γFin n` is a probability measure).
+  have hsqrt_v_meas : Measurable (fun y => Real.sqrt (v y)) := hv_meas.sqrt
+  have hA_meas : Measurable A := hu_meas.div hsqrt_v_meas
+  have hB_meas : Measurable B := hsqrt_v_meas
+  have hMD_nn : 0 ≤ MD := (abs_nonneg _).trans (hD_bd (setShift S t x 0))
+  have hMg_nn : 0 ≤ Mg :=
+    le_trans hε.le (le_trans (hg_lo (setShift S t x 0)) (hg_hi (setShift S t x 0)))
+  have hAB_int : Integrable (fun y => A y * B y) (γFin n) := by
+    refine integrable_of_bound (M := MD)
+      (hA_meas.mul hB_meas) ?_
+    intro y; rw [hAB_eq y, Real.norm_eq_abs]; exact hu_bd y
+  have hA2_int : Integrable (fun y => A y ^ 2) (γFin n) := by
+    refine integrable_of_bound (M := MD ^ 2 / ε)
+      (hA_meas.pow_const 2) ?_
+    intro y
+    rw [hA2_eq y, Real.norm_eq_abs, abs_of_nonneg
+      (div_nonneg (sq_nonneg _) (hv_pos y).le)]
+    have hnum : (u y) ^ 2 ≤ MD ^ 2 := by
+      have := hu_bd y
+      nlinarith [abs_nonneg (u y), sq_abs (u y)]
+    have h1 : (u y) ^ 2 / v y ≤ MD ^ 2 / v y :=
+      div_le_div_of_nonneg_right hnum (hv_pos y).le
+    have h2 : MD ^ 2 / v y ≤ MD ^ 2 / ε :=
+      div_le_div_of_nonneg_left (sq_nonneg _) hε (hv_lo y)
+    linarith
+  have hB2_int : Integrable (fun y => B y ^ 2) (γFin n) := by
+    refine integrable_of_bound (M := Mg)
+      (hB_meas.pow_const 2) ?_
+    intro y; rw [hB2_eq y, Real.norm_eq_abs, abs_of_nonneg (hv_pos y).le]
+    exact hv_hi y
+  have hCS := cauchy_schwarz_measure (γFin n) A B hAB_int hA2_int hB2_int
+  -- Rewrite the three integrals.
+  have hIAB : (∫ y, A y * B y ∂γFin n) = ouCoordSet S t D x := by
+    show (∫ y, A y * B y ∂γFin n) = ∫ y, D (setShift S t x y) ∂γFin n
+    exact integral_congr_ae (Filter.Eventually.of_forall (fun y => hAB_eq y))
+  have hIA2 : (∫ y, A y ^ 2 ∂γFin n) =
+      ouCoordSet S t (fun z => (D z) ^ 2 / g z) x := by
+    show (∫ y, A y ^ 2 ∂γFin n) =
+      ∫ y, (D (setShift S t x y)) ^ 2 / g (setShift S t x y) ∂γFin n
+    exact integral_congr_ae (Filter.Eventually.of_forall (fun y => hA2_eq y))
+  have hIB2 : (∫ y, B y ^ 2 ∂γFin n) = ouCoordSet S t g x := by
+    show (∫ y, B y ^ 2 ∂γFin n) = ∫ y, g (setShift S t x y) ∂γFin n
+    exact integral_congr_ae (Filter.Eventually.of_forall (fun y => hB2_eq y))
+  rw [hIAB, hIA2, hIB2] at hCS
+  -- `(P D x)² / (P g x) ≤ P((D²/g)) x` from `hCS` and `P g x ≥ ε > 0`.
+  have hPg_pos : 0 < ouCoordSet S t g x := by
+    have hb := ouCoordSet_bounds S t hg_meas (ε := ε) (M := Mg) hg_lo hg_hi x
+    exact lt_of_lt_of_le hε hb.1
+  rw [div_le_iff₀ hPg_pos]
+  exact hCS
+
+/-- **S4: orthogonal Fisher monotonicity (integrated).** For bounded
+measurable `g ≥ ε > 0` and bounded measurable `D`,
+`∫ (ouCoordSet S t D)² / (ouCoordSet S t g) dγ_n ≤ ∫ D²/g dγ_n`.
+Pointwise kernel Cauchy–Schwarz (`ouCoordSet_kernel_cauchy_schwarz`)
+then `ouCoordSet` mean preservation (`integral_ouCoordSet_eq`). -/
+theorem integral_sq_div_ouCoordSet_le {n : ℕ} (S : Finset (Fin n))
+    (t : ℝ) (ht : 0 ≤ t) {g D : (Fin n → ℝ) → ℝ}
+    (hg_meas : Measurable g) (hD_meas : Measurable D)
+    {ε Mg MD : ℝ} (hε : 0 < ε)
+    (hg_lo : ∀ z, ε ≤ g z) (hg_hi : ∀ z, g z ≤ Mg)
+    (hD_bd : ∀ z, |D z| ≤ MD) :
+    (∫ x, (ouCoordSet S t D x) ^ 2 / (ouCoordSet S t g x) ∂γFin n) ≤
+      ∫ x, (D x) ^ 2 / g x ∂γFin n := by
+  classical
+  have hMD_nn : 0 ≤ MD := (abs_nonneg _).trans (hD_bd 0)
+  have hMg_nn : 0 ≤ Mg := le_trans hε.le (le_trans (hg_lo 0) (hg_hi 0))
+  -- The quotient `(D z)²/g z` is bounded by `MD²/ε`, measurable.
+  set Q : (Fin n → ℝ) → ℝ := fun z => (D z) ^ 2 / g z with hQ
+  have hQ_meas : Measurable Q := (hD_meas.pow_const 2).div hg_meas
+  have hQ_nn : ∀ z, 0 ≤ Q z := fun z =>
+    div_nonneg (sq_nonneg _) (le_trans hε.le (hg_lo z))
+  have hQ_bd : ∀ z, ‖Q z‖ ≤ MD ^ 2 / ε := by
+    intro z
+    rw [hQ, Real.norm_eq_abs, abs_of_nonneg (hQ_nn z)]
+    have hnum : (D z) ^ 2 ≤ MD ^ 2 := by
+      have := hD_bd z
+      nlinarith [abs_nonneg (D z), sq_abs (D z)]
+    have hgz_pos : 0 < g z := lt_of_lt_of_le hε (hg_lo z)
+    have h1 : (D z) ^ 2 / g z ≤ MD ^ 2 / g z :=
+      div_le_div_of_nonneg_right hnum hgz_pos.le
+    have h2 : MD ^ 2 / g z ≤ MD ^ 2 / ε :=
+      div_le_div_of_nonneg_left (sq_nonneg _) hε (hg_lo z)
+    linarith
+  -- Integrability of the LHS integrand and of `ouCoordSet S t Q`.
+  have hPD_meas : Measurable (ouCoordSet S t D) := measurable_ouCoordSet S t hD_meas
+  have hPg_meas : Measurable (ouCoordSet S t g) := measurable_ouCoordSet S t hg_meas
+  have hPQ_meas : Measurable (ouCoordSet S t Q) := measurable_ouCoordSet S t hQ_meas
+  have hPg_lo : ∀ x, ε ≤ ouCoordSet S t g x := fun x =>
+    (ouCoordSet_bounds S t hg_meas (ε := ε) (M := Mg) hg_lo hg_hi x).1
+  have hPD_bd : ∀ x, |ouCoordSet S t D x| ≤ MD := by
+    intro x
+    have hb := ouCoordSet_bounds S t hD_meas (ε := -MD) (M := MD)
+      (fun z => by have := hD_bd z; rw [abs_le] at this; linarith [this.1])
+      (fun z => by have := hD_bd z; rw [abs_le] at this; linarith [this.2]) x
+    rw [abs_le]; exact ⟨hb.1, hb.2⟩
+  have hlhs_bd : ∀ x, ‖(ouCoordSet S t D x) ^ 2 / (ouCoordSet S t g x)‖ ≤
+      MD ^ 2 / ε := by
+    intro x
+    have hPgx_pos : 0 < ouCoordSet S t g x := lt_of_lt_of_le hε (hPg_lo x)
+    rw [Real.norm_eq_abs, abs_of_nonneg
+      (div_nonneg (sq_nonneg _) hPgx_pos.le)]
+    have hnum : (ouCoordSet S t D x) ^ 2 ≤ MD ^ 2 := by
+      have := hPD_bd x
+      nlinarith [abs_nonneg (ouCoordSet S t D x), sq_abs (ouCoordSet S t D x)]
+    have h1 : (ouCoordSet S t D x) ^ 2 / ouCoordSet S t g x ≤
+        MD ^ 2 / ouCoordSet S t g x :=
+      div_le_div_of_nonneg_right hnum hPgx_pos.le
+    have h2 : MD ^ 2 / ouCoordSet S t g x ≤ MD ^ 2 / ε :=
+      div_le_div_of_nonneg_left (sq_nonneg _) hε (hPg_lo x)
+    linarith
+  have hlhs_int : Integrable
+      (fun x => (ouCoordSet S t D x) ^ 2 / (ouCoordSet S t g x)) (γFin n) :=
+    integrable_of_bound ((hPD_meas.pow_const 2).div hPg_meas) hlhs_bd
+  have hPQ_int : Integrable (ouCoordSet S t Q) (γFin n) :=
+    integrable_of_bound hPQ_meas (fun x => by
+      have hb := ouCoordSet_bounds S t hQ_meas (ε := 0) (M := MD ^ 2 / ε)
+        (fun z => hQ_nn z)
+        (fun z => by
+          have := hQ_bd z; rw [Real.norm_eq_abs, abs_of_nonneg (hQ_nn z)] at this
+          exact this) x
+      rw [Real.norm_eq_abs, abs_of_nonneg hb.1]; exact hb.2)
+  have hQ_int : Integrable Q (γFin n) :=
+    integrable_of_bound hQ_meas hQ_bd
+  -- Pointwise CS, then `integral_mono`, then mean preservation.
+  calc (∫ x, (ouCoordSet S t D x) ^ 2 / (ouCoordSet S t g x) ∂γFin n)
+      ≤ ∫ x, ouCoordSet S t Q x ∂γFin n :=
+        integral_mono hlhs_int hPQ_int (fun x =>
+          ouCoordSet_kernel_cauchy_schwarz S t hg_meas hD_meas hε
+            hg_lo hg_hi hD_bd x)
+    _ = ∫ x, Q x ∂γFin n :=
+        integral_ouCoordSet_eq S t ht hQ_meas
+          (C := MD ^ 2 / ε) hQ_bd
+
+/-- **S5: the coordinate telescope (single step + induction).** For
+`IsCoreFin f`, `ε > 0`, `t ≥ 0` and any `Finset S` of coordinates,
+`BE(g_ε) − BE(ouCoordSet S t g_ε) ≤ (1−e^{−2t})/2 · Σ_{k∈S} I_k(g_ε)`,
+where `g_ε = f²+ε`. Proved by `Finset.induction`: each inserted
+coordinate `k ∉ S` contributes one per-coordinate step
+(`boltzmannEntropyFin_ouCoord_step_le` with the abstract slice
+derivative `D = ouCoordSet S t (∂_k g_ε)` supplied by the 1-parameter
+commutation `ouCoordSet_slice_contDiff_one`), and the resulting
+`∫ D²/(ouCoordSet S t g_ε)` is bounded by `I_k(g_ε)` via the orthogonal
+Fisher monotonicity `integral_sq_div_ouCoordSet_le`. -/
+theorem boltzmann_ouCoordSet_telescope_le {m : ℕ}
+    {f : (Fin (m + 1) → ℝ) → ℝ} (hf : IsCoreFin f) {ε : ℝ} (hε : 0 < ε)
+    (t : ℝ) (ht : 0 ≤ t) (S : Finset (Fin (m + 1))) :
+    boltzmannEntropyFin (fun x => f x * f x + ε) -
+        boltzmannEntropyFin (ouCoordSet S t (fun x => f x * f x + ε)) ≤
+      (1 - Real.exp (-2 * t)) / 2 *
+        ∑ k ∈ S, fisherInfoFinCoord k (fun x => f x * f x + ε) := by
+  classical
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0).1
+  set gε : (Fin (m + 1) → ℝ) → ℝ := fun x => f x * f x + ε with hgε
+  have hgε_core : IsCoreFin gε :=
+    IsCoreFin_add (IsCoreFin_mul hf hf) (IsCoreFin_const ε)
+  have hgε_C1 : ContDiff ℝ 1 gε := hgε_core.contDiff.of_le (by norm_num)
+  have hgε_meas : Measurable gε := hgε_core.measurable
+  have hf_le : ∀ x, |f x| ≤ M := fun x => by
+    rw [← Real.norm_eq_abs]; exact (hM x).1
+  have hpd_le : ∀ i x, |partialDeriv i f x| ≤ M := fun i x => by
+    rw [← Real.norm_eq_abs]; exact (hM x).2.1 i
+  -- Two-sided bounds on `gε`.
+  have hgε_lo : ∀ z, ε ≤ gε z := fun z => by
+    have : 0 ≤ f z * f z := mul_self_nonneg _
+    simp only [hgε]; linarith
+  have hgε_hi : ∀ z, gε z ≤ M ^ 2 + ε := fun z => by
+    have : f z * f z ≤ M ^ 2 := by
+      nlinarith [hf_le z, abs_nonneg (f z), sq_abs (f z)]
+    simp only [hgε]; linarith
+  have hgε_bd : ∀ z, ‖gε z‖ ≤ M ^ 2 + ε := fun z => by
+    rw [Real.norm_eq_abs, abs_of_nonneg
+      (le_trans hε.le (hgε_lo z))]; exact hgε_hi z
+  -- The coordinate-`k` partial of `gε` and its `2M²` bound.
+  have hpd_gε_eq : ∀ k : Fin (m + 1), partialDeriv k gε =
+      fun x => 2 * f x * partialDeriv k f x := fun k =>
+    partialDeriv_sq_add_const k hf ε
+  have hpd_gε_cont : ∀ k : Fin (m + 1), Continuous (partialDeriv k gε) := by
+    intro k
+    rw [hpd_gε_eq k]
+    exact (continuous_const.mul hf.continuous).mul (hf.partial_continuous k)
+  have hpd_gε_meas : ∀ k : Fin (m + 1), Measurable (partialDeriv k gε) :=
+    fun k => (hpd_gε_cont k).measurable
+  have hpd_gε_bd : ∀ (k : Fin (m + 1)) z, |partialDeriv k gε z| ≤ 2 * M ^ 2 := by
+    intro k z
+    rw [hpd_gε_eq k]
+    have h1 : |(2 : ℝ) * f z * partialDeriv k f z| =
+        2 * |f z| * |partialDeriv k f z| := by
+      rw [abs_mul, abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]
+    rw [h1]
+    nlinarith [hf_le z, hpd_le k z, abs_nonneg (f z),
+      abs_nonneg (partialDeriv k f z)]
+  -- Per-step bound: for `k ∉ S`,
+  --   `BE(P_S gε) − BE(ouCoord k (P_S gε)) ≤ (1−e^{−2t})/2 · I_k(gε)`.
+  have hstep : ∀ (S : Finset (Fin (m + 1))) (k : Fin (m + 1)), k ∉ S →
+      boltzmannEntropyFin (ouCoordSet S t gε) -
+          boltzmannEntropyFin (ouCoord k t (ouCoordSet S t gε)) ≤
+        (1 - Real.exp (-2 * t)) / 2 * fisherInfoFinCoord k gε := by
+    intro S k hk
+    set hS : (Fin (m + 1) → ℝ) → ℝ := ouCoordSet S t gε with hhS
+    set D : (Fin (m + 1) → ℝ) → ℝ := ouCoordSet S t (partialDeriv k gε) with hD
+    -- Slice-`C¹` and slice-derivative of `hS` along `k` (`k ∉ S`).
+    have hslice := fun y => ouCoordSet_slice_contDiff_one S k hk t hgε_C1
+      (hpd_gε_cont k) (M := max (M ^ 2 + ε) (2 * M ^ 2))
+      (fun z => by
+        rw [Real.norm_eq_abs, abs_of_nonneg (le_trans hε.le (hgε_lo z))]
+        exact le_trans (hgε_hi z) (le_max_left _ _))
+      (fun z => le_trans (hpd_gε_bd k z) (le_max_right _ _)) y
+    have hslice_C1 : ∀ y : Fin m → ℝ,
+        ContDiff ℝ 1 (fun r => hS (Fin.insertNth (α := fun _ => ℝ) k r y)) :=
+      fun y => (hslice y).1
+    have hslice_deriv : ∀ y : Fin m → ℝ,
+        deriv (fun r => hS (Fin.insertNth (α := fun _ => ℝ) k r y)) =
+          fun r => D (Fin.insertNth (α := fun _ => ℝ) k r y) :=
+      fun y => (hslice y).2
+    have hhS_meas : Measurable hS := measurable_ouCoordSet S t hgε_meas
+    have hD_meas : Measurable D :=
+      measurable_ouCoordSet S t (hpd_gε_meas k)
+    have hhS_lo : ∀ z, ε ≤ hS z := fun z =>
+      (ouCoordSet_bounds S t hgε_meas (ε := ε) (M := M ^ 2 + ε)
+        hgε_lo hgε_hi z).1
+    have hhS_hi : ∀ z, hS z ≤ M ^ 2 + ε := fun z =>
+      (ouCoordSet_bounds S t hgε_meas (ε := ε) (M := M ^ 2 + ε)
+        hgε_lo hgε_hi z).2
+    have hD_bd : ∀ z, |D z| ≤ 2 * M ^ 2 := by
+      intro z
+      have hb := ouCoordSet_bounds S t (hpd_gε_meas k)
+        (ε := -(2 * M ^ 2)) (M := 2 * M ^ 2)
+        (fun w => by have := hpd_gε_bd k w; rw [abs_le] at this; linarith [this.1])
+        (fun w => by have := hpd_gε_bd k w; rw [abs_le] at this; linarith [this.2]) z
+      rw [abs_le]; exact ⟨hb.1, hb.2⟩
+    -- Apply the per-coordinate step bound (S3) with abstract `D`.
+    -- Common bound for both `hS ≤ ·` and `|D| ≤ ·`.
+    set Mstep : ℝ := max (M ^ 2 + ε) (2 * M ^ 2) with hMstep
+    have hstep0 := boltzmannEntropyFin_ouCoord_step_le k hS D hhS_meas
+      hslice_C1 hslice_deriv hD_meas (ε := ε) (M := Mstep) hε
+      hhS_lo (fun z => le_trans (hhS_hi z) (le_max_left _ _))
+      (fun z => le_trans (hD_bd z) (le_max_right _ _)) t ht
+    -- Bound `∫ D²/hS` by `I_k(gε)` via orthogonal Fisher monotonicity (S4).
+    have hS4 : (∫ x, (D x) ^ 2 / hS x ∂γFin (m + 1)) ≤
+        fisherInfoFinCoord k gε := by
+      have := integral_sq_div_ouCoordSet_le S t ht hgε_meas (hpd_gε_meas k)
+        (ε := ε) (Mg := M ^ 2 + ε) (MD := 2 * M ^ 2) hε
+        hgε_lo hgε_hi (fun z => hpd_gε_bd k z)
+      simpa [hD, hhS, fisherInfoFinCoord] using this
+    have hcoef_nn : 0 ≤ (1 - Real.exp (-2 * t)) / 2 := by
+      have hexp : Real.exp (-2 * t) ≤ 1 :=
+        Real.exp_le_one_iff.mpr (by linarith)
+      linarith
+    calc boltzmannEntropyFin hS - boltzmannEntropyFin (ouCoord k t hS)
+        ≤ (1 - Real.exp (-2 * t)) / 2 * ∫ x, (D x) ^ 2 / hS x ∂γFin (m + 1) :=
+          hstep0
+      _ ≤ (1 - Real.exp (-2 * t)) / 2 * fisherInfoFinCoord k gε := by
+          exact mul_le_mul_of_nonneg_left hS4 hcoef_nn
+  -- Induction over `S` accumulating the per-coordinate steps.
+  induction S using Finset.induction with
+  | empty =>
+      simp [ouCoordSet_empty]
+  | insert k S hk ih =>
+      have hcoef_nn : 0 ≤ (1 - Real.exp (-2 * t)) / 2 := by
+        have hexp : Real.exp (-2 * t) ≤ 1 :=
+          Real.exp_le_one_iff.mpr (by linarith)
+        linarith
+      -- `ouCoordSet (insert k S) = ouCoord k ∘ ouCoordSet S` (`k ∉ S`).
+      have hcomp : ouCoordSet (insert k S) t gε =
+          ouCoord k t (ouCoordSet S t gε) :=
+        (ouCoord_ouCoordSet S k hk t hgε_meas (C := M ^ 2 + ε) hgε_bd).symm
+      have hI_nn : 0 ≤ fisherInfoFinCoord k gε := by
+        unfold fisherInfoFinCoord
+        exact integral_nonneg (fun x =>
+          div_nonneg (sq_nonneg _) (le_trans hε.le (hgε_lo x)))
+      calc boltzmannEntropyFin gε -
+            boltzmannEntropyFin (ouCoordSet (insert k S) t gε)
+          = (boltzmannEntropyFin gε - boltzmannEntropyFin (ouCoordSet S t gε))
+            + (boltzmannEntropyFin (ouCoordSet S t gε) -
+                boltzmannEntropyFin (ouCoordSet (insert k S) t gε)) := by ring
+        _ ≤ ((1 - Real.exp (-2 * t)) / 2 *
+              ∑ j ∈ S, fisherInfoFinCoord j gε)
+            + (1 - Real.exp (-2 * t)) / 2 * fisherInfoFinCoord k gε := by
+              refine add_le_add ih ?_
+              rw [hcomp]
+              exact hstep S k hk
+        _ = (1 - Real.exp (-2 * t)) / 2 *
+              ∑ j ∈ insert k S, fisherInfoFinCoord j gε := by
+              rw [Finset.sum_insert hk]; ring
+
 /-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2,
 n-dim Gaussian case).**
 
@@ -4560,71 +5171,74 @@ theorem ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
   --   `BE(f²+ε) - BE(P_t(f²) + ε) ≤ 2 (1 - e^{-2t}) · ouEnergyFin f f`.
   refine boltzmannSubFin_le_of_perEps (n := n) hf t ht ?_
   intro ε hε
-  -- The per-ε goal. `g_ε := f²+ε` is `IsCoreFin` (sum of `IsCoreFin`
-  -- and a constant) with `ε ≤ g_ε ≤ M²+ε` and `|∂_k g_ε| = |2 f ∂_k f|`
-  -- uniformly bounded; `P_t(f²)+ε = P_t(g_ε)` by `ouSemigroupFin_sq_add_const`.
+  -- The per-ε goal. `g_ε := f²+ε` is `IsCoreFin`; the telescope route
+  -- (S2–S5) is fully formalized in `boltzmann_ouCoordSet_telescope_le`.
+  -- Here: rewrite `P_t(f²)+ε = P_t g_ε = ouCoordSet univ t g_ε`, apply
+  -- the telescope at `S = univ`, then bound `Σ_k I_k(g_ε) ≤ 4·E`
+  -- (`sum_fisherInfoFinCoord_sq_add_const_le`). The `n = 0` case is
+  -- degenerate (`ouSemigroupFin` is the identity, LHS = 0 ≤ RHS).
   --
-  -- Remaining telescoping assembly (the single open `sorry`). The T1
-  -- factorization scaffolding is now FULLY PROVED (axiom-free, above):
-  --   • `ouCoord_ouCoordSet` : `ouCoord j t ∘ ouCoordSet S t =
-  --     ouCoordSet (insert j S) t` for `j ∉ S` (composition step),
-  --   • `integral_ouCoordSet_eq` / `integral_ouCoord_eq` : `ouCoordSet`
-  --     / `ouCoord` preserve the Gaussian mean,
-  --   • `ouCoordSet_bounds`, `measurable_ouCoordSet`, `setShift_insert_update`,
-  --     `integral_update_swap`, `Gaussian1D.integral_ouSemigroup_eq`.
-  -- Together with the in-file `ouCoordSet_empty`/`ouCoordSet_univ`, the
-  -- telescope chain `∅ ⊆ {0} ⊆ … ⊆ univ` and the per-step composition
-  -- `ouCoordSet_univ = P_t` are available; (T3) energy bookkeeping
-  -- `Σ_k I_k(f²+ε) ≤ 4·E` is proved (`sum_fisherInfoFinCoord_sq_add_const_le`).
-  --
-  -- **MATHEMATICAL BLOCKER (corrected architecture, 2026-05-19).** The
-  -- previously documented plan assumed the per-coordinate step lemma
-  -- `boltzmannEntropyFin_ouCoord_step_le` (which requires
-  -- `ContDiff ℝ ∞` of its argument) could be applied to the telescope
-  -- iterates `ouCoordSet S_k t g_ε`, with `IsCoreFin (ouCoord j t g_ε)`
-  -- "the hardest sub-lemma". That sub-lemma is **mathematically FALSE**:
-  -- `ouCoord j` (single-coordinate Mehler) smooths ONLY the integrated
-  -- coordinate; the passthrough coordinates `≠ j` inherit `g`'s
-  -- regularity with NO gain. Under `IsCoreFin` (global bounds only up
-  -- to 2nd order), `ouCoord j t g` is in general **only `C²` jointly,
-  -- not `C^∞`** — for `t > ½ ln 2` the 3rd passthrough derivative can
-  -- diverge (Gaussian weight `e^{-s²/2}` loses to `e^{b² s²}`,
-  -- `b² = 1−e^{−2t} > ½`). Verified by gemini deep-think + gemini-3.1
-  -- (explicit counterexample `g(x_j,y)=ψ(y)[y e^{-x_j²}
-  -- − e^{-2x_j²} sin(e^{x_j²} y)]`, both passes 2026-05-19). The C²
-  -- class WITH global ≤2nd-order bounds **IS** preserved by `ouCoord`
-  -- (`‖∂Qg‖∞ ≤ a‖∂g‖∞` in the j-slot, `≤ ‖∂g‖∞` for passthrough),
-  -- and a "C² step lemma" is mathematically safe.
-  --
-  -- **Corrected route (to discharge the `sorry`):**
-  -- (S1) Define a `C²` core predicate `IsCore2Fin` (= `ContDiff ℝ 2 f`
-  --      ∧ global bounds on `f, ∂_i f, ∂²_i f`), the C² analogue of
-  --      `IsCoreFin`; `IsCoreFin f → IsCore2Fin f`.
-  -- (S2) Prove `ouCoord`/`ouCoordSet` preserves `IsCore2Fin`
-  --      (parametric `C²` under the γ-integral: only TWO `fderiv`
-  --      passes, each dominated by the *global* IsCore2Fin bound — a
-  --      constant, hence γ-integrable since γ is a probability measure;
-  --      far cheaper than the C∞ `hasFDerivAt_ouSemigroupFin` route).
-  -- (S3) Re-prove `boltzmannEntropyFin_ouCoord_step_le` with the
-  --      hypothesis weakened from `ContDiff ℝ ∞ g` to `ContDiff ℝ 2 g`
-  --      (its proof only uses `C¹` slices via `section_contDiff` —
-  --      `contDiff_update` works at any order — and `partialDeriv`
-  --      measurability, both available from `C²`).
-  -- (S4) Orthogonal Fisher monotonicity `I_k(ouCoordSet S t h) ≤ I_k h`
-  --      for `k ∉ S` (Gemini-vetted one-shot, no per-coord induction):
-  --      commutation `∂_k(ouCoordSet S t h) = ouCoordSet S t (∂_k h)`
-  --      for `k ∉ S` (`C¹` + bounded `∂_k h`; in the `x_k`-direction
-  --      `setShift` is the identity) + pointwise kernel Cauchy–Schwarz
-  --      `(∫u)²/(∫v) ≤ ∫(u²/v)` (`MeasureTheory.inner_mul_le_norm_mul_norm`
-  --      style; mirror proved 1D `cauchy_schwarz_gamma`) +
-  --      `integral_ouCoordSet_eq` to cancel the outer operator.
-  -- (S5) Telescope `BE(g_ε) − BE(P_t g_ε) =
-  --      Σ_{k} [BE(ouCoordSet (range k) g_ε) −
-  --             BE(ouCoordSet (range (k+1)) g_ε)]`
-  --      (`Finset.sum_range_succ`), `ouCoordSet (range k) =
-  --      ouCoord (k) ∘ ouCoordSet (range k)` via `ouCoord_ouCoordSet`,
-  --      bound each diff by the (S3) C²-step + (S4)+(S3 bounds), sum,
-  --      then `ouSemigroupFin_sq_add_const` + `ouCoordSet_univ` close.
-  sorry
+  -- Corrected architecture (Gemini deep-think + 3.1-pro, 2026-05-19):
+  -- the per-coordinate step lemma was weakened to slice-level `C¹`
+  -- hypotheses with an *abstract* slice-derivative `D`; the telescope
+  -- iterates' slice `C¹` + slice-derivative are supplied by the
+  -- single-real-parameter commutation `hasDerivAt_slice_ouCoordSet`
+  -- (frozen-slot identity, `k ∉ S`), avoiding any joint multivariate
+  -- `C²` or mixed partials. The earlier "`C²` core predicate"
+  -- (`IsCore2Fin`) plan was superseded by this lower-risk 1-parameter
+  -- route — no new predicate was needed.
+  set gε : (Fin n → ℝ) → ℝ := fun x => f x * f x + ε with hgε
+  have hf_meas : Measurable f := hf.measurable
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+  -- `P_t(f²) + ε = P_t g_ε`.
+  have hPsq : (fun x => ouSemigroupFin t (fun x => f x * f x) x + ε) =
+      ouSemigroupFin t gε :=
+    (ouSemigroupFin_sq_add_const hf ε t ht).symm
+  rw [hPsq]
+  -- Coefficient identity: `(1−e^{−2·1·t})·(2/1) = (1−e^{−2t})·2`.
+  have hcoef : (1 - Real.exp (-2 * 1 * t)) * (2 / 1) =
+      (1 - Real.exp (-2 * t)) / 2 * 4 := by
+    rw [show (-2 * 1 * t : ℝ) = -2 * t from by ring]; ring
+  rw [hcoef]
+  have hE_nn : 0 ≤ ouEnergyFin f f := by
+    unfold ouEnergyFin ouGammaFin
+    exact integral_nonneg (fun x => Finset.sum_nonneg
+      (fun i _ => mul_self_nonneg _))
+  have hcoef_nn : 0 ≤ (1 - Real.exp (-2 * t)) / 2 := by
+    have hexp : Real.exp (-2 * t) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+    linarith
+  cases n with
+  | zero =>
+      -- Degenerate: on `Fin 0 → ℝ` the OU shift is the identity, so
+      -- `ouSemigroupFin t gε = gε` and the entropy difference is `0`.
+      have hid : ouSemigroupFin t gε = gε := by
+        funext x
+        show (∫ _y, gε (ouShiftFin t x _y) ∂γFin 0) = gε x
+        have hshift : ∀ y : Fin 0 → ℝ, ouShiftFin t x y = x := by
+          intro y; funext i; exact absurd i.2 (by omega)
+        simp only [hshift]
+        simp
+      rw [hid, sub_self]
+      positivity
+  | succ m =>
+      -- `ouSemigroupFin t gε = ouCoordSet univ t gε`.
+      have huniv : ouSemigroupFin t gε =
+          ouCoordSet (Finset.univ : Finset (Fin (m + 1))) t gε :=
+        (ouCoordSet_univ t).symm
+      rw [huniv]
+      -- Telescope at `S = univ`, then `Σ_k I_k(gε) ≤ 4·E`.
+      have htel := boltzmann_ouCoordSet_telescope_le (f := f) hf hε t ht
+        (Finset.univ : Finset (Fin (m + 1)))
+      have hsum := sum_fisherInfoFinCoord_sq_add_const_le (n := m + 1)
+        (f := f) hf (ε := ε) hε
+      calc boltzmannEntropyFin gε -
+            boltzmannEntropyFin (ouCoordSet Finset.univ t gε)
+          ≤ (1 - Real.exp (-2 * t)) / 2 *
+              ∑ k : Fin (m + 1), fisherInfoFinCoord k gε := htel
+        _ ≤ (1 - Real.exp (-2 * t)) / 2 * (4 * ouEnergyFin f f) := by
+              refine mul_le_mul_of_nonneg_left ?_ hcoef_nn
+              simpa [hgε] using hsum
+        _ = (1 - Real.exp (-2 * t)) / 2 * 4 * ouEnergyFin f f := by ring
 
 end GaussianFin

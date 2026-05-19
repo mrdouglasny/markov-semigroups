@@ -14,21 +14,24 @@
 > `contDiff_laplaceFamily` → `contDiff_ouSemigroupFin_of_bounded`);
 > axiom-free. GaussianFin axiom count **11 → 10**. **N1.c**
 > (`discharge/n1c-entropy-decay`, merged N1.b):
-> `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2) — **still
-> PARTIAL (1 documented `sorry`; already a `theorem`, not an `axiom`,
-> so not counted)**. The **T1 factorization is now fully proved &
-> axiom-free** (`Gaussian1D.integral_ouSemigroup_eq`,
-> `integral_ouCoord_eq`, `setShift_insert_update`,
-> `integral_update_swap`, `ouCoord_ouCoordSet`,
-> `measurable_ouCoordSet`, `ouCoordSet_bounds`,
-> `integral_ouCoordSet_eq`). A mathematical blocker was found and
-> documented: the telescope iterates are only `C²` (not `C∞`) under
-> `IsCoreFin`, so the C∞-requiring step lemma cannot consume them; the
-> corrected `C²`-class route (S1–S5) is documented in-file and in
-> `AXIOM_AUDIT.md`. Full `lake build` green; `#print axioms
-> ouSemigroupFin_entropy_sq_decay_bound = [propext, sorryAx,
-> Classical.choice, Quot.sound]`; all new T1 helpers axiom-free. See
-> `AXIOM_AUDIT.md` rows.
+> `ouSemigroupFin_entropy_sq_decay_bound` (BGL Thm 5.5.2) — **FULLY
+> DISCHARGED 2026-05-19 (single `sorry` closed; axiom-free
+> `theorem`)**. The C∞-iterate blocker was resolved by the
+> Gemini-vetted lower-risk **1-parameter route** (no new `C²`-core
+> predicate): the per-coordinate step lemma was refactored to
+> slice-level hypotheses with an abstract slice-derivative `D`; the
+> telescope iterates' slice-`C¹`+derivative are supplied by the
+> single-real-parameter commutation `hasDerivAt_slice_ouCoordSet`
+> (frozen-slot identity, `k∉S`, via Mathlib
+> `hasDerivAt_integral_of_dominated_loc_of_deriv_le` with a constant
+> dominator); S4 orthogonal Fisher monotonicity via a measure-general
+> Cauchy–Schwarz (`integral_sq_div_ouCoordSet_le`); S5 telescope via
+> `boltzmann_ouCoordSet_telescope_le` (`Finset.induction`). Reuses
+> the previously-proved T1 factorization, ε→0 DCT tail, and
+> `sum_fisherInfoFinCoord_sq_add_const_le`. Full `lake build` green;
+> verified `#print axioms ouSemigroupFin_entropy_sq_decay_bound =
+> [propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
+> axioms). See `AXIOM_AUDIT.md` rows.
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
