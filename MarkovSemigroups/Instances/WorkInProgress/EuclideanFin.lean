@@ -9,6 +9,7 @@ Bakry-Emery construction.
 -/
 
 import MarkovSemigroups.Instances.WorkInProgress.Euclidean
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanEntropyDecay
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanStein
 import Mathlib.Analysis.Calculus.ContDiff.FiniteDimension
 import Mathlib.Analysis.Calculus.Deriv.Pi
@@ -2642,35 +2643,118 @@ axiom ouSemigroupFin_preserves_IsCore {n : ℕ}
     (t : ℝ) (ht : 0 ≤ t) {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
     IsCoreFin (ouSemigroupFin t f)
 
-/-! ### N1.5 textbook axiom: multivariate entropy decay for `f²`
+/-! ### N1.c: multivariate entropy decay for `f²` (BGL Thm. 5.5.2)
 
-The 1D entropy-decay theorem is already proved in
-`EuclideanEntropyDecay.lean`. The finite-dimensional statement is its
-tensor lift through Fubini, but the full formal port would require
-rebuilding the Fisher-information and entropy-derivative machinery in
-the product setting. We keep that lift as an explicitly documented
-temporary axiom so the concrete wrapper can be completed. -/
+The 1D entropy-decay theorem is proved in `EuclideanEntropyDecay.lean`,
+where the general per-coordinate building block
+`Gaussian1D.boltzmannEntropy_ouSemigroup_decay_le` (FTC assembly of the
+Fisher-info decay A1 and de Bruijn A2) is also extracted.
 
-/-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2, n-dim Gaussian case).**
+The multivariate bound is obtained by the **telescoping route** (vetted
+gemini-3.1-pro-preview 2026-05-13, route confirmed by deep-think
+2026-05-19): the macroscopic `(∫·)log(∫·)` terms cancel **once** for the
+full operator because `ouSemigroupFin` preserves the Gaussian mean
+(`ouSemigroupFin_integral_eq_of_bound`), so the centered `entropy`
+difference equals the Boltzmann (`∫ h log h`) difference. The Boltzmann
+difference telescopes over the per-coordinate factors with no further
+macroscopic terms; each per-coordinate step is the integrated 1D bound,
+and the per-coordinate Fisher informations stay controlled by
+`4 · ouEnergyFin f f` via orthogonal Fisher monotonicity.
+
+The infrastructure below is staged; the full assembly is in progress. -/
+
+/-- The single-coordinate Ornstein–Uhlenbeck operator: the 1D OU
+semigroup acting on coordinate `i` only, freezing the other
+coordinates. Equals `Gaussian1D.ouSemigroup t (coordSection i x f)`
+evaluated at `x i`. -/
+def ouCoord (i : Fin n) (t : ℝ) (f : (Fin n → ℝ) → ℝ) : (Fin n → ℝ) → ℝ :=
+  fun x => ∫ s, f (Function.update x i
+    (Real.exp (-t) * x i + Real.sqrt (1 - Real.exp (-2 * t)) * s)) ∂Gaussian1D.γ
+
+/-- `ouCoord` is the 1D OU semigroup of the coordinate section. -/
+theorem ouCoord_eq_ouSemigroup_coordSection (i : Fin n) (t : ℝ)
+    (f : (Fin n → ℝ) → ℝ) (x : Fin n → ℝ) :
+    ouCoord i t f x = Gaussian1D.ouSemigroup t (coordSection i x f) (x i) := by
+  unfold ouCoord Gaussian1D.ouSemigroup coordSection
+  rfl
+
+/-- The multivariate Boltzmann entropy `∫ h log h dγ_n` (no
+`(∫h)log(∫h)` centering — the centered form is `DirichletSpace.entropy`
+under `dirichletSpaceFin`). -/
+def boltzmannEntropyFin (h : (Fin n → ℝ) → ℝ) : ℝ :=
+  ∫ x, h x * Real.log (h x) ∂γFin n
+
+/-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
+`f`, the centered entropy difference of `g = f²` and `P_t g` equals
+their Boltzmann-entropy difference, because the multivariate OU
+semigroup preserves the Gaussian mean
+(`ouSemigroupFin_integral_eq_of_bound`), so the two `(∫·)log(∫·)`
+terms are identical and cancel in the difference.
+
+This is the only place the macroscopic terms enter, and it requires no
+derivatives — pure mean preservation plus linearity. -/
+theorem entropy_sub_eq_boltzmann_sub {n : ℕ}
+    (f : (Fin n → ℝ) → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : IsCoreFin f) :
+    DirichletSpace.entropy (ds := dirichletSpaceFin (n := n)) (fun x => f x * f x) -
+        DirichletSpace.entropy (ds := dirichletSpaceFin (n := n))
+          (ouSemigroupFin t (fun x => f x * f x)) =
+      boltzmannEntropyFin (fun x => f x * f x) -
+        boltzmannEntropyFin (ouSemigroupFin t (fun x => f x * f x)) := by
+  obtain ⟨M, hM⟩ := hf.bound_exists
+  have hM_nn : (0 : ℝ) ≤ M := (norm_nonneg _).trans (hM 0)
+  set g : (Fin n → ℝ) → ℝ := fun x => f x * f x with hg_def
+  have hg_meas : Measurable g := (hf.measurable.mul hf.measurable)
+  have hg_bd : ∀ x, ‖g x‖ ≤ M ^ 2 := by
+    intro x
+    have hfx : |f x| ≤ M := by rw [← Real.norm_eq_abs]; exact hM x
+    have hgx : g x = f x * f x := rfl
+    have hnn : 0 ≤ g x := by rw [hgx]; exact mul_self_nonneg _
+    rw [Real.norm_eq_abs, abs_of_nonneg hnn, hgx]
+    nlinarith [abs_nonneg (f x), sq_abs (f x)]
+  -- Mean preservation: ∫ P_t g dγ = ∫ g dγ.
+  have h_mean : ∫ x, ouSemigroupFin t g x ∂γFin n = ∫ x, g x ∂γFin n :=
+    ouSemigroupFin_integral_eq_of_bound (n := n) (M := M ^ 2) t ht hg_meas hg_bd
+  -- Unfold the centered entropy and cancel the equal macroscopic terms.
+  unfold DirichletSpace.entropy boltzmannEntropyFin
+  show
+    ((∫ x, g x * Real.log (g x) ∂γFin n) -
+        (∫ x, g x ∂γFin n) * Real.log (∫ x, g x ∂γFin n)) -
+      ((∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n) -
+        (∫ x, ouSemigroupFin t g x ∂γFin n) *
+          Real.log (∫ x, ouSemigroupFin t g x ∂γFin n)) =
+    (∫ x, g x * Real.log (g x) ∂γFin n) -
+      (∫ x, ouSemigroupFin t g x * Real.log (ouSemigroupFin t g x) ∂γFin n)
+  rw [h_mean]
+  ring
+
+/-- **Integrated multivariate entropy decay for `f²` (BGL Thm. 5.5.2,
+n-dim Gaussian case).**
 
 For every `IsCoreFin` test function `f` and every `t ≥ 0`,
 `Ent(f²) - Ent(P_t(f²)) ≤ (1 - e^{-2t}) * 2 * E_n(f,f)`.
 
 This is the finite-dimensional Gaussian tensor lift of the proved 1D
-theorem `Gaussian1D.ouSemigroup_entropy_sq_decay_bound_proved`.
+theorem `Gaussian1D.ouSemigroup_entropy_sq_decay_bound_proved`, obtained
+via the telescoping route documented above.
 
 **Reference:** Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
-Diffusion Operators*, Springer 2014, §5.5, Theorem 5.5.2.
-
-**Discharge plan:** lift the 1D entropy decomposition/Fisher-information
-argument through `ouSemigroupFin_insertNth_eq` and
-`integral_γFin_succAbove`, reusing the already-built sectionwise Mehler
-bridges and product Gaussian Fubini lemmas. -/
-axiom ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
+Diffusion Operators*, Springer 2014, §5.5, Theorem 5.5.2. -/
+theorem ouSemigroupFin_entropy_sq_decay_bound {n : ℕ}
     (f : (Fin n → ℝ) → ℝ) (t : ℝ) (ht : 0 ≤ t) (hf : IsCoreFin f) :
     DirichletSpace.entropy (ds := dirichletSpaceFin (n := n)) (fun x => f x * f x) -
       DirichletSpace.entropy (ds := dirichletSpaceFin (n := n))
         (ouSemigroupFin t (fun x => f x * f x)) ≤
-      (1 - Real.exp (-2 * 1 * t)) * (2 / 1) * ouEnergyFin f f
+      (1 - Real.exp (-2 * 1 * t)) * (2 / 1) * ouEnergyFin f f := by
+  -- Step 1 (proved): reduce the centered entropy difference to the
+  -- Boltzmann difference via macroscopic-term cancellation.
+  rw [entropy_sub_eq_boltzmann_sub f t ht hf]
+  -- Remaining: the Boltzmann telescoping bound.
+  -- `boltzmannEntropyFin (f²) - boltzmannEntropyFin (P_t f²)`
+  --   ≤ 2 (1 - e^{-2t}) · ouEnergyFin f f.
+  -- Telescope over per-coordinate `ouCoord` factors of `ouSemigroupFin`,
+  -- bound each step by the 1D `boltzmannEntropy_ouSemigroup_decay_le`,
+  -- and control the per-coordinate Fisher informations by
+  -- `4 · ouEnergyFin f f` via orthogonal Fisher monotonicity.
+  sorry
 
 end GaussianFin
