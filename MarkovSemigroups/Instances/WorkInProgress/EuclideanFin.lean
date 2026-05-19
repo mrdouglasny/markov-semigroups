@@ -2934,15 +2934,152 @@ theorem boltzmannEntropyFin_ouCoord_step_le {n : ℕ} (i : Fin (n + 1))
       simp [hG]
     simp only []
     rw [hgd, hgv]
+  -- Joint measurability of the slice `(y, s) ↦ g (i.insertNth s y)`.
+  have h_insert_cont : Continuous (fun p : (Fin n → ℝ) × ℝ =>
+      Fin.insertNth (α := fun _ => ℝ) i p.2 p.1) :=
+    Continuous.finInsertNth i continuous_snd continuous_fst
+  -- `y ↦ boltzmannEntropy (G y)` is measurable.
+  have hBE_Gy_meas : Measurable
+      (fun y => Gaussian1D.boltzmannEntropy (G y)) := by
+    have hj : Measurable (fun p : (Fin n → ℝ) × ℝ =>
+        G p.1 p.2 * Real.log (G p.1 p.2)) := by
+      have hgj : Measurable (fun p : (Fin n → ℝ) × ℝ => G p.1 p.2) := by
+        simpa [hG] using hg_meas.comp h_insert_cont.measurable
+      exact hgj.mul (Real.measurable_log.comp hgj)
+    simpa [Gaussian1D.boltzmannEntropy] using
+      hj.stronglyMeasurable.integral_prod_right'.measurable
+  -- `y ↦ boltzmannEntropy (P_t (G y))` is measurable.
+  have hBE_PGy_meas : Measurable
+      (fun y => Gaussian1D.boltzmannEntropy
+        (Gaussian1D.ouSemigroup t (G y))) := by
+    have hj : Measurable (fun p : (Fin n → ℝ) × ℝ =>
+        Gaussian1D.ouSemigroup t (G p.1) p.2 *
+          Real.log (Gaussian1D.ouSemigroup t (G p.1) p.2)) := by
+      have hgj : Measurable (fun q : ((Fin n → ℝ) × ℝ) × ℝ =>
+          G q.1.1 (Real.exp (-t) * q.1.2 +
+            Real.sqrt (1 - Real.exp (-2 * t)) * q.2)) := by
+        have : Measurable (fun q : ((Fin n → ℝ) × ℝ) × ℝ =>
+            Fin.insertNth (α := fun _ => ℝ) i
+              (Real.exp (-t) * q.1.2 +
+                Real.sqrt (1 - Real.exp (-2 * t)) * q.2) q.1.1) :=
+          (Continuous.finInsertNth i
+            ((continuous_const.mul (continuous_snd.comp continuous_fst)).add
+              (continuous_const.mul continuous_snd))
+            (continuous_fst.comp continuous_fst)).measurable
+        simpa [hG] using hg_meas.comp this
+      have hP : Measurable (fun p : (Fin n → ℝ) × ℝ =>
+          Gaussian1D.ouSemigroup t (G p.1) p.2) := by
+        simpa [Gaussian1D.ouSemigroup] using
+          hgj.stronglyMeasurable.integral_prod_right'.measurable
+      exact hP.mul (Real.measurable_log.comp hP)
+    simpa [Gaussian1D.boltzmannEntropy] using
+      hj.stronglyMeasurable.integral_prod_right'.measurable
+  -- `y ↦ fisherInfo (G y)` is measurable.
+  have hFI_Gy_meas : Measurable
+      (fun y => Gaussian1D.fisherInfo (G y)) := by
+    have hj : Measurable (fun p : (Fin n → ℝ) × ℝ =>
+        (deriv (G p.1) p.2) ^ 2 / G p.1 p.2) := by
+      have hd : Measurable (fun p : (Fin n → ℝ) × ℝ =>
+          deriv (G p.1) p.2) := by
+        have : (fun p : (Fin n → ℝ) × ℝ => deriv (G p.1) p.2) =
+            fun p => partialDeriv i g
+              (Fin.insertNth (α := fun _ => ℝ) i p.2 p.1) := by
+          funext p; rw [hG_deriv p.1]
+        rw [this]
+        exact h_pd_meas.comp h_insert_cont.measurable
+      have hgj : Measurable (fun p : (Fin n → ℝ) × ℝ => G p.1 p.2) := by
+        simpa [hG] using hg_meas.comp h_insert_cont.measurable
+      exact (hd.pow_const 2).div hgj
+    simpa [Gaussian1D.fisherInfo] using
+      hj.stronglyMeasurable.integral_prod_right'.measurable
+  -- Uniform bounds for integrability on the probability space `γFin n`.
+  have hBE_Gy_bd : ∀ y, |Gaussian1D.boltzmannEntropy (G y)| ≤ B := by
+    intro y
+    unfold Gaussian1D.boltzmannEntropy
+    calc |∫ s, G y s * Real.log (G y s) ∂Gaussian1D.γ|
+        ≤ ∫ s, |G y s * Real.log (G y s)| ∂Gaussian1D.γ :=
+          abs_integral_le_integral_abs
+      _ ≤ ∫ _s, B ∂Gaussian1D.γ :=
+          integral_mono_of_nonneg (Filter.Eventually.of_forall (fun s => abs_nonneg _))
+            (integrable_const B) (Filter.Eventually.of_forall (fun s =>
+              hB _ ⟨le_trans hε_nn (hG_lo y s), hG_hi y s⟩))
+      _ = B := by simp
+  have hBE_PGy_bd : ∀ y, |Gaussian1D.boltzmannEntropy
+      (Gaussian1D.ouSemigroup t (G y))| ≤ B := by
+    intro y
+    unfold Gaussian1D.boltzmannEntropy
+    calc |∫ s, Gaussian1D.ouSemigroup t (G y) s *
+            Real.log (Gaussian1D.ouSemigroup t (G y) s) ∂Gaussian1D.γ|
+        ≤ ∫ s, |Gaussian1D.ouSemigroup t (G y) s *
+            Real.log (Gaussian1D.ouSemigroup t (G y) s)| ∂Gaussian1D.γ :=
+          abs_integral_le_integral_abs
+      _ ≤ ∫ _s, B ∂Gaussian1D.γ :=
+          integral_mono_of_nonneg (Filter.Eventually.of_forall (fun s => abs_nonneg _))
+            (integrable_const B) (Filter.Eventually.of_forall (fun s =>
+              hB _ ⟨le_trans hε_nn (hPG_bd y s).1, (hPG_bd y s).2⟩))
+      _ = B := by simp
+  have hFI_Gy_nn : ∀ y, 0 ≤ Gaussian1D.fisherInfo (G y) := by
+    intro y
+    unfold Gaussian1D.fisherInfo
+    refine integral_nonneg (fun s => ?_)
+    exact div_nonneg (sq_nonneg _) (le_trans hε_nn (hG_lo y s))
+  have hFI_Gy_bd : ∀ y, Gaussian1D.fisherInfo (G y) ≤ M ^ 2 / ε := by
+    intro y
+    unfold Gaussian1D.fisherInfo
+    have hint : Integrable (fun s => (deriv (G y) s) ^ 2 / G y s)
+        Gaussian1D.γ := by
+      refine Integrable.mono' (integrable_const (M ^ 2 / ε)) ?_ ?_
+      · exact (((hG_C1 y).continuous_deriv (by norm_num)).measurable.pow_const 2
+          |>.div (hG_C1 y).continuous.measurable).aestronglyMeasurable
+      · filter_upwards with s
+        rw [Real.norm_eq_abs, abs_of_nonneg
+          (div_nonneg (sq_nonneg _) (le_trans hε_nn (hG_lo y s)))]
+        have hnum : (deriv (G y) s) ^ 2 ≤ M ^ 2 := by
+          have := hG'_bd y s
+          nlinarith [abs_nonneg (deriv (G y) s), sq_abs (deriv (G y) s)]
+        have hden : ε ≤ G y s := hG_lo y s
+        have hgz : 0 < G y s := lt_of_lt_of_le hε hden
+        have h1 : (deriv (G y) s) ^ 2 / G y s ≤ M ^ 2 / G y s :=
+          div_le_div_of_nonneg_right hnum hgz.le
+        have h2 : M ^ 2 / G y s ≤ M ^ 2 / ε :=
+          div_le_div_of_nonneg_left (sq_nonneg _) hε hden
+        linarith
+    calc ∫ s, (deriv (G y) s) ^ 2 / G y s ∂Gaussian1D.γ
+        ≤ ∫ _s, M ^ 2 / ε ∂Gaussian1D.γ := by
+          refine integral_mono hint (integrable_const _) (fun s => ?_)
+          have hnum : (deriv (G y) s) ^ 2 ≤ M ^ 2 := by
+            have := hG'_bd y s
+            nlinarith [abs_nonneg (deriv (G y) s), sq_abs (deriv (G y) s)]
+          have hden : ε ≤ G y s := hG_lo y s
+          have hgz : 0 < G y s := lt_of_lt_of_le hε hden
+          have h1 : (deriv (G y) s) ^ 2 / G y s ≤ M ^ 2 / G y s :=
+            div_le_div_of_nonneg_right hnum hgz.le
+          have h2 : M ^ 2 / G y s ≤ M ^ 2 / ε :=
+            div_le_div_of_nonneg_left (sq_nonneg _) hε hden
+          linarith
+      _ = M ^ 2 / ε := by simp
+  -- Integrability on the probability space `γFin n` from boundedness.
+  have hInt_BE_Gy : Integrable (fun y => Gaussian1D.boltzmannEntropy (G y))
+      (γFin n) :=
+    Integrable.mono' (integrable_const B) hBE_Gy_meas.aestronglyMeasurable
+      (Filter.Eventually.of_forall (fun y => by
+        rw [Real.norm_eq_abs]; exact hBE_Gy_bd y))
+  have hInt_BE_PGy : Integrable (fun y => Gaussian1D.boltzmannEntropy
+      (Gaussian1D.ouSemigroup t (G y))) (γFin n) :=
+    Integrable.mono' (integrable_const B) hBE_PGy_meas.aestronglyMeasurable
+      (Filter.Eventually.of_forall (fun y => by
+        rw [Real.norm_eq_abs]; exact hBE_PGy_bd y))
+  have hInt_FI_Gy : Integrable (fun y => Gaussian1D.fisherInfo (G y))
+      (γFin n) :=
+    Integrable.mono' (integrable_const (M ^ 2 / ε))
+      hFI_Gy_meas.aestronglyMeasurable
+      (Filter.Eventually.of_forall (fun y => by
+        rw [Real.norm_eq_abs, abs_of_nonneg (hFI_Gy_nn y)]; exact hFI_Gy_bd y))
   -- Assembly: `integral_mono` of the slicewise 1D bound `h1D`.
-  rw [hBE_g, hBE_ouCoord, hFI_g, ← integral_sub, ← integral_const_mul]
-  · refine integral_mono ?_ ?_ (fun y => h1D y)
-    · -- `y ↦ BE(G y) - BE(P_t G y)` is bounded, hence integrable.
-      sorry
-    · -- `y ↦ (1 - e^{-2t})/2 · fisherInfo (G y)` is bounded, hence integrable.
-      sorry
-  · sorry
-  · sorry
+  rw [hBE_g, hBE_ouCoord, hFI_g, ← integral_sub hInt_BE_Gy hInt_BE_PGy,
+    ← integral_const_mul]
+  refine integral_mono (hInt_BE_Gy.sub hInt_BE_PGy)
+    (hInt_FI_Gy.const_mul _) (fun y => h1D y)
 
 /-- **Macroscopic-term cancellation.** For an `IsCoreFin` test function
 `f`, the centered entropy difference of `g = f²` and `P_t g` equals
