@@ -255,8 +255,7 @@ private theorem pairing_slope_right_eq
   have hsym0 :
       ⟪fLp, ouSemigroupFinLp (n := n) t fLp⟫_ℝ =
         ⟪ouSemigroupFinLp (n := n) t fLp, fLp⟫_ℝ := by
-    simpa [real_inner_comm] using
-      (ouSemigroupFinLp_symmetric (n := n) t ht fLp fLp)
+    simp [real_inner_comm]
   rw [slope_def_field, hsem, hsym, hsym0]
   simp [div_eq_mul_inv, inner_sub_right, inner_smul_right, mul_comm]
 
@@ -281,8 +280,7 @@ private theorem pairing_slope_left_eq
   have hsym0 :
       ⟪fLp, ouSemigroupFinLp (n := n) s fLp⟫_ℝ =
         ⟪ouSemigroupFinLp (n := n) s fLp, fLp⟫_ℝ := by
-    simpa [real_inner_comm] using
-      (ouSemigroupFinLp_symmetric (n := n) s hs.le fLp fLp)
+    simp [real_inner_comm]
   rw [slope_def_field, hsem, hsym, hsym0]
   have hsubl :
       (⟪ouSemigroupFinLp (n := n) s fLp, fLp⟫_ℝ -
@@ -473,7 +471,7 @@ theorem ouSemigroupFin_l2_sq_hasDerivWithinAt {n : ℕ}
       simp [ψ, l2_sq_eq_pairing (n := n) s hs hf]
     · simp [ψ, l2_sq_eq_pairing (n := n) t ht hf]
   convert hmain using 1
-  simp [ouEnergyFin, mul_comm, mul_left_comm, mul_assoc]
+  simp [ouEnergyFin, mul_comm]
 
 /-- **Integrated multivariate L² decay (BGL Prop. 4.7.1, n-dim Gaussian case).** -/
 theorem ouSemigroupFin_l2_decay_bound {n : ℕ}
@@ -605,7 +603,8 @@ private theorem ouSemigroupFinLp_half_normSq_hasDerivWithinAt
     hcomp.congr_of_eventuallyEq hEq (by
       simpa [ψ, ouSemigroupFin_zero, ouSemigroupFinLp_zero] using
         (norm_sq_toLp_eq_integral_sq (n := n) h_mem))
-  convert hmain using 1 <;> ring
+  convert hmain using 1
+  ring
 
 private theorem ouSemigroupFinLp_pairing_eq_polarization
     (t : ℝ) (ht : 0 ≤ t) (f g : Lp ℝ 2 (γFin n)) :

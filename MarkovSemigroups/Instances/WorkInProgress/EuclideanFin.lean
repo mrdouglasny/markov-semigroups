@@ -325,12 +325,12 @@ theorem stein_partialDeriv_ouShiftFin {n : ℕ} {f : (Fin (n + 1) → ℝ) → �
     have hEq : (fun y : Fin (n + 1) → ℝ => y i * partialDeriv i f (ouShiftFin t x y)) = H ∘ e := by
       funext y
       have hx : i.insertNth (x i) x' = x := by
-        simpa [x'] using (Fin.insertNth_self_removeNth i x)
+        simp [x']
       have hy : i.insertNth (y i) (i.removeNth y) = y := by
-        simpa using (Fin.insertNth_self_removeNth i y)
+        simp
       change y i * partialDeriv i f (ouShiftFin t x y) = H (y i, i.removeNth y)
       rw [← hx, ← hy, ouShiftFin_insertNth]
-      simpa [a, b, H, φ]
+      simp [a, b, H, φ]
     calc
       ∫ y, y i * partialDeriv i f (ouShiftFin t x y) ∂γFin (n + 1)
         = ∫ y, (H ∘ e) y ∂γFin (n + 1) := by rw [hEq]
@@ -342,12 +342,12 @@ theorem stein_partialDeriv_ouShiftFin {n : ℕ} {f : (Fin (n + 1) → ℝ) → �
     have hEq : (fun y : Fin (n + 1) → ℝ => secondPartial i f (ouShiftFin t x y)) = G ∘ e := by
       funext y
       have hx : i.insertNth (x i) x' = x := by
-        simpa [x'] using (Fin.insertNth_self_removeNth i x)
+        simp [x']
       have hy : i.insertNth (y i) (i.removeNth y) = y := by
-        simpa using (Fin.insertNth_self_removeNth i y)
+        simp
       change secondPartial i f (ouShiftFin t x y) = G (y i, i.removeNth y)
       rw [← hx, ← hy, ouShiftFin_insertNth]
-      simpa [a, b, G, φ]
+      simp [a, b, G, φ]
     calc
       ∫ p, G p ∂(Gaussian1D.γ.prod (γFin n))
         = ∫ y, G (e y) ∂γFin (n + 1) := by symm; exact he.integral_comp' G
@@ -367,7 +367,7 @@ theorem stein_partialDeriv_ouShiftFin {n : ℕ} {f : (Fin (n + 1) → ℝ) → �
       simpa [b] using hsqrt
     · have hzero : sqrt (1 - exp (-2 * t)) = 0 :=
         Real.sqrt_eq_zero_of_nonpos (le_of_not_ge hrad)
-      simpa [b, hzero]
+      simp [b, hzero]
   have hinner :
       ∀ z : Fin n → ℝ,
         ∫ u, H (u, z) ∂Gaussian1D.γ =
@@ -706,7 +706,7 @@ theorem hasFDerivAt_ouSemigroupFin
     ∑ i : Fin n, (exp (-t) * ouSemigroupFin t (partialDeriv i f) x) •
       (ContinuousLinearMap.proj i : (Fin n → ℝ) →L[ℝ] ℝ)
   refine hC.hasFDerivAt_of_hasLineDerivAt_of_closure (s := Set.univ) ?_ ?_
-  · simpa using (subset_univ (sphere (0 : Fin n → ℝ) 1))
+  · simp
   · intro v hv
     have hint_term : ∀ i : Fin n,
         Integrable (fun y : Fin n → ℝ => v i * partialDeriv i f (ouShiftFin t x y)) (γFin n) := by
@@ -874,7 +874,7 @@ theorem partialDeriv_ouSemigroupFin_eq
     rw [Finset.sum_eq_single i]
     · simp [ContinuousLinearMap.proj_apply]
     · intro j _ hji
-      simp [ContinuousLinearMap.proj_apply, Pi.single_apply, hji]
+      simp [ContinuousLinearMap.proj_apply, hji]
     · simp [ContinuousLinearMap.proj_apply]
   simpa using hsum
 
@@ -2122,8 +2122,7 @@ theorem contDiffOne_ouSemigroupFin
     exact (hasFDerivAt_ouSemigroupFin (n := n) t ht hf_core x).differentiableAt
   · rw [show Continuous (fderiv ℝ (ouSemigroupFin t f)) ↔
         ContDiff ℝ 0 (fderiv ℝ (ouSemigroupFin t f)) by
-          simpa using (contDiff_zero : ContDiff ℝ 0 (fderiv ℝ (ouSemigroupFin t f)) ↔
-            Continuous (fderiv ℝ (ouSemigroupFin t f)))]
+          simp]
     rw [contDiff_clm_apply_iff
       (𝕜 := ℝ) (D := Fin n → ℝ) (E := Fin n → ℝ) (F := ℝ)
       (f := fderiv ℝ (ouSemigroupFin t f))]
@@ -4098,7 +4097,7 @@ theorem ouCoordSet_univ (t : ℝ) {f : (Fin n → ℝ) → ℝ} :
 square: `P_t (f² + ε) = P_t (f²) + ε`, because `P_t` is an average
 against a probability kernel (`γFin n` is a probability measure). -/
 theorem ouSemigroupFin_sq_add_const {n : ℕ} {f : (Fin n → ℝ) → ℝ}
-    (hf : IsCoreFin f) (ε : ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    (hf : IsCoreFin f) (ε : ℝ) (t : ℝ) (_ht : 0 ≤ t) :
     ouSemigroupFin t (fun x => f x * f x + ε) =
       fun x => ouSemigroupFin t (fun x => f x * f x) x + ε := by
   obtain ⟨M, hM⟩ := hf.bound_exists
@@ -4135,7 +4134,7 @@ convergence over `ε ∈ 𝓝[>] 0` carries the bound to the limit. This is
 the exact `n`-dim analogue of the proved 1D ε-tail in
 `Gaussian1D.ouSemigroup_entropy_sq_decay_bound_proved`. -/
 theorem boltzmannSubFin_le_of_perEps {n : ℕ}
-    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (t : ℝ) (ht : 0 ≤ t)
+    {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) (t : ℝ) (_ht : 0 ≤ t)
     {C : ℝ}
     (hEps : ∀ ε : ℝ, 0 < ε →
       boltzmannEntropyFin (fun x => f x * f x + ε) -
@@ -4365,10 +4364,8 @@ theorem setShift_insert_update {n : ℕ} (S : Finset (Fin n)) (j : Fin n)
     simp [setShift, hj, Finset.mem_insert]
   · have hi_ne : i ≠ j := hij
     by_cases hiS : i ∈ S
-    · simp [setShift, hiS, Finset.mem_insert, hi_ne,
-        Function.update_of_ne hi_ne]
-    · simp [setShift, hiS, Finset.mem_insert, hi_ne,
-        Function.update_of_ne hi_ne]
+    · simp [setShift, hiS, Finset.mem_insert, hi_ne]
+    · simp [setShift, hiS, Finset.mem_insert, hi_ne]
 
 /-- Measure-preservation of `(s, y) ↦ update y j s` on `γ × γ_n → γ_n`:
 the Gaussian product measure is invariant under reinjecting an
@@ -4493,7 +4490,7 @@ theorem ouCoordSet_bounds {n : ℕ} (S : Finset (Fin n)) (t : ℝ)
     have h2 := hg_hi (setShift S t x y)
     constructor
     · calc -max |ε| |M| ≤ -|ε| := by
-            simp [neg_le_neg_iff, le_max_left]
+            simp [neg_le_neg_iff]
         _ ≤ ε := neg_abs_le ε
         _ ≤ _ := h1
     · calc g (setShift S t x y) ≤ M := h2
