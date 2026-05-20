@@ -178,7 +178,27 @@ theorem grossEntropy_eq (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
           ^ grossExponent ρ p s)
       = grossExponent ρ p s * grossLogIntegral D hf ρ p s
         - grossPow D hf ρ p s * Real.log (grossPow D hf ρ p s) := by
-  sorry
+  -- Pure log-of-power algebra: log(|u|^q) = q · log|u| pointwise (handling
+  -- |u| = 0 via Mathlib's `0^q = 0` / `log 0 = 0` conventions).
+  unfold DirichletSpace.entropy grossPow grossLogIntegral
+  set u : X → ℝ := ((D.P s (D.coreToL2 hf) : X → ℝ))
+  set q : ℝ := grossExponent ρ p s
+  -- The second term `(∫ g)·log(∫ g) = F · log F` is exactly the second term of
+  -- the entropy minus the RHS minus part; the first term `∫ g log g`
+  -- pointwise-equals `q · (|u|^q · log|u|)`, which integrates to
+  -- `q · grossLogIntegral` via `integral_const_mul`.
+  congr 1
+  rw [← integral_const_mul]
+  refine integral_congr_ae ?_
+  filter_upwards with x
+  -- Pointwise: |u x|^q · log(|u x|^q) = q · (|u x|^q · log|u x|).
+  by_cases hq : q = 0
+  · simp [hq, Real.rpow_zero]
+  · rcases eq_or_ne |u x| 0 with hux | hux
+    · simp [hux, Real.zero_rpow hq, Real.log_zero]
+    · have hu_pos : 0 < |u x| := lt_of_le_of_ne (abs_nonneg _) (Ne.symm hux)
+      rw [Real.log_rpow hu_pos]
+      ring
 
 /-! ### Decomposition of the P2 bottleneck
 
