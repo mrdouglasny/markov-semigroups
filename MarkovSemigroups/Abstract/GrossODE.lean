@@ -1332,9 +1332,34 @@ theorem grossPow_hasDerivWithinAt
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    -- Path A: strictly-positive hypothesis (Gemini-vetted 2026-05-20).
+    -- Lets us avoid the regularity-at-zero issue with `u_s^{q-1}` for
+    -- non-integer `q-1` — on `[ε, ∞)`, `x ↦ x^{q-1}` is C^∞.
+    -- See `plans/gross-design-strictly-positive-escape.md` §4.
+    (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 ≤ s) :
     HasDerivWithinAt (grossPow D hf ρ p)
       (grossPowDeriv D hf ρ p s) (Set.Ici 0) s := by
+  haveI : IsFiniteMeasure D.μ := inferInstance
+  obtain ⟨ε, hε_pos, hf_ge_ε⟩ := hf_pos
+  -- Step 1: orbit u_s = P_s f satisfies u_s ≥ ε a.e. (from orbit_lower_bound).
+  have hf_Lp_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ (D.coreToL2 hf : X → ℝ) y := by
+    have hcoe : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
+    filter_upwards [hcoe, hf_ge_ε] with y hcy hfy
+    rw [hcy]; exact hfy
+  have hu_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
+    D.toMarkovSemigroup.orbit_lower_bound hs hf_Lp_ge_ε
+  -- Step 2: orbit u_s is also bounded above (from f ∈ Lp via IsCore + finiteness;
+  -- need a uniform L^∞ bound on f to invoke Linfty_contraction). For now defer
+  -- the full L^∞ bound construction — in concrete Gross applications it comes
+  -- from `IsCore` providing L^∞ regularity (an additional structural piece;
+  -- see §4 of the plan).
+  -- Step 3: |u_s|^{q-1} is in `IsCore` because u_s ≥ ε > 0 makes x ↦ x^{q-1}
+  -- smooth on the range. Needs a closure axiom `IsCore_smooth_comp_of_pos`
+  -- (weaker than full `IsCore_rpow_pos`; provable for Schwartz/polynomial cores).
+  -- Step 4: apply hasDerivAt_integral_rpow_exponent (exponent half) and
+  -- hasDerivWithinAt_integral_of_strongL2Deriv (orbit half), combine via
+  -- chain rule for H(σ, τ).
   sorry
 
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
@@ -1353,6 +1378,7 @@ theorem grossLogNorm_hasDerivWithinAt
     (h_gen : GeneratorCompat D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 ≤ s)
     (h_int : Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
                           ^ grossExponent ρ p s) D.μ) :
@@ -1375,7 +1401,7 @@ theorem grossLogNorm_hasDerivWithinAt
   -- F = grossPow has within-derivative `F' = grossPowDeriv`.
   have hF : HasDerivWithinAt (grossPow D hf ρ p)
       (grossPowDeriv D hf ρ p s) (Set.Ici 0) s :=
-    grossPow_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg hs
+    grossPow_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg hf_pos hs
   -- log F has within-derivative `F'/F`.
   have hlog : HasDerivWithinAt
       (fun s => Real.log (grossPow D hf ρ p s))
@@ -1420,6 +1446,7 @@ theorem grossLogNorm_deriv_nonpos
     (h_sv : StroockVaropoulos D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 < s) :
     grossLogNormDeriv D hf ρ p s ≤ 0 := by
   sorry
@@ -1436,6 +1463,7 @@ theorem grossLogNorm_antitoneOn
     (h_sv : StroockVaropoulos D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     (h_int : ∀ s ∈ Set.Ici (0 : ℝ),
         Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
                               ^ grossExponent ρ p s) D.μ) :
@@ -1446,14 +1474,14 @@ theorem grossLogNorm_antitoneOn
     -- so `Λ` is continuous there.
     intro x hx
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg
-      hf_ne hx (h_int x hx)).continuousWithinAt
+      hf_ne hf_pos hx (h_int x hx)).continuousWithinAt
   · intro x hx
     have hx0 : 0 ≤ x := le_of_lt (by simpa using hx)
     -- `interior (Ici 0) = Ioi 0`; restrict the P2 within-derivative.
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf
-      hf_nonneg hf_ne hx0 (h_int x hx0)).mono interior_subset
+      hf_nonneg hf_ne hf_pos hx0 (h_int x hx0)).mono interior_subset
   · intro x hx
-    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg hf_ne
+    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg hf_ne hf_pos
       (by simpa using hx)
 
 end GrossODE
