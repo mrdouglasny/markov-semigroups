@@ -317,6 +317,80 @@ lemma sub_eq_mul_intervalIntegral_deriv {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1
   rw [mul_comm, ← hmul]
   exact hftc.symm
 
+/-- **The averaged-derivative field `M_σ`.** Pointwise in `y`,
+`M_σ(y) := ∫_0^1 deriv ψ (u_s(y) + t · (u_σ(y) − u_s(y))) dt`. This is the
+y-fiber t-integral that factors the increment `ψ(u_σ y) − ψ(u_s y)` per
+`sub_eq_mul_intervalIntegral_deriv`. The whole P2 Leibniz proof reduces to
+controlling this field and its L²-convergence as `σ → s⁺`. -/
+def averagedDerivField {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    (u : ℝ → Lp ℝ 2 ν) (ψ : ℝ → ℝ) (σ s : ℝ) (y : Y) : ℝ :=
+  ∫ t in (0:ℝ)..1,
+    deriv ψ ((u s : Y → ℝ) y + t * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y))
+
+/-- **Factorization identity.** `ψ(u_σ y) − ψ(u_s y) = (u_σ y − u_s y) · M_σ(y)`.
+Pointwise specialization of `sub_eq_mul_intervalIntegral_deriv` with
+`a = (u σ) y`, `b = (u s) y`. Folded across `y`, this rewrites the
+increment `∫ ψ(u_σ) − ∫ ψ(u_s)` as `∫ (u_σ − u_s) · M_σ` (= the L²
+inner product after division by `(σ − s)`). -/
+lemma psi_sub_eq_diff_mul_averagedDerivField {Y : Type*} [MeasurableSpace Y]
+    {ν : Measure Y} (u : ℝ → Lp ℝ 2 ν) {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    (σ s : ℝ) (y : Y) :
+    ψ ((u σ : Y → ℝ) y) - ψ ((u s : Y → ℝ) y)
+      = ((u σ : Y → ℝ) y - (u s : Y → ℝ) y) * averagedDerivField u ψ σ s y :=
+  sub_eq_mul_intervalIntegral_deriv hψ ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y)
+
+/-- **a.e. bound on `M_σ` from a.e. bounds on the orbit endpoints.** If
+`|(u_s y)| ≤ M` and `|(u_σ y)| ≤ M` a.e., and `|deriv ψ|` is bounded by `K`
+on `[-M, M]`, then `|M_σ(y)| ≤ K` a.e. The interpolant
+`u_s y + t·(u_σ y − u_s y)` is a convex combination of `u_s y` and `u_σ y`
+for `t ∈ [0,1]`, hence lives in `[-M, M]`. -/
+lemma averagedDerivField_ae_bound {Y : Type*} [MeasurableSpace Y]
+    {ν : Measure Y} {u : ℝ → Lp ℝ 2 ν} {ψ : ℝ → ℝ}
+    {σ s : ℝ} {M K : ℝ}
+    (hψ_bound : ∀ x ∈ Set.Icc (-M) M, |deriv ψ x| ≤ K)
+    (hu_σ : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
+    (hu_s : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
+    ∀ᵐ y ∂ν, |averagedDerivField u ψ σ s y| ≤ K := by
+  filter_upwards [hu_σ, hu_s] with y hyσ hys
+  unfold averagedDerivField
+  -- Step 1: convex-combination bound on the interpolant
+  have hconvex : ∀ t ∈ Set.Icc (0:ℝ) 1,
+      |(u s : Y → ℝ) y + t * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y)| ≤ M := by
+    rintro t ⟨h0, h1⟩
+    have hrw : (u s : Y → ℝ) y + t * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y)
+        = (1 - t) * (u s : Y → ℝ) y + t * (u σ : Y → ℝ) y := by ring
+    rw [hrw]
+    have h1t_nn : (0:ℝ) ≤ 1 - t := by linarith
+    calc |(1 - t) * (u s : Y → ℝ) y + t * (u σ : Y → ℝ) y|
+        ≤ |(1 - t) * (u s : Y → ℝ) y| + |t * (u σ : Y → ℝ) y| := abs_add_le _ _
+      _ = (1 - t) * |(u s : Y → ℝ) y| + t * |(u σ : Y → ℝ) y| := by
+          rw [abs_mul, abs_mul, abs_of_nonneg h1t_nn, abs_of_nonneg h0]
+      _ ≤ (1 - t) * M + t * M := by gcongr
+      _ = M := by ring
+  -- Step 2: the interpolant lives in [-M, M]
+  have hmem : ∀ t ∈ Set.Icc (0:ℝ) 1,
+      (u s : Y → ℝ) y + t * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y) ∈ Set.Icc (-M) M :=
+    fun t ht => Set.mem_Icc.mpr (abs_le.mp (hconvex t ht))
+  -- Step 3: pointwise bound on the integrand
+  have hpointwise : ∀ t ∈ Set.uIoc (0:ℝ) 1,
+      ‖deriv ψ ((u s : Y → ℝ) y + t * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y))‖ ≤ K := by
+    intro t ht
+    have ht_Icc : t ∈ Set.Icc (0:ℝ) 1 := by
+      have : Set.uIoc (0:ℝ) 1 = Set.Ioc 0 1 := by
+        simp [Set.uIoc, min_eq_left (by linarith : (0:ℝ) ≤ 1),
+              max_eq_right (by linarith : (0:ℝ) ≤ 1)]
+      rw [this] at ht
+      exact ⟨ht.1.le, ht.2⟩
+    simpa [Real.norm_eq_abs] using hψ_bound _ (hmem t ht_Icc)
+  -- Step 4: interval-integral bound `‖∫ 0..1, g‖ ≤ K · |1-0| = K`
+  have h := intervalIntegral.norm_integral_le_of_norm_le_const
+    (a := (0:ℝ)) (b := 1)
+    (f := fun t => deriv ψ ((u s : Y → ℝ) y + t * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y)))
+    (C := K) hpointwise
+  have hone : |(1:ℝ) - 0| = 1 := by norm_num
+  rw [hone, mul_one] at h
+  simpa [Real.norm_eq_abs] using h
+
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
 derivative `u'` at `s` on `[0,∞)`, `ψ : ℝ → ℝ` is `C¹`, and the orbit
