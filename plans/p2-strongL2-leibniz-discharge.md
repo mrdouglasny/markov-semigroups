@@ -7,7 +7,11 @@ project definitions so it is Mathlib-upstream-ready once proved.
 
 **Status (2026-05-19):** statement *patched* with a corrective
 hypothesis (see "Lemma-as-originally-stated was false" below);
-Gemini-deep-think-vetted proof plan. Body is `sorry`. To be discharged.
+Gemini-deep-think-vetted proof plan. Body is `sorry`. Discharge in
+progress along the Vitali route — the reusable building block
+`uniformIntegrable_two_of_ae_bound` is committed; remaining blocker is
+the measurable construction of the averaged derivative field `M_σ`
+and its convergence in measure.
 
 ## Patched statement
 
@@ -113,27 +117,42 @@ This is the heart. The roadmap that avoids ε-δ in metric-space hell:
     and `‖u_σ‖_∞ ≤ M` eventually-in-σ. From the bound: for any
     `t ∈ [0,1]`, `|u_s(y) + t·(u_σ(y) − u_s(y))| ≤ M` a.e., so by
     continuity of `ψ'`, `|ψ'(...)| ≤ K := ‖ψ'‖_{∞,[-M,M]} < ∞`.
-    Hence `‖M_σ‖_∞ ≤ K` and `‖M_σ − ψ'(u_s)‖_∞ ≤ 2K`. The
-    finite-measure dominator `(2K)² · 1` is `L¹(ν)`.
+    Hence `‖M_σ‖_∞ ≤ K` a.e., uniformly in σ near s.
 
-3b. `L² ⇒ in measure`: `u_σ → u_s` in measure
+3b. **Uniform integrability of `{M_σ}` in `L²(ν)`.** From 3a +
+    `IsFiniteMeasure ν`, the family `{M_σ}` is a.e.-bounded by the
+    constant `K` on a finite measure space, which is uniformly
+    integrable in `L²`. Packaged as the reusable building block
+    `uniformIntegrable_two_of_ae_bound` (committed in
+    `Abstract/GrossODE.lean`): a.e.-bounded coefficient families on
+    finite measures are `UniformIntegrable 2 ν`. This is the UI
+    hypothesis Vitali wants in (3e), replacing the direct
+    explicit-dominator route.
+
+3c. `L² ⇒ in measure`: `u_σ → u_s` in measure
     (`MeasureTheory.tendstoInMeasure_of_tendsto_Lp`).
 
-3c. Subsequence a.e.: for any sequence `σₙ → s` in `𝓝[≥] s`, extract
-    a subsequence on which `u_{σₙ_k} → u_s` a.e.
-    (`MeasureTheory.tendstoInMeasure_iff_exists_subseq_tendsto_ae` or
-    a direct argument).
+3d. Subsequence a.e.: for any sequence `σₙ → s` in
+    `nhdsWithin s (Set.Ici 0)`, extract a subsequence on which
+    `u_{σₙ_k} → u_s` a.e.
+    (`MeasureTheory.TendstoInMeasure.exists_seq_tendsto_ae` /
+    `tendstoInMeasure_iff_exists_subseq_tendsto_ae`).
 
-3d. Pointwise DCT on `t`: along that subsequence, for a.e. `y`,
-    `M_{σₙ_k}(y) → ψ'(u_s(y))` (interior `t`-integral closes by
-    pointwise DCT — the integrand `ψ'(u_s(y) + t · (u_{σₙ_k}(y) −
-    u_s(y)))` converges to `ψ'(u_s(y))` pointwise in `t` for a.e.
-    `y`, dominated by `K`).
+3e. Pointwise DCT on `t` (along the a.e.-subsequence): for a.e. `y`,
+    the integrand `ψ'(u_s(y) + t·(u_{σₙ_k}(y) − u_s(y)))` converges
+    pointwise in `t ∈ [0,1]` to `ψ'(u_s(y))` (continuity of `ψ'`),
+    dominated by `K`; pointwise DCT gives `M_{σₙ_k}(y) → ψ'(u_s(y))`.
+    Hence `M_σ → ψ'(u_s)` in measure on the full filter (via the
+    "every subseq has a sub-subseq converging a.e." characterization).
 
-3e. Upgrade subsequence a.e. → in-measure → `L²`: with the `4K²`
-    L² dominator from 3a,
-    `MeasureTheory.tendsto_Lp_of_tendstoInMeasure` gives
-    `M_σ → ψ'(u_s)` in `L²` (full filter, not just subsequence).
+3f. **Vitali upgrade: in measure + UI ⇒ `L²`.** Combine 3b
+    (UI) + 3e (in-measure) via the Vitali convergence theorem
+    (`MeasureTheory.UniformIntegrable.tendsto_Lp` / the
+    `tendstoInMeasure → tendsto_Lp` direction under UI) to get
+    `M_σ → ψ'(u_s)` in `L²(ν)` (full filter). This is the cleaner
+    Mathlib idiom; the alternative `tendsto_Lp_of_tendstoInMeasure`
+    with an explicit `4K²` `L²` dominator would also work but is
+    less reusable.
 
 ### Step 4 — close
 
@@ -144,13 +163,27 @@ Combined with Step 2, that's `HasDerivWithinAt F (∫ ψ'(u_s)·u') (Set.Ici 0) 
 
 ## Key Mathlib lemmas
 
-- `MeasureTheory.tendstoInMeasure_of_tendsto_Lp`
-- `MeasureTheory.tendstoInMeasure_iff_exists_subseq_tendsto_ae`
-- `MeasureTheory.tendsto_Lp_of_tendstoInMeasure` (the converse: in-measure + L^p-dominated ⇒ Lp)
+- `MeasureTheory.tendstoInMeasure_of_tendsto_Lp` (L² ⇒ in measure)
+- `MeasureTheory.TendstoInMeasure.exists_seq_tendsto_ae`
+  (= `tendstoInMeasure_iff_exists_subseq_tendsto_ae`)
+- `MeasureTheory.UniformIntegrable.tendsto_Lp` — **Vitali**: in
+  measure + UI ⇒ `L^p` (the closing step for `M_σ → ψ'(u_s)` in `L²`)
 - `Filter.Tendsto.inner` (continuity of real `L²` inner product)
-- `Continuous.intervalIntegral` / pointwise DCT for the `t`-integral defining `M_σ`
-- `MeasureTheory.MemLp.toLp`, `Lp.coeFn_*` for representative bookkeeping
-- `ContDiff.continuous_deriv` (`ψ ∈ C¹ ⇒ ψ' continuous`); `IsCompact.bddAbove_image` for `‖ψ'|_{[-M,M]}‖_∞`
+- `Continuous.intervalIntegral` / pointwise DCT for the `t`-integral
+  defining `M_σ`
+- `MeasureTheory.MemLp.toLp`, `Lp.coeFn_*` for representative
+  bookkeeping
+- `ContDiff.continuous_deriv` (`ψ ∈ C¹ ⇒ ψ' continuous`);
+  `IsCompact.bddAbove_image` for `‖ψ'|_{[-M,M]}‖_∞`
+
+### Reusable building block (committed in `Abstract/GrossODE.lean`)
+
+- `uniformIntegrable_two_of_ae_bound` — a.e.-bounded coefficient
+  families on a finite measure are `UniformIntegrable 2 ν`. This is
+  the bridge from `h_u_bound` (a.e. orbit bound) + `IsFiniteMeasure ν`
+  to the UI hypothesis Vitali wants. General-purpose;
+  Mathlib-upstream-ready in its own right. Requires
+  `import Mathlib.MeasureTheory.Function.UniformIntegrable`.
 
 ## Formalization effort
 
@@ -179,6 +212,15 @@ cut roughly 100 + 100 lines off a naïve direct proof.
   on `ψ'(u_σ)`, which is too weak because of the MVT segment issue),
   confirmed the L²-inner-product-continuity + in-measure-subsequence
   proof shape, ruled out the Nemitsky route, estimated 300–400 LOC.
+  Original suggestion: close the `L²` upgrade with
+  `tendsto_Lp_of_tendstoInMeasure` + explicit `4K²`-dominator.
+- **Vitali refinement (in progress, 2026-05-19):** replace the
+  explicit-dominator L² upgrade with the Vitali theorem
+  (`UniformIntegrable.tendsto_Lp`), supplying UI via the reusable
+  `uniformIntegrable_two_of_ae_bound` (a.e.-bounded ⇒ UI on finite
+  measures). Functionally equivalent — both are correct — but Vitali
+  is the more idiomatic / Mathlib-upstream-ready shape and the UI
+  building block is reusable beyond this lemma.
 - **In-file docstring's earlier sketch** ("discharge from pointwise
   Mathlib Leibniz + L²→L¹ Cauchy–Schwarz") was inaccurate about the
   route — the actual route is inner-product continuity, not pointwise
