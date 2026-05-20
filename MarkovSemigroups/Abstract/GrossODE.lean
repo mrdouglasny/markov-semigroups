@@ -352,20 +352,46 @@ theorem hasDerivAt_abs_rpow_exponent (c : ℝ) {a : ℝ → ℝ} {a' s : ℝ}
 
 /-- **General (Mathlib-native): parametric `rpow`-exponent Leibniz.**
 For a bounded measurable `w` on a finite measure space and a
-differentiable positive exponent path `a`,
-`σ ↦ ∫ |w|^{a σ}` is differentiable with derivative
-`a'(s) · ∫ |w|^{a s} · log|w|`. Elementary: the pointwise exponent
+`C¹`-differentiable positive exponent path `a`,
+`σ ↦ ∫ |w|^{a σ}` is differentiable at `s` with derivative
+`a'(s) · ∫ |w|^{a s} · log|w|`. The pointwise exponent
 derivative is `∂_σ |w y|^{a σ} = |w y|^{a σ} · log|w y| · a'`
-(Mathlib `rpow`; the `w y = 0` case is the constant `0` since
-`a > 0`), dominated by the constant `(sup_{[0,M]} t^{a} |log t|)·|a'|`
-which is `ν`-integrable as `ν` is finite. No project structure.
+(`hasDerivAt_abs_rpow_exponent` above; the `w y = 0` case is constant
+`0` since `a > 0`).
 
-**Status: documented `sorry` — elementary parametric-integral
-plumbing (`hasDerivAt_integral_of_dominated_loc_of_deriv_le`).** -/
+**Strategy** (apply Mathlib
+`hasDerivAt_integral_of_dominated_loc_of_deriv_le`):
+
+* Nbhd `Metric.ball s 1` ⊆ `Icc (s-1) (s+1)`; compactness +
+  `ContDiff ℝ 1 a` give bounds `a_min ≤ a σ ≤ a_max` on `Icc` and
+  `|deriv a σ| ≤ K`. `a_min > 0` from `ha_pos`.
+* Bound on `|F'(σ, y)| = |w y|^{a σ} · |log |w y|| · |deriv a σ|`:
+    - `|w y| ∈ [0, M]` (or `[0, max(M, 1)]`).
+    - For `|w y| ∈ (0, 1]`: `t^a · |log t| ≤ 1/(e · a) ≤ 1/(e · a_min)`
+      (max of `t ↦ t^a · log(1/t)` on `(0,1]` at `t = e^{-1/a}`).
+    - For `|w y| ∈ [1, M]` (M ≥ 1): `t^a · log t ≤ M^{a_max} · log M`.
+    - For `|w y| = 0`: value is 0 (`Real.zero_rpow (ha_pos σ).ne'`).
+  Total bound `B := K · max(1/(e·a_min), max(M, 1)^{a_max} · log max(M, 1))`,
+  a constant ⇒ integrable on finite measure.
+* `h_diff` from `hasDerivAt_abs_rpow_exponent (w y) (ha_cd.differentiable
+  le_rfl).differentiableAt.hasDerivAt ha_pos`.
+* The resulting `∫ F' s = (deriv a s) · ∫ |w|^{a s} · log|w|` via
+  `integral_mul_const`; identify `deriv a s = a'` via `ha.deriv`.
+
+**Effort:** ~150–200 LOC; the `t^a · |log t|` analytic supremum
+(`(e · a)⁻¹` on `(0,1]`) requires a manual proof (not in Mathlib as a
+direct lemma). No project definitions; Mathlib-upstreamable.
+
+**Status: documented `sorry` — signature has the corrected
+`ContDiff ℝ 1 a` hypothesis (the original `HasDerivAt a a' s` at a
+single point was too weak to apply the parametric DCT; pointed out by
+the `hasDerivAt_integral_of_dominated_loc_of_deriv_le` interface which
+needs `h_diff` in a neighborhood). Body deferred. -/
 theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
     {w : Y → ℝ} (hw : Measurable w) {M : ℝ} (hM : ∀ y, |w y| ≤ M)
-    {a : ℝ → ℝ} {a' s : ℝ} (ha : HasDerivAt a a' s)
+    {a : ℝ → ℝ} {a' s : ℝ}
+    (ha_cd : ContDiff ℝ 1 a) (ha : HasDerivAt a a' s)
     (ha_pos : ∀ σ, 0 < a σ) :
     HasDerivAt (fun σ => ∫ y, |w y| ^ a σ ∂ν)
       (a' * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν) s := by
