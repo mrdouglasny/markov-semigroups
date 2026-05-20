@@ -390,7 +390,8 @@ the `hasDerivAt_integral_of_dominated_loc_of_deriv_le` interface which
 needs `h_diff` in a neighborhood). Body deferred. -/
 theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
-    {w : Y → ℝ} (hw : Measurable w) {M : ℝ} (hM : ∀ y, |w y| ≤ M)
+    {w : Y → ℝ} (hw : AEStronglyMeasurable w ν) {M : ℝ}
+    (hM : ∀ᵐ y ∂ν, |w y| ≤ M)
     {a : ℝ → ℝ} {a' s : ℝ}
     (ha_cd : ContDiff ℝ 1 a) (ha : HasDerivAt a a' s)
     (ha_pos : ∀ σ, 0 < a σ) :
@@ -418,7 +419,9 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
   have hM'_one : (1 : ℝ) ≤ M' := le_max_right _ _
   have hM'_pos : 0 < M' := lt_of_lt_of_le one_pos hM'_one
   have hM'_log_nn : 0 ≤ Real.log M' := Real.log_nonneg hM'_one
-  have hw_le_M' : ∀ y, |w y| ≤ M' := fun y => le_trans (hM y) (le_max_left _ _)
+  have hw_le_M' : ∀ᵐ y ∂ν, |w y| ≤ M' := by
+    filter_upwards [hM] with y hy
+    exact le_trans hy (le_max_left _ _)
   set Cprod : ℝ := 1 / (Real.exp 1 * a_min) + M' ^ a_max * Real.log M' with hCprod_def
   have hCprod_nn : 0 ≤ Cprod := by
     refine add_nonneg ?_ ?_
@@ -504,43 +507,38 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
   set F : ℝ → Y → ℝ := fun σ y => |w y| ^ a σ with hF_def
   set F' : ℝ → Y → ℝ := fun σ y => |w y| ^ a σ * Real.log |w y| * deriv a σ
     with hF'_def
-  -- Measurability of `F σ` and `F' σ`.
-  have hF_meas : ∀ σ, Measurable (F σ) := fun σ => by
-    show Measurable (fun y => |w y| ^ a σ)
-    have h_cont : Continuous (fun x : ℝ => |x| ^ a σ) :=
-      continuous_abs.rpow_const (fun _ => Or.inr (ha_pos σ).le)
-    exact h_cont.measurable.comp hw
-  have hF_aesm : ∀ σ, AEStronglyMeasurable (F σ) ν :=
-    fun σ => (hF_meas σ).aestronglyMeasurable
-  have hF'_meas : ∀ σ, Measurable (F' σ) := fun σ => by
-    show Measurable (fun y => |w y| ^ a σ * Real.log |w y| * deriv a σ)
-    refine ((hF_meas σ).mul ?_).mul_const _
-    exact Real.measurable_log.comp (continuous_abs.measurable.comp hw)
-  have hF'_aesm : ∀ σ, AEStronglyMeasurable (F' σ) ν :=
-    fun σ => (hF'_meas σ).aestronglyMeasurable
-  -- Bound: ‖F' σ y‖ ≤ B for σ ∈ U, all y.
-  have h_F'_bound : ∀ y, ∀ σ ∈ U, ‖F' σ y‖ ≤ B := by
-    intro y σ hσU
+  -- AEStronglyMeasurable of `F σ` and `F' σ`.
+  have hF_aesm : ∀ σ, AEStronglyMeasurable (F σ) ν := fun σ => by
+    show AEStronglyMeasurable (fun y => |w y| ^ a σ) ν
+    exact (continuous_abs.rpow_const
+      (fun _ => Or.inr (ha_pos σ).le)).comp_aestronglyMeasurable hw
+  have hF'_aesm : ∀ σ, AEStronglyMeasurable (F' σ) ν := fun σ => by
+    show AEStronglyMeasurable (fun y => |w y| ^ a σ * Real.log |w y| * deriv a σ) ν
+    refine ((hF_aesm σ).mul ?_).mul_const _
+    -- AEStronglyMeasurable (fun y => Real.log |w y|) ν.
+    refine (Real.measurable_log.comp_aemeasurable ?_).aestronglyMeasurable
+    exact (continuous_abs.comp_aestronglyMeasurable hw).aemeasurable
+  -- Bound: ‖F' σ y‖ ≤ B for σ ∈ U, a.e. y.
+  have h_F'_bound : ∀ᵐ y ∂ν, ∀ σ ∈ U, ‖F' σ y‖ ≤ B := by
+    filter_upwards [hw_le_M'] with y hy_M' σ hσU
     have hσ_J : σ ∈ J := hU_subJ hσU
     have hd_le : |deriv a σ| ≤ K := h_K hσ_J
-    have hprod := h_prod_bound (|w y|) (abs_nonneg _) (hw_le_M' y) σ hσ_J
+    have hprod := h_prod_bound (|w y|) (abs_nonneg _) hy_M' σ hσ_J
     have : ‖F' σ y‖ = |F' σ y| := Real.norm_eq_abs _
     rw [this]
     show |(|w y| ^ a σ * Real.log |w y|) * deriv a σ| ≤ K * Cprod
     rw [abs_mul]
     calc |(|w y| ^ a σ * Real.log |w y|)| * |deriv a σ|
-        ≤ Cprod * K := by
-            exact mul_le_mul hprod hd_le (abs_nonneg _) hCprod_nn
+        ≤ Cprod * K := mul_le_mul hprod hd_le (abs_nonneg _) hCprod_nn
       _ = K * Cprod := by ring
-  -- Integrable F s, F' s.
+  -- Integrable F s.
   have hFs_int : Integrable (F s) ν := by
-    refine Integrable.mono' (g := fun _ => M' ^ a_max + 1) (integrable_const _) (hF_aesm s) ?_
-    refine Filter.Eventually.of_forall (fun y => ?_)
+    refine Integrable.mono' (g := fun _ => M' ^ a_max + 1) (integrable_const _)
+      (hF_aesm s) ?_
+    filter_upwards [hw_le_M'] with y hy_M'
     show ‖|w y| ^ a s‖ ≤ M' ^ a_max + 1
     rw [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (abs_nonneg _) _)]
-    -- |w y|^{a s} ≤ M'^{a_max} (when |w y| ≥ 1) or ≤ 1 (when |w y| ≤ 1).
     have hs_J : s ∈ J := ⟨by linarith, by linarith⟩
-    have has_min : a_min ≤ a s := h_amin hs_J
     have has_max : a s ≤ a_max := h_amax hs_J
     rcases le_or_gt (|w y|) 1 with hle | hgt
     · have : |w y| ^ a s ≤ 1 := Real.rpow_le_one (abs_nonneg _) hle (ha_pos s).le
@@ -548,24 +546,21 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
     · have h_pow : |w y| ^ a s ≤ M' ^ a_max := by
         calc |w y| ^ a s ≤ |w y| ^ a_max :=
               Real.rpow_le_rpow_of_exponent_le hgt.le has_max
-          _ ≤ M' ^ a_max := Real.rpow_le_rpow (abs_nonneg _) (hw_le_M' y) ha_max_pos.le
+          _ ≤ M' ^ a_max := Real.rpow_le_rpow (abs_nonneg _) hy_M' ha_max_pos.le
       linarith
-  -- h_diff: pointwise differentiability for σ ∈ U.
-  have h_diff : ∀ y, ∀ σ ∈ U, HasDerivAt (fun σ' => |w y| ^ a σ') (F' σ y) σ := by
-    intro y σ _
-    have h_pt : HasDerivAt (fun σ' => |w y| ^ a σ')
-        (|w y| ^ a σ * Real.log |w y| * deriv a σ) σ :=
-      hasDerivAt_abs_rpow_exponent (w y) (ha_diff.differentiableAt.hasDerivAt) ha_pos
-    exact h_pt
+  -- h_diff: pointwise differentiability for σ ∈ U (holds for all y).
+  have h_diff : ∀ᵐ y ∂ν, ∀ σ ∈ U, HasDerivAt (fun σ' => |w y| ^ a σ') (F' σ y) σ := by
+    refine Filter.Eventually.of_forall (fun y σ _ => ?_)
+    exact hasDerivAt_abs_rpow_exponent (w y) (ha_diff.differentiableAt.hasDerivAt) ha_pos
   -- Apply hasDerivAt_integral_of_dominated_loc_of_deriv_le.
   have h_main :
       Integrable (F' s) ν ∧
       HasDerivAt (fun σ => ∫ y, F σ y ∂ν) (∫ y, F' s y ∂ν) s := by
     apply hasDerivAt_integral_of_dominated_loc_of_deriv_le hU_nhds
       (Filter.Eventually.of_forall hF_aesm) hFs_int (hF'_aesm s)
-      (Filter.Eventually.of_forall h_F'_bound)
+      h_F'_bound
       (integrable_const _)
-      (Filter.Eventually.of_forall h_diff)
+      h_diff
   -- Identify ∫ F' s = a' * ∫ |w|^{a s} · log|w|.
   have h_int_F's : ∫ y, F' s y ∂ν =
       deriv a s * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν := by

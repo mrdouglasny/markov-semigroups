@@ -113,6 +113,94 @@ lemma isSelfAdjoint (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t) :
   intro f g
   simpa using (S.P_symmetric t ht f g).symm
 
+/-- **L^∞-contraction.** For a symmetric Markov semigroup with conservation
+of constants (i.e., `P_t 1 = 1`), if `|f y| ≤ M` a.e. then
+`|(P_t f) y| ≤ M` a.e. Standard textbook fact derivable purely from the
+existing `MarkovSemigroup` fields (no extra hypothesis needed): the trick
+is `0 ≤ Lp.const M - f` (a.e. from the bound) + `P_positivity` +
+`P_conservation` (used to deduce `P_t (Lp.const M) = Lp.const M` via
+`Lp.const M = M • Lp.const 1`). -/
+lemma Linfty_contraction (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
+    {f : Lp ℝ 2 S.μ} {M : ℝ}
+    (hf : ∀ᵐ y ∂S.μ, |(f : X → ℝ) y| ≤ M) :
+    ∀ᵐ y ∂S.μ, |(S.P t f : X → ℝ) y| ≤ M := by
+  haveI : IsFiniteMeasure S.μ := inferInstance
+  set Mlp : Lp ℝ 2 S.μ := Lp.const 2 S.μ M with hMlp_def
+  have hMlp_coe : (Mlp : X → ℝ) =ᵐ[S.μ] fun _ => M := Lp.coeFn_const 2 S.μ M
+  -- Conservation: P_t (Lp.const 1) = Lp.const 1.
+  have hPt_const1 : S.P t (Lp.const 2 S.μ (1:ℝ)) = Lp.const 2 S.μ (1:ℝ) := by
+    refine S.P_conservation t ht _ ?_
+    filter_upwards [Lp.coeFn_const 2 S.μ (1:ℝ)] with x hx
+    simpa using hx
+  -- Lp.const M = M • Lp.const 1 (Lp identifies a.e. equal functions).
+  have hMlp_smul : Mlp = M • Lp.const 2 S.μ (1:ℝ) := by
+    refine Lp.ext ?_
+    filter_upwards [hMlp_coe, Lp.coeFn_smul M (Lp.const 2 S.μ (1:ℝ)),
+                    Lp.coeFn_const 2 S.μ (1:ℝ)] with y h1 h2 h3
+    simp [h1, h2, h3]
+  -- Hence P_t (Lp.const M) = Lp.const M.
+  have hPt_Mlp : S.P t Mlp = Mlp := by
+    calc S.P t Mlp
+        = S.P t (M • Lp.const 2 S.μ (1:ℝ)) := by rw [hMlp_smul]
+      _ = M • S.P t (Lp.const 2 S.μ (1:ℝ)) := (S.P t).map_smul M _
+      _ = M • Lp.const 2 S.μ (1:ℝ) := by rw [hPt_const1]
+      _ = Mlp := hMlp_smul.symm
+  -- Upper bound: P_t f ≤ M pointwise a.e. via 0 ≤ Mlp - f in Lp.
+  have h_upper : ∀ᵐ y ∂S.μ, (S.P t f : X → ℝ) y ≤ M := by
+    -- The a.e.-pointwise nonneg of ↑↑(Mlp - f), via Lp.coeFn_sub bridge.
+    have h_diff_ae : 0 ≤ᵐ[S.μ] (↑↑(Mlp - f) : X → ℝ) := by
+      filter_upwards [hf, hMlp_coe, Lp.coeFn_sub Mlp f] with y hy hMy hSubY
+      have : (↑↑(Mlp - f) : X → ℝ) y = M - (f : X → ℝ) y := by
+        rw [hSubY]; simp [hMy]
+      rw [Pi.zero_apply, this]
+      linarith [le_of_abs_le hy]
+    have h_diff_nn : (0 : Lp ℝ 2 S.μ) ≤ Mlp - f := (Lp.coeFn_nonneg _).mp h_diff_ae
+    have h_pt_diff_nn : (0 : Lp ℝ 2 S.μ) ≤ S.P t (Mlp - f) :=
+      S.P_positivity t ht _ h_diff_nn
+    have h_pt_orbit_sub : S.P t (Mlp - f) = Mlp - S.P t f := by
+      rw [map_sub, hPt_Mlp]
+    rw [h_pt_orbit_sub] at h_pt_diff_nn
+    have h_ae := (Lp.coeFn_nonneg _).mpr h_pt_diff_nn
+    filter_upwards [h_ae, Lp.coeFn_sub Mlp (S.P t f), hMlp_coe] with y hy hSub hMy
+    have h_pt : (↑↑(Mlp - S.P t f) : X → ℝ) y = M - (S.P t f : X → ℝ) y := by
+      rw [hSub]; simp [hMy]
+    rw [Pi.zero_apply, h_pt] at hy
+    linarith
+  -- Lower bound: -M ≤ P_t f pointwise a.e. via 0 ≤ Mlp + f in Lp.
+  have h_lower : ∀ᵐ y ∂S.μ, (-M : ℝ) ≤ (S.P t f : X → ℝ) y := by
+    have h_sum_ae : 0 ≤ᵐ[S.μ] (↑↑(Mlp + f) : X → ℝ) := by
+      filter_upwards [hf, hMlp_coe, Lp.coeFn_add Mlp f] with y hy hMy hAddY
+      have : (↑↑(Mlp + f) : X → ℝ) y = M + (f : X → ℝ) y := by
+        rw [hAddY]; simp [hMy]
+      rw [Pi.zero_apply, this]
+      linarith [neg_le_of_abs_le hy]
+    have h_sum_nn : (0 : Lp ℝ 2 S.μ) ≤ Mlp + f := (Lp.coeFn_nonneg _).mp h_sum_ae
+    have h_pt_sum_nn : (0 : Lp ℝ 2 S.μ) ≤ S.P t (Mlp + f) :=
+      S.P_positivity t ht _ h_sum_nn
+    have h_pt_orbit_add : S.P t (Mlp + f) = Mlp + S.P t f := by
+      rw [map_add, hPt_Mlp]
+    rw [h_pt_orbit_add] at h_pt_sum_nn
+    have h_ae := (Lp.coeFn_nonneg _).mpr h_pt_sum_nn
+    filter_upwards [h_ae, Lp.coeFn_add Mlp (S.P t f), hMlp_coe] with y hy hAdd hMy
+    have h_pt : (↑↑(Mlp + S.P t f) : X → ℝ) y = M + (S.P t f : X → ℝ) y := by
+      rw [hAdd]; simp [hMy]
+    rw [Pi.zero_apply, h_pt] at hy
+    linarith
+  filter_upwards [h_upper, h_lower] with y hyu hyl
+  exact abs_le.mpr ⟨hyl, hyu⟩
+
+/-- **L^∞ orbit ⇒ all L^p memberships.** Companion to `Linfty_contraction`:
+once the orbit is uniformly bounded a.e., it lies in every `MemLp p` on
+the finite measure `S.μ`. -/
+lemma orbit_memLp (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
+    {f : Lp ℝ 2 S.μ} {M : ℝ}
+    (hf : ∀ᵐ y ∂S.μ, |(f : X → ℝ) y| ≤ M) (p : ℝ≥0∞) :
+    MemLp ((S.P t f : X → ℝ)) p S.μ := by
+  haveI : IsFiniteMeasure S.μ := inferInstance
+  refine MemLp.of_bound (Lp.aestronglyMeasurable _) M ?_
+  filter_upwards [S.Linfty_contraction ht hf] with y hy
+  simpa using hy
+
 /-- A symmetric Markov semigroup is *hypercontractive* with rate `ρ > 0`
 if `P_t : L^p → L^q` is a contraction whenever
 `q ≤ 1 + (p − 1) · e^{2ρt}`:
