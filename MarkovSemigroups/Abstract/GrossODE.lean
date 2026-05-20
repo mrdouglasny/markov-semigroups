@@ -427,6 +427,94 @@ lemma averagedDerivField_ae_bound {Y : Type*} [MeasurableSpace Y]
   rw [hone, mul_one] at h
   simpa [Real.norm_eq_abs] using h
 
+/-- **Pointwise `|M_σ(y) − ψ'(u_s y)| ≤ ω`** from a local modulus on `ψ'`.
+If both `u_s y` and `u_σ y` lie in `[-M, M]` and `|u_σ y − u_s y| ≤ δ`, and `ψ'`
+varies by at most `ω` over `[-M, M]` within distance `δ` of `u_s y`, then
+`|M_σ(y) − ψ'(u_s y)| ≤ ω`. Heart of the in-measure convergence step: the
+exceptional set `{y : |M_σ y − ψ'(u_s y)| > ω}` is contained in
+`{|u_σ − u_s| > δ} ∪ {bounds violated}`, and the first goes to zero in measure
+by `tendstoInMeasure_of_tendsto_Lp`. -/
+lemma averagedDerivField_sub_le_of_close
+    {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    {u : ℝ → Lp ℝ 2 ν} {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    {σ s : ℝ} {y : Y} {M δ ω : ℝ}
+    (hys : |(u s : Y → ℝ) y| ≤ M)
+    (hyσ : |(u σ : Y → ℝ) y| ≤ M)
+    (hyclose : |(u σ : Y → ℝ) y - (u s : Y → ℝ) y| ≤ δ)
+    (h_psi_modulus : ∀ x ∈ Set.Icc (-M) M,
+        |x - (u s : Y → ℝ) y| ≤ δ →
+        |deriv ψ x - deriv ψ ((u s : Y → ℝ) y)| ≤ ω) :
+    |averagedDerivField u ψ σ s y - deriv ψ ((u s : Y → ℝ) y)| ≤ ω := by
+  unfold averagedDerivField
+  set a : ℝ := (u σ : Y → ℝ) y with ha
+  set b : ℝ := (u s : Y → ℝ) y with hb
+  -- For t ∈ [0,1]: interpolant b + t·(a - b) is in [-M, M] (convex combination)
+  -- and within distance |a - b| ≤ δ of b. Hence by h_psi_modulus,
+  -- |ψ'(interpolant) - ψ'(b)| ≤ ω.
+  have h_inner_bound : ∀ t ∈ Set.uIoc (0:ℝ) 1,
+      ‖deriv ψ (b + t * (a - b)) - deriv ψ b‖ ≤ ω := by
+    intro t ht
+    -- Reduce to t ∈ Icc 0 1.
+    have ht_Icc : t ∈ Set.Icc (0:ℝ) 1 := by
+      have : Set.uIoc (0:ℝ) 1 = Set.Ioc 0 1 := by
+        simp [Set.uIoc, min_eq_left (by linarith : (0:ℝ) ≤ 1),
+              max_eq_right (by linarith : (0:ℝ) ≤ 1)]
+      rw [this] at ht
+      exact ⟨ht.1.le, ht.2⟩
+    obtain ⟨ht0, ht1⟩ := ht_Icc
+    have h1t_nn : (0:ℝ) ≤ 1 - t := by linarith
+    -- The interpolant `b + t·(a - b) = (1 - t)·b + t·a` is a convex combination.
+    have h_interp_eq : b + t * (a - b) = (1 - t) * b + t * a := by ring
+    -- |interpolant| ≤ M.
+    have h_in_Icc : (b + t * (a - b)) ∈ Set.Icc (-M) M := by
+      rw [Set.mem_Icc, ← abs_le]
+      rw [h_interp_eq]
+      calc |(1 - t) * b + t * a|
+          ≤ |(1 - t) * b| + |t * a| := abs_add_le _ _
+        _ = (1 - t) * |b| + t * |a| := by
+            rw [abs_mul, abs_mul, abs_of_nonneg h1t_nn, abs_of_nonneg ht0]
+        _ ≤ (1 - t) * M + t * M := by gcongr
+        _ = M := by ring
+    -- |interpolant - b| = t·|a - b| ≤ δ.
+    have h_close : |(b + t * (a - b)) - b| ≤ δ := by
+      have : (b + t * (a - b)) - b = t * (a - b) := by ring
+      rw [this, abs_mul, abs_of_nonneg ht0]
+      calc t * |a - b| ≤ 1 * |a - b| := by gcongr
+        _ = |a - b| := one_mul _
+        _ ≤ δ := hyclose
+    -- Apply the modulus.
+    simpa [Real.norm_eq_abs] using h_psi_modulus _ h_in_Icc h_close
+  -- Now write M_σ y - ψ'(b) as the interval integral of [ψ'(interpolant) - ψ'(b)].
+  have h_const_integral : (∫ _t in (0:ℝ)..1, deriv ψ b) = deriv ψ b := by
+    simp
+  have h_psi_b_intervalIntegrable :
+      IntervalIntegrable (fun _ : ℝ => deriv ψ b) MeasureTheory.volume 0 1 :=
+    intervalIntegrable_const
+  have h_psi_interp_cont :
+      Continuous (fun t : ℝ => deriv ψ (b + t * (a - b))) := by
+    have hdψ : Continuous (deriv ψ) := hψ.continuous_deriv le_rfl
+    fun_prop
+  have h_psi_interp_intervalIntegrable :
+      IntervalIntegrable (fun t : ℝ => deriv ψ (b + t * (a - b)))
+        MeasureTheory.volume 0 1 :=
+    h_psi_interp_cont.intervalIntegrable 0 1
+  have h_diff_eq :
+      (∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b))) - deriv ψ b
+        = ∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b)) - deriv ψ b := by
+    have hsub := intervalIntegral.integral_sub
+      h_psi_interp_intervalIntegrable h_psi_b_intervalIntegrable
+    -- hsub : ∫ (f - g) = (∫ f) - (∫ g); chain via h_const_integral.
+    rw [hsub, h_const_integral]
+  rw [h_diff_eq]
+  -- Apply the integral-norm bound.
+  have h := intervalIntegral.norm_integral_le_of_norm_le_const
+    (a := (0:ℝ)) (b := 1)
+    (f := fun t : ℝ => deriv ψ (b + t * (a - b)) - deriv ψ b)
+    (C := ω) h_inner_bound
+  have hone : |(1:ℝ) - 0| = 1 := by norm_num
+  rw [hone, mul_one] at h
+  simpa [Real.norm_eq_abs] using h
+
 /-- **`M_σ ∈ MemLp 2 ν` from the a.e. bound + finite measure.** Combines
 `averagedDerivField_aestronglyMeasurable` (measurability) and
 `averagedDerivField_ae_bound` (a.e. boundedness) via `MemLp.of_bound`.
