@@ -812,6 +812,21 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     HasDerivWithinAt (fun σ => ∫ y, ψ ((u σ : Y → ℝ) y) ∂ν)
       (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
       (Set.Ici 0) s := by
+  -- Proof sketch (all inputs proved; composition deferred — see commit message):
+  -- 1. set g := ψ' ∘ u_s; have hg_memLp = psiDeriv_uS_memLp_two; g_Lp := hg_memLp.toLp g.
+  -- 2. Apply averagedDerivField_tendsto_eLpNorm (Vitali) → M_σ → g in eLpNorm.
+  -- 3. hu.tendsto_slope (via hasDerivWithinAt_iff_tendsto_slope) → slope u s σ → u' in Lp.
+  -- 4. rw [hasDerivWithinAt_iff_tendsto_slope] reduces goal to slope form.
+  -- 5. Lift M_σ to Lp eventually-σ via averagedDerivField_memLp_two + Classical-decidable
+  --    padding (M_padded σ := if h then M_σ else g). M_padded.toLp is well-defined for all σ.
+  -- 6. tendsto_Lp_iff_tendsto_eLpNorm'' bridges eLpNorm tendsto → Lp tendsto of M_padded_Lp.
+  -- 7. Filter.Tendsto.inner on (slope u s) and M_padded_Lp gives inner-product convergence
+  --    in ℝ to ⟪u', g_Lp⟫_ℝ.
+  -- 8. MeasureTheory.L2.inner_def + h_u_bound's eventually-set + integrated factorization
+  --    (psi_sub_eq_diff_mul_averagedDerivField pointwise + integral_sub) identifies
+  --    ⟪slope u s σ, M_σ_Lp⟫_ℝ = slope F s σ for σ in eventually-set.
+  -- 9. Filter.Tendsto.congr' on the eventually-set bridges the inner-product tendsto to
+  --    the slope-F tendsto, concluding.
   sorry
 
 /-- **P2 core — the differentiation-under-the-integral.**
