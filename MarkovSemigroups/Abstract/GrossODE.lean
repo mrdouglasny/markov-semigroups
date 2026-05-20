@@ -804,9 +804,11 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     (u : ℝ → Lp ℝ 2 ν) (u' : Lp ℝ 2 ν) {s : ℝ} (hs : 0 ≤ s)
     (hu : HasDerivWithinAt u u' (Set.Ici 0) s)
     (ψ : ℝ → ℝ) (hψ : ContDiff ℝ 1 ψ)
-    (h_u_bound : ∃ M : ℝ,
-        ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
-          ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M) :
+    {M K : ℝ} (hK_nn : 0 ≤ K)
+    (hψ_bound : ∀ x ∈ Set.Icc (-M) M, |deriv ψ x| ≤ K)
+    (h_u_bound : ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
+        ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
+    (h_u_s_bound : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
     HasDerivWithinAt (fun σ => ∫ y, ψ ((u σ : Y → ℝ) y) ∂ν)
       (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
       (Set.Ici 0) s := by
