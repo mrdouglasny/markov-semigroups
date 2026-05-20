@@ -339,6 +339,40 @@ lemma psi_sub_eq_diff_mul_averagedDerivField {Y : Type*} [MeasurableSpace Y]
       = ((u σ : Y → ℝ) y - (u s : Y → ℝ) y) * averagedDerivField u ψ σ s y :=
   sub_eq_mul_intervalIntegral_deriv hψ ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y)
 
+/-- **`M_σ` is `AEStronglyMeasurable`.** Factors through a jointly-continuous map
+`(a, b) ↦ ∫_0^1 ψ'(b + t · (a − b)) dt` applied to the `AEStronglyMeasurable` pair
+`(u_σ y, u_s y)`. The joint continuity is the parametric-interval-integral lemma
+`intervalIntegral.continuous_parametric_intervalIntegral_of_continuous'`. -/
+lemma averagedDerivField_aestronglyMeasurable {Y : Type*} [MeasurableSpace Y]
+    {ν : Measure Y} (u : ℝ → Lp ℝ 2 ν) {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    (σ s : ℝ) :
+    AEStronglyMeasurable (averagedDerivField u ψ σ s) ν := by
+  have hu_σ : AEStronglyMeasurable (fun y : Y => (u σ : Y → ℝ) y) ν :=
+    Lp.aestronglyMeasurable _
+  have hu_s : AEStronglyMeasurable (fun y : Y => (u s : Y → ℝ) y) ν :=
+    Lp.aestronglyMeasurable _
+  have h_deriv_cont : Continuous (deriv ψ) := hψ.continuous_deriv le_rfl
+  -- The averaged-derivative map g(a, b) := ∫_0^1 ψ'(b + t · (a - b)) dt is jointly
+  -- continuous in (a, b), by `continuous_parametric_intervalIntegral_of_continuous'`
+  -- on the jointly continuous integrand `((a,b), t) ↦ ψ'(b + t · (a - b))`.
+  have h_inner_cont : Continuous
+      (Function.uncurry (fun (p : ℝ × ℝ) (t : ℝ) =>
+        deriv ψ (p.2 + t * (p.1 - p.2)))) := by
+    have h_arg : Continuous
+        (fun (q : (ℝ × ℝ) × ℝ) => q.1.2 + q.2 * (q.1.1 - q.1.2)) := by fun_prop
+    exact h_deriv_cont.comp h_arg
+  have h_param :=
+    intervalIntegral.continuous_parametric_intervalIntegral_of_continuous'
+      (μ := MeasureTheory.volume)
+      (f := fun (p : ℝ × ℝ) (t : ℝ) => deriv ψ (p.2 + t * (p.1 - p.2)))
+      h_inner_cont (0:ℝ) 1
+  -- h_param : Continuous fun p : ℝ × ℝ => ∫ t in 0..1, deriv ψ (p.2 + t · (p.1 - p.2))
+  -- Repackage as continuity of g.uncurry where g a b = ∫ t in 0..1, ψ'(b + t · (a - b)).
+  have h_joint : Continuous
+      (Function.uncurry (fun (a b : ℝ) =>
+        ∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b)))) := h_param
+  exact h_joint.comp_aestronglyMeasurable₂ hu_σ hu_s
+
 /-- **a.e. bound on `M_σ` from a.e. bounds on the orbit endpoints.** If
 `|(u_s y)| ≤ M` and `|(u_σ y)| ≤ M` a.e., and `|deriv ψ|` is bounded by `K`
 on `[-M, M]`, then `|M_σ(y)| ≤ K` a.e. The interpolant
@@ -351,6 +385,8 @@ lemma averagedDerivField_ae_bound {Y : Type*} [MeasurableSpace Y]
     (hu_σ : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
     (hu_s : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
     ∀ᵐ y ∂ν, |averagedDerivField u ψ σ s y| ≤ K := by
+  -- Implementation below; the wrapper `averagedDerivField_memLp_two` packages this together
+  -- with the measurability for direct `MemLp 2 ν` consumption.
   filter_upwards [hu_σ, hu_s] with y hyσ hys
   unfold averagedDerivField
   -- Step 1: convex-combination bound on the interpolant
@@ -390,6 +426,24 @@ lemma averagedDerivField_ae_bound {Y : Type*} [MeasurableSpace Y]
   have hone : |(1:ℝ) - 0| = 1 := by norm_num
   rw [hone, mul_one] at h
   simpa [Real.norm_eq_abs] using h
+
+/-- **`M_σ ∈ MemLp 2 ν` from the a.e. bound + finite measure.** Combines
+`averagedDerivField_aestronglyMeasurable` (measurability) and
+`averagedDerivField_ae_bound` (a.e. boundedness) via `MemLp.of_bound`.
+This is the direct input the Vitali step wants: each `M_σ` is in `L²`
+with uniform-in-σ norm, hence the family `{M_σ}` is uniformly integrable
+(via `uniformIntegrable_two_of_ae_bound`). -/
+lemma averagedDerivField_memLp_two {Y : Type*} [MeasurableSpace Y]
+    {ν : Measure Y} [IsFiniteMeasure ν]
+    {u : ℝ → Lp ℝ 2 ν} {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    {σ s : ℝ} {M K : ℝ}
+    (hψ_bound : ∀ x ∈ Set.Icc (-M) M, |deriv ψ x| ≤ K)
+    (hu_σ : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
+    (hu_s : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
+    MemLp (averagedDerivField u ψ σ s) 2 ν := by
+  refine MemLp.of_bound (averagedDerivField_aestronglyMeasurable u hψ σ s) K ?_
+  filter_upwards [averagedDerivField_ae_bound hψ_bound hu_σ hu_s] with y hy
+  simpa [Real.norm_eq_abs] using hy
 
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
