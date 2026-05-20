@@ -660,6 +660,23 @@ lemma averagedDerivField_tendstoInMeasure
     (ENNReal.ofReal_le_ofReal_iff (abs_nonneg _)).mp h_bad
   linarith [hM_bound, hω_lt_εr, hεr_le]
 
+/-- **L²-membership of `ψ'(u_s)` from the orbit bound + finite measure.** Direct
+input for the Vitali step: the target `g := deriv ψ ∘ u_s` of the L²-convergence
+needs to be in `Lp ℝ 2 ν`. From `|u_s y| ≤ M` a.e. plus the bound on `|deriv ψ|`
+over `[-M, M]`, this follows immediately via `MemLp.of_bound`. -/
+lemma psiDeriv_uS_memLp_two
+    {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} [IsFiniteMeasure ν]
+    {u : ℝ → Lp ℝ 2 ν} {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    {s : ℝ} {M K : ℝ}
+    (hψ_bound : ∀ x ∈ Set.Icc (-M) M, |deriv ψ x| ≤ K)
+    (h_u_s_bound : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
+    MemLp (fun y : Y => deriv ψ ((u s : Y → ℝ) y)) 2 ν := by
+  refine MemLp.of_bound ?_ K ?_
+  · exact (hψ.continuous_deriv le_rfl).comp_aestronglyMeasurable (Lp.aestronglyMeasurable _)
+  · filter_upwards [h_u_s_bound] with y hys
+    have : (u s : Y → ℝ) y ∈ Set.Icc (-M) M := Set.mem_Icc.mpr (abs_le.mp hys)
+    simpa [Real.norm_eq_abs] using hψ_bound _ this
+
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
 derivative `u'` at `s` on `[0,∞)`, `ψ : ℝ → ℝ` is `C¹`, and the orbit
