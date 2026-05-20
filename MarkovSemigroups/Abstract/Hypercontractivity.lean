@@ -298,6 +298,23 @@ structure DirichletMarkovSemigroup (X : Type*) [MeasurableSpace X]
   IsCore_add : ∀ {f g}, IsCore f → IsCore g → IsCore (f + g)
   /-- Core is closed under scalar multiplication. -/
   IsCore_smul : ∀ (c : ℝ) {f}, IsCore f → IsCore (c • f)
+  /-- **Strict-positive rpow closure** (Gross's strictly-positive escape).
+  When `f` is in the core and `f ≥ ε > 0` a.e. for some explicit
+  `ε > 0`, then `x ↦ f x ^ r` is also in the core for any real `r`. This
+  is the standard "Markovian core" closure under smooth functional
+  calculus, restricted to strictly positive elements (which is all we
+  need for the Gross argument — see
+  `plans/gross-design-strictly-positive-escape.md`). Note that the
+  axiom uses `Real.rpow` directly (the syntactic form appearing in
+  `grossPow`), so no a.e./pointwise bridging is needed; the null set
+  where `f y ≤ 0` is benign because `rpow_def_of_neg` matches the
+  convention used everywhere in this file (compare BGL Ch 1, "algebra
+  of admissible test functions"). Mathematically, for concrete cores
+  like `C^∞_b(ℝ^n)` on Gaussian measure, this is immediate: adding a
+  positive constant to a `C^∞_b` element gives `f ≥ ε > 0` *everywhere*,
+  and `f^r` is then `C^∞_b` by chain rule. -/
+  IsCore_rpow_pos_strict : ∀ {f : X → ℝ} (_ : IsCore f) {ε : ℝ} (_ : 0 < ε),
+    (∀ᵐ y ∂μ, ε ≤ f y) → ∀ (r : ℝ), IsCore (fun x => f x ^ r)
   /-- Energy is bilinear on the left. -/
   energy_add_left : ∀ f₁ f₂ g, IsCore f₁ → IsCore f₂ → IsCore g →
     energy (f₁ + f₂) g = energy f₁ g + energy f₂ g

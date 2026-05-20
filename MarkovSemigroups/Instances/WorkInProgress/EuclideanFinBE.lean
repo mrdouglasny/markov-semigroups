@@ -798,6 +798,20 @@ noncomputable def stdGaussianFin_dirichletMarkovSemigroup (n : ℕ) :
   IsCore_const := IsCoreFin_const
   IsCore_add := fun hf hg => IsCoreFin_add hf hg
   IsCore_smul := fun c _ hf => IsCoreFin_smul c hf
+  -- New field added 2026-05-20 (Path A, strictly-positive escape).
+  -- Discharge for `IsCoreFin = C^∞ ∧ bounded-derivatives` core: for
+  -- `f ≥ ε > 0` (a.e.) and `f ∈ IsCoreFin`, `x ↦ f x ^ r` is C^∞ (chain
+  -- rule: `(f^r)' = r·f^{r-1}·f'` etc.; `f^{r-1}` bounded since
+  -- `ε ≤ f ≤ M` gives `min(ε^{r-1}, M^{r-1}) ≤ f^{r-1} ≤ max(ε^{r-1}, M^{r-1})`).
+  -- Subtlety: the abstract axiom takes a.e. ε-positivity, but
+  -- `IsCoreFin` is pointwise (C^∞ + bounded everywhere). Bridging needs
+  -- a pointwise representative — for `f ∈ IsCoreFin` with `f ≥ ε > 0`
+  -- a.e., the C^∞ + pointwise-bounded conclusion forces `f ≥ ε - δ`
+  -- pointwise for any δ > 0 by continuity if X has a topology. For
+  -- `Fin n → ℝ` this is standard. ~30-50 LOC of chain-rule + bound
+  -- propagation; deferred to a later commit.
+  IsCore_rpow_pos_strict := by
+    sorry  -- C^∞ chain rule + bounded-derivatives bound propagation
   energy_add_left := (dirichletSpaceFin n).energy_add_left
   energy_smul_left := (dirichletSpaceFin n).energy_smul_left
   energy_const := (dirichletSpaceFin n).energy_const
