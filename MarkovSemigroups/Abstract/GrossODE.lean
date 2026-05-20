@@ -1303,8 +1303,35 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
 The remaining glue is the standard partial-⇒-total step (continuity
 of one partial) plus matching `∫ ψ'·(A u)` to the `energy` pairing.
 
-**Status: documented `sorry` — now reduced to two isolated general
-lemmas + this glue.** -/
+**Discovered structural requirements (2026-05-20, while attempting
+the body):**
+
+1. **L^∞ orbit bound (`h_orbit_bound`)**: `hasDerivWithinAt_integral_of_strongL2Deriv`
+   needs `∀ᶠ σ in 𝓝[Ici 0] s, ∀ᵐ y ∂μ, |(P_σ f) y| ≤ M`. The abstract
+   `MarkovSemigroup` has L²-contraction (operator norm ≤ 1) but no
+   L^∞-contractivity. Markov-positive + conservation imply this, but
+   it must be hypothesised or added as a structure field.
+2. **Orbit L^q-integrability (`h_int`)**: same issue as `grossPow_pos`.
+3. **Core-membership of `|u_s|^{q-1}`**: needed to apply `h_gen`'s
+   form-pairing `⟪coreToL2 g, Af⟫ = -energy g f` with `g := |u_s|^{q-1}`.
+4. **Measurability upgrade**: `hasDerivAt_integral_rpow_exponent` requires
+   `Measurable w`; the orbit `(P_s f : X → ℝ)` is only AEStronglyMeasurable.
+   Solvable by weakening the rpow lemma signature.
+
+These are 4 structural assumptions (or design refactors) that go
+beyond the current abstract `DirichletMarkovSemigroup` interface. The
+discharge would either:
+* Add hypotheses to the signature (4 more arguments to propagate
+  through `grossLogNorm_hasDerivWithinAt`, `grossLogNorm_antitoneOn`,
+  and the final hypercontractivity), or
+* Strengthen `DirichletMarkovSemigroup`/`MarkovSemigroup` /`IsCore` /
+  `CoreSemigroupInvariant` with the needed regularity fields.
+
+**Status: documented `sorry` — analytic pieces (both `hasDerivAt_integral_rpow_exponent`
+and `hasDerivWithinAt_integral_of_strongL2Deriv`) are now PROVED
+axiom-free; the body composition needs the 4 structural pieces above
+to invoke them. Effort to finish: substantial (decide which design
+route, then ~200 L body + propagation). -/
 theorem grossPow_hasDerivWithinAt
     (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
     (h_core : CoreSemigroupInvariant D)
