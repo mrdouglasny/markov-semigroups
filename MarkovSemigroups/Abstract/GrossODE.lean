@@ -181,9 +181,83 @@ strengthening deferred.** -/
 theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
     (hρ : 0 < ρ) (hp : 1 < p) {f : X → ℝ} (hf : D.IsCore f)
     (hf_nonneg : ∀ x, 0 ≤ f x) (hf_ne : ¬ f =ᵐ[D.μ] 0)
-    {s : ℝ} (hs : 0 ≤ s) :
+    {s : ℝ} (hs : 0 ≤ s)
+    (h_int : Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+                          ^ grossExponent ρ p s) D.μ) :
     0 < grossPow D hf ρ p s := by
-  sorry
+  haveI : IsFiniteMeasure D.μ := inferInstance
+  set u_Lp : Lp ℝ 2 D.μ := D.P s (D.coreToL2 hf) with hu_Lp_def
+  set u : X → ℝ := (u_Lp : X → ℝ) with hu_def
+  set q : ℝ := grossExponent ρ p s with hq_def
+  have hq_pos : 0 < q := grossExponent_pos hp ρ s
+  have hq_ne : q ≠ 0 := ne_of_gt hq_pos
+  -- Step A: u ≥ 0 a.e. (from f ≥ 0 + P_positivity).
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f :=
+    (D.IsCore_memLp hf).coeFn_toLp
+  have hf_Lp_nonneg : (0 : Lp ℝ 2 D.μ) ≤ D.coreToL2 hf := by
+    rw [← Lp.coeFn_nonneg]
+    filter_upwards [hcoe_f] with x hx
+    rw [hx]; exact hf_nonneg x
+  have hu_Lp_nonneg : (0 : Lp ℝ 2 D.μ) ≤ u_Lp :=
+    D.P_positivity s hs _ hf_Lp_nonneg
+  have hu_nonneg_ae : 0 ≤ᵐ[D.μ] u := (Lp.coeFn_nonneg _).mpr hu_Lp_nonneg
+  -- Step B: ∫ u dμ = ∫ f dμ via P_symmetric + P_conservation.
+  set one_Lp : Lp ℝ 2 D.μ := Lp.const 2 D.μ (1 : ℝ) with hone_Lp_def
+  have hone_coe : (one_Lp : X → ℝ) =ᵐ[D.μ] (fun _ => (1 : ℝ)) := by
+    exact Lp.coeFn_const 2 D.μ (1 : ℝ)
+  have hPone : D.P s one_Lp = one_Lp := by
+    apply D.P_conservation s hs one_Lp
+    filter_upwards [hone_coe] with x hx; simpa using hx
+  have h_inner_one : ∀ (g_Lp : Lp ℝ 2 D.μ),
+      @inner ℝ (Lp ℝ 2 D.μ) _ g_Lp one_Lp = ∫ x, (g_Lp : X → ℝ) x ∂D.μ := by
+    intro g_Lp
+    rw [MeasureTheory.L2.inner_def]
+    refine integral_congr_ae ?_
+    filter_upwards [hone_coe] with x hx
+    show @inner ℝ ℝ _ ((g_Lp : X → ℝ) x) ((one_Lp : X → ℝ) x) = (g_Lp : X → ℝ) x
+    rw [hx]
+    show 1 * (g_Lp : X → ℝ) x = (g_Lp : X → ℝ) x
+    ring
+  have hsymm : @inner ℝ (Lp ℝ 2 D.μ) _ (D.coreToL2 hf) (D.P s one_Lp)
+              = @inner ℝ (Lp ℝ 2 D.μ) _ u_Lp one_Lp :=
+    D.P_symmetric s hs (D.coreToL2 hf) one_Lp
+  rw [hPone, h_inner_one, h_inner_one] at hsymm
+  -- hsymm : ∫ (coreToL2 hf) = ∫ u.
+  have h_u_eq_f : ∫ x, u x ∂D.μ = ∫ x, f x ∂D.μ := by
+    rw [← hsymm]; exact integral_congr_ae hcoe_f
+  -- Step C: ∫ f > 0 from f ≥ 0 + f ≢ᵐ 0.
+  have hf_int : Integrable f D.μ := (D.IsCore_memLp hf).integrable one_le_two
+  have hf_int_pos : 0 < ∫ x, f x ∂D.μ := by
+    rw [integral_pos_iff_support_of_nonneg_ae
+        (Filter.Eventually.of_forall hf_nonneg) hf_int]
+    by_contra h
+    push_neg at h
+    refine hf_ne ?_
+    rw [Filter.EventuallyEq, ae_iff]
+    exact le_antisymm h (zero_le _)
+  -- Step D: 0 < ∫ |u|^q. Use integral_pos_iff_support + support (|u|^q) = support u.
+  show 0 < ∫ x, |u x| ^ q ∂D.μ
+  rw [integral_pos_iff_support_of_nonneg_ae
+      (Filter.Eventually.of_forall (fun x => Real.rpow_nonneg (abs_nonneg _) _)) h_int]
+  -- Goal: 0 < μ (support (|u|^q)).
+  have hsupp_eq : Function.support (fun x => |u x| ^ q) = Function.support u := by
+    ext x
+    simp only [Function.mem_support]
+    constructor
+    · intro hne
+      intro hux
+      apply hne
+      rw [hux, abs_zero, Real.zero_rpow hq_ne]
+    · intro hne hux
+      apply hne
+      rw [Real.rpow_eq_zero_iff_of_nonneg (abs_nonneg _)] at hux
+      exact abs_eq_zero.mp hux.1
+  rw [hsupp_eq]
+  -- support u = {x : u x ≠ 0}. Suffices: 0 < ∫ u.
+  rw [← integral_pos_iff_support_of_nonneg_ae hu_nonneg_ae]
+  · rw [h_u_eq_f]; exact hf_int_pos
+  · -- Integrable u: from MemLp 2 + finite measure.
+    exact (Lp.memLp _).integrable one_le_two
 
 /-- **Entropy identity.** `Entμ(u^q) = q · (∫ uq log u) − F · log F`,
 i.e. `D.toDirichletSpace.entropy (|u|^q) = q · grossLogIntegral −
@@ -1053,14 +1127,16 @@ theorem grossLogNorm_hasDerivWithinAt
     (h_gen : GeneratorCompat D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
-    {s : ℝ} (hs : 0 ≤ s) :
+    {s : ℝ} (hs : 0 ≤ s)
+    (h_int : Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+                          ^ grossExponent ρ p s) D.μ) :
     HasDerivWithinAt (grossLogNorm D hf ρ p)
       (grossLogNormDeriv D hf ρ p s) (Set.Ici 0) s := by
   set q := grossExponent ρ p s with hq_def
   have hqpos : 0 < q := grossExponent_pos hp ρ s
   have hqne : q ≠ 0 := ne_of_gt hqpos
   have hFpos : 0 < grossPow D hf ρ p s :=
-    grossPow_pos D ρ p hρ hp hf hf_nonneg hf_ne hs
+    grossPow_pos D ρ p hρ hp hf hf_nonneg hf_ne hs h_int
   have hFne : grossPow D hf ρ p s ≠ 0 := ne_of_gt hFpos
   -- q has the within-derivative `q' = 2ρ(q-1)`.
   have hq : HasDerivWithinAt (grossExponent ρ p)
@@ -1133,7 +1209,10 @@ theorem grossLogNorm_antitoneOn
     (h_gen : GeneratorCompat D)
     (h_sv : StroockVaropoulos D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
-    (hf_ne : ¬ f =ᵐ[D.μ] 0) :
+    (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    (h_int : ∀ s ∈ Set.Ici (0 : ℝ),
+        Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+                              ^ grossExponent ρ p s) D.μ) :
     AntitoneOn (grossLogNorm D hf ρ p) (Set.Ici 0) := by
   refine antitoneOn_of_hasDerivWithinAt_nonpos (convex_Ici 0)
     (f' := grossLogNormDeriv D hf ρ p) ?_ ?_ ?_
@@ -1141,12 +1220,12 @@ theorem grossLogNorm_antitoneOn
     -- so `Λ` is continuous there.
     intro x hx
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg
-      hf_ne hx).continuousWithinAt
+      hf_ne hx (h_int x hx)).continuousWithinAt
   · intro x hx
     have hx0 : 0 ≤ x := le_of_lt (by simpa using hx)
     -- `interior (Ici 0) = Ioi 0`; restrict the P2 within-derivative.
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf
-      hf_nonneg hf_ne hx0).mono interior_subset
+      hf_nonneg hf_ne hx0 (h_int x hx0)).mono interior_subset
   · intro x hx
     exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg hf_ne
       (by simpa using hx)
