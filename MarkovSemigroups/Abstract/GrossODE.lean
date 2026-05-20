@@ -256,24 +256,48 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
 
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
-derivative `u'` at `s` on `[0,∞)`, and `ψ : ℝ → ℝ` is `C¹` with `ψ'`
-bounded on the range of `u s` (so `ψ' ∘ u s ∈ L² ⊆ L¹`), then
-`σ ↦ ∫ ψ(u_σ)` has the right derivative `∫ ψ'(u_s)·u'`.
+derivative `u'` at `s` on `[0,∞)`, `ψ : ℝ → ℝ` is `C¹`, and the orbit
+`u_σ` is uniformly `L^∞`-bounded as `σ → s` from within `Set.Ici 0`
+(`h_u_bound`), then `σ ↦ ∫ ψ(u_σ) dν` has the right derivative
+`∫ ψ'(u_s)·u' dν`.
 
-This is **not an axiom** — it is generic measure-theory
-infrastructure (a Leibniz/Duhamel rule), to be discharged from
-Mathlib's `hasDerivAt_integral_of_dominated_loc_of_deriv_le` plus the
-`L² → L¹` Cauchy–Schwarz bound from `IsFiniteMeasure ν`. Stated with
-no project definitions so it is reusable and vetting-amenable.
+**Hypothesis history:** the originally drafted form bounded `ψ'` only
+at `σ = s` (pointwise in `y`). That statement is **false** —
+Gemini-deep-think-vetted counterexample (2026-05-19): `ν =`
+Lebesgue `[0,1]`, `v(y) = |y|^{-1/3} ∈ L²`, `u σ y = y + σ·v y`,
+`ψ(x) = x⁴`. At `σ = 0` the old hypothesis holds with `Cψ = 4`, but
+for `σ > 0`, `ψ(u σ y)` contains `σ⁴·|y|^{-4/3}` which is not
+Lebesgue-integrable, so `∫ ψ(u_σ) dν = +∞` and no derivative exists.
+The MVT/FTC segment passes off the curve `u_σ`, so a pointwise bound
+on `ψ'(u_σ)` alone (uniform in `σ` or not) cannot dominate `ψ'` on
+the intermediate segment. The minimal Mathlib-upstream-ready fix is
+to bound the orbit `u_σ` itself uniformly in a right-neighborhood of
+`s`; then both endpoints and the MVT segment live in `[-M, M]` where
+`ψ'` is bounded by continuity.
+
+This is **not an axiom** — generic measure theory. Vetted proof
+route (Gemini deep-think 2026-05-19, gemini-3.1-pro): pointwise FTC
+`ψ(u_σ) − ψ(u_s) = M_σ · (u_σ − u_s)` with
+`M_σ(y) := ∫_0^1 ψ'(u_s + t·(u_σ − u_s)) dt`; the difference quotient
+is the `L²` inner product `⟨M_σ, Δσ⟩`; close via
+`Filter.Tendsto.inner` after showing `M_σ → ψ'(u_s)` in `L²` (route:
+L²→in-measure→a.e.-subsequence→pointwise DCT on `t` using the `[-M,M]`
+dominator→back to `L²` via `tendsto_Lp_of_tendstoInMeasure`).
+**No Fubini, no manual Term-A/Term-B Cauchy–Schwarz split.**
+
+Stated with no project definitions; Mathlib-upstreamable once proved.
 
 **Status: documented `sorry` — the reusable analytic kernel of P2
-(to be proved, ~400–700 L).** -/
+(to be proved, ~300–400 L after the simplifications above). Full
+discharge plan: `plans/p2-strongL2-leibniz-discharge.md`.** -/
 theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
     (u : ℝ → Lp ℝ 2 ν) (u' : Lp ℝ 2 ν) {s : ℝ} (hs : 0 ≤ s)
     (hu : HasDerivWithinAt u u' (Set.Ici 0) s)
     (ψ : ℝ → ℝ) (hψ : ContDiff ℝ 1 ψ)
-    {Cψ : ℝ} (hψ' : ∀ y : Y, |deriv ψ ((u s : Y → ℝ) y)| ≤ Cψ) :
+    (h_u_bound : ∃ M : ℝ,
+        ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
+          ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M) :
     HasDerivWithinAt (fun σ => ∫ y, ψ ((u σ : Y → ℝ) y) ∂ν)
       (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
       (Set.Ici 0) s := by
@@ -290,9 +314,11 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
   `w := u_s`, `a := q`);
 * `∂₁H(s,s) = ∫ ψ'(u_s)·A(u_s)` with `ψ = |·|^{q(s)}` — semigroup
   half, from the general `hasDerivWithinAt_integral_of_strongL2Deriv`
-  (`u' = A(u_s)` supplied by `h_gen`; `u_s ∈ core` by `h_core`),
-  rewritten `= −q(s)·E(u_s, u_s^{q(s)-1})` via `h_gen`'s form
-  pairing.
+  (`u' = A(u_s)` supplied by `h_gen`; `u_s ∈ core` by `h_core`; the
+  uniform `L^∞` orbit bound `h_u_bound` is supplied from `D.IsCore f`
+  + Markov-semigroup `L^∞`-contractivity `D.semigroup_contraction`,
+  giving `‖P_σ f‖_∞ ≤ ‖f‖_∞` uniformly in `σ ≥ 0`), rewritten
+  `= −q(s)·E(u_s, u_s^{q(s)-1})` via `h_gen`'s form pairing.
 
 The remaining glue is the standard partial-⇒-total step (continuity
 of one partial) plus matching `∫ ψ'·(A u)` to the `energy` pairing.
