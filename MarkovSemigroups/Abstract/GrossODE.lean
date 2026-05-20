@@ -49,6 +49,7 @@ Operators*, §5.2.
 import MarkovSemigroups.Abstract.Hypercontractivity
 import Mathlib.Analysis.Calculus.Deriv.MeanValue
 import Mathlib.MeasureTheory.Function.UniformIntegrable
+import Mathlib.MeasureTheory.Function.UnifTight
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 
 open MeasureTheory ENNReal Set
@@ -676,6 +677,91 @@ lemma psiDeriv_uS_memLp_two
   · filter_upwards [h_u_s_bound] with y hys
     have : (u s : Y → ℝ) y ∈ Set.Icc (-M) M := Set.mem_Icc.mpr (abs_le.mp hys)
     simpa [Real.norm_eq_abs] using hψ_bound _ this
+
+/-- **Vitali closure: L²-convergence `M_σ → ψ'(u_s)`** as `σ → s` along
+`nhdsWithin s (Set.Ici 0)`. Combines `averagedDerivField_tendstoInMeasure`
+(Step 3f), `uniformIntegrable_two_of_ae_bound` (UI), and the previous
+lemma `psiDeriv_uS_memLp_two` (target `MemLp`) via Mathlib's
+`tendsto_Lp_of_tendstoInMeasure` (Vitali).
+
+The general filter is reduced to `atTop` sequences via
+`Filter.tendsto_iff_seq_tendsto` (`nhdsWithin s (Set.Ici 0)` is
+countably generated since ℝ is first-countable). For each sequence
+`σ_seq → s`, the eventually-σ orbit bound is converted to a uniform-n
+bound on the *shifted* sequence `σ_seq (· + N)`. Apply Vitali to the
+shift; lift back via `Filter.tendsto_add_atTop_iff_nat`. `UnifTight`
+is trivial on a finite measure (take the witness set `= univ`). -/
+lemma averagedDerivField_tendsto_eLpNorm
+    {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} [IsFiniteMeasure ν]
+    {u : ℝ → Lp ℝ 2 ν} {u' : Lp ℝ 2 ν} {s : ℝ}
+    (hu : HasDerivWithinAt u u' (Set.Ici 0) s)
+    {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    {M K : ℝ} (hK_nn : 0 ≤ K)
+    (hψ_bound : ∀ x ∈ Set.Icc (-M) M, |deriv ψ x| ≤ K)
+    (h_u_bound : ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
+        ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
+    (h_u_s_bound : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
+    Filter.Tendsto (fun σ =>
+        eLpNorm (fun y => averagedDerivField u ψ σ s y -
+          deriv ψ ((u s : Y → ℝ) y)) 2 ν)
+      (nhdsWithin s (Set.Ici 0)) (nhds 0) := by
+  set g : Y → ℝ := fun y => deriv ψ ((u s : Y → ℝ) y) with hg_def
+  have hg_memLp : MemLp g 2 ν :=
+    psiDeriv_uS_memLp_two hψ hψ_bound h_u_s_bound
+  set Knn : NNReal := ⟨K, hK_nn⟩ with hKnn_def
+  -- Reduce to atTop sequences.
+  rw [Filter.tendsto_iff_seq_tendsto]
+  intro σ_seq hσ_seq
+  -- Extract N from the eventually-σ bound.
+  obtain ⟨N, hN⟩ :=
+    Filter.eventually_atTop.mp (hσ_seq.eventually h_u_bound)
+  -- Shifted sequence τ_n := σ_seq (n + N). For each n, the orbit bound holds.
+  have h_τ_bound : ∀ n, ∀ᵐ y ∂ν, |(u (σ_seq (n + N)) : Y → ℝ) y| ≤ M :=
+    fun n => hN (n + N) (Nat.le_add_left N n)
+  -- AEStronglyMeasurable of the shifted M_τ family.
+  have hτ_meas : ∀ n, AEStronglyMeasurable
+      (averagedDerivField u ψ (σ_seq (n + N)) s) ν :=
+    fun n => averagedDerivField_aestronglyMeasurable u hψ _ s
+  -- UniformIntegrable via the user's helper, with the a.e. bound `|M_τ_n y| ≤ K`.
+  have hUI : UniformIntegrable
+      (fun n => (averagedDerivField u ψ (σ_seq (n + N)) s : Y → ℝ)) 2 ν := by
+    refine uniformIntegrable_two_of_ae_bound ν _ hτ_meas (K := Knn) ?_
+    intro n
+    filter_upwards [averagedDerivField_ae_bound (M := M) (K := K)
+      hψ_bound (h_τ_bound n) h_u_s_bound] with y hy
+    -- hy : |M_τ_n y| ≤ K. Want: ‖M_τ_n y‖₊ ≤ Knn.
+    have hcoe : ((‖averagedDerivField u ψ (σ_seq (n + N)) s y‖₊ : NNReal) : ℝ)
+        ≤ ((Knn : NNReal) : ℝ) := by
+      show ‖averagedDerivField u ψ (σ_seq (n + N)) s y‖ ≤ K
+      simpa [Real.norm_eq_abs] using hy
+    exact_mod_cast hcoe
+  -- UnifIntegrable + UnifTight from UI / finite measure.
+  have hui_τ : UnifIntegrable
+      (fun n => (averagedDerivField u ψ (σ_seq (n + N)) s : Y → ℝ)) 2 ν :=
+    hUI.2.1
+  have hut_τ : UnifTight
+      (fun n => (averagedDerivField u ψ (σ_seq (n + N)) s : Y → ℝ)) 2 ν := by
+    intro ε _
+    refine ⟨Set.univ, measure_ne_top ν _, fun _ => ?_⟩
+    simp
+  -- TendstoInMeasure of the shifted family to g.
+  have htim_τ : TendstoInMeasure ν
+      (fun n => (averagedDerivField u ψ (σ_seq (n + N)) s : Y → ℝ))
+      Filter.atTop g := by
+    intro ε hε
+    have hshift : Filter.Tendsto (fun n => σ_seq (n + N)) Filter.atTop
+        (nhdsWithin s (Set.Ici 0)) :=
+      hσ_seq.comp (Filter.tendsto_add_atTop_nat N)
+    exact (averagedDerivField_tendstoInMeasure hu hψ h_u_bound h_u_s_bound ε hε).comp hshift
+  -- Apply Vitali on the shifted sequence.
+  have hvitali_τ : Filter.Tendsto (fun n =>
+      eLpNorm ((averagedDerivField u ψ (σ_seq (n + N)) s) - g) 2 ν)
+      Filter.atTop (nhds 0) :=
+    MeasureTheory.tendsto_Lp_of_tendstoInMeasure (p := 2)
+      (by norm_num : (1 : ℝ≥0∞) ≤ 2) (by norm_num : (2 : ℝ≥0∞) ≠ ∞)
+      hτ_meas hg_memLp hui_τ hut_τ htim_τ
+  -- Lift back via shift invariance.
+  exact (Filter.tendsto_add_atTop_iff_nat N).mp hvitali_τ
 
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
