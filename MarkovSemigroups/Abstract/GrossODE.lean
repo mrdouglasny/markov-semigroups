@@ -1096,7 +1096,9 @@ theorem grossLogNorm_antitoneOn
     (f' := grossLogNormDeriv D hf ρ p) ?_ ?_ ?_
   · -- continuity on `[0,∞)`: each point has a within-derivative (P2),
     -- so `Λ` is continuous there.
-    sorry
+    intro x hx
+    exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg
+      hx).continuousWithinAt
   · intro x hx
     have hx0 : 0 ≤ x := le_of_lt (by simpa using hx)
     -- `interior (Ici 0) = Ioi 0`; restrict the P2 within-derivative.
