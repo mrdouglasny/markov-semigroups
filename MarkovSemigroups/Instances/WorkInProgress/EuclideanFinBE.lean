@@ -812,6 +812,12 @@ noncomputable def stdGaussianFin_dirichletMarkovSemigroup (n : ℕ) :
   -- propagation; deferred to a later commit.
   IsCore_rpow_pos_strict := by
     sorry  -- C^∞ chain rule + bounded-derivatives bound propagation
+  IsCore_memLp_top := fun {f} hf => by
+    -- IsCoreFin includes `∃ M, ∀ x, ‖f x‖ ≤ M`. Extract directly.
+    obtain ⟨M, hM⟩ := hf.bound_exists
+    exact ⟨M, Filter.Eventually.of_forall fun x => by
+      have := hM x
+      rwa [Real.norm_eq_abs] at this⟩
   energy_add_left := (dirichletSpaceFin n).energy_add_left
   energy_smul_left := (dirichletSpaceFin n).energy_smul_left
   energy_const := (dirichletSpaceFin n).energy_const

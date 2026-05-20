@@ -315,6 +315,17 @@ structure DirichletMarkovSemigroup (X : Type*) [MeasurableSpace X]
   and `f^r` is then `C^∞_b` by chain rule. -/
   IsCore_rpow_pos_strict : ∀ {f : X → ℝ} (_ : IsCore f) {ε : ℝ} (_ : 0 < ε),
     (∀ᵐ y ∂μ, ε ≤ f y) → ∀ (r : ℝ), IsCore (fun x => f x ^ r)
+  /-- **L^∞ membership.** Every core function is essentially bounded.
+  This is the standard BGL hypothesis on the "algebra of admissible
+  test functions" (cf. BGL §1.4: "an algebra of *bounded* functions
+  in the generator domain"). For `C^∞_b`-style cores (`IsCoreFin`,
+  Schwartz-with-Gaussian-tweaks, polynomial cores on probability
+  measures) this is immediate from the bounded-derivatives part of
+  the definition. Needed by `grossPow_hasDerivWithinAt` to invoke
+  `hasDerivAt_integral_rpow_exponent` (which requires a uniform
+  bound `|w y| ≤ M` on the integrand) and to combine with `hf_pos`
+  for `ε ≤ f ≤ M` framing. -/
+  IsCore_memLp_top : ∀ {f : X → ℝ}, IsCore f → ∃ M : ℝ, ∀ᵐ y ∂μ, |f y| ≤ M
   /-- Energy is bilinear on the left. -/
   energy_add_left : ∀ f₁ f₂ g, IsCore f₁ → IsCore f₂ → IsCore g →
     energy (f₁ + f₂) g = energy f₁ g + energy f₂ g
