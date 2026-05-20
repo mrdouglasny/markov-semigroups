@@ -860,16 +860,33 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
       (nhdsWithin s (Set.Ici 0 \ {s}))
       (nhds (@inner ℝ (Lp ℝ 2 ν) _ u' g_Lp)) :=
     hu_slope.inner hM_Lp_slopefilter
-  -- 8. Apply slope characterization to the goal.
+  -- 8. Identify the target F' with ⟪u', g_Lp⟫_ℝ via L2.inner_def + mul_comm.
+  have hF'_eq : (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
+      = @inner ℝ (Lp ℝ 2 ν) _ u' g_Lp := by
+    have step1 : (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
+        = ∫ y, (u' : Y → ℝ) y * g y ∂ν := by
+      refine integral_congr_ae ?_
+      filter_upwards with y
+      show deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y
+          = (u' : Y → ℝ) y * g y
+      rw [hg_def]; ring
+    rw [step1, MeasureTheory.L2.inner_def]
+    refine integral_congr_ae ?_
+    filter_upwards [hg_memLp.coeFn_toLp] with y hy
+    show (u' : Y → ℝ) y * g y
+        = @inner ℝ ℝ _ ((u' : Y → ℝ) y) ((g_Lp : Y → ℝ) y)
+    rw [hy]
+    show (u' : Y → ℝ) y * g y = g y * (u' : Y → ℝ) y
+    ring
+  rw [hF'_eq]
+  -- 9. Apply slope characterization to the goal; identify slope F s σ with inner product
+  --    eventually-σ, then conclude via h_inner_tendsto + Filter.Tendsto.congr'.
   rw [hasDerivWithinAt_iff_tendsto_slope]
-  -- Goal: Tendsto (slope (fun σ => ∫ ...) s) (𝓝[Set.Ici 0 \ {s}] s) (𝓝 (∫ ...)).
-  -- 9. Identify slope-F with the inner product eventually-σ.
-  -- For σ in eventually-set (h_u_bound) ∩ {σ ≠ s}:
-  --   slope F s σ = ⟪slope u s σ, M_Lp σ⟫_ℝ
-  -- and the limit ⟪u', g_Lp⟫_ℝ equals the target ∫ ψ'(u_s) * u'.
-  -- This identification uses the integrated factorization + L².inner_def.
-  -- Defer the detailed verification: bound by Cauchy–Schwarz via
-  -- `abs_real_inner_le_norm` + integrated factorization, plus `Filter.Tendsto.congr'`.
+  -- Goal: Tendsto (slope F s) (𝓝[Set.Ici 0 \ {s}] s) (𝓝 ⟪u', g_Lp⟫_ℝ)
+  -- The identification slope F s σ = ⟪slope u s σ, M_Lp σ⟫_ℝ eventually-σ requires the
+  -- integrated factorization (psi_sub_eq_diff_mul_averagedDerivField + integral_sub) +
+  -- Lp representative bookkeeping (coercion of (σ-s)⁻¹ • (u σ - u s) to the function
+  -- (u σ y - u s y) / (σ - s) a.e.) + L2.inner_def. Deferred — see commit message.
   sorry
 
 /-- **P2 core — the differentiation-under-the-integral.**
