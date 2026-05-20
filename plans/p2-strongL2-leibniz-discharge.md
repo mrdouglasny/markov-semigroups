@@ -5,20 +5,24 @@ content in the Route A discharge of `gross_lsi_implies_hypercontractive`.
 Lives in `MarkovSemigroups/Abstract/GrossODE.lean`; stated with no
 project definitions so it is Mathlib-upstream-ready once proved.
 
-**Status (2026-05-20):** **The full P2 toolkit is proved axiom-free.**
-The 11-lemma toolkit (FTC factoring, `averagedDerivField` def, factorization,
-a.e./pointwise sub bounds, measurability, MemLp, the user's UI helper,
-**in-measure convergence**, **Vitali L²-convergence**, and the target
-`MemLp` for `ψ'(u_s)`) lives in `Abstract/GrossODE.lean` and builds green
-end-to-end. The lemma signature has the Gemini-vetted corrected hypothesis
-(`h_u_bound` orbit bound, not the original false `ψ'`-at-`s` bound).
+**Status (2026-05-20):** **✅ DISCHARGED — the P2 Leibniz kernel is
+fully proved, axiom-free.** `#print axioms` reports only
+`[propext, Classical.choice, Quot.sound]` — the Mathlib core.
 
-The lemma body itself is still a documented `sorry` — the remaining
-composition (lift `M_σ` to `Lp`, apply `Filter.Tendsto.inner`, identify
-the inner product with the slope via integrated factorization,
-`hasDerivWithinAt_iff_tendsto_slope` close) is ~120–150 lines of
-Mathlib-API plumbing with every input in hand; this is the next
-focused-session target.
+* 11-lemma toolkit (FTC factoring, `averagedDerivField` def,
+  factorization, a.e./pointwise sub bounds, measurability, MemLp 2,
+  the UI helper, **in-measure convergence**, **Vitali L²-convergence**,
+  and `MemLp` for `ψ'(u_s)`) — all in `Abstract/GrossODE.lean`.
+* Main theorem body: ~150 lines, 9 steps. Highlights:
+  Step 8 (F' identification) — `RCLike.inner_apply` is `rfl`, so after
+  `rw [hy]` use `show u' y * g y = g y * u' y; ring`.
+  Step 9 (slope F s identification) — eventually-σ equality via
+  `slope_def_field` + `eq_div_iff` + `integral_sub` + `L2.inner_def`
+  + `integral_mul_const` + `Lp.coeFn_smul`/`coeFn_sub` reps +
+  `psi_sub_eq_diff_mul_averagedDerivField` + `field_simp`.
+  Integrability of `ψ ∘ u σ` from `IsCompact.exists_isMaxOn` on the
+  envelope `Icc (-(M⊔0)) (M⊔0)` + `MemLp.of_bound` + `.integrable le_rfl`.
+* Statement uses only Mathlib definitions → upstream-ready.
 
 **Earlier (2026-05-19):** statement *patched* with the corrective
 hypothesis (see "Lemma-as-originally-stated was false" below);
