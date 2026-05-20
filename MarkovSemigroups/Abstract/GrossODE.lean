@@ -796,9 +796,11 @@ dominator→back to `L²` via `tendsto_Lp_of_tendstoInMeasure`).
 
 Stated with no project definitions; Mathlib-upstreamable once proved.
 
-**Status: documented `sorry` — the reusable analytic kernel of P2
-(to be proved, ~300–400 L after the simplifications above). Full
-discharge plan: `plans/p2-strongL2-leibniz-discharge.md`.** -/
+**Status: ✅ proved (axiom-free) — Bochner-Leibniz via the
+`averagedDerivField` toolkit (factorization, AE-bound, AE-measurability,
+MemLp 2, Vitali-driven `eLpNorm`→0). Discharge plan archived at
+`plans/p2-strongL2-leibniz-discharge.md`. ~150 L body (9 steps);
+9 toolkit lemmas in this file feed it. Mathlib-upstreamable. -/
 theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
     (u : ℝ → Lp ℝ 2 ν) (u' : Lp ℝ 2 ν) {s : ℝ} (hs : 0 ≤ s)
@@ -879,15 +881,89 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     show (u' : Y → ℝ) y * g y = g y * (u' : Y → ℝ) y
     ring
   rw [hF'_eq]
-  -- 9. Apply slope characterization to the goal; identify slope F s σ with inner product
-  --    eventually-σ, then conclude via h_inner_tendsto + Filter.Tendsto.congr'.
+  -- 9. Apply slope characterization, identify slope F s σ with the inner product
+  --    eventually-σ, conclude via h_inner_tendsto + Tendsto.congr'.
   rw [hasDerivWithinAt_iff_tendsto_slope]
-  -- Goal: Tendsto (slope F s) (𝓝[Set.Ici 0 \ {s}] s) (𝓝 ⟪u', g_Lp⟫_ℝ)
-  -- The identification slope F s σ = ⟪slope u s σ, M_Lp σ⟫_ℝ eventually-σ requires the
-  -- integrated factorization (psi_sub_eq_diff_mul_averagedDerivField + integral_sub) +
-  -- Lp representative bookkeeping (coercion of (σ-s)⁻¹ • (u σ - u s) to the function
-  -- (u σ y - u s y) / (σ - s) a.e.) + L2.inner_def. Deferred — see commit message.
-  sorry
+  refine h_inner_tendsto.congr' ?_
+  -- ψ continuous on the *compact* envelope [-(M⊔0), M⊔0]; bound there.
+  have hψ_cts : Continuous ψ := hψ.continuous
+  set M'' : ℝ := M ⊔ 0 with hM''
+  have hM''_nn : (0 : ℝ) ≤ M'' := le_max_right _ _
+  have hM_le_M'' : M ≤ M'' := le_max_left _ _
+  have hIcc_ne : (Set.Icc (-M'') M'').Nonempty := ⟨0, ⟨by linarith, hM''_nn⟩⟩
+  obtain ⟨x_max, _, hx_max_le⟩ :=
+    isCompact_Icc.exists_isMaxOn (s := Set.Icc (-M'') M'') hIcc_ne
+      (continuous_abs.comp hψ_cts).continuousOn
+  set C : ℝ := |ψ x_max| with hC_def
+  -- Eventually-σ: assemble (i) hσ ∈ Ici 0 \ {s}, (ii) hσ_bound : a.e. |u σ| ≤ M.
+  have h_u_bd_diff : ∀ᶠ σ in nhdsWithin s (Set.Ici 0 \ {s}),
+      ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M :=
+    h_u_bound.filter_mono (nhdsWithin_mono _ Set.diff_subset)
+  filter_upwards [self_mem_nhdsWithin, h_u_bd_diff] with σ hσ_diff hσ_bound
+  have hσ_ne : σ ≠ s := hσ_diff.2
+  have hΔ_ne : σ - s ≠ 0 := sub_ne_zero.mpr hσ_ne
+  -- Bound |ψ ∘ u σ| (resp. |ψ ∘ u s|) a.e. by C.
+  have hψ_uσ_bd : ∀ᵐ y ∂ν, |ψ ((u σ : Y → ℝ) y)| ≤ C := by
+    filter_upwards [hσ_bound] with y hy
+    refine hx_max_le ?_
+    exact Set.mem_Icc.mpr (abs_le.mp (le_trans hy hM_le_M''))
+  have hψ_us_bd : ∀ᵐ y ∂ν, |ψ ((u s : Y → ℝ) y)| ≤ C := by
+    filter_upwards [h_u_s_bound] with y hy
+    refine hx_max_le ?_
+    exact Set.mem_Icc.mpr (abs_le.mp (le_trans hy hM_le_M''))
+  -- AEStronglyMeasurable + Integrable for both ψ ∘ u σ and ψ ∘ u s.
+  have hψ_uσ_aesm : AEStronglyMeasurable (fun y => ψ ((u σ : Y → ℝ) y)) ν :=
+    hψ_cts.comp_aestronglyMeasurable (Lp.aestronglyMeasurable _)
+  have hψ_us_aesm : AEStronglyMeasurable (fun y => ψ ((u s : Y → ℝ) y)) ν :=
+    hψ_cts.comp_aestronglyMeasurable (Lp.aestronglyMeasurable _)
+  have hψ_uσ_int : Integrable (fun y => ψ ((u σ : Y → ℝ) y)) ν :=
+    (MemLp.of_bound hψ_uσ_aesm C hψ_uσ_bd).integrable le_rfl
+  have hψ_us_int : Integrable (fun y => ψ ((u s : Y → ℝ) y)) ν :=
+    (MemLp.of_bound hψ_us_aesm C hψ_us_bd).integrable le_rfl
+  -- M_Lp σ representative under hσ_bound.
+  have hM_Lp_repr : (M_Lp σ : Y → ℝ) =ᵐ[ν] averagedDerivField u ψ σ s := by
+    have hM_unfold : M_Lp σ
+        = (averagedDerivField_memLp_two hψ hψ_bound hσ_bound h_u_s_bound).toLp
+            (averagedDerivField u ψ σ s) := by
+      change (if h : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M then
+          (averagedDerivField_memLp_two hψ hψ_bound h h_u_s_bound).toLp _
+        else g_Lp) = _
+      rw [dif_pos hσ_bound]
+    rw [hM_unfold]
+    exact (averagedDerivField_memLp_two hψ hψ_bound hσ_bound h_u_s_bound).coeFn_toLp
+  -- slope u s σ representative: =ᵐ (σ-s)⁻¹ * ((u σ) - (u s)).
+  have hSlope_repr : (slope u s σ : Y → ℝ) =ᵐ[ν]
+      fun y => (σ - s)⁻¹ * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y) := by
+    have hSlope_eq : slope u s σ = (σ - s)⁻¹ • (u σ - u s) := by
+      rw [slope_def_module]
+    rw [hSlope_eq]
+    filter_upwards [Lp.coeFn_smul (σ - s)⁻¹ (u σ - u s), Lp.coeFn_sub (u σ) (u s)]
+      with y h1 h2
+    show ((σ - s)⁻¹ • (u σ - u s) : Lp ℝ 2 ν) y
+        = (σ - s)⁻¹ * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y)
+    rw [h1]
+    show (σ - s)⁻¹ • ((u σ - u s : Lp ℝ 2 ν) : Y → ℝ) y
+        = (σ - s)⁻¹ * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y)
+    rw [h2]
+    show (σ - s)⁻¹ • (((u σ : Y → ℝ)) y - ((u s : Y → ℝ)) y)
+        = (σ - s)⁻¹ * ((u σ : Y → ℝ) y - (u s : Y → ℝ) y)
+    exact smul_eq_mul _ _
+  -- Now establish ⟪slope u s σ, M_Lp σ⟫_ℝ = slope F s σ.
+  show @inner ℝ (Lp ℝ 2 ν) _ (slope u s σ) (M_Lp σ)
+      = slope (fun σ => ∫ y, ψ ((u σ : Y → ℝ) y) ∂ν) s σ
+  rw [slope_def_field, eq_div_iff hΔ_ne, ← integral_sub hψ_uσ_int hψ_us_int,
+      MeasureTheory.L2.inner_def, ← integral_mul_const]
+  refine integral_congr_ae ?_
+  filter_upwards [hM_Lp_repr, hSlope_repr] with y hM_eq hS_eq
+  -- Goal: ⟪(slope u s σ) y, (M_Lp σ) y⟫_ℝ * (σ - s) = ψ (u σ y) - ψ (u s y)
+  show (@inner ℝ ℝ _ ((slope u s σ : Y → ℝ) y) ((M_Lp σ : Y → ℝ) y)) * (σ - s)
+      = ψ ((u σ : Y → ℝ) y) - ψ ((u s : Y → ℝ) y)
+  -- Real inner ⟪a, b⟫_ℝ = b * conj a = b * a (def-eq by RCLike.inner_apply rfl).
+  show (M_Lp σ : Y → ℝ) y * (slope u s σ : Y → ℝ) y * (σ - s)
+      = ψ ((u σ : Y → ℝ) y) - ψ ((u s : Y → ℝ) y)
+  rw [hM_eq, hS_eq, psi_sub_eq_diff_mul_averagedDerivField u hψ σ s y]
+  -- avgDF y * ((σ-s)⁻¹ * Δ) * (σ - s) = Δ * avgDF y    where Δ = u σ y - u s y
+  field_simp
 
 /-- **P2 core — the differentiation-under-the-integral.**
 `grossPow` has right derivative `grossPowDeriv` on `[0,∞)`.
