@@ -51,6 +51,7 @@ import Mathlib.Analysis.Calculus.Deriv.MeanValue
 import Mathlib.MeasureTheory.Function.UniformIntegrable
 import Mathlib.MeasureTheory.Function.UnifTight
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
+import Mathlib.Analysis.Calculus.ParametricIntegral
 
 open MeasureTheory ENNReal Set
 open scoped ENNReal InnerProductSpace
@@ -395,7 +396,184 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
     (ha_pos : ∀ σ, 0 < a σ) :
     HasDerivAt (fun σ => ∫ y, |w y| ^ a σ ∂ν)
       (a' * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν) s := by
-  sorry
+  -- Notation + continuity from ContDiff 1.
+  have ha_cont : Continuous a := ha_cd.continuous
+  have ha_diff : Differentiable ℝ a := ha_cd.differentiable (by decide)
+  have ha_deriv_cont : Continuous (deriv a) := ha_cd.continuous_deriv le_rfl
+  -- Compact J = [s-1, s+1]; bounds.
+  set J : Set ℝ := Set.Icc (s - 1) (s + 1) with hJ_def
+  have hJ_cpt : IsCompact J := isCompact_Icc
+  have hJ_ne : J.Nonempty := ⟨s, by constructor <;> linarith⟩
+  obtain ⟨σ_amin, _, h_amin⟩ := hJ_cpt.exists_isMinOn hJ_ne ha_cont.continuousOn
+  set a_min : ℝ := a σ_amin with ha_min_def
+  have ha_min_pos : 0 < a_min := ha_pos σ_amin
+  obtain ⟨σ_amax, _, h_amax⟩ := hJ_cpt.exists_isMaxOn hJ_ne ha_cont.continuousOn
+  set a_max : ℝ := a σ_amax with ha_max_def
+  have ha_max_pos : 0 < a_max := ha_pos σ_amax
+  obtain ⟨σ_K, _, h_K⟩ := hJ_cpt.exists_isMaxOn hJ_ne
+    (continuous_abs.comp ha_deriv_cont).continuousOn
+  set K : ℝ := |deriv a σ_K| with hK_def
+  have hK_nn : 0 ≤ K := abs_nonneg _
+  set M' : ℝ := max M 1 with hM'_def
+  have hM'_one : (1 : ℝ) ≤ M' := le_max_right _ _
+  have hM'_pos : 0 < M' := lt_of_lt_of_le one_pos hM'_one
+  have hM'_log_nn : 0 ≤ Real.log M' := Real.log_nonneg hM'_one
+  have hw_le_M' : ∀ y, |w y| ≤ M' := fun y => le_trans (hM y) (le_max_left _ _)
+  set Cprod : ℝ := 1 / (Real.exp 1 * a_min) + M' ^ a_max * Real.log M' with hCprod_def
+  have hCprod_nn : 0 ≤ Cprod := by
+    refine add_nonneg ?_ ?_
+    · positivity
+    · exact mul_nonneg (Real.rpow_nonneg hM'_pos.le _) hM'_log_nn
+  set B : ℝ := K * Cprod with hB_def
+  have hB_nn : 0 ≤ B := mul_nonneg hK_nn hCprod_nn
+  -- Open neighborhood `ball s 1 ⊆ J`.
+  set U : Set ℝ := Metric.ball s 1 with hU_def
+  have hU_subJ : U ⊆ J := by
+    intro x hx
+    rw [Metric.mem_ball, Real.dist_eq] at hx
+    refine ⟨?_, ?_⟩ <;> [linarith [abs_lt.mp hx]; linarith [abs_lt.mp hx]]
+  have hU_nhds : U ∈ nhds s := Metric.ball_mem_nhds s one_pos
+  -- Pointwise bound on `t ^ a σ * log t` for `t ∈ [0, M']` and `a σ ∈ [a_min, a_max]`.
+  have h_prod_bound : ∀ (t : ℝ) (_ : 0 ≤ t) (_ : t ≤ M') (σ : ℝ) (_ : σ ∈ J),
+      |t ^ a σ * Real.log t| ≤ Cprod := by
+    intro t ht_nn ht_M' σ hσ
+    have ha_σ_pos : 0 < a σ := ha_pos σ
+    have h_amin_le : a_min ≤ a σ := h_amin hσ
+    have h_amax_ge : a σ ≤ a_max := h_amax hσ
+    have hM'_term_nn : 0 ≤ M' ^ a_max * Real.log M' :=
+      mul_nonneg (Real.rpow_nonneg hM'_pos.le _) hM'_log_nn
+    have hEmin_nn : (0:ℝ) ≤ 1 / (Real.exp 1 * a_min) := by positivity
+    rcases eq_or_lt_of_le ht_nn with ht_eq | ht_pos
+    · -- t = 0: |0^{a σ} * log 0| = 0 ≤ Cprod.
+      have h0 : |t ^ a σ * Real.log t| = 0 := by
+        rw [show t = 0 from ht_eq.symm, Real.zero_rpow ha_σ_pos.ne']
+        simp
+      linarith
+    rcases le_or_gt t 1 with ht_le1 | ht_gt1
+    · -- t ∈ (0, 1].
+      have hlog_np : Real.log t ≤ 0 := Real.log_nonpos ht_nn ht_le1
+      have h_abs : |t ^ a σ * Real.log t| = t ^ a σ * (-Real.log t) := by
+        rw [abs_mul, abs_of_nonneg (Real.rpow_nonneg ht_nn _),
+            abs_of_nonpos hlog_np]
+      rw [h_abs]
+      -- y := a σ · (-log t) ≥ 0. Apply mul_exp_neg_le_exp_neg_one.
+      have h_y_bd :
+          a σ * (-Real.log t) * Real.exp (-(a σ * (-Real.log t))) ≤ Real.exp (-1) :=
+        Real.mul_exp_neg_le_exp_neg_one _
+      have h_exp_eq : Real.exp (-(a σ * (-Real.log t))) = t ^ a σ := by
+        have h_eq : -(a σ * (-Real.log t)) = Real.log t * a σ := by ring
+        rw [h_eq, ← Real.rpow_def_of_pos ht_pos]
+      rw [h_exp_eq] at h_y_bd
+      -- (-log t) · t^{a σ} ≤ exp(-1) / (a σ) = 1/(e·a σ) ≤ 1/(e·a_min).
+      have h_div : t ^ a σ * (-Real.log t) ≤ 1 / (Real.exp 1 * a σ) := by
+        rw [le_div_iff₀ (by positivity : (0:ℝ) < Real.exp 1 * a σ)]
+        have h_calc :
+            t ^ a σ * (-Real.log t) * (Real.exp 1 * a σ)
+              = a σ * (-Real.log t) * t ^ a σ * Real.exp 1 := by ring
+        rw [h_calc]
+        have hexp1_nn : (0 : ℝ) ≤ Real.exp 1 := (Real.exp_pos 1).le
+        calc a σ * (-Real.log t) * t ^ a σ * Real.exp 1
+            ≤ Real.exp (-1) * Real.exp 1 :=
+                mul_le_mul_of_nonneg_right h_y_bd hexp1_nn
+          _ = 1 := by
+                rw [← Real.exp_add, neg_add_cancel, Real.exp_zero]
+      have h_div_amin : 1 / (Real.exp 1 * a σ) ≤ 1 / (Real.exp 1 * a_min) := by
+        apply one_div_le_one_div_of_le
+        · positivity
+        · exact mul_le_mul_of_nonneg_left h_amin_le (Real.exp_pos 1).le
+      linarith
+    · -- t ∈ (1, M'].
+      have ht_pos : 0 < t := lt_trans one_pos ht_gt1
+      have hlog_nn : 0 ≤ Real.log t := Real.log_nonneg ht_gt1.le
+      have h_abs : |t ^ a σ * Real.log t| = t ^ a σ * Real.log t := by
+        rw [abs_of_nonneg (mul_nonneg (Real.rpow_nonneg ht_nn _) hlog_nn)]
+      rw [h_abs]
+      have h_pow_le_t_amax : t ^ a σ ≤ t ^ a_max :=
+        Real.rpow_le_rpow_of_exponent_le ht_gt1.le h_amax_ge
+      have h_t_amax_le : t ^ a_max ≤ M' ^ a_max :=
+        Real.rpow_le_rpow ht_nn ht_M' ha_max_pos.le
+      have h_pow_le : t ^ a σ ≤ M' ^ a_max := le_trans h_pow_le_t_amax h_t_amax_le
+      have h_log_le : Real.log t ≤ Real.log M' :=
+        Real.log_le_log ht_pos ht_M'
+      have h_prod_le : t ^ a σ * Real.log t ≤ M' ^ a_max * Real.log M' := by
+        gcongr
+      linarith
+  -- Apply the parametric Leibniz lemma.
+  have ha'_eq : a' = deriv a s := ha.deriv.symm
+  -- F σ y := |w y|^{a σ}; F' σ y := |w y|^{a σ} · log|w y| · deriv a σ.
+  set F : ℝ → Y → ℝ := fun σ y => |w y| ^ a σ with hF_def
+  set F' : ℝ → Y → ℝ := fun σ y => |w y| ^ a σ * Real.log |w y| * deriv a σ
+    with hF'_def
+  -- Measurability of `F σ` and `F' σ`.
+  have hF_meas : ∀ σ, Measurable (F σ) := fun σ => by
+    show Measurable (fun y => |w y| ^ a σ)
+    have h_cont : Continuous (fun x : ℝ => |x| ^ a σ) :=
+      continuous_abs.rpow_const (fun _ => Or.inr (ha_pos σ).le)
+    exact h_cont.measurable.comp hw
+  have hF_aesm : ∀ σ, AEStronglyMeasurable (F σ) ν :=
+    fun σ => (hF_meas σ).aestronglyMeasurable
+  have hF'_meas : ∀ σ, Measurable (F' σ) := fun σ => by
+    show Measurable (fun y => |w y| ^ a σ * Real.log |w y| * deriv a σ)
+    refine ((hF_meas σ).mul ?_).mul_const _
+    exact Real.measurable_log.comp (continuous_abs.measurable.comp hw)
+  have hF'_aesm : ∀ σ, AEStronglyMeasurable (F' σ) ν :=
+    fun σ => (hF'_meas σ).aestronglyMeasurable
+  -- Bound: ‖F' σ y‖ ≤ B for σ ∈ U, all y.
+  have h_F'_bound : ∀ y, ∀ σ ∈ U, ‖F' σ y‖ ≤ B := by
+    intro y σ hσU
+    have hσ_J : σ ∈ J := hU_subJ hσU
+    have hd_le : |deriv a σ| ≤ K := h_K hσ_J
+    have hprod := h_prod_bound (|w y|) (abs_nonneg _) (hw_le_M' y) σ hσ_J
+    have : ‖F' σ y‖ = |F' σ y| := Real.norm_eq_abs _
+    rw [this]
+    show |(|w y| ^ a σ * Real.log |w y|) * deriv a σ| ≤ K * Cprod
+    rw [abs_mul]
+    calc |(|w y| ^ a σ * Real.log |w y|)| * |deriv a σ|
+        ≤ Cprod * K := by
+            exact mul_le_mul hprod hd_le (abs_nonneg _) hCprod_nn
+      _ = K * Cprod := by ring
+  -- Integrable F s, F' s.
+  have hFs_int : Integrable (F s) ν := by
+    refine Integrable.mono' (g := fun _ => M' ^ a_max + 1) (integrable_const _) (hF_aesm s) ?_
+    refine Filter.Eventually.of_forall (fun y => ?_)
+    show ‖|w y| ^ a s‖ ≤ M' ^ a_max + 1
+    rw [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (abs_nonneg _) _)]
+    -- |w y|^{a s} ≤ M'^{a_max} (when |w y| ≥ 1) or ≤ 1 (when |w y| ≤ 1).
+    have hs_J : s ∈ J := ⟨by linarith, by linarith⟩
+    have has_min : a_min ≤ a s := h_amin hs_J
+    have has_max : a s ≤ a_max := h_amax hs_J
+    rcases le_or_gt (|w y|) 1 with hle | hgt
+    · have : |w y| ^ a s ≤ 1 := Real.rpow_le_one (abs_nonneg _) hle (ha_pos s).le
+      linarith [Real.rpow_nonneg hM'_pos.le a_max]
+    · have h_pow : |w y| ^ a s ≤ M' ^ a_max := by
+        calc |w y| ^ a s ≤ |w y| ^ a_max :=
+              Real.rpow_le_rpow_of_exponent_le hgt.le has_max
+          _ ≤ M' ^ a_max := Real.rpow_le_rpow (abs_nonneg _) (hw_le_M' y) ha_max_pos.le
+      linarith
+  -- h_diff: pointwise differentiability for σ ∈ U.
+  have h_diff : ∀ y, ∀ σ ∈ U, HasDerivAt (fun σ' => |w y| ^ a σ') (F' σ y) σ := by
+    intro y σ _
+    have h_pt : HasDerivAt (fun σ' => |w y| ^ a σ')
+        (|w y| ^ a σ * Real.log |w y| * deriv a σ) σ :=
+      hasDerivAt_abs_rpow_exponent (w y) (ha_diff.differentiableAt.hasDerivAt) ha_pos
+    exact h_pt
+  -- Apply hasDerivAt_integral_of_dominated_loc_of_deriv_le.
+  have h_main :
+      Integrable (F' s) ν ∧
+      HasDerivAt (fun σ => ∫ y, F σ y ∂ν) (∫ y, F' s y ∂ν) s := by
+    apply hasDerivAt_integral_of_dominated_loc_of_deriv_le hU_nhds
+      (Filter.Eventually.of_forall hF_aesm) hFs_int (hF'_aesm s)
+      (Filter.Eventually.of_forall h_F'_bound)
+      (integrable_const _)
+      (Filter.Eventually.of_forall h_diff)
+  -- Identify ∫ F' s = a' * ∫ |w|^{a s} · log|w|.
+  have h_int_F's : ∫ y, F' s y ∂ν =
+      deriv a s * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν := by
+    show ∫ y, |w y| ^ a s * Real.log |w y| * deriv a s ∂ν
+        = deriv a s * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν
+    rw [integral_mul_const, mul_comm]
+  convert h_main.2 using 1
+  rw [h_int_F's, ha.deriv]
 
 /-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
 everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
