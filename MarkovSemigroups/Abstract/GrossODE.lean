@@ -156,12 +156,32 @@ def grossPowDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
             (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
               ^ (grossExponent ρ p s - 1))
 
-/-- `F(s) = ∫ |u_s|^{q(s)} > 0`. Holds whenever `P_s f` is not μ-a.e.
-zero (`f ≢ 0`; the `f ≡ 0` case is handled separately in the
-assembly). **Status: documented `sorry`.** -/
+/-- `F(s) = ∫ |u_s|^{q(s)} > 0`. Holds whenever
+* `f` is *not* `μ`-a.e. zero (the `f ≡ 0` case is handled separately
+  in the assembly), AND
+* the orbit `|P_s f|^{q(s)}` is integrable (otherwise Mathlib's
+  convention `∫ (non-integrable) = 0` makes the conclusion false even
+  for nonzero `f`; in concrete Gross applications this comes from
+  L^{q(s)}-regularity of the orbit, which is part of what
+  hypercontractivity asserts and is supplied externally here).
+
+**Proof strategy (Gemini-vetted 2026-05-20):** `f ≥ 0` and `f ≢ᵐ 0`
+imply `∫ f dμ > 0` (Bochner `integral_pos_iff_support_of_nonneg_ae`);
+symmetry of `P_s` plus `P_conservation` (`P_s 1 = 1`) gives
+`∫ P_s f dμ = ⟨P_s f, 1⟩ = ⟨f, P_s 1⟩ = ⟨f, 1⟩ = ∫ f dμ > 0`; combined
+with `P_positivity` (`P_s f ≥ 0` a.e.), the orbit `P_s f` has positive
+support, and `q(s) > 0` then implies `|P_s f|^{q(s)} > 0` on the same
+positive-measure set ⇒ `0 < ∫ |P_s f|^{q(s)} dμ`.
+
+**Status: documented `sorry` — vetted signature fix landed 2026-05-20
+(was provably false-as-stated for `f := 0`, since `IsCore_const 0`
+puts `0` in the core; counterexample-vetted by Gemini deep-think,
+`gemini-3.1-pro-preview`). Body proof + integrability hypothesis
+strengthening deferred.** -/
 theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
     (hρ : 0 < ρ) (hp : 1 < p) {f : X → ℝ} (hf : D.IsCore f)
-    (hf_nonneg : ∀ x, 0 ≤ f x) {s : ℝ} (hs : 0 ≤ s) :
+    (hf_nonneg : ∀ x, 0 ≤ f x) (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    {s : ℝ} (hs : 0 ≤ s) :
     0 < grossPow D hf ρ p s := by
   sorry
 
@@ -1032,6 +1052,7 @@ theorem grossLogNorm_hasDerivWithinAt
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    (hf_ne : ¬ f =ᵐ[D.μ] 0)
     {s : ℝ} (hs : 0 ≤ s) :
     HasDerivWithinAt (grossLogNorm D hf ρ p)
       (grossLogNormDeriv D hf ρ p s) (Set.Ici 0) s := by
@@ -1039,7 +1060,7 @@ theorem grossLogNorm_hasDerivWithinAt
   have hqpos : 0 < q := grossExponent_pos hp ρ s
   have hqne : q ≠ 0 := ne_of_gt hqpos
   have hFpos : 0 < grossPow D hf ρ p s :=
-    grossPow_pos D ρ p hρ hp hf hf_nonneg hs
+    grossPow_pos D ρ p hρ hp hf hf_nonneg hf_ne hs
   have hFne : grossPow D hf ρ p s ≠ 0 := ne_of_gt hFpos
   -- q has the within-derivative `q' = 2ρ(q-1)`.
   have hq : HasDerivWithinAt (grossExponent ρ p)
@@ -1096,6 +1117,7 @@ theorem grossLogNorm_deriv_nonpos
     (h_lsi : D.SatisfiesLogSobolev ρ)
     (h_sv : StroockVaropoulos D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    (hf_ne : ¬ f =ᵐ[D.μ] 0)
     {s : ℝ} (hs : 0 < s) :
     grossLogNormDeriv D hf ρ p s ≤ 0 := by
   sorry
@@ -1110,7 +1132,8 @@ theorem grossLogNorm_antitoneOn
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
     (h_sv : StroockVaropoulos D)
-    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x) :
+    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    (hf_ne : ¬ f =ᵐ[D.μ] 0) :
     AntitoneOn (grossLogNorm D hf ρ p) (Set.Ici 0) := by
   refine antitoneOn_of_hasDerivWithinAt_nonpos (convex_Ici 0)
     (f' := grossLogNormDeriv D hf ρ p) ?_ ?_ ?_
@@ -1118,14 +1141,14 @@ theorem grossLogNorm_antitoneOn
     -- so `Λ` is continuous there.
     intro x hx
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg
-      hx).continuousWithinAt
+      hf_ne hx).continuousWithinAt
   · intro x hx
     have hx0 : 0 ≤ x := le_of_lt (by simpa using hx)
     -- `interior (Ici 0) = Ioi 0`; restrict the P2 within-derivative.
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf
-      hf_nonneg hx0).mono interior_subset
+      hf_nonneg hf_ne hx0).mono interior_subset
   · intro x hx
-    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg
+    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg hf_ne
       (by simpa using hx)
 
 end GrossODE
