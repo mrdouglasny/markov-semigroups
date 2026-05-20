@@ -812,21 +812,64 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     HasDerivWithinAt (fun σ => ∫ y, ψ ((u σ : Y → ℝ) y) ∂ν)
       (∫ y, deriv ψ ((u s : Y → ℝ) y) * (u' : Y → ℝ) y ∂ν)
       (Set.Ici 0) s := by
-  -- Proof sketch (all inputs proved; composition deferred — see commit message):
-  -- 1. set g := ψ' ∘ u_s; have hg_memLp = psiDeriv_uS_memLp_two; g_Lp := hg_memLp.toLp g.
-  -- 2. Apply averagedDerivField_tendsto_eLpNorm (Vitali) → M_σ → g in eLpNorm.
-  -- 3. hu.tendsto_slope (via hasDerivWithinAt_iff_tendsto_slope) → slope u s σ → u' in Lp.
-  -- 4. rw [hasDerivWithinAt_iff_tendsto_slope] reduces goal to slope form.
-  -- 5. Lift M_σ to Lp eventually-σ via averagedDerivField_memLp_two + Classical-decidable
-  --    padding (M_padded σ := if h then M_σ else g). M_padded.toLp is well-defined for all σ.
-  -- 6. tendsto_Lp_iff_tendsto_eLpNorm'' bridges eLpNorm tendsto → Lp tendsto of M_padded_Lp.
-  -- 7. Filter.Tendsto.inner on (slope u s) and M_padded_Lp gives inner-product convergence
-  --    in ℝ to ⟪u', g_Lp⟫_ℝ.
-  -- 8. MeasureTheory.L2.inner_def + h_u_bound's eventually-set + integrated factorization
-  --    (psi_sub_eq_diff_mul_averagedDerivField pointwise + integral_sub) identifies
-  --    ⟪slope u s σ, M_σ_Lp⟫_ℝ = slope F s σ for σ in eventually-set.
-  -- 9. Filter.Tendsto.congr' on the eventually-set bridges the inner-product tendsto to
-  --    the slope-F tendsto, concluding.
+  classical
+  -- 1. Target g := ψ' ∘ u_s; g_Lp := its Lp lift.
+  set g : Y → ℝ := fun y => deriv ψ ((u s : Y → ℝ) y) with hg_def
+  have hg_memLp : MemLp g 2 ν := psiDeriv_uS_memLp_two hψ hψ_bound h_u_s_bound
+  set g_Lp : Lp ℝ 2 ν := hg_memLp.toLp g with hg_Lp_def
+  -- 2. Padded M_σ_Lp : ℝ → Lp ℝ 2 ν (defaults to g_Lp when bound fails).
+  let M_Lp : ℝ → Lp ℝ 2 ν := fun σ =>
+    if h : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M then
+      (averagedDerivField_memLp_two hψ hψ_bound h h_u_s_bound).toLp _
+    else g_Lp
+  -- 3. Vitali: eLpNorm (M_padded - g) → 0 along the filter.
+  have hVitali := averagedDerivField_tendsto_eLpNorm hu hψ hK_nn hψ_bound
+    h_u_bound h_u_s_bound
+  have hM_eLpNorm_tendsto : Filter.Tendsto
+      (fun σ => eLpNorm ((M_Lp σ : Y → ℝ) - g) 2 ν)
+      (nhdsWithin s (Set.Ici 0)) (nhds 0) := by
+    refine Filter.Tendsto.congr' ?_ hVitali
+    filter_upwards [h_u_bound] with σ hσ
+    simp only [M_Lp, dif_pos hσ]
+    apply eLpNorm_congr_ae
+    filter_upwards [(averagedDerivField_memLp_two
+      hψ hψ_bound hσ h_u_s_bound).coeFn_toLp] with y hy
+    simp only [Pi.sub_apply, hy, hg_def]
+  -- 4. Convert eLpNorm tendsto to Lp tendsto.
+  have hM_Lp_tendsto : Filter.Tendsto M_Lp (nhdsWithin s (Set.Ici 0)) (nhds g_Lp) := by
+    rw [tendsto_iff_dist_tendsto_zero]
+    have : ∀ σ, dist (M_Lp σ) g_Lp = (eLpNorm ((M_Lp σ : Y → ℝ) - g) 2 ν).toReal := by
+      intro σ
+      rw [Lp.dist_def]
+      congr 1
+      apply eLpNorm_congr_ae
+      filter_upwards [hg_memLp.coeFn_toLp] with y hy
+      simp [hy, g_Lp]
+    simp_rw [this]
+    exact (ENNReal.tendsto_toReal (by simp)).comp hM_eLpNorm_tendsto
+  -- 5. hu's slope form.
+  have hu_slope : Filter.Tendsto (slope u s) (nhdsWithin s (Set.Ici 0 \ {s})) (nhds u') :=
+    hasDerivWithinAt_iff_tendsto_slope.mp hu
+  -- 6. Slope-filter is included in the nhdsWithin filter: 𝓝[Set.Ici 0 \ {s}] s ≤ 𝓝[Set.Ici 0] s.
+  have hM_Lp_slopefilter : Filter.Tendsto M_Lp
+      (nhdsWithin s (Set.Ici 0 \ {s})) (nhds g_Lp) :=
+    hM_Lp_tendsto.mono_left (nhdsWithin_mono _ Set.diff_subset)
+  -- 7. Filter.Tendsto.inner combines slope u s and M_Lp.
+  have h_inner_tendsto : Filter.Tendsto
+      (fun σ => @inner ℝ (Lp ℝ 2 ν) _ (slope u s σ) (M_Lp σ))
+      (nhdsWithin s (Set.Ici 0 \ {s}))
+      (nhds (@inner ℝ (Lp ℝ 2 ν) _ u' g_Lp)) :=
+    hu_slope.inner hM_Lp_slopefilter
+  -- 8. Apply slope characterization to the goal.
+  rw [hasDerivWithinAt_iff_tendsto_slope]
+  -- Goal: Tendsto (slope (fun σ => ∫ ...) s) (𝓝[Set.Ici 0 \ {s}] s) (𝓝 (∫ ...)).
+  -- 9. Identify slope-F with the inner product eventually-σ.
+  -- For σ in eventually-set (h_u_bound) ∩ {σ ≠ s}:
+  --   slope F s σ = ⟪slope u s σ, M_Lp σ⟫_ℝ
+  -- and the limit ⟪u', g_Lp⟫_ℝ equals the target ∫ ψ'(u_s) * u'.
+  -- This identification uses the integrated factorization + L².inner_def.
+  -- Defer the detailed verification: bound by Cauchy–Schwarz via
+  -- `abs_real_inner_le_norm` + integrated factorization, plus `Filter.Tendsto.congr'`.
   sorry
 
 /-- **P2 core — the differentiation-under-the-integral.**
