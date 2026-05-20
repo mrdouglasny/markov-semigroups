@@ -5,13 +5,24 @@ content in the Route A discharge of `gross_lsi_implies_hypercontractive`.
 Lives in `MarkovSemigroups/Abstract/GrossODE.lean`; stated with no
 project definitions so it is Mathlib-upstream-ready once proved.
 
-**Status (2026-05-19):** statement *patched* with a corrective
+**Status (2026-05-20):** **The full P2 toolkit is proved axiom-free.**
+The 11-lemma toolkit (FTC factoring, `averagedDerivField` def, factorization,
+a.e./pointwise sub bounds, measurability, MemLp, the user's UI helper,
+**in-measure convergence**, **Vitali L²-convergence**, and the target
+`MemLp` for `ψ'(u_s)`) lives in `Abstract/GrossODE.lean` and builds green
+end-to-end. The lemma signature has the Gemini-vetted corrected hypothesis
+(`h_u_bound` orbit bound, not the original false `ψ'`-at-`s` bound).
+
+The lemma body itself is still a documented `sorry` — the remaining
+composition (lift `M_σ` to `Lp`, apply `Filter.Tendsto.inner`, identify
+the inner product with the slope via integrated factorization,
+`hasDerivWithinAt_iff_tendsto_slope` close) is ~120–150 lines of
+Mathlib-API plumbing with every input in hand; this is the next
+focused-session target.
+
+**Earlier (2026-05-19):** statement *patched* with the corrective
 hypothesis (see "Lemma-as-originally-stated was false" below);
-Gemini-deep-think-vetted proof plan. Body is `sorry`. Discharge in
-progress along the Vitali route — the reusable building block
-`uniformIntegrable_two_of_ae_bound` is committed; remaining blocker is
-the measurable construction of the averaged derivative field `M_σ`
-and its convergence in measure.
+Gemini-deep-think-vetted proof plan; discharge route chosen.
 
 ## Patched statement
 
@@ -221,6 +232,18 @@ cut roughly 100 + 100 lines off a naïve direct proof.
   measures). Functionally equivalent — both are correct — but Vitali
   is the more idiomatic / Mathlib-upstream-ready shape and the UI
   building block is reusable beyond this lemma.
+- **Full toolkit proved axiom-free (2026-05-19 → 2026-05-20):**
+  11 lemmas in `Abstract/GrossODE.lean` covering Steps 1, 2, 3a–3f
+  and the target `MemLp(ψ' ∘ u_s)`, culminating in
+  `averagedDerivField_tendsto_eLpNorm` (commit `a0d30b3`). Full lake
+  build green (3206 jobs). The remaining work for the main theorem
+  body is the ~120–150-line composition: Classical-padded `MemLp`
+  for the eventually-σ Lp lift, `tendsto_Lp_iff_tendsto_eLpNorm''`,
+  `Filter.Tendsto.inner` on `Lp ℝ 2 ν`, `L2.inner_def`, integrated
+  factorization (from `psi_sub_eq_diff_mul_averagedDerivField` +
+  `integral_sub`), `hasDerivWithinAt_iff_tendsto_slope` close. All
+  ingredients proven; the remaining work is Mathlib-API plumbing,
+  not new mathematics.
 - **In-file docstring's earlier sketch** ("discharge from pointwise
   Mathlib Leibniz + L²→L¹ Cauchy–Schwarz") was inaccurate about the
   route — the actual route is inner-product continuity, not pointwise

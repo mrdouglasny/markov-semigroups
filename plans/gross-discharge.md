@@ -1,9 +1,23 @@
 # Discharging the Gross axiom — reconciled against branch reality
 
-**Status (2026-05-17):** H0 ✅, G1 ✅, **G2 ✅ done**, P3
-**scaffolded**, P2 **decomposed** — one general Mathlib-native
-Leibniz kernel + thin glue + the P3 algebra + W remain. **Reconciled
-2026-05-16 against branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`**
+**Status (2026-05-20):** H0 ✅, G1 ✅, **G2 ✅ done**, P3
+**scaffolded**, **P2 analytic toolkit ✅ proved axiom-free** —
+11-lemma toolkit in `Abstract/GrossODE.lean` covering FTC factoring,
+`averagedDerivField` def + factorization + a.e./pointwise sub bounds
++ measurability + MemLp, UI, **in-measure convergence**, **Vitali
+L²-convergence**, target `MemLp(ψ' ∘ u_s)`. The P2 main theorem
+`hasDerivWithinAt_integral_of_strongL2Deriv` body is a documented
+`sorry` with a 9-step composition plan (Lp lifting via Classical
+padding, `Filter.Tendsto.inner`, `L2.inner_def`, integrated
+factorization, `hasDerivWithinAt_iff_tendsto_slope` close); ~120–150 L
+of Mathlib-API plumbing remain — see
+[`plans/p2-strongL2-leibniz-discharge.md`](p2-strongL2-leibniz-discharge.md).
+**Remaining for full Gross discharge:** P2 main-theorem composition
+(~1 day), P3 algebra (~200–400 L), W rewire (~10–30 L), Phase 4
+`stroock_varopoulos` discharge. **Earlier (2026-05-17)** status: P2
+decomposed with the Leibniz kernel `to be proved`; now proved.
+
+**Reconciled 2026-05-16 against branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`**
 (the rev gaussian-hilbert actually pins). Earlier hille-yosida/
 structure-strengthening framing is **superseded** — see §1.
 
@@ -170,7 +184,7 @@ Base every change on `feat/lp-carrier-stdGaussianFin-dirichletmarkov`.
 | G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | new `EuclideanGenerator.lean` | **✅ DONE** — branch `924c405`; fully proved (no sorry, `#print axioms` clean), incl. named restatements of the proved heat-eqn + γ-IBP; non-breaking |
 | G2 | Strong-L² limit for GaussianFin ⇒ discharges `GeneratorCompat` | `EuclideanGenerator{Lp,Limit,Compat}.lean` | **✅ DONE** — `generatorCompat_stdGaussianFin` **sorry-free** (branch `aa9cc47`). `#print axioms` = Lean built-ins + exactly 2 custom: `gaussianFin_diffQuot_tendsto_Lp` + `gaussianFin_integrationByParts`, both *general Mathlib-native*, Gemini Standard-vetted (`AXIOM_AUDIT.md`). `gaussianOU_heatEquation_within_zero` proved-but-subsumed (off live path). `memLp_ouGeneratorFin`, `ouGeneratorFin_ibp` (=G4) proved. |
 | G4 | nD γ-IBP (form-id half of `h_gen`) | folded into G2 | **✅ DONE** — `gaussianFin_integrationByParts` (general vetted axiom) ⇒ `ouGeneratorFin_ibp_integral`/`ouGeneratorFin_ibp` proved. |
-| P2 | The Gross ODE: right-difference-quotient derivative of `∫(P_tf)^{q(t)}` (right-derivative only; `h_core`+`h_gen` self-contained) | `Abstract/GrossODE.lean` | **🟡 decomposed.** Exponent calculus + chain-rule assembly `grossLogNorm_hasDerivWithinAt` + pointwise `hasDerivAt_abs_rpow_exponent` **proved**. Bottleneck split (no axiom — circular) into general Mathlib-native `hasDerivAt_integral_rpow_exponent` (core proved, DCT plumbing ⬜) + general `hasDerivWithinAt_integral_of_strongL2Deriv` (the reusable kernel, *to be proved* ⬜) + `grossPow_pos`/`grossEntropy_eq`/glue ⬜. ~remaining 400–700 L for the kernel. |
+| P2 | The Gross ODE: right-difference-quotient derivative of `∫(P_tf)^{q(t)}` (right-derivative only; `h_core`+`h_gen` self-contained) | `Abstract/GrossODE.lean` | **🟢 analytic toolkit proved axiom-free (2026-05-20).** Exponent calculus + chain-rule assembly `grossLogNorm_hasDerivWithinAt` + pointwise `hasDerivAt_abs_rpow_exponent` **proved**. The reusable Leibniz kernel `hasDerivWithinAt_integral_of_strongL2Deriv` now has its full 11-lemma proof toolkit done axiom-free: FTC factoring, `averagedDerivField` def + factorization + a.e./pointwise sub bounds + measurability + MemLp, UI helper, **in-measure convergence**, **Vitali L²-convergence**, target MemLp(ψ'∘u_s). See `plans/p2-strongL2-leibniz-discharge.md`. The original lemma statement was Gemini-counterexample false; patched to the corrected hypothesis. Main theorem body is a documented `sorry` with 9-step composition plan; ~120–150 L of Mathlib-API plumbing remain (Lp lifting, `Filter.Tendsto.inner`, integrated factorization, slope close). `hasDerivAt_integral_rpow_exponent` DCT plumbing ⬜ + `grossPow_pos`/`grossEntropy_eq`/glue ⬜ also remain. |
 | P3 | Algebraic closure: P2 ⊕ `h_lsi` ⊕ `h_sv` ⊕ `q'=2ρ(q-1)` ⇒ `d⁺/dt log N ≤ 0`; `antitoneOn_of_hasDerivWithinAt_nonpos` on `Set.Ici 0` ⇒ `IsHypercontractive` (`0<ρ` firewall) | `Abstract/GrossODE.lean` | **🟡 scaffolded.** `antitoneOn` closure **proved structurally**; remaining: the cancellation `grossLogNorm_deriv_nonpos` (LSI on `u^{q/2}` + coupling + S–V) ⬜ + interior-continuity bridge ⬜ + final `eLpNorm↔∫·^q` reduction ⬜. ~200–400 L. |
 | W | Wire gaussian-hilbert: pass the 3 discharges to the now-theorem (`GrossODE.gross_lsi_implies_hypercontractive_of_hypotheses`) | gaussian-hilbert | ⬜ ~10–30 L, hrs (after P2/P3) |
 

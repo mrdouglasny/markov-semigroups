@@ -32,6 +32,33 @@
 > verified `#print axioms ouSemigroupFin_entropy_sq_decay_bound =
 > [propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
 > axioms). See `AXIOM_AUDIT.md` rows.
+>
+> **Update (2026-05-19 → 2026-05-20, P2 Leibniz kernel toolkit
+> proved):** The full analytic toolkit for the P2 Leibniz kernel
+> `hasDerivWithinAt_integral_of_strongL2Deriv` in
+> `Abstract/GrossODE.lean` is now proved axiom-free. **11 lemmas
+> added** (~700 LOC): FTC factorization `sub_eq_mul_intervalIntegral_deriv`,
+> `averagedDerivField` (M_σ def), `psi_sub_eq_diff_mul_averagedDerivField`
+> (factorization identity), `averagedDerivField_ae_bound`,
+> `averagedDerivField_aestronglyMeasurable`, `averagedDerivField_memLp_two`,
+> `averagedDerivField_sub_le_of_close` (pointwise sub bound),
+> `averagedDerivField_ae_sub_le_of_close` (a.e. version),
+> **`averagedDerivField_tendstoInMeasure`** (in-measure convergence —
+> the deepest analytic step, set-inclusion + Heine–Cantor +
+> `tendstoInMeasure_of_tendsto_Lp`), `psiDeriv_uS_memLp_two`,
+> **`averagedDerivField_tendsto_eLpNorm`** (Vitali closure via
+> `MeasureTheory.tendsto_Lp_of_tendstoInMeasure` + `tendsto_iff_seq_tendsto`
+> reduction + shift). Reuses the user's `uniformIntegrable_two_of_ae_bound`
+> (a.e.-bounded ⇒ UI on finite measures) as the UI input. The lemma
+> signature was patched after a Gemini-found counterexample to the
+> originally-stated hypothesis; the patched corrected form is
+> `h_u_bound` orbit-bound (not `ψ'`-at-`s`). The lemma body itself
+> remains a documented `sorry` with a 9-step composition plan
+> (~120–150 L of Mathlib-API plumbing: Lp lifting + `Filter.Tendsto.inner`
+> + integrated factorization + `hasDerivWithinAt_iff_tendsto_slope`).
+> Full `lake build` green (3206 jobs). See
+> `plans/p2-strongL2-leibniz-discharge.md` for the full discharge
+> plan and `plans/gross-discharge.md` for the broader Route A context.
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
