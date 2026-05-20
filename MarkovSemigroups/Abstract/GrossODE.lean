@@ -555,6 +555,111 @@ lemma averagedDerivField_memLp_two {Y : Type*} [MeasurableSpace Y]
   filter_upwards [averagedDerivField_ae_bound hψ_bound hu_σ hu_s] with y hy
   simpa [Real.norm_eq_abs] using hy
 
+/-- **In-measure convergence: `M_σ → ψ'(u_s)` as `σ → s` from within `Set.Ici 0`.**
+Heart of Step 3 of the discharge plan. The chain:
+* Heine–Cantor on `deriv ψ` over the compact `[-M, M]` gives a modulus `(δ, εr/2)`.
+* `tendstoInMeasure_of_tendsto_Lp` applied to `hu.continuousWithinAt` gives
+  `u_σ → u_s` in measure.
+* The a.e.-set inclusion (from `averagedDerivField_ae_sub_le_of_close` with
+  `ω = εr/2 < εr`):
+    `{y | ε ≤ edist(M_σ y, ψ'(u_s y))} ⊆ᵐ {y | ENNReal.ofReal δ ≤ edist(u_σ y, u_s y)}`
+  (the latter has ν-measure → 0 by the u-side in-measure).
+Combined with `uniformIntegrable_two_of_ae_bound`, this is the input Vitali needs
+to upgrade to L²-convergence; closure of the main P2 kernel via `Filter.Tendsto.inner`. -/
+lemma averagedDerivField_tendstoInMeasure
+    {Y : Type*} [MeasurableSpace Y] {ν : Measure Y} [IsFiniteMeasure ν]
+    {u : ℝ → Lp ℝ 2 ν} {u' : Lp ℝ 2 ν} {s : ℝ}
+    (hu : HasDerivWithinAt u u' (Set.Ici 0) s)
+    {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    {M : ℝ}
+    (h_u_bound : ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
+        ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
+    (h_u_s_bound : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M) :
+    TendstoInMeasure ν (fun σ => (averagedDerivField u ψ σ s : Y → ℝ))
+      (nhdsWithin s (Set.Ici 0))
+      (fun y => deriv ψ ((u s : Y → ℝ) y)) := by
+  -- Heine–Cantor on the compact `[-M, M]`.
+  have hψ'_uc : UniformContinuousOn (deriv ψ) (Set.Icc (-M) M) :=
+    IsCompact.uniformContinuousOn_of_continuous isCompact_Icc
+      (hψ.continuous_deriv le_rfl).continuousOn
+  -- L² → in-measure for `u`.
+  have hu_im : TendstoInMeasure ν (fun σ => ((u σ : Lp ℝ 2 ν) : Y → ℝ))
+      (nhdsWithin s (Set.Ici 0)) (u s) :=
+    MeasureTheory.tendstoInMeasure_of_tendsto_Lp hu.continuousWithinAt
+  -- Reduce to finite ε.
+  refine MeasureTheory.tendstoInMeasure_of_ne_top ?_
+  intro ε hε_pos hε_finite
+  set εr : ℝ := ε.toReal with hεr_def
+  have hεr_pos : 0 < εr := ENNReal.toReal_pos hε_pos.ne' hε_finite
+  set ω : ℝ := εr / 2
+  have hω_pos : 0 < ω := by positivity
+  have hω_lt_εr : ω < εr := by show εr / 2 < εr; linarith
+  -- Extract δ from UC for the modulus `(·, ω)`.
+  obtain ⟨δ', hδ'_pos, hδ'⟩ := Metric.uniformContinuousOn_iff.mp hψ'_uc ω hω_pos
+  set δ : ℝ := δ' / 2
+  have hδ_pos : 0 < δ := by positivity
+  have hδ_lt : δ < δ' := by show δ' / 2 < δ'; linarith
+  -- Convert strict UC bound to a ≤-form modulus.
+  have hψ'_modulus : ∀ x ∈ Set.Icc (-M) M, ∀ z ∈ Set.Icc (-M) M,
+      |x - z| ≤ δ → |deriv ψ x - deriv ψ z| ≤ ω := by
+    intros x hx z hz hxz
+    refine le_of_lt ?_
+    have hd : dist x z < δ' := by rw [Real.dist_eq]; linarith
+    have := hδ' x hx z hz hd
+    rwa [Real.dist_eq] at this
+  -- In-measure on `u` at `δ`.
+  have hu_δ : Filter.Tendsto
+      (fun σ => ν {y | ENNReal.ofReal δ ≤
+        edist ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y)})
+      (nhdsWithin s (Set.Ici 0)) (nhds 0) :=
+    hu_im (ENNReal.ofReal δ) (ENNReal.ofReal_pos.mpr hδ_pos)
+  -- Squeeze: 0 ≤ ν(bad σ) ≤ ν(u-bad σ) → 0.
+  refine tendsto_of_tendsto_of_tendsto_of_le_of_le'
+    (g := fun _ => (0 : ℝ≥0∞)) (h := fun σ => ν {y | ENNReal.ofReal δ ≤
+        edist ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y)})
+    tendsto_const_nhds hu_δ
+    (Filter.Eventually.of_forall fun _ => zero_le _) ?_
+  -- Show eventually-σ: ν(bad σ) ≤ ν(u-bad σ) via a.e. set inclusion.
+  filter_upwards [h_u_bound] with σ hσ
+  refine MeasureTheory.measure_mono_ae ?_
+  have h_ae_sub := averagedDerivField_ae_sub_le_of_close (σ := σ) (s := s)
+    hψ hσ h_u_s_bound hψ'_modulus
+  filter_upwards [h_ae_sub] with y h_imp h_bad
+  -- h_bad : y ∈ {x | ε ≤ edist (M_σ x) (ψ'(u_s x))} (i.e. ε ≤ edist (M_σ y) (ψ'(u_s y)))
+  -- Goal: y ∈ {x | ENNReal.ofReal δ ≤ edist (u_σ x) (u_s x)}
+  have h_bad : ε ≤ edist (averagedDerivField u ψ σ s y) (deriv ψ ((u s : Y → ℝ) y)) := h_bad
+  show ENNReal.ofReal δ ≤ edist ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y)
+  by_contra h_not_u_bad
+  have h_not_u_bad :
+      edist ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y) < ENNReal.ofReal δ :=
+    not_le.mp h_not_u_bad
+  -- h_not_u_bad : edist (u_σ y) (u_s y) < ENNReal.ofReal δ
+  -- Convert edist→Real on the u-side.
+  have hedist_u :
+      edist ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y) =
+        ENNReal.ofReal |(u σ : Y → ℝ) y - (u s : Y → ℝ) y| := by
+    rw [edist_dist, Real.dist_eq]
+  rw [hedist_u] at h_not_u_bad
+  have hu_lt : |(u σ : Y → ℝ) y - (u s : Y → ℝ) y| < δ := by
+    by_contra hge
+    push_neg at hge
+    exact absurd h_not_u_bad (not_lt.mpr (ENNReal.ofReal_le_ofReal hge))
+  have hM_bound := h_imp hu_lt.le
+  -- hM_bound : |M_σ y - ψ'(u_s y)| ≤ ω
+  -- Convert edist→Real on the M-side.
+  have hedist_M :
+      edist (averagedDerivField u ψ σ s y) (deriv ψ ((u s : Y → ℝ) y)) =
+        ENNReal.ofReal |averagedDerivField u ψ σ s y - deriv ψ ((u s : Y → ℝ) y)| := by
+    rw [edist_dist, Real.dist_eq]
+  rw [hedist_M] at h_bad
+  -- ε ≤ ENNReal.ofReal |...|; convert to εr ≤ |...|.
+  have hε_ofReal : ε = ENNReal.ofReal εr :=
+    (ENNReal.ofReal_toReal hε_finite).symm
+  rw [hε_ofReal] at h_bad
+  have hεr_le : εr ≤ |averagedDerivField u ψ σ s y - deriv ψ ((u s : Y → ℝ) y)| :=
+    (ENNReal.ofReal_le_ofReal_iff (abs_nonneg _)).mp h_bad
+  linarith [hM_bound, hω_lt_εr, hεr_le]
+
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
 derivative `u'` at `s` on `[0,∞)`, `ψ : ℝ → ℝ` is `C¹`, and the orbit
