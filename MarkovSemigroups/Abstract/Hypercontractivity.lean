@@ -201,6 +201,54 @@ lemma orbit_memLp (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
   filter_upwards [S.Linfty_contraction ht hf] with y hy
   simpa using hy
 
+/-- **Lower-bound contraction.** Companion to `Linfty_contraction`: if
+`f ≥ ε` a.e., then `(P_t f) ≥ ε` a.e. (for `t ≥ 0`). Same template:
+`0 ≤ f - Lp.const ε` (a.e.) + `P_positivity` + `P_t (Lp.const ε) = Lp.const ε`
+(via conservation + scalar). The dual of `Linfty_contraction`, but stated
+in *one-sided* form because Gross-style positivity arguments only need
+the lower bound `(P_s f) ≥ ε`, not |·| ≤ M. -/
+lemma orbit_lower_bound (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
+    {f : Lp ℝ 2 S.μ} {ε : ℝ}
+    (hf : ∀ᵐ y ∂S.μ, ε ≤ (f : X → ℝ) y) :
+    ∀ᵐ y ∂S.μ, ε ≤ (S.P t f : X → ℝ) y := by
+  haveI : IsFiniteMeasure S.μ := inferInstance
+  set εlp : Lp ℝ 2 S.μ := Lp.const 2 S.μ ε with hεlp_def
+  have hεlp_coe : (εlp : X → ℝ) =ᵐ[S.μ] fun _ => ε := Lp.coeFn_const 2 S.μ ε
+  have hPt_const1 : S.P t (Lp.const 2 S.μ (1:ℝ)) = Lp.const 2 S.μ (1:ℝ) := by
+    refine S.P_conservation t ht _ ?_
+    filter_upwards [Lp.coeFn_const 2 S.μ (1:ℝ)] with x hx
+    simpa using hx
+  have hεlp_smul : εlp = ε • Lp.const 2 S.μ (1:ℝ) := by
+    refine Lp.ext ?_
+    filter_upwards [hεlp_coe, Lp.coeFn_smul ε (Lp.const 2 S.μ (1:ℝ)),
+                    Lp.coeFn_const 2 S.μ (1:ℝ)] with y h1 h2 h3
+    simp [h1, h2, h3]
+  have hPt_εlp : S.P t εlp = εlp := by
+    calc S.P t εlp
+        = S.P t (ε • Lp.const 2 S.μ (1:ℝ)) := by rw [hεlp_smul]
+      _ = ε • S.P t (Lp.const 2 S.μ (1:ℝ)) := (S.P t).map_smul ε _
+      _ = ε • Lp.const 2 S.μ (1:ℝ) := by rw [hPt_const1]
+      _ = εlp := hεlp_smul.symm
+  -- 0 ≤ f - εlp via the a.e. bound.
+  have h_diff_ae : 0 ≤ᵐ[S.μ] (↑↑(f - εlp) : X → ℝ) := by
+    filter_upwards [hf, hεlp_coe, Lp.coeFn_sub f εlp] with y hy hMy hSubY
+    have : (↑↑(f - εlp) : X → ℝ) y = (f : X → ℝ) y - ε := by
+      rw [hSubY]; simp [hMy]
+    rw [Pi.zero_apply, this]
+    linarith
+  have h_diff_nn : (0 : Lp ℝ 2 S.μ) ≤ f - εlp := (Lp.coeFn_nonneg _).mp h_diff_ae
+  have h_pt_diff_nn : (0 : Lp ℝ 2 S.μ) ≤ S.P t (f - εlp) :=
+    S.P_positivity t ht _ h_diff_nn
+  have h_pt_orbit_sub : S.P t (f - εlp) = S.P t f - εlp := by
+    rw [map_sub, hPt_εlp]
+  rw [h_pt_orbit_sub] at h_pt_diff_nn
+  have h_ae := (Lp.coeFn_nonneg _).mpr h_pt_diff_nn
+  filter_upwards [h_ae, Lp.coeFn_sub (S.P t f) εlp, hεlp_coe] with y hy hSub hMy
+  have h_pt : (↑↑(S.P t f - εlp) : X → ℝ) y = (S.P t f : X → ℝ) y - ε := by
+    rw [hSub]; simp [hMy]
+  rw [Pi.zero_apply, h_pt] at hy
+  linarith
+
 /-- A symmetric Markov semigroup is *hypercontractive* with rate `ρ > 0`
 if `P_t : L^p → L^q` is a contraction whenever
 `q ≤ 1 + (p − 1) · e^{2ρt}`:
