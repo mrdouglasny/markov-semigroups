@@ -515,6 +515,28 @@ lemma averagedDerivField_sub_le_of_close
   rw [hone, mul_one] at h
   simpa [Real.norm_eq_abs] using h
 
+/-- **a.e. sub bound conditional on `|u_σ − u_s| ≤ δ`.** If both `u_σ` and `u_s`
+are a.e. `M`-bounded and `ψ'` has uniform modulus `(δ, ω)` on `[-M, M]`, then
+on the a.e.-set where `|u_σ y − u_s y| ≤ δ`, we have
+`|M_σ(y) − ψ'(u_s y)| ≤ ω`. Direct conditional input to the in-measure step:
+combined with a.e.-bound + in-measure of `u_σ → u_s`, the bad set
+`{ε ≤ |M_σ − ψ'(u_s)|}` is contained (a.e.) in `{δ < |u_σ − u_s|}`. -/
+lemma averagedDerivField_ae_sub_le_of_close
+    {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    {u : ℝ → Lp ℝ 2 ν} {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ)
+    {σ s : ℝ} {M δ ω : ℝ}
+    (hu_σ : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M)
+    (hu_s : ∀ᵐ y ∂ν, |(u s : Y → ℝ) y| ≤ M)
+    (hψ'_modulus : ∀ x ∈ Set.Icc (-M) M, ∀ z ∈ Set.Icc (-M) M,
+        |x - z| ≤ δ → |deriv ψ x - deriv ψ z| ≤ ω) :
+    ∀ᵐ y ∂ν,
+      |(u σ : Y → ℝ) y - (u s : Y → ℝ) y| ≤ δ →
+      |averagedDerivField u ψ σ s y - deriv ψ ((u s : Y → ℝ) y)| ≤ ω := by
+  filter_upwards [hu_σ, hu_s] with y hyσ hys hyclose
+  refine averagedDerivField_sub_le_of_close hψ hys hyσ hyclose ?_
+  intro x hx hxclose
+  exact hψ'_modulus x hx _ (Set.mem_Icc.mpr (abs_le.mp hys)) hxclose
+
 /-- **`M_σ ∈ MemLp 2 ν` from the a.e. bound + finite measure.** Combines
 `averagedDerivField_aestronglyMeasurable` (measurability) and
 `averagedDerivField_ae_bound` (a.e. boundedness) via `MemLp.of_bound`.
