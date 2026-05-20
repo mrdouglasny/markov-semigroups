@@ -33,7 +33,8 @@
 > [propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
 > axioms). See `AXIOM_AUDIT.md` rows.
 >
-> **Update (2026-05-20, P2 Leibniz kernel ✅ FULLY DISCHARGED):**
+> **Update (2026-05-20, P2 Leibniz kernel ✅ + entropy bridge ✅ +
+> antitoneOn continuity ✅):**
 > The P2 Leibniz kernel `hasDerivWithinAt_integral_of_strongL2Deriv`
 > in `Abstract/GrossODE.lean` is now **fully proved axiom-free**.
 > `#print axioms GrossODE.hasDerivWithinAt_integral_of_strongL2Deriv`
@@ -65,8 +66,15 @@
 > `plans/p2-strongL2-leibniz-discharge.md` and
 > `plans/gross-discharge.md`. Remaining for full Gross discharge:
 > P3 algebra (~200–400 L), W rewire (~10–30 L), Phase 4
-> `stroock_varopoulos`. **Steps 8 & 9 closed today; the 7 prior
-> steps were composed in the immediately-preceding session.**
+> `stroock_varopoulos`. **Today's closures (2026-05-20):** Steps 8 & 9
+> of the P2 Leibniz kernel composition; the continuity sorry in
+> `grossLogNorm_antitoneOn` (just `HasDerivWithinAt.continuousWithinAt`);
+> **`grossEntropy_eq`** (log-of-power algebra via `Real.log_rpow` +
+> 3-way case split on `q=0`/`|u|=0`/general — `#print axioms` =
+> Mathlib core only). GrossODE.lean active sorries: 7 → 5
+> (`grossPow_pos`, `hasDerivAt_integral_rpow_exponent`,
+> `grossPow_hasDerivWithinAt`, `grossLogNorm_deriv_nonpos`, final
+> hypercontractivity).
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
