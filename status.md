@@ -33,32 +33,40 @@
 > [propext, Classical.choice, Quot.sound]` (no `sorryAx`, no new
 > axioms). See `AXIOM_AUDIT.md` rows.
 >
-> **Update (2026-05-19 → 2026-05-20, P2 Leibniz kernel toolkit
-> proved):** The full analytic toolkit for the P2 Leibniz kernel
-> `hasDerivWithinAt_integral_of_strongL2Deriv` in
-> `Abstract/GrossODE.lean` is now proved axiom-free. **11 lemmas
-> added** (~700 LOC): FTC factorization `sub_eq_mul_intervalIntegral_deriv`,
-> `averagedDerivField` (M_σ def), `psi_sub_eq_diff_mul_averagedDerivField`
-> (factorization identity), `averagedDerivField_ae_bound`,
-> `averagedDerivField_aestronglyMeasurable`, `averagedDerivField_memLp_two`,
-> `averagedDerivField_sub_le_of_close` (pointwise sub bound),
-> `averagedDerivField_ae_sub_le_of_close` (a.e. version),
-> **`averagedDerivField_tendstoInMeasure`** (in-measure convergence —
-> the deepest analytic step, set-inclusion + Heine–Cantor +
-> `tendstoInMeasure_of_tendsto_Lp`), `psiDeriv_uS_memLp_two`,
-> **`averagedDerivField_tendsto_eLpNorm`** (Vitali closure via
-> `MeasureTheory.tendsto_Lp_of_tendstoInMeasure` + `tendsto_iff_seq_tendsto`
-> reduction + shift). Reuses the user's `uniformIntegrable_two_of_ae_bound`
-> (a.e.-bounded ⇒ UI on finite measures) as the UI input. The lemma
-> signature was patched after a Gemini-found counterexample to the
-> originally-stated hypothesis; the patched corrected form is
-> `h_u_bound` orbit-bound (not `ψ'`-at-`s`). The lemma body itself
-> remains a documented `sorry` with a 9-step composition plan
-> (~120–150 L of Mathlib-API plumbing: Lp lifting + `Filter.Tendsto.inner`
-> + integrated factorization + `hasDerivWithinAt_iff_tendsto_slope`).
+> **Update (2026-05-20, P2 Leibniz kernel ✅ FULLY DISCHARGED):**
+> The P2 Leibniz kernel `hasDerivWithinAt_integral_of_strongL2Deriv`
+> in `Abstract/GrossODE.lean` is now **fully proved axiom-free**.
+> `#print axioms GrossODE.hasDerivWithinAt_integral_of_strongL2Deriv`
+> = `[propext, Classical.choice, Quot.sound]` (Mathlib core only).
+>
+> Proof = **11-lemma toolkit** (added in this update sequence,
+> ~700 LOC): FTC factorization `sub_eq_mul_intervalIntegral_deriv`,
+> `averagedDerivField` (M_σ def), `psi_sub_eq_diff_mul_averagedDerivField`,
+> a.e./pointwise sub bounds, measurability, `MemLp 2`, the UI helper,
+> **in-measure convergence** (set-inclusion + Heine–Cantor +
+> `tendstoInMeasure_of_tendsto_Lp`), `psiDeriv_uS_memLp_two`, and
+> **`averagedDerivField_tendsto_eLpNorm`** (Vitali closure) — **plus**
+> a ~150-line 9-step **main body** (target `g_Lp`; padded `M_Lp` via
+> `dif_pos`; Vitali tendsto; Lp tendsto via `tendsto_iff_dist_tendsto_zero`
+> + `Lp.dist_def`; slope of u via
+> `hasDerivWithinAt_iff_tendsto_slope`; filter mono via `Set.diff_subset`;
+> `Filter.Tendsto.inner`; F' identification via L2.inner_def +
+> `RCLike.inner_apply`-rfl + `ring`; slope F s identification via
+> `slope_def_field` + `eq_div_iff` + `integral_sub` (integrability
+> from compact-envelope `Icc (-(M⊔0)) (M⊔0)` + `MemLp.of_bound`) +
+> `L2.inner_def` + `Lp.coeFn_smul`/`coeFn_sub` + factorization +
+> `field_simp`).
+>
+> The lemma signature was patched (2026-05-19) after a Gemini-found
+> counterexample to the originally-stated hypothesis; the patched
+> corrected form is `h_u_bound` orbit-bound (not `ψ'`-at-`s`).
+> Statement uses only Mathlib definitions → Mathlib-upstreamable.
 > Full `lake build` green (3206 jobs). See
-> `plans/p2-strongL2-leibniz-discharge.md` for the full discharge
-> plan and `plans/gross-discharge.md` for the broader Route A context.
+> `plans/p2-strongL2-leibniz-discharge.md` and
+> `plans/gross-discharge.md`. Remaining for full Gross discharge:
+> P3 algebra (~200–400 L), W rewire (~10–30 L), Phase 4
+> `stroock_varopoulos`. **Steps 8 & 9 closed today; the 7 prior
+> steps were composed in the immediately-preceding session.**
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
