@@ -48,6 +48,8 @@ Operators*, §5.2.
 
 import MarkovSemigroups.Abstract.Hypercontractivity
 import Mathlib.Analysis.Calculus.Deriv.MeanValue
+import Mathlib.MeasureTheory.Function.UniformIntegrable
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 
 open MeasureTheory ENNReal Set
 open scoped ENNReal InnerProductSpace
@@ -253,6 +255,67 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
     HasDerivAt (fun σ => ∫ y, |w y| ^ a σ ∂ν)
       (a' * ∫ y, |w y| ^ a s * Real.log |w y| ∂ν) s := by
   sorry
+
+/-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
+everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
+Mathlib's finite-measure criterion, packaged for the bounded coefficient families used in the P2
+Leibniz kernel. -/
+lemma uniformIntegrable_two_of_ae_bound {ι Y : Type*}
+    [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
+    (f : ι → Y → ℝ) (hf_meas : ∀ i, AEStronglyMeasurable (f i) ν)
+    {K : NNReal} (hK : ∀ i, ∀ᵐ y ∂ν, ‖f i y‖₊ ≤ K) :
+    MeasureTheory.UniformIntegrable f (2 : ℝ≥0∞) ν := by
+  refine MeasureTheory.uniformIntegrable_of (μ := ν) (f := f) (p := (2 : ℝ≥0∞))
+    (by norm_num) (by norm_num) hf_meas ?_
+  intro ε hε
+  refine ⟨K + 1, fun i => ?_⟩
+  have hempty : {y : Y | K + 1 ≤ ‖f i y‖₊}.indicator (f i) =ᵐ[ν] 0 := by
+    filter_upwards [hK i] with y hy
+    by_cases hmem : y ∈ {y : Y | K + 1 ≤ ‖f i y‖₊}
+    · exfalso
+      exact (not_le_of_gt (lt_of_le_of_lt hy (lt_add_one K))) hmem
+    · simp [Set.indicator_of_notMem, hmem]
+  calc
+    eLpNorm ({x : Y | K + 1 ≤ ‖f i x‖₊}.indicator (f i)) 2 ν
+        = eLpNorm (0 : Y → ℝ) 2 ν := eLpNorm_congr_ae hempty
+    _ = 0 := by simp
+    _ ≤ ENNReal.ofReal ε := by positivity
+
+/-- **Pointwise FTC: averaged-derivative form of the increment.** For `ψ : ℝ → ℝ`
+of class `C¹` and any two reals `a, b`,
+`ψ a - ψ b = (a - b) * ∫ t in 0..1, deriv ψ (b + t · (a - b))`.
+
+Foundational step of the P2 Leibniz kernel: applied pointwise in `y` with
+`a := (u σ : Y → ℝ) y` and `b := (u s : Y → ℝ) y`, it factors the increment as
+`ψ(u_σ y) − ψ(u_s y) = (u_σ y − u_s y) · M_σ(y)` where
+`M_σ(y) := ∫_0^1 deriv ψ (u_s y + t · (u_σ y − u_s y)) dt`. Replaces a
+product-measure Fubini argument with a 1D parametric integral. -/
+lemma sub_eq_mul_intervalIntegral_deriv {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ) (a b : ℝ) :
+    ψ a - ψ b = (a - b) * ∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b)) := by
+  have hψ_diff : Differentiable ℝ ψ := hψ.differentiable one_ne_zero
+  have hg : ∀ t : ℝ, HasDerivAt (fun s : ℝ => b + s * (a - b)) (a - b) t := fun t => by
+    simpa using ((hasDerivAt_id t).mul_const (a - b)).const_add b
+  have hh : ∀ t : ℝ,
+      HasDerivAt (fun s : ℝ => ψ (b + s * (a - b)))
+        (deriv ψ (b + t * (a - b)) * (a - b)) t := fun t =>
+    (hψ_diff.differentiableAt.hasDerivAt).comp t (hg t)
+  have hcont : Continuous (fun t : ℝ => deriv ψ (b + t * (a - b)) * (a - b)) := by
+    have : Continuous (deriv ψ) := hψ.continuous_deriv le_rfl
+    fun_prop
+  have hftc : (∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b)) * (a - b))
+      = ψ (b + 1 * (a - b)) - ψ (b + 0 * (a - b)) :=
+    intervalIntegral.integral_eq_sub_of_hasDerivAt (fun t _ => hh t)
+      (hcont.intervalIntegrable 0 1)
+  have e1 : b + 1 * (a - b) = a := by ring
+  have e0 : b + 0 * (a - b) = b := by ring
+  rw [e1, e0] at hftc
+  have hmul :
+      (∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b)) * (a - b))
+        = (∫ t in (0:ℝ)..1, deriv ψ (b + t * (a - b))) * (a - b) :=
+    intervalIntegral.integral_mul_const (a - b)
+      (fun t => deriv ψ (b + t * (a - b)))
+  rw [mul_comm, ← hmul]
+  exact hftc.symm
 
 /-- **General (Mathlib-native): Bochner–Leibniz through a strong-`L²`
 right derivative.** If `u : ℝ → Lp ℝ 2 ν` has the strong-`L²` right
