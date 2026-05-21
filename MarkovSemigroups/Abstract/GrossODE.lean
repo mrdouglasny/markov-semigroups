@@ -1355,24 +1355,54 @@ theorem grossPow_hasDerivWithinAt
       (grossPowDeriv D hf ρ p s) (Set.Ici 0) s := by
   haveI : IsFiniteMeasure D.μ := inferInstance
   obtain ⟨ε, hε_pos, hf_ge_ε⟩ := hf_pos
-  -- Step 1: orbit u_s = P_s f satisfies u_s ≥ ε a.e. (from orbit_lower_bound).
+  obtain ⟨Mf, hf_le_Mf⟩ := D.IsCore_memLp_top hf
+  -- Lift bounds on f to bounds on (D.coreToL2 hf : X → ℝ).
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f :=
+    (D.IsCore_memLp hf).coeFn_toLp
   have hf_Lp_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ (D.coreToL2 hf : X → ℝ) y := by
-    have hcoe : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
-    filter_upwards [hcoe, hf_ge_ε] with y hcy hfy
-    rw [hcy]; exact hfy
-  have hu_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
+    filter_upwards [hcoe_f, hf_ge_ε] with y hcy hfy; rw [hcy]; exact hfy
+  have hf_Lp_le_Mf : ∀ᵐ y ∂D.μ, |(D.coreToL2 hf : X → ℝ) y| ≤ Mf := by
+    filter_upwards [hcoe_f, hf_le_Mf] with y hcy hfy; rw [hcy]; exact hfy
+  -- Orbit lower/upper bounds at time s and (eventually-σ) near s.
+  have hu_s_ge_ε : ∀ᵐ y ∂D.μ,
+      ε ≤ ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
     D.toMarkovSemigroup.orbit_lower_bound hs hf_Lp_ge_ε
-  -- Step 2: orbit u_s is also bounded above (from f ∈ Lp via IsCore + finiteness;
-  -- need a uniform L^∞ bound on f to invoke Linfty_contraction). For now defer
-  -- the full L^∞ bound construction — in concrete Gross applications it comes
-  -- from `IsCore` providing L^∞ regularity (an additional structural piece;
-  -- see §4 of the plan).
-  -- Step 3: |u_s|^{q-1} is in `IsCore` because u_s ≥ ε > 0 makes x ↦ x^{q-1}
-  -- smooth on the range. Needs a closure axiom `IsCore_smooth_comp_of_pos`
-  -- (weaker than full `IsCore_rpow_pos`; provable for Schwartz/polynomial cores).
-  -- Step 4: apply hasDerivAt_integral_rpow_exponent (exponent half) and
-  -- hasDerivWithinAt_integral_of_strongL2Deriv (orbit half), combine via
-  -- chain rule for H(σ, τ).
+  have hu_s_le_Mf : ∀ᵐ y ∂D.μ,
+      |((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ≤ Mf :=
+    D.toMarkovSemigroup.Linfty_contraction hs hf_Lp_le_Mf
+  have hu_σ_le_Mf : ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
+      ∀ᵐ y ∂D.μ,
+        |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ≤ Mf := by
+    filter_upwards [self_mem_nhdsWithin] with σ hσ_in
+    exact D.toMarkovSemigroup.Linfty_contraction hσ_in hf_Lp_le_Mf
+  -- Step ∂₂H: frozen orbit, varying exponent. Apply
+  -- hasDerivAt_integral_rpow_exponent with w := orbit at s, a := grossExponent ρ p.
+  set u_s_func : X → ℝ := ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ)
+    with hu_s_func_def
+  have hu_s_aesm : AEStronglyMeasurable u_s_func D.μ :=
+    Lp.aestronglyMeasurable _
+  have h_d2H : HasDerivAt
+      (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
+      (2 * ρ * (grossExponent ρ p s - 1)
+        * ∫ y, |u_s_func y| ^ grossExponent ρ p s * Real.log |u_s_func y| ∂D.μ) s :=
+    hasDerivAt_integral_rpow_exponent D.μ hu_s_aesm hu_s_le_Mf
+      (contDiff_grossExponent ρ p (n := 1)) (hasDerivAt_grossExponent ρ p s)
+      (fun σ => grossExponent_pos hp ρ σ)
+  -- The integral in h_d2H's derivative IS grossLogIntegral (def-eq).
+  have h_d2H' : HasDerivAt
+      (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
+      (2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s) s := by
+    convert h_d2H using 1
+  -- The composition that turns ∂₁H + ∂₂H into the diagonal F'(s) is genuine
+  -- remaining work (~150+ LOC):
+  -- 1. ∂₁H = ∫ ψ'(u_s)·A(u_s) via hasDerivWithinAt_integral_of_strongL2Deriv
+  --    with u σ := D.P σ (D.coreToL2 hf), u' := D.P s Af (from
+  --    orbit_hasDerivWithinAt), ψ := x ↦ x^{q(s)} (avoiding |·|^q ContDiff
+  --    via a.e.-nonneg-orbit bridge).
+  -- 2. Partial-to-total chain rule: F'(s) = ∂₁H(s,s) + ∂₂H(s,s).
+  -- 3. Energy identification: ∫ ψ'(u_s)·A(u_s) = q·⟨u_s^{q-1}, A(u_s)⟩
+  --    = -q · D.energy(u_s, u_s^{q-1}) via h_gen with g := u_s^{q-1}
+  --    (using IsCore_rpow_pos_strict to discharge g ∈ IsCore).
   sorry
 
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
