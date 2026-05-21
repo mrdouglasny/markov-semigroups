@@ -117,8 +117,10 @@
 > `2ρ(q-1)·Ent ≤ q²·E(u,u^{q-1})`, then `div_nonpos_iff` (F=0 trivial).
 > **`StroockVaropoulos._hq` relaxed `2 ≤ q` → `1 < q`** (the full range
 > the path `q(s)=1+(p-1)e^{2ρs}` visits for `p>1`; S–V holds throughout,
-> equality for gradient forms; no in-repo discharge yet — gaussian-hilbert's
-> W-step must target `q > 1`). GrossODE.lean active sorries: 2 → **1**
+> equality for gradient forms; **deep-think vetted 2026-05-21, rating
+> Standard — `plans/sv-q-relaxation-vetting.md`**; no in-repo discharge
+> yet — gaussian-hilbert's W-step must target `q > 1`). GrossODE.lean
+> active sorries: 2 → **1**
 > (only the final `eLpNorm↔∫·^q` hypercontractivity reduction). Full
 > `lake build` green (3206 jobs).
 

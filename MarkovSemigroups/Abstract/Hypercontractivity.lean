@@ -705,7 +705,9 @@ powers). `_hq`/`_hu_half` are contract antecedents (the inequality is
 claimed for `q > 1` with `u^{q/2}` core — this is the full range the
 Gross interpolation path `q(s) = 1+(p-1)e^{2ρs}` visits for `p > 1`, and
 S–V holds throughout: for diffusion/gradient forms it is in fact an
-equality `(4(q-1)/q²)Γ(u^{q/2}) = Γ(u,u^{q-1})`); `_`-prefixed per the
+equality `(4(q-1)/q²)Γ(u^{q/2}) = Γ(u,u^{q-1})`. The `2 ≤ q → 1 < q`
+relaxation is deep-think vetted, rating Standard — see
+`plans/sv-q-relaxation-vetting.md`); `_`-prefixed per the
 Mathlib convention for binders required by the statement's shape but
 not referenced in the body — the discharger still supplies them
 positionally. -/
