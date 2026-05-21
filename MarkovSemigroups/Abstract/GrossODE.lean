@@ -639,6 +639,67 @@ lemma tendsto_integral_abs_of_tendsto_eLpNorm_two_zero {ι Y : Type*}
     exact integral_abs_eq_eLpNorm_one_toReal hi
   exact hF_one_real.congr' <| heq.mono fun i hi => hi.symm
 
+/-- **Pointwise derivative of `v ↦ v^r · log v` for `v > 0`.**
+`(v^r · log v)' = v^{r-1} · (r · log v + 1)`. -/
+lemma hasDerivAt_rpow_mul_log {r v : ℝ} (hv : 0 < v) :
+    HasDerivAt (fun w : ℝ => w ^ r * Real.log w)
+      (v ^ (r - 1) * (r * Real.log v + 1)) v := by
+  have h1 : HasDerivAt (fun w : ℝ => w ^ r) (r * v ^ (r - 1)) v :=
+    Real.hasDerivAt_rpow_const (Or.inl (ne_of_gt hv))
+  have h2 : HasDerivAt Real.log v⁻¹ v := Real.hasDerivAt_log (ne_of_gt hv)
+  have h3 := h1.mul h2
+  convert h3 using 1
+  -- Goal: v^(r-1)·(r·log v + 1) = r·v^(r-1)·log v + v^r·v⁻¹.
+  have hvr : v ^ r * v⁻¹ = v ^ (r - 1) := by
+    rw [← Real.rpow_neg_one v, ← Real.rpow_add hv, sub_eq_add_neg]
+  rw [hvr]; ring
+
+/-- **Uniform Lipschitz bound for `v ↦ v^r · log v`** on a compact positive
+interval `[a, b]` (`0 < a`), uniform over the exponent `r ∈ [r₀, r₁]`. Used
+in the `h_second` MVT step: the integrand `|u|^{q(τ)}·log|u|` is uniformly
+Lipschitz in the orbit value `|u| ∈ [a, b]` over `τ` near `s` (where
+`q(τ) ∈ [r₀, r₁]`), because strict positivity keeps both `v^{r-1}` and
+`log v` bounded. -/
+lemma exists_lipschitz_rpow_mul_log {a b r₀ r₁ : ℝ} (ha : 0 < a) :
+    ∃ L : ℝ, 0 ≤ L ∧ ∀ r ∈ Set.Icc r₀ r₁, ∀ v ∈ Set.Icc a b, ∀ w ∈ Set.Icc a b,
+      |w ^ r * Real.log w - v ^ r * Real.log v| ≤ L * |w - v| := by
+  -- The v-derivative `D r v := v^{r-1}·(r·log v + 1)`, continuous on the
+  -- compact box `[r₀,r₁]×[a,b]`, is bounded by some `L`.
+  set D : ℝ × ℝ → ℝ := fun p => p.2 ^ (p.1 - 1) * (p.1 * Real.log p.2 + 1) with hD_def
+  set box : Set (ℝ × ℝ) := Set.Icc r₀ r₁ ×ˢ Set.Icc a b with hbox_def
+  have hsnd_pos : ∀ p ∈ box, (0:ℝ) < p.2 := by
+    intro p hp; exact lt_of_lt_of_le ha (Set.mem_prod.mp hp).2.1
+  have hD_cont : ContinuousOn D box := by
+    refine ContinuousOn.mul ?_ ?_
+    · refine ContinuousOn.rpow continuousOn_snd
+        (continuousOn_fst.sub continuousOn_const) ?_
+      intro p hp; exact Or.inl (ne_of_gt (hsnd_pos p hp))
+    · refine ContinuousOn.add (ContinuousOn.mul continuousOn_fst ?_) continuousOn_const
+      refine Real.continuousOn_log.comp continuousOn_snd ?_
+      intro p hp; exact ne_of_gt (hsnd_pos p hp)
+  have hbox_cpt : IsCompact box := (isCompact_Icc).prod (isCompact_Icc)
+  -- Bound |D| on box by L := sup |D| (0 if box empty).
+  obtain ⟨L, hL_nn, hL⟩ : ∃ L : ℝ, 0 ≤ L ∧ ∀ p ∈ box, |D p| ≤ L := by
+    rcases box.eq_empty_or_nonempty with hempty | hne
+    · exact ⟨0, le_refl 0, fun p hp => absurd hp (by rw [hempty]; exact id)⟩
+    · obtain ⟨p₀, hp₀, hmax⟩ :=
+        hbox_cpt.exists_isMaxOn hne (continuous_abs.comp_continuousOn hD_cont)
+      exact ⟨|D p₀|, abs_nonneg _, fun p hp => hmax hp⟩
+  refine ⟨L, hL_nn, ?_⟩
+  intro r hr v hv w hw
+  -- Apply MVT bound on [a,b] (convex) with derivative D r ·.
+  have hbound : ∀ x ∈ Set.Icc a b, ‖D (r, x)‖ ≤ L := by
+    intro x hx
+    rw [Real.norm_eq_abs]
+    exact hL (r, x) (Set.mk_mem_prod hr hx)
+  have hderiv : ∀ x ∈ Set.Icc a b,
+      HasDerivWithinAt (fun w : ℝ => w ^ r * Real.log w) (D (r, x)) (Set.Icc a b) x := by
+    intro x hx
+    have hx_pos : 0 < x := lt_of_lt_of_le ha hx.1
+    exact (hasDerivAt_rpow_mul_log hx_pos).hasDerivWithinAt
+  have := (convex_Icc a b).norm_image_sub_le_of_norm_hasDerivWithin_le hderiv hbound hv hw
+  rwa [Real.norm_eq_abs, Real.norm_eq_abs] at this
+
 /-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
 everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
 Mathlib's finite-measure criterion, packaged for the bounded coefficient families used in the P2
