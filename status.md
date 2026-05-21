@@ -106,6 +106,21 @@
 > active sorries: 5 → **2** (`grossLogNorm_deriv_nonpos` / P3 algebra,
 > and the final `gross_lsi_implies_hypercontractive_of_hypotheses`
 > reduction). Full `lake build` green (3206 jobs).
+>
+> **Update (2026-05-21, P3 proved — `grossLogNorm_deriv_nonpos` ✅):**
+> The Gross cancellation `Λ'(s) ≤ 0` is now axiom-clean (`[propext,
+> Classical.choice, Quot.sound]`); `grossLogNorm_antitoneOn` is therefore
+> fully proved too — **the entire P2⊕P3 Gross-ODE spine is complete**.
+> Argument: LSI on `v=u^{q/2}` (`Ent(u^q) ≤ (2/ρ)E(v,v)`, entropy
+> a.e.-bridged from the `|orbit|^q` rep) + Stroock–Varopoulos
+> (generator-paired via `h_gen` ⇒ `Au` = orbit generator) ⇒
+> `2ρ(q-1)·Ent ≤ q²·E(u,u^{q-1})`, then `div_nonpos_iff` (F=0 trivial).
+> **`StroockVaropoulos._hq` relaxed `2 ≤ q` → `1 < q`** (the full range
+> the path `q(s)=1+(p-1)e^{2ρs}` visits for `p>1`; S–V holds throughout,
+> equality for gradient forms; no in-repo discharge yet — gaussian-hilbert's
+> W-step must target `q > 1`). GrossODE.lean active sorries: 2 → **1**
+> (only the final `eLpNorm↔∫·^q` hypercontractivity reduction). Full
+> `lake build` green (3206 jobs).
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
@@ -248,21 +263,20 @@ proved*, not axiomatized).
 `.lean` axioms (incl. the 3 Gross-discharge general axioms, 2
 remaining `EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
 axioms, the legacy abstract Gross/S–V trio, Dobrushin–Zegarliński,
-Schwartz-convolution, diamagnetic). 3 `sorry` declarations: **2 in
-`Abstract/GrossODE.lean`** (`grossLogNorm_deriv_nonpos` (P3 algebra)
-and the final `eLpNorm↔∫·^q` hypercontractivity reduction) + **1 in
-`TwoPoint.lean`** (quarantined, mathematically false for jump
-processes). **P2 is fully proved** — `grossPow_pos`, `grossEntropy_eq`,
-both general Leibniz lemmas, `grossPow_hasDerivWithinAt`,
-`grossLogNorm_hasDerivWithinAt`, and the `antitoneOn` continuity bridge
-are all complete theorems. Remaining Gross endgame: P3 algebra → final
-HC reduction.
+Schwartz-convolution, diamagnetic). 2 `sorry` declarations: **1 in
+`Abstract/GrossODE.lean`** (only the final `eLpNorm↔∫·^q`
+hypercontractivity reduction) + **1 in `TwoPoint.lean`** (quarantined,
+mathematically false for jump processes). **P2 and P3 are fully proved**
+— `grossPow_pos`, `grossEntropy_eq`, both general Leibniz lemmas,
+`grossPow_hasDerivWithinAt`, `grossLogNorm_hasDerivWithinAt`,
+`grossLogNorm_deriv_nonpos`, and `grossLogNorm_antitoneOn` are all
+complete theorems. Remaining Gross endgame: the final HC reduction.
 
 ## Project structure
 
 | Module | Files | Sorry's | Axioms | Description |
 |---|---|---|---|---|
-| Abstract/ | 7 | 2 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (3: +Stroock-Varopoulos; predicates + relocated theorem in `GrossODE.lean` — **P2 fully proved**; 2 WIP sorries = P3 algebra + final HC reduction), Borell-Herbst concentration |
+| Abstract/ | 7 | 1 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (3: +Stroock-Varopoulos; predicates + relocated theorem in `GrossODE.lean` — **P2 ⊕ P3 fully proved**; 1 WIP sorry = final HC reduction), Borell-Herbst concentration |
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |

@@ -169,7 +169,7 @@ MarkovSemigroups/
     LogSobolev.lean             -- Gross LSI, entropy decay
     HolleyStroock.lean          -- Bounded density perturbation of LSI
     Hypercontractivity.lean     -- DirichletMarkovSemigroup; LSI <-> hypercontractivity (Gross + Stroock-Varopoulos axioms + the 3 hypothesis predicates)
-    GrossODE.lean               -- Gross-ODE proof of LSI=>HC (P2 fully proved: grossPow/grossLogNorm_hasDerivWithinAt; WIP: 2 sorries = P3 algebra + final HC reduction)
+    GrossODE.lean               -- Gross-ODE proof of LSI=>HC (P2 ⊕ P3 fully proved: grossPow/grossLogNorm_hasDerivWithinAt, grossLogNorm_deriv_nonpos, grossLogNorm_antitoneOn; WIP: 1 sorry = final HC reduction)
     Concentration.lean          -- Borell-Herbst sub-Gaussian concentration from LSI
   Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
     CarreDuChamp.lean           -- BakryEmerySpace: Gamma, semigroup, curvature
