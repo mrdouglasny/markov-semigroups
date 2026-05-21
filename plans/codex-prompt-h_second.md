@@ -5,6 +5,56 @@
 **Build:** `lake build MarkovSemigroups.Abstract.GrossODE` (must stay green; no new axioms, no new sorries except the one you're replacing).
 **Branch:** `gross-grossPow-hasDerivWithinAt-body`.
 
+## STATUS UPDATE (2026-05-21): all helper lemmas now exist — this is pure assembly
+
+Every scalar/measure-theoretic ingredient for the MVT path is now proved
+axiom-free in this same file (above `grossPow_hasDerivWithinAt`). The
+remaining task is *only* to wire them into `h_second`. The helpers:
+
+```lean
+-- MVT with an unordered-interval witness:
+exists_hasDerivAt_eq_slope_uIcc {f f' : ℝ → ℝ} {a b : ℝ}
+  (hab : a ≠ b) (hfc : Continuous f) (hff' : ∀ x, HasDerivAt f (f' x) x) :
+  ∃ c ∈ Set.uIcc a b, (f b - f a) / (b - a) = f' c
+
+-- ∫|f| = (eLpNorm f 1).toReal:
+integral_abs_eq_eLpNorm_one_toReal (hf : Integrable (fun y => |f y|) ν) :
+  ∫ y, |f y| ∂ν = (eLpNorm f 1 ν).toReal
+
+-- probability space: eLpNorm·2 → 0  ⇒  ∫|·| → 0:
+tendsto_integral_abs_of_tendsto_eLpNorm_two_zero (ν) [IsProbabilityMeasure ν]
+  (F : ι → Y → ℝ) (hF_meas) (hF_int) (hF_two) :
+  Tendsto (fun i => ∫ y, |F i y| ∂ν) l (𝓝 0)
+
+-- (v^r·log v)' = v^{r-1}(r·log v + 1):
+hasDerivAt_rpow_mul_log {r v : ℝ} (hv : 0 < v) :
+  HasDerivAt (fun w => w ^ r * Real.log w) (v ^ (r - 1) * (r * Real.log v + 1)) v
+
+-- UNIFORM Lipschitz of v ↦ v^r·log v on [a,b] (0<a), uniform over r ∈ [r₀,r₁]:
+exists_lipschitz_rpow_mul_log {a b r₀ r₁ : ℝ} (ha : 0 < a) :
+  ∃ L : ℝ, 0 ≤ L ∧ ∀ r ∈ Set.Icc r₀ r₁, ∀ v ∈ Set.Icc a b, ∀ w ∈ Set.Icc a b,
+    |w ^ r * Real.log w - v ^ r * Real.log v| ≤ L * |w - v|
+
+-- CONTINUITY of the frozen-orbit log-integral at any τ₀:
+continuousAt_integral_rpow_mul_log (ν) [IsFiniteMeasure ν] {w : Y → ℝ}
+  (hw : AEStronglyMeasurable w ν) {ε M : ℝ} (hε : 0 < ε)
+  (hwε : ∀ᵐ y ∂ν, ε ≤ |w y|) (hwM : ∀ᵐ y ∂ν, |w y| ≤ M)
+  {a : ℝ → ℝ} (ha : Continuous a) (ha_pos : ∀ τ, 0 < a τ) (τ₀ : ℝ) :
+  ContinuousAt (fun τ => ∫ y, |w y| ^ a τ * Real.log |w y| ∂ν) τ₀
+```
+
+Plus the orbit a.e. lower bound `ε ≤ u_σ` is available via
+`MarkovSemigroup.orbit_lower_bound` (for σ ≥ 0), and the orbit `→ u_s`
+in L² via the within-derivative `hu_deriv.continuousWithinAt` (already
+in scope), which feeds `tendsto_integral_abs_of_tendsto_eLpNorm_two_zero`.
+
+So: build the MVT-witness `τ_σ` (via `exists_hasDerivAt_eq_slope_uIcc`,
+with the per-τ derivative `HasDerivAt (Hfun σ ·) (gfun σ τ) τ` coming from
+`hasDerivAt_integral_rpow_exponent` at frozen orbit `u_σ`), squeeze
+`τ_σ → s`, then bound `|gfun σ τ_σ − D2|` by the two brackets using
+`exists_lipschitz_rpow_mul_log` (first) and `continuousAt_integral_rpow_mul_log`
+(second). No new analysis needed.
+
 ## Task
 
 Inside the theorem `grossPow_hasDerivWithinAt`, in the `have h_chain` block,
