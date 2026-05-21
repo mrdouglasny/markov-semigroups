@@ -2325,14 +2325,113 @@ theorem gross_lsi_implies_hypercontractive_of_hypotheses
     (h_lsi : D.SatisfiesLogSobolev ρ)
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
-    (h_sv : StroockVaropoulos D) :
+    (h_sv : StroockVaropoulos D)
+    (h_approx : CoreLpL2Approx D) :
     D.toMarkovSemigroup.IsHypercontractive ρ := by
+  haveI : IsProbabilityMeasure D.μ := D.hμ
   refine ⟨hρ, ?_⟩
   intro p q t hp hpq ht hqt f hf_mem
-  -- Reduction (documented): `WLOG f ≥ 0` (replace by `|f|`); approximate
-  -- by core; identify `eLpNorm · (ofReal r)` with `(∫ ·^r)^{1/r}`;
-  -- then `‖P_t f‖_q ≤ ‖P_t f‖_{q(t)}` (probability measure, `q ≤ q(t)`
-  -- since `hqt`) `= exp (grossLogNorm … t) ≤ exp (grossLogNorm … 0)`
-  -- (by `GrossODE.grossLogNorm_antitoneOn` applied to `0 ≤ t`)
-  -- `= ‖f‖_p = ‖f‖_p`.
-  sorry
+  have hp1 : (1 : ℝ) ≤ p := hp.le
+  have hp1' : (1 : ℝ≥0∞) ≤ ENNReal.ofReal p := by
+    rw [← ENNReal.ofReal_one]; exact ENNReal.ofReal_le_ofReal hp1
+  have hq_pos : 0 < q := lt_of_lt_of_le (lt_trans one_pos hp) hpq
+  -- It suffices to prove the bound for nonnegative `f` (then `G1` handles `|f|`).
+  suffices hmain : ∀ (f₀ : Lp ℝ 2 D.μ), MemLp ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ →
+      0 ≤ f₀ → eLpNorm ((D.P t f₀ : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ
+        ≤ eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ by
+    -- ===== G1: WLOG `f ≥ 0`, replacing `f` by `|f|`. =====
+    have heq_abs : eLpNorm (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ
+        = eLpNorm ((f : X → ℝ)) (ENNReal.ofReal p) D.μ := by
+      have h1 : (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) =ᵐ[D.μ] fun x => ‖(f : X → ℝ) x‖ := by
+        filter_upwards [Lp.coeFn_abs f] with x hx; rw [hx, Real.norm_eq_abs]
+      exact (eLpNorm_congr_ae h1).trans (eLpNorm_norm _)
+    have habs_mem : MemLp (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ :=
+      ⟨Lp.aestronglyMeasurable _, by rw [heq_abs]; exact hf_mem.2⟩
+    -- `P_t` is monotone (positivity-preserving + linear).
+    have hP_mono : ∀ {a b : Lp ℝ 2 D.μ}, a ≤ b → D.P t a ≤ D.P t b := by
+      intro a b hab
+      have := D.P_positivity t ht.le (b - a) (sub_nonneg.mpr hab)
+      rw [map_sub] at this
+      exact sub_nonneg.mp this
+    have hf_le : D.P t f ≤ D.P t |f| := hP_mono (le_abs_self f)
+    have hf_ge : -(D.P t f) ≤ D.P t |f| := by rw [← map_neg]; exact hP_mono (neg_le_abs f)
+    have hae : ∀ᵐ x ∂D.μ, ‖((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) x‖
+        ≤ ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) x := by
+      filter_upwards [(Lp.coeFn_le _ _).mpr hf_le, (Lp.coeFn_le _ _).mpr hf_ge,
+        Lp.coeFn_neg (D.P t f)] with x h1 h2 h3
+      rw [Real.norm_eq_abs, abs_le]
+      have h2' : -(((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) x) ≤ ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) x := by
+        rwa [h3] at h2
+      exact ⟨by linarith, h1⟩
+    calc eLpNorm ((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ
+        ≤ eLpNorm ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ :=
+          eLpNorm_mono_ae_real hae
+      _ ≤ eLpNorm (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ :=
+          hmain |f| habs_mem (abs_nonneg f)
+      _ = eLpNorm ((f : X → ℝ)) (ENNReal.ofReal p) D.μ := heq_abs
+  -- ===== nonnegative case (G2–G4). =====
+  intro f₀ hf₀_mem hf₀_nn
+  obtain ⟨g, hg, hg_pos, hg_Lp, hg_L2⟩ := h_approx hp1 f₀ hf₀_mem hf₀_nn
+  -- `coreToL2 (hg n) → f₀` in `L²`, hence `P_t (coreToL2 (hg n)) → P_t f₀` in `L²`.
+  have hpern : ∀ n, eLpNorm (((D.coreToL2 (hg n)) : X → ℝ) - (f₀ : X → ℝ)) (2 : ℝ≥0∞) D.μ
+      = eLpNorm ((f₀ : X → ℝ) - g n) (2 : ℝ≥0∞) D.μ := by
+    intro n
+    have hcoe : ((D.coreToL2 (hg n)) : X → ℝ) =ᵐ[D.μ] g n := (D.IsCore_memLp (hg n)).coeFn_toLp
+    have h1 : (((D.coreToL2 (hg n)) : X → ℝ) - (f₀ : X → ℝ)) =ᵐ[D.μ] (g n - (f₀ : X → ℝ)) := by
+      filter_upwards [hcoe] with x hx; simp only [Pi.sub_apply, hx]
+    rw [eLpNorm_congr_ae h1,
+      show (g n - (f₀ : X → ℝ)) = -((f₀ : X → ℝ) - g n) from (neg_sub _ _).symm, eLpNorm_neg]
+  have h_ctL2 : Filter.Tendsto (fun n => D.coreToL2 (hg n)) Filter.atTop (nhds f₀) := by
+    refine (Lp.tendsto_Lp_iff_tendsto_eLpNorm' (fun n => D.coreToL2 (hg n)) f₀).mpr ?_
+    simp_rw [hpern]; exact hg_L2
+  have h_orbit : Filter.Tendsto (fun n => D.P t (D.coreToL2 (hg n))) Filter.atTop
+      (nhds (D.P t f₀)) := ((D.P t).continuous.tendsto f₀).comp h_ctL2
+  obtain ⟨ns, hns_mono, hns_ae⟩ :=
+    (tendstoInMeasure_of_tendsto_Lp h_orbit).exists_seq_tendsto_ae
+  -- Fatou / lower semicontinuity of `eLpNorm` under a.e. convergence.
+  have hconv : ∀ z : X → ℝ, eLpNorm z (ENNReal.ofReal q) D.μ = eLpNorm' z q D.μ := fun z => by
+    rw [eLpNorm_eq_eLpNorm' (by positivity) ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq_pos.le]
+  have h_fatou := Lp.eLpNorm'_lim_le_liminf_eLpNorm' (μ := D.μ) (p := q) hq_pos
+    (fun k => Lp.aestronglyMeasurable (D.P t (D.coreToL2 (hg (ns k))))) hns_ae
+  simp_rw [← hconv] at h_fatou
+  -- Termwise core bound (G3) and triangle inequality (for G4).
+  have h_termwise : ∀ k, eLpNorm ((D.P t (D.coreToL2 (hg (ns k))) : Lp ℝ 2 D.μ) : X → ℝ)
+      (ENNReal.ofReal q) D.μ ≤ eLpNorm (g (ns k)) (ENNReal.ofReal p) D.μ := by
+    intro k
+    obtain ⟨ε, hε, hεg⟩ := hg_pos (ns k)
+    have hne : ¬ g (ns k) =ᵐ[D.μ] 0 := by
+      intro hcontra
+      have h0 : ∀ᵐ x ∂D.μ, ε ≤ (0 : ℝ) := by
+        filter_upwards [hcontra] with x hx
+        have hgx : g (ns k) x = 0 := by simpa using hx
+        rw [← hgx]; exact hεg x
+      obtain ⟨x, hx⟩ := h0.exists; exact absurd hx (not_le.mpr hε)
+    have hbound := GrossODE.eLpNorm_orbit_le_of_core_pos D ρ p hρ hp h_lsi h_core h_gen h_sv
+      (hg (ns k)) (fun x => le_trans hε.le (hεg x)) hne
+      ⟨ε, hε, Filter.Eventually.of_forall hεg⟩ ht hpq hqt
+    have hcoe : ((D.coreToL2 (hg (ns k))) : X → ℝ) =ᵐ[D.μ] g (ns k) :=
+      (D.IsCore_memLp (hg (ns k))).coeFn_toLp
+    rwa [eLpNorm_congr_ae hcoe] at hbound
+  have htri : ∀ k, eLpNorm (g (ns k)) (ENNReal.ofReal p) D.μ
+      ≤ eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
+        + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ := by
+    intro k
+    have hsub := eLpNorm_sub_le (μ := D.μ) (p := ENNReal.ofReal p) (Lp.aestronglyMeasurable f₀)
+      ((Lp.aestronglyMeasurable f₀).sub (D.IsCore_memLp (hg (ns k))).aestronglyMeasurable) hp1'
+    rwa [show (f₀ : X → ℝ) - ((f₀ : X → ℝ) - g (ns k)) = g (ns k) from sub_sub_cancel _ _] at hsub
+  -- `b k → ‖f₀‖_p` since `‖f₀ - g (ns k)‖_p → 0`.
+  have hb_tendsto : Filter.Tendsto
+      (fun k => eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
+        + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ) Filter.atTop
+      (nhds (eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ)) := by
+    have h1 := hg_Lp.comp hns_mono.tendsto_atTop
+    simpa using tendsto_const_nhds.add h1
+  -- Assemble: `‖P_t f₀‖_q ≤ liminf ‖orbit‖_q ≤ liminf b = ‖f₀‖_p`.
+  refine le_trans h_fatou ?_
+  calc Filter.atTop.liminf (fun k => eLpNorm
+        ((D.P t (D.coreToL2 (hg (ns k))) : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ)
+      ≤ Filter.atTop.liminf (fun k => eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
+          + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ) :=
+        Filter.liminf_le_liminf
+          (Filter.Eventually.of_forall (fun k => le_trans (h_termwise k) (htri k)))
+    _ = eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ := hb_tendsto.liminf_eq

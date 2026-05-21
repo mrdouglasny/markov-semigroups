@@ -723,6 +723,26 @@ def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
         D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
       ≤ ⟪D.coreToL2 hu_one, - Au⟫_ℝ
 
+/-- **Core `L^p`/`L²` density** (per-instance hypothesis, Gemini-vetted
+2026-05-21 — `plans/corelpapprox-vetting.md`). Every nonnegative
+`f ∈ L²(μ) ∩ L^p(μ)` is approximated by a sequence of *core, pointwise
+strictly-positive* functions `gₙ` converging to `f` in **both** `L^p` and
+`L²`. This is the density input the abstract structure cannot supply; the
+orbit convergence needed for hypercontractivity is recovered abstractly from
+`L²`-contraction of the semigroup (so neither `t` nor `P_t` appears here).
+Discharged per instance — e.g. for the Gaussian/OU semigroup by mollified
+bounded truncations `+ 1/n` (smooth, bounded, `≥ 1/n` everywhere, hence
+core and pointwise strictly positive). -/
+def CoreLpL2Approx (D : DirichletMarkovSemigroup X) : Prop :=
+  ∀ {p : ℝ}, 1 ≤ p → ∀ (f : Lp ℝ 2 D.μ),
+    MemLp ((f : X → ℝ)) (ENNReal.ofReal p) D.μ → 0 ≤ f →
+    ∃ (g : ℕ → X → ℝ) (_hg : ∀ n, D.IsCore (g n)),
+      (∀ n, ∃ ε : ℝ, 0 < ε ∧ ∀ x, ε ≤ g n x) ∧
+      Filter.Tendsto (fun n => eLpNorm ((f : X → ℝ) - g n) (ENNReal.ofReal p) D.μ)
+        Filter.atTop (nhds 0) ∧
+      Filter.Tendsto (fun n => eLpNorm ((f : X → ℝ) - g n) 2 D.μ)
+        Filter.atTop (nhds 0)
+
 /-! **Gross 1975, Theorem 1 — hypothesis-parameterised (Route A
 target).** The predicates `CoreSemigroupInvariant` / `GeneratorCompat`
 / `StroockVaropoulos` (above) live here; the **theorem and its proof**
