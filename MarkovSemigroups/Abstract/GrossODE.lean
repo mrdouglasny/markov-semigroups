@@ -1679,6 +1679,48 @@ theorem grossPow_hasDerivWithinAt
     have h_second : Filter.Tendsto
         (fun σ => (Hfun σ σ - Hfun σ s) / (σ - s))
         (nhdsWithin s (Set.Ici 0 \ {s})) (nhds D2) := by
+      set l : Filter ℝ := nhdsWithin s (Set.Ici 0 \ {s}) with hl_def
+      -- ε ≤ Mf (nonempty probability space + the a.e. bounds).
+      have hεMf : ε ≤ Mf := by
+        obtain ⟨y, hy⟩ := (hu_s_ge_ε.and hu_s_le_Mf).exists
+        exact le_trans hy.1 (le_trans (le_abs_self _) hy.2)
+      -- τ-derivative of `Hfun σ ·` at every τ, for σ ≥ 0 (frozen-orbit rpow DCT).
+      have h_tau_deriv : ∀ σ : ℝ, σ ∈ Set.Ici (0:ℝ) → ∀ τ : ℝ,
+          HasDerivAt (fun t => Hfun σ t) (gfun σ τ) τ := by
+        intro σ hσ τ
+        have hbd : ∀ᵐ y ∂D.μ,
+            |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ≤ Mf :=
+          D.toMarkovSemigroup.Linfty_contraction hσ hf_Lp_le_Mf
+        exact hasDerivAt_integral_rpow_exponent D.μ (Lp.aestronglyMeasurable _) hbd
+          (contDiff_grossExponent ρ p (n := 1)) (hasDerivAt_grossExponent ρ p τ)
+          (fun σ' => grossExponent_pos hp ρ σ')
+      -- MVT-in-τ: eventually-σ, the off-diagonal slope = gfun σ c for some c ∈ uIcc s σ.
+      have h_mvt : ∀ σ : ℝ, σ ∈ Set.Ici (0:ℝ) → σ ≠ s →
+          ∃ c ∈ Set.uIcc s σ, (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ c := by
+        intro σ hσ hσs
+        have hdiff : Differentiable ℝ (fun t => Hfun σ t) :=
+          fun t => (h_tau_deriv σ hσ t).differentiableAt
+        exact exists_hasDerivAt_eq_slope_uIcc (Ne.symm hσs) hdiff.continuous
+          (fun τ => h_tau_deriv σ hσ τ)
+      -- L¹ orbit convergence: ∫|u_σ − u_s| → 0 as σ → s.
+      have h_orbit_L1 : Filter.Tendsto
+          (fun σ => ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+              - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ) l (nhds 0) := by
+        sorry
+      -- Continuity of `gfun s ·` at s.
+      have hwε : ∀ᵐ y ∂D.μ, ε ≤ |u_s_func y| := by
+        filter_upwards [hu_s_ge_ε] with y hy
+        rw [abs_of_nonneg (le_trans hε_pos.le hy)]; exact hy
+      have h_gfun_s_cont : ContinuousAt (fun τ => gfun s τ) s := by
+        show ContinuousAt (fun τ => 2 * ρ * (grossExponent ρ p τ - 1)
+          * ∫ y, |u_s_func y| ^ grossExponent ρ p τ * Real.log |u_s_func y| ∂D.μ) s
+        refine ContinuousAt.mul ?_ ?_
+        · exact (continuous_const.mul
+            ((contDiff_grossExponent ρ p (n := 1)).continuous.sub continuous_const)).continuousAt
+        · exact continuousAt_integral_rpow_mul_log D.μ hu_s_aesm hε_pos hwε hu_s_le_Mf
+            (contDiff_grossExponent ρ p (n := 1)).continuous
+            (fun τ => grossExponent_pos hp ρ τ) s
+      -- Final assembly: slope = gfun σ c → gfun s s = D2.
       sorry
     -- Combine.
     have h_sum := h_first.add h_second
