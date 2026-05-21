@@ -700,6 +700,77 @@ lemma exists_lipschitz_rpow_mul_log {a b r₀ r₁ : ℝ} (ha : 0 < a) :
   have := (convex_Icc a b).norm_image_sub_le_of_norm_hasDerivWithin_le hderiv hbound hv hw
   rwa [Real.norm_eq_abs, Real.norm_eq_abs] at this
 
+/-- **Continuity of the frozen-orbit log-integral.** For a measurable `w` that
+is bounded away from `0` and `∞` (`ε ≤ |w| ≤ M` a.e., `ε > 0`) on a finite
+measure space, and a continuous exponent path `a`, the map
+`τ ↦ ∫ |w|^{a τ} · log|w|` is continuous at every `τ₀`. This is the
+continuity-at-`s` half of the `h_second` MVT step (DCT: the strict bounds
+`ε ≤ |w| ≤ M` dominate the integrand by a constant). -/
+lemma continuousAt_integral_rpow_mul_log {Y : Type*} [MeasurableSpace Y]
+    (ν : Measure Y) [IsFiniteMeasure ν] {w : Y → ℝ}
+    (hw : AEStronglyMeasurable w ν) {ε M : ℝ} (hε : 0 < ε)
+    (hwε : ∀ᵐ y ∂ν, ε ≤ |w y|) (hwM : ∀ᵐ y ∂ν, |w y| ≤ M)
+    {a : ℝ → ℝ} (ha : Continuous a) (ha_pos : ∀ τ, 0 < a τ) (τ₀ : ℝ) :
+    ContinuousAt (fun τ => ∫ y, |w y| ^ a τ * Real.log |w y| ∂ν) τ₀ := by
+  set logB : ℝ := max |Real.log ε| |Real.log M| with hlogB_def
+  have hlogB_nn : 0 ≤ logB := le_trans (abs_nonneg _) (le_max_left _ _)
+  set C : ℝ := Real.exp ((|a τ₀| + 1) * logB) * logB with hC_def
+  -- Per-`y` continuity in `τ`.
+  have h_cont : ∀ᵐ y ∂ν,
+      ContinuousAt (fun τ => |w y| ^ a τ * Real.log |w y|) τ₀ := by
+    filter_upwards [hwε] with y hy
+    have hpos : 0 < |w y| := lt_of_lt_of_le hε hy
+    have h1 : Continuous (fun τ => |w y| ^ a τ) :=
+      (Real.continuous_const_rpow (ne_of_gt hpos)).comp ha
+    exact (h1.mul continuous_const).continuousAt
+  -- Domination by the constant `C`, eventually in `τ`.
+  have h_bound : ∀ᶠ τ in nhds τ₀, ∀ᵐ y ∂ν,
+      ‖|w y| ^ a τ * Real.log |w y|‖ ≤ C := by
+    have ha_loc : ∀ᶠ τ in nhds τ₀, |a τ| ≤ |a τ₀| + 1 := by
+      have : Filter.Tendsto (fun τ => |a τ|) (nhds τ₀) (nhds |a τ₀|) :=
+        (ha.continuousAt).abs
+      exact this.eventually_le_const (by linarith)
+    filter_upwards [ha_loc] with τ haτ
+    filter_upwards [hwε, hwM] with y hyε hyM
+    set t : ℝ := |w y| with ht_def
+    have hpos : 0 < t := lt_of_lt_of_le hε hyε
+    -- |log t| ≤ logB.
+    have hlog_le : |Real.log t| ≤ logB := by
+      rcases le_or_gt 1 t with h1le | h1lt
+      · have hub : Real.log t ≤ Real.log M := Real.log_le_log hpos hyM
+        have hge : 0 ≤ Real.log t := Real.log_nonneg h1le
+        rw [abs_of_nonneg hge]
+        exact le_trans (le_trans hub (le_abs_self _)) (le_max_right _ _)
+      · have hle0 : Real.log t ≤ 0 := Real.log_nonpos hpos.le h1lt.le
+        have hge : Real.log ε ≤ Real.log t := Real.log_le_log hε hyε
+        rw [abs_of_nonpos hle0]
+        have hneg : -Real.log t ≤ -Real.log ε := by linarith
+        exact le_trans (le_trans hneg (neg_le_abs _)) (le_max_left _ _)
+    -- t^{a τ} ≤ exp((|a τ₀|+1)·logB).
+    have hpow_le : t ^ a τ ≤ Real.exp ((|a τ₀| + 1) * logB) := by
+      rw [Real.rpow_def_of_pos hpos]
+      apply Real.exp_le_exp.mpr
+      calc Real.log t * a τ ≤ |Real.log t * a τ| := le_abs_self _
+        _ = |Real.log t| * |a τ| := abs_mul _ _
+        _ ≤ logB * (|a τ₀| + 1) :=
+            mul_le_mul hlog_le haτ (abs_nonneg _) hlogB_nn
+        _ = (|a τ₀| + 1) * logB := by ring
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (Real.rpow_nonneg hpos.le _)]
+    calc t ^ a τ * |Real.log t|
+        ≤ Real.exp ((|a τ₀| + 1) * logB) * logB :=
+          mul_le_mul hpow_le hlog_le (abs_nonneg _) (Real.exp_pos _).le
+      _ = C := rfl
+  -- Measurability.
+  have hF_meas : ∀ᶠ τ in nhds τ₀,
+      AEStronglyMeasurable (fun y => |w y| ^ a τ * Real.log |w y|) ν := by
+    filter_upwards with τ
+    refine AEStronglyMeasurable.mul ?_ ?_
+    · exact (continuous_abs.rpow_const
+        (fun _ => Or.inr (ha_pos τ).le)).comp_aestronglyMeasurable hw
+    · exact (Real.measurable_log.comp_aemeasurable
+        (continuous_abs.comp_aestronglyMeasurable hw).aemeasurable).aestronglyMeasurable
+  exact continuousAt_of_dominated hF_meas h_bound (integrable_const C) h_cont
+
 /-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
 everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
 Mathlib's finite-measure criterion, packaged for the bounded coefficient families used in the P2
