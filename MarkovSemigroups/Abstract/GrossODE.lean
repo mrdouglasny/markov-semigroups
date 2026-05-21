@@ -1706,7 +1706,34 @@ theorem grossPow_hasDerivWithinAt
       have h_orbit_L1 : Filter.Tendsto
           (fun σ => ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
               - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ) l (nhds 0) := by
-        sorry
+        have h_orbit_cont : Filter.Tendsto (fun σ => D.P σ (D.coreToL2 hf)) l
+            (nhds (D.P s (D.coreToL2 hf))) :=
+          (hu_deriv.continuousWithinAt).mono_left (nhdsWithin_mono _ Set.diff_subset)
+        have h_dist : Filter.Tendsto
+            (fun σ => dist (D.P σ (D.coreToL2 hf)) (D.P s (D.coreToL2 hf))) l (nhds 0) :=
+          tendsto_iff_dist_tendsto_zero.mp h_orbit_cont
+        have h_eLp : Filter.Tendsto
+            (fun σ => eLpNorm (fun y =>
+              ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+                - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y) 2 D.μ) l (nhds 0) := by
+          have heq : (fun σ => eLpNorm (fun y =>
+              ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+                - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y) 2 D.μ)
+              = fun σ => ENNReal.ofReal
+                  (dist (D.P σ (D.coreToL2 hf)) (D.P s (D.coreToL2 hf))) := by
+            funext σ
+            rw [Lp.dist_def, ENNReal.ofReal_toReal
+              ((MemLp.sub (Lp.memLp _) (Lp.memLp _)).eLpNorm_lt_top.ne)]
+            rfl
+          rw [heq]
+          simpa using (ENNReal.continuous_ofReal.tendsto 0).comp h_dist
+        exact tendsto_integral_abs_of_tendsto_eLpNorm_two_zero D.μ
+          (fun σ y => ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+            - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y)
+          (fun σ => (Lp.aestronglyMeasurable _).sub (Lp.aestronglyMeasurable _))
+          (Filter.Eventually.of_forall fun σ =>
+            ((MemLp.sub (Lp.memLp _) (Lp.memLp _)).integrable one_le_two).abs)
+          h_eLp
       -- Continuity of `gfun s ·` at s.
       have hwε : ∀ᵐ y ∂D.μ, ε ≤ |u_s_func y| := by
         filter_upwards [hu_s_ge_ε] with y hy
