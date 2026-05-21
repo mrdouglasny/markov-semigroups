@@ -123,6 +123,19 @@
 > active sorries: 2 → **1**
 > (only the final `eLpNorm↔∫·^q` hypercontractivity reduction). Full
 > `lake build` green (3206 jobs).
+>
+> **Update (2026-05-21, core+positive HC bound ✅):** new theorem
+> `eLpNorm_orbit_le_of_core_pos` (axiom-clean) — the Gross "last mile":
+> for core `f` with `f ≥ ε > 0` a.e., `f ≢ 0`, `1 < p ≤ q ≤ q(t)`,
+> `‖P_t f‖_q ≤ ‖f‖_p`. Combines `L^q ≤ L^{q(t)}` monotonicity (prob
+> measure) + the identity `‖P_s f‖_{q(s)} = ofReal(exp Λ(s))`
+> (`MemLp.eLpNorm_eq_integral_rpow_norm` + `grossPow>0` +
+> `rpow_def_of_pos`) + `grossLogNorm_antitoneOn` (Λ(t) ≤ Λ(0),
+> Λ(0)=log‖f‖_p). The single remaining `GrossODE.lean` sorry
+> (`gross_lsi_implies_hypercontractive_of_hypotheses`) now reduces to
+> **only** the general-`f` extension via core density in `L^p`
+> (semigroup acts on `L²` vs the `L^p→L^q` bound — needs a 4th
+> density-style hypothesis predicate). Full `lake build` green (3206).
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
