@@ -174,7 +174,7 @@ def grossLogNormDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
           (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
             ^ grossExponent ρ p s)
     - D.energy (orbitCoreRep D hf h_core s)
-        (fun x => |orbitCoreRep D hf h_core s x|
+        (fun x => orbitCoreRep D hf h_core s x
           ^ (grossExponent ρ p s - 1))
       / grossPow D hf ρ p s
 
@@ -195,7 +195,7 @@ def grossPowDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
   2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s
     - grossExponent ρ p s
         * D.energy (orbitCoreRep D hf h_core s)
-            (fun x => |orbitCoreRep D hf h_core s x|
+            (fun x => orbitCoreRep D hf h_core s x
               ^ (grossExponent ρ p s - 1))
 
 /-- `F(s) = ∫ |u_s|^{q(s)} > 0`. Holds whenever
@@ -1952,7 +1952,67 @@ theorem grossPow_hasDerivWithinAt
   -- Energy identification: D1 = -q · D.energy(u_s, u_s^{q-1}), hence
   -- D1 + D2 = grossPowDeriv.
   have h_energy : D1 + D2 = grossPowDeriv D hf h_core ρ p s := by
-    sorry
+    -- The orbit's core (smooth) representative `g'` and its defining data.
+    obtain ⟨hg', horb⟩ := orbitCoreRep_spec D hf h_core hs
+    set g' : X → ℝ := orbitCoreRep D hf h_core s with hg'_def
+    have hg'_ae : (D.coreToL2 hg' : X → ℝ) =ᵐ[D.μ] g' := (D.IsCore_memLp hg').coeFn_toLp
+    have horb_ae : u_s_func =ᵐ[D.μ] g' := by
+      rw [hu_s_func_def, horb]; exact hg'_ae
+    have hg'_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ g' y := by
+      filter_upwards [hu_s_ge_ε, horb_ae] with y h1 h2; rw [← h2]; exact h1
+    -- `g'^{q-1}` is a core function (strict-positive rpow closure).
+    have hg'pow : D.IsCore (fun x => g' x ^ (q - 1)) :=
+      D.IsCore_rpow_pos_strict hg' hε_pos hg'_ge_ε (q - 1)
+    have hg'pow_ae : (D.coreToL2 hg'pow : X → ℝ) =ᵐ[D.μ] fun x => g' x ^ (q - 1) :=
+      (D.IsCore_memLp hg'pow).coeFn_toLp
+    -- The generator `Ag'` of the orbit, with its form pairing.
+    obtain ⟨Ag', hAg'_tendsto, hAg'_pair⟩ := h_gen hg'
+    -- `P_s Af = Ag'`: both are the strong-`L²` right derivative of `t ↦ P_t(orbit)`.
+    have hAeq : D.P s Af = Ag' := by
+      have hcomp := ((D.P s).continuous.tendsto Af).comp hAf_tendsto
+      have h1 : Filter.Tendsto
+          (fun t : ℝ => t⁻¹ • (D.P t (D.coreToL2 hg') - D.coreToL2 hg'))
+          (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (D.P s Af)) := by
+        refine Filter.Tendsto.congr' ?_ hcomp
+        filter_upwards [self_mem_nhdsWithin] with t ht
+        have hcommute : D.P s (D.P t (D.coreToL2 hf)) = D.P t (D.P s (D.coreToL2 hf)) := by
+          rw [← ContinuousLinearMap.comp_apply, ← ContinuousLinearMap.comp_apply,
+            ← D.P_semigroup s t hs ht.le, ← D.P_semigroup t s ht.le hs, add_comm s t]
+        simp only [Function.comp_apply]
+        rw [map_smul, map_sub, ← horb, hcommute]
+      exact tendsto_nhds_unique h1 hAg'_tendsto
+    -- `D1 = q · ∫ (u_s)^{q-1}·(P_s Af)` (rpow derivative, pull out `q`).
+    have hstep1 : D1 = q * ∫ y, (u_s_func y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ := by
+      rw [hD1_def, ← integral_const_mul]
+      refine integral_congr_ae ?_
+      filter_upwards with y
+      have hderiv : deriv (fun x : ℝ => x ^ q) (u_s_func y) = q * (u_s_func y) ^ (q - 1) :=
+        congrFun (Real.deriv_rpow_const' (p := q)) (u_s_func y)
+      rw [hderiv]; ring
+    -- Bridge the integrand to the core rep `g'` (a.e.).
+    have hbridge : (∫ y, (u_s_func y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ)
+        = ∫ y, (g' y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ := by
+      refine integral_congr_ae ?_
+      filter_upwards [horb_ae] with y hy; rw [hy]
+    -- The integral is the `L²` pairing with `coreToL2 (g'^{q-1})`.
+    have h_inner_eq : (∫ y, (g' y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ)
+        = @inner ℝ (Lp ℝ 2 D.μ) _ (D.coreToL2 hg'pow) (D.P s Af) := by
+      rw [MeasureTheory.L2.inner_def]
+      refine integral_congr_ae ?_
+      filter_upwards [hg'pow_ae] with y hy
+      rw [hy]
+      show (g' y) ^ (q - 1) * (D.P s Af : X → ℝ) y
+          = (D.P s Af : X → ℝ) y * (g' y) ^ (q - 1)
+      ring
+    -- Assemble: `D1 = -q · E(g', g'^{q-1})`.
+    have hD1_eq : D1 = - q * D.energy g' (fun x => g' x ^ (q - 1)) := by
+      rw [hstep1, hbridge, h_inner_eq, hAeq, hAg'_pair hg'pow,
+        D.energy_symm (fun x => g' x ^ (q - 1)) g']
+      ring
+    rw [hD1_eq, hD2_def]
+    unfold grossPowDeriv
+    rw [← hq_def, ← hg'_def]
+    ring
   rw [← h_energy]
   -- grossPow D hf ρ p = fun σ => Hfun σ σ (def-eq).
   exact h_chain
