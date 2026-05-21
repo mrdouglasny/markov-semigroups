@@ -1,3 +1,5 @@
+> **📦 ARCHIVED 2026-05-21 — work complete (GrossODE.lean is sorry-free). Retained for provenance; see [`../history.md`](../history.md).**
+
 # Vetting request: relaxing the Stroock–Varopoulos exponent hypothesis from `2 ≤ q` to `1 < q`
 
 **For:** deep-think external review.

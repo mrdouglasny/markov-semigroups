@@ -1,3 +1,5 @@
+> **📦 ARCHIVED 2026-05-21 — work complete (GrossODE.lean is sorry-free). Retained for provenance; see [`../history.md`](../history.md).**
+
 # Codex prompt — fill `h_energy` (energy identification) in grossPow_hasDerivWithinAt
 
 **Repo:** `markov-semigroups` (Lean 4 + Mathlib).

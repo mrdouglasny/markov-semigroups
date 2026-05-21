@@ -1,3 +1,5 @@
+> **📦 ARCHIVED 2026-05-21 — work complete (GrossODE.lean is sorry-free). Retained for provenance; see [`../history.md`](../history.md).**
+
 # Discharge plan: `hasDerivWithinAt_integral_of_strongL2Deriv`
 
 The P2 Leibniz kernel — the single remaining genuinely-new analytic

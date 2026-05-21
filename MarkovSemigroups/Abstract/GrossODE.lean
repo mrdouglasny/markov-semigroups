@@ -1412,7 +1412,7 @@ Stated with no project definitions; Mathlib-upstreamable once proved.
 **Status: ✅ proved (axiom-free) — Bochner-Leibniz via the
 `averagedDerivField` toolkit (factorization, AE-bound, AE-measurability,
 MemLp 2, Vitali-driven `eLpNorm`→0). Discharge plan archived at
-`plans/p2-strongL2-leibniz-discharge.md`. ~150 L body (9 steps);
+`plans/archive/p2-strongL2-leibniz-discharge.md`. ~150 L body (9 steps);
 9 toolkit lemmas in this file feed it. Mathlib-upstreamable. -/
 theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
@@ -1635,7 +1635,7 @@ theorem grossPow_hasDerivWithinAt
     -- Path A: strictly-positive hypothesis (Gemini-vetted 2026-05-20).
     -- Lets us avoid the regularity-at-zero issue with `u_s^{q-1}` for
     -- non-integer `q-1` — on `[ε, ∞)`, `x ↦ x^{q-1}` is C^∞.
-    -- See `plans/gross-design-strictly-positive-escape.md` §4.
+    -- See `plans/archive/gross-design-strictly-positive-escape.md` §4.
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 ≤ s) :
     HasDerivWithinAt (grossPow D hf ρ p)

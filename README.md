@@ -529,13 +529,13 @@ multi-stage program. Workstream-level roadmaps and design decisions:
 - [`plans/gross-discharge.md`](plans/gross-discharge.md) — overall
   Route A roadmap (H0/G1/G2/P2/P3/W workstreams). H0, G1, G2 ✅;
   P2 Leibniz kernel ✅ (2026-05-20).
-- [`plans/p2-strongL2-leibniz-discharge.md`](plans/p2-strongL2-leibniz-discharge.md)
+- [`plans/archive/p2-strongL2-leibniz-discharge.md`](plans/archive/p2-strongL2-leibniz-discharge.md)
   — discharge plan for the P2 Bochner-Leibniz kernel.
-- [`plans/grosspow-hasderivwithinAt-structural-blockers.md`](plans/grosspow-hasderivwithinAt-structural-blockers.md)
+- [`plans/archive/grosspow-hasderivwithinAt-structural-blockers.md`](plans/archive/grosspow-hasderivwithinAt-structural-blockers.md)
   — analysis of the 4 structural blockers encountered while
   composing `grossPow_hasDerivWithinAt`; 3 of 4 discharged from
   existing structure fields (2026-05-20).
-- [`plans/gross-design-strictly-positive-escape.md`](plans/gross-design-strictly-positive-escape.md)
+- [`plans/archive/gross-design-strictly-positive-escape.md`](plans/archive/gross-design-strictly-positive-escape.md)
   — design decision (Path A vs Path B) for the remaining Blocker 3.
   Gemini-vetted; Path A (strictly-positive escape, matching Gross
   1975's original proof structure) chosen.

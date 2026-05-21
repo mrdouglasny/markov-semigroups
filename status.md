@@ -63,7 +63,7 @@
 > corrected form is `h_u_bound` orbit-bound (not `ψ'`-at-`s`).
 > Statement uses only Mathlib definitions → Mathlib-upstreamable.
 > Full `lake build` green (3206 jobs). See
-> `plans/p2-strongL2-leibniz-discharge.md` and
+> `plans/archive/p2-strongL2-leibniz-discharge.md` and
 > `plans/gross-discharge.md`. Remaining for full Gross discharge:
 > P3 algebra (~200–400 L), W rewire (~10–30 L), Phase 4
 > `stroock_varopoulos`. **Today's closures (2026-05-20):** Steps 8 & 9
@@ -118,7 +118,7 @@
 > **`StroockVaropoulos._hq` relaxed `2 ≤ q` → `1 < q`** (the full range
 > the path `q(s)=1+(p-1)e^{2ρs}` visits for `p>1`; S–V holds throughout,
 > equality for gradient forms; **deep-think vetted 2026-05-21, rating
-> Standard — `plans/sv-q-relaxation-vetting.md`**; no in-repo discharge
+> Standard — `plans/archive/sv-q-relaxation-vetting.md`**; no in-repo discharge
 > yet — gaussian-hilbert's W-step must target `q > 1`). GrossODE.lean
 > active sorries: 2 → **1**
 > (only the final `eLpNorm↔∫·^q` hypercontractivity reduction). Full
@@ -144,7 +144,7 @@
 > hypothesis-parameterised Gross theorem (LSI ⇒ hypercontractivity) takes
 > the four per-instance predicates `CoreSemigroupInvariant` /
 > `GeneratorCompat` / `StroockVaropoulos` / **`CoreLpL2Approx`** (the new
-> 4th, deep-think vetted — `plans/corelpapprox-vetting.md`). Final
+> 4th, deep-think vetted — `plans/archive/corelpapprox-vetting.md`). Final
 > reduction: G1 WLOG `f≥0` (`|f|` Lp lattice + `P_positivity`
 > monotonicity), G2 core `L²`-approx ⇒ orbit `L²`-convergence ⇒
 > a.e.-subsequence (`tendstoInMeasure_of_tendsto_Lp` +

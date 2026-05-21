@@ -512,7 +512,7 @@ structure DirichletMarkovSemigroup (X : Type*) [MeasurableSpace X]
   is the standard "Markovian core" closure under smooth functional
   calculus, restricted to strictly positive elements (which is all we
   need for the Gross argument — see
-  `plans/gross-design-strictly-positive-escape.md`). Note that the
+  `plans/archive/gross-design-strictly-positive-escape.md`). Note that the
   axiom uses `Real.rpow` directly (the syntactic form appearing in
   `grossPow`), so no a.e./pointwise bridging is needed; the null set
   where `f y ≤ 0` is benign because `rpow_def_of_neg` matches the
@@ -707,7 +707,7 @@ Gross interpolation path `q(s) = 1+(p-1)e^{2ρs}` visits for `p > 1`, and
 S–V holds throughout: for diffusion/gradient forms it is in fact an
 equality `(4(q-1)/q²)Γ(u^{q/2}) = Γ(u,u^{q-1})`. The `2 ≤ q → 1 < q`
 relaxation is deep-think vetted, rating Standard — see
-`plans/sv-q-relaxation-vetting.md`); `_`-prefixed per the
+`plans/archive/sv-q-relaxation-vetting.md`); `_`-prefixed per the
 Mathlib convention for binders required by the statement's shape but
 not referenced in the body — the discharger still supplies them
 positionally. -/
@@ -724,7 +724,7 @@ def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
       ≤ ⟪D.coreToL2 hu_one, - Au⟫_ℝ
 
 /-- **Core `L^p`/`L²` density** (per-instance hypothesis, Gemini-vetted
-2026-05-21 — `plans/corelpapprox-vetting.md`). Every nonnegative
+2026-05-21 — `plans/archive/corelpapprox-vetting.md`). Every nonnegative
 `f ∈ L²(μ) ∩ L^p(μ)` is approximated by a sequence of *core, pointwise
 strictly-positive* functions `gₙ` converging to `f` in **both** `L^p` and
 `L²`. This is the density input the abstract structure cannot supply; the

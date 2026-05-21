@@ -1,3 +1,5 @@
+> **📦 ARCHIVED 2026-05-21 — work complete (GrossODE.lean is sorry-free). Retained for provenance; see [`../history.md`](../history.md).**
+
 # Vetting: `CoreLpApprox` predicate + finishing `gross_lsi_implies_hypercontractive_of_hypotheses`
 
 **For:** deep-think external review.

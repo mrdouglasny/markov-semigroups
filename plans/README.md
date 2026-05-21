@@ -18,16 +18,16 @@ lessons learned.
 
 ## Active plans
 
-* [`gross-discharge.md`](gross-discharge.md) — **RECOMMENDED; in
-  progress** on branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`
-  (tip `aa9cc47`; the rev gaussian-hilbert pins). **As of 2026-05-17:
-  H0 ✅, G1 ✅, G2 ✅ (sorry-free, 2 general Gemini-vetted axioms),
-  G4 ✅; abstract Gross relocated to `Abstract/GrossODE.lean`; P3
-  scaffolded + P2 decomposed.** Remaining: one general Mathlib-native
-  Bochner–Leibniz kernel (`hasDerivWithinAt_integral_of_strongL2Deriv`,
-  to be proved — *not* axiomatized) + thin glue, the P3 cancellation
-  algebra, and **W** (rewire gaussian-hilbert). 8 documented `sorry`s
-  in `GrossODE.lean`; gaussian-hilbert unaffected.
+* [`gross-discharge.md`](gross-discharge.md) — **ABSTRACT SPINE COMPLETE
+  (2026-05-21).** `gross_lsi_implies_hypercontractive_of_hypotheses` is
+  fully proved; **`Abstract/GrossODE.lean` is sorry-free**, `#print
+  axioms` = `[propext, Classical.choice, Quot.sound]`. H0/G1/G2/G4/P2/P3
+  and the final general-`f` reduction all ✅, taking four per-instance
+  predicates as hypotheses (`CoreSemigroupInvariant`, `GeneratorCompat`,
+  `StroockVaropoulos` at `1 < q`, `CoreLpL2Approx`). **Only remaining
+  work: W** — discharge those four predicates for the GaussianFin/OU
+  instance in gaussian-hilbert. The completed phase docs are in
+  [`archive/`](archive/); see [`history.md`](history.md).
 * [`gaussian-ou-hypercontractivity.md`](gaussian-ou-hypercontractivity.md) —
   **FALLBACK only** (Route B, concrete Gaussian). Sound but yields no
   general result; reconciled 2026-05-16. Retained for its reusable
