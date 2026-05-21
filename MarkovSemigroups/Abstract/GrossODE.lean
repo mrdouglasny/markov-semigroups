@@ -98,6 +98,19 @@ theorem hasDerivAt_grossExponent (ρ p s : ℝ) :
   convert this using 1
   simp only [grossExponent]; ring
 
+/-- `grossExponent ρ p` is `C^∞` (and hence `C^1`). Composition of constants,
+linear maps, and `Real.exp`. -/
+theorem contDiff_grossExponent (ρ p : ℝ) {n : WithTop ℕ∞} :
+    ContDiff ℝ n (grossExponent ρ p) := by
+  unfold grossExponent
+  have h_lin : ContDiff ℝ n (fun s : ℝ => 2 * ρ * s) :=
+    (contDiff_const.mul contDiff_id)
+  have h_exp : ContDiff ℝ n (fun s : ℝ => Real.exp (2 * ρ * s)) :=
+    Real.contDiff_exp.comp h_lin
+  have h_mul : ContDiff ℝ n (fun s : ℝ => (p - 1) * Real.exp (2 * ρ * s)) :=
+    contDiff_const.mul h_exp
+  exact contDiff_const.add h_mul
+
 /-- The exponent path is monotone in `s` (for `p > 1`, `ρ ≥ 0`). -/
 theorem grossExponent_le_of_le {p : ℝ} (hp : 1 < p) {ρ : ℝ} (hρ : 0 ≤ ρ)
     {s t : ℝ} (hst : s ≤ t) : grossExponent ρ p s ≤ grossExponent ρ p t := by
