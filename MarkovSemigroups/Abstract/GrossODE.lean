@@ -584,6 +584,61 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
   convert h_main.2 using 1
   rw [h_int_F's, ha.deriv]
 
+/-- Mean value theorem packaged with an unordered interval witness. -/
+lemma exists_hasDerivAt_eq_slope_uIcc {f f' : ℝ → ℝ} {a b : ℝ}
+    (hab : a ≠ b) (hfc : Continuous f) (hff' : ∀ x : ℝ, HasDerivAt f (f' x) x) :
+    ∃ c ∈ Set.uIcc a b, (f b - f a) / (b - a) = f' c := by
+  rcases lt_or_gt_of_ne hab with hab' | hba'
+  · obtain ⟨c, hc, hceq⟩ :=
+      exists_hasDerivAt_eq_slope f f' hab' hfc.continuousOn (fun x _ => hff' x)
+    refine ⟨c, ?_, hceq.symm⟩
+    simpa [Set.uIcc, min_eq_left hab'.le, max_eq_right hab'.le] using
+      Set.mem_Icc.mpr ⟨hc.1.le, hc.2.le⟩
+  · obtain ⟨c, hc, hceq⟩ :=
+      exists_hasDerivAt_eq_slope (a := b) (b := a) f f' hba' hfc.continuousOn
+        (fun x _ => hff' x)
+    have hquot : (f b - f a) / (b - a) = (f a - f b) / (a - b) := by
+      have h1 : b - a ≠ 0 := sub_ne_zero.mpr hab.symm
+      have h2 : a - b ≠ 0 := sub_ne_zero.mpr hab
+      field_simp [h1, h2]
+      ring
+    refine ⟨c, ?_, hquot.trans hceq.symm⟩
+    simpa [Set.uIcc, min_eq_right hba'.le, max_eq_left hba'.le] using
+      Set.mem_Icc.mpr ⟨hc.1.le, hc.2.le⟩
+
+/-- For a real-valued function, the integral of the absolute value is the `L¹` seminorm. -/
+lemma integral_abs_eq_eLpNorm_one_toReal {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    {f : Y → ℝ} (hf : Integrable (fun y => |f y|) ν) :
+    ∫ y, |f y| ∂ν = (eLpNorm f 1 ν).toReal := by
+  rw [integral_eq_lintegral_of_nonneg_ae (Filter.Eventually.of_forall fun _ => abs_nonneg _) hf.aestronglyMeasurable,
+    eLpNorm_one_eq_lintegral_enorm]
+  congr 1
+  apply lintegral_congr_ae
+  filter_upwards with y
+  simp [Real.enorm_eq_ofReal_abs]
+
+/-- On a probability space, `L² → 0` implies the integral of the absolute value tends to `0`. -/
+lemma tendsto_integral_abs_of_tendsto_eLpNorm_two_zero {ι Y : Type*}
+    [MeasurableSpace Y] (ν : Measure Y) [IsProbabilityMeasure ν] {l : Filter ι}
+    (F : ι → Y → ℝ)
+    (hF_meas : ∀ i, AEStronglyMeasurable (F i) ν)
+    (hF_int : ∀ᶠ i in l, Integrable (fun y => |F i y|) ν)
+    (hF_two : Filter.Tendsto (fun i => eLpNorm (F i) 2 ν) l (nhds 0)) :
+    Filter.Tendsto (fun i => ∫ y, |F i y| ∂ν) l (nhds 0) := by
+  have hF_one : Filter.Tendsto (fun i => eLpNorm (F i) 1 ν) l (nhds 0) := by
+    refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hF_two ?_ ?_
+    · intro i
+      exact bot_le
+    · intro i
+      exact eLpNorm_le_eLpNorm_of_exponent_le (μ := ν) (p := (1 : ℝ≥0∞)) (q := (2 : ℝ≥0∞))
+        (by norm_num) (hF_meas i)
+  have hF_one_real : Filter.Tendsto (fun i => (eLpNorm (F i) 1 ν).toReal) l (nhds 0) := by
+    exact (ENNReal.continuousAt_toReal ENNReal.zero_ne_top).tendsto.comp hF_one
+  have heq : ∀ᶠ i in l, ∫ y, |F i y| ∂ν = (eLpNorm (F i) 1 ν).toReal := by
+    filter_upwards [hF_int] with i hi
+    exact integral_abs_eq_eLpNorm_one_toReal hi
+  exact hF_one_real.congr' <| heq.mono fun i hi => hi.symm
+
 /-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
 everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
 Mathlib's finite-measure criterion, packaged for the bounded coefficient families used in the P2
