@@ -702,12 +702,15 @@ than via a global `A`). The core-power hypotheses match the existing
 `stroock_varopoulos` axiom (cleaner than `MemLp.toLp` packaging and
 equivalent for the GaussianFin discharge, which has the core
 powers). `_hq`/`_hu_half` are contract antecedents (the inequality is
-only claimed for `q ≥ 2` with `u^{q/2}` core); `_`-prefixed per the
+claimed for `q > 1` with `u^{q/2}` core — this is the full range the
+Gross interpolation path `q(s) = 1+(p-1)e^{2ρs}` visits for `p > 1`, and
+S–V holds throughout: for diffusion/gradient forms it is in fact an
+equality `(4(q-1)/q²)Γ(u^{q/2}) = Γ(u,u^{q-1})`); `_`-prefixed per the
 Mathlib convention for binders required by the statement's shape but
 not referenced in the body — the discharger still supplies them
 positionally. -/
 def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
-  ∀ {u : X → ℝ} (hu : D.IsCore u) (q : ℝ) (_hq : 2 ≤ q)
+  ∀ {u : X → ℝ} (hu : D.IsCore u) (q : ℝ) (_hq : 1 < q)
     (_hu_half : D.IsCore (fun x => u x ^ (q / 2)))
     (hu_one : D.IsCore (fun x => u x ^ (q - 1)))
     (Au : Lp ℝ 2 D.μ),

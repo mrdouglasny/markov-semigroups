@@ -2106,7 +2106,86 @@ theorem grossLogNorm_deriv_nonpos
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 < s) :
     grossLogNormDeriv D hf h_core ρ p s ≤ 0 := by
-  sorry
+  haveI : IsFiniteMeasure D.μ := inferInstance
+  obtain ⟨ε, hε_pos, hf_ge_ε⟩ := hf_pos
+  obtain ⟨_, h_lsi'⟩ := h_lsi
+  set q : ℝ := grossExponent ρ p s with hq_def
+  have hq1 : 1 < q := one_lt_grossExponent hp ρ s
+  have hq_pos : 0 < q := lt_trans one_pos hq1
+  have hqne : q ≠ 0 := hq_pos.ne'
+  obtain ⟨hu_core, horb⟩ := orbitCoreRep_spec D hf h_core hs.le
+  set u : X → ℝ := orbitCoreRep D hf h_core s with hu_def
+  -- Orbit bounds: `ε ≤ u` a.e. (transport `f ≥ ε` through the orbit).
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
+  have hf_Lp_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ (D.coreToL2 hf : X → ℝ) y := by
+    filter_upwards [hcoe_f, hf_ge_ε] with y h1 h2; rw [h1]; exact h2
+  have hu_Lp_ae : (D.coreToL2 hu_core : X → ℝ) =ᵐ[D.μ] u :=
+    (D.IsCore_memLp hu_core).coeFn_toLp
+  have horb_ae : (D.P s (D.coreToL2 hf) : X → ℝ) =ᵐ[D.μ] u := by
+    rw [horb]; exact hu_Lp_ae
+  have hu_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ u y := by
+    filter_upwards [D.toMarkovSemigroup.orbit_lower_bound hs.le hf_Lp_ge_ε, horb_ae]
+      with y h1 h2; rw [← h2]; exact h1
+  -- `u^{q/2}` and `u^{q-1}` are core (strict-positive rpow closure).
+  have hu_half : D.IsCore (fun x => u x ^ (q / 2)) :=
+    D.IsCore_rpow_pos_strict hu_core hε_pos hu_ge_ε (q / 2)
+  have hu_one : D.IsCore (fun x => u x ^ (q - 1)) :=
+    D.IsCore_rpow_pos_strict hu_core hε_pos hu_ge_ε (q - 1)
+  -- LSI applied to `v = u^{q/2}`: `Ent(v·v) ≤ (2/ρ)·E(v,v)`.
+  have h_lsi_step : D.toDirichletSpace.entropy (fun x => u x ^ (q / 2) * u x ^ (q / 2))
+      ≤ (2 / ρ) * D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2)) :=
+    h_lsi' (fun x => u x ^ (q / 2)) hu_half
+  -- Stroock–Varopoulos (generator-paired) ⇒ `(4(q-1)/q²)E(u^{q/2}) ≤ E(u,u^{q-1})`.
+  obtain ⟨Au, hAu_tendsto, hAu_pair⟩ := h_gen hu_core
+  have h_sv_step : (4 * (q - 1) / q ^ 2) *
+        D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
+      ≤ D.energy u (fun x => u x ^ (q - 1)) := by
+    have h := h_sv hu_core q hq1 hu_half hu_one Au hAu_tendsto
+    rwa [show (⟪D.coreToL2 hu_one, -Au⟫_ℝ : ℝ) = D.energy u (fun x => u x ^ (q - 1)) from by
+      rw [inner_neg_right, hAu_pair hu_one, neg_neg,
+        D.energy_symm (fun x => u x ^ (q - 1)) u]] at h
+  -- Entropy is a.e.-invariant: `Ent(|orbit|^q) = Ent(u^{q/2}·u^{q/2})`.
+  have hEnt_bridge : D.toDirichletSpace.entropy
+        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+      = D.toDirichletSpace.entropy (fun x => u x ^ (q / 2) * u x ^ (q / 2)) := by
+    have hae : (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+        =ᵐ[D.μ] (fun x => u x ^ (q / 2) * u x ^ (q / 2)) := by
+      filter_upwards [horb_ae, hu_ge_ε] with x h1 h2
+      have hux : 0 < u x := lt_of_lt_of_le hε_pos h2
+      rw [h1, abs_of_nonneg hux.le, ← Real.rpow_add hux, show q / 2 + q / 2 = q by ring]
+    unfold DirichletSpace.entropy
+    simp only [show (D.toDirichletSpace).μ = D.μ from rfl]
+    congr 1
+    · exact integral_congr_ae (by filter_upwards [hae] with x hx; rw [hx])
+    · rw [integral_congr_ae hae]
+  -- `F = grossPow ≥ 0`.
+  have hF_nonneg : 0 ≤ grossPow D hf ρ p s := by
+    unfold grossPow
+    exact integral_nonneg (fun x => Real.rpow_nonneg (abs_nonneg _) _)
+  -- Key inequality: `2ρ(q-1)·Ent ≤ q²·E(u,u^{q-1})`.
+  have hkey : 2 * ρ * (q - 1) * D.toDirichletSpace.entropy
+        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+      ≤ q ^ 2 * D.energy u (fun x => u x ^ (q - 1)) := by
+    set Ent := D.toDirichletSpace.entropy
+      (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+    set Eh := D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
+    set Euq := D.energy u (fun x => u x ^ (q - 1))
+    have hEnt_lsi : Ent ≤ (2 / ρ) * Eh := by rw [hEnt_bridge]; exact h_lsi_step
+    have h1 : ρ * Ent ≤ 2 * Eh := by
+      have h := mul_le_mul_of_nonneg_left hEnt_lsi hρ.le
+      rwa [show ρ * (2 / ρ * Eh) = 2 * Eh from by field_simp] at h
+    have h2 : 4 * (q - 1) * Eh ≤ q ^ 2 * Euq := by
+      have h := mul_le_mul_of_nonneg_left h_sv_step (sq_nonneg q)
+      rwa [show q ^ 2 * (4 * (q - 1) / q ^ 2 * Eh) = 4 * (q - 1) * Eh from by field_simp] at h
+    nlinarith [mul_le_mul_of_nonneg_left h1 (show (0 : ℝ) ≤ q - 1 by linarith), h2]
+  -- Conclude: `grossLogNormDeriv = (2ρ(q-1)·Ent - q²·E)/(q²·F) ≤ 0`.
+  rcases hF_nonneg.eq_or_lt with hF0 | hFpos
+  · rw [grossLogNormDeriv, ← hF0]; simp
+  · rw [grossLogNormDeriv, ← hq_def, ← hu_def, div_mul_eq_mul_div,
+      div_sub_div _ _ (mul_pos (pow_pos hq_pos 2) hFpos).ne' hFpos.ne']
+    refine div_nonpos_iff.mpr (Or.inr ⟨?_, ?_⟩)
+    · nlinarith [mul_le_mul_of_nonneg_right hkey hFpos.le]
+    · exact mul_nonneg (mul_nonneg (sq_nonneg q) hFpos.le) hFpos.le
 
 /-- `Λ` is antitone on `[0,∞)`: continuity (P2 gives a right
 derivative everywhere on the interior, hence continuity there;
