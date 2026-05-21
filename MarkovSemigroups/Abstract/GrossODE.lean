@@ -771,6 +771,78 @@ lemma continuousAt_integral_rpow_mul_log {Y : Type*} [MeasurableSpace Y]
         (continuous_abs.comp_aestronglyMeasurable hw).aemeasurable).aestronglyMeasurable
   exact continuousAt_of_dominated hF_meas h_bound (integrable_const C) h_cont
 
+/-- **Integral Lipschitz bound for the log-integral.** If `v, w : Y → ℝ` are
+both a.e. valued (after `|·|`) in a compact positive interval `[a, b]`
+(`0 < a ≤ b`), and `x ↦ x^r·log x` is `L`-Lipschitz on `[a, b]` (`r ≥ 0`),
+then `|∫|w|^r·log|w| − ∫|v|^r·log|v|| ≤ L·∫|w − v|`. Used in the `h_second`
+MVT step to bound the off-diagonal `gfun σ − gfun s` by the `L¹` orbit
+distance: with `w, v` the orbits at `σ, s` (both in `[ε, Mf]` a.e.) and
+`L` the uniform Lipschitz constant from `exists_lipschitz_rpow_mul_log`. -/
+lemma abs_integral_rpow_mul_log_sub_le {Y : Type*} [MeasurableSpace Y]
+    (ν : Measure Y) [IsFiniteMeasure ν] {v w : Y → ℝ}
+    (hv : AEStronglyMeasurable v ν) (hw : AEStronglyMeasurable w ν)
+    {a b r L : ℝ} (ha : 0 < a) (hab : a ≤ b) (hr : 0 ≤ r) (hL : 0 ≤ L)
+    (hvab : ∀ᵐ y ∂ν, |v y| ∈ Set.Icc a b) (hwab : ∀ᵐ y ∂ν, |w y| ∈ Set.Icc a b)
+    (hLip : ∀ x ∈ Set.Icc a b, ∀ x' ∈ Set.Icc a b,
+        |x' ^ r * Real.log x' - x ^ r * Real.log x| ≤ L * |x' - x|) :
+    |(∫ y, |w y| ^ r * Real.log |w y| ∂ν) - ∫ y, |v y| ^ r * Real.log |v y| ∂ν|
+      ≤ L * ∫ y, |w y - v y| ∂ν := by
+  have hb : (0:ℝ) ≤ b := le_trans ha.le hab
+  set logB : ℝ := max |Real.log a| |Real.log b| with hlogB_def
+  -- Each log-integrand is integrable (bounded by `b^r · logB` on a finite measure).
+  have hint : ∀ {z : Y → ℝ}, AEStronglyMeasurable z ν →
+      (∀ᵐ y ∂ν, |z y| ∈ Set.Icc a b) →
+      Integrable (fun y => |z y| ^ r * Real.log |z y|) ν := by
+    intro z hz hzab
+    have hmeas : AEStronglyMeasurable (fun y => |z y| ^ r * Real.log |z y|) ν := by
+      refine AEStronglyMeasurable.mul ?_ ?_
+      · exact (continuous_abs.rpow_const (fun _ => Or.inr hr)).comp_aestronglyMeasurable hz
+      · exact (Real.measurable_log.comp_aemeasurable
+          (continuous_abs.comp_aestronglyMeasurable hz).aemeasurable).aestronglyMeasurable
+    refine (integrable_const (b ^ r * logB)).mono' hmeas ?_
+    filter_upwards [hzab] with y hy
+    set t : ℝ := |z y| with ht_def
+    have hzpos : 0 < t := lt_of_lt_of_le ha hy.1
+    have hlog_le : |Real.log t| ≤ logB := by
+      rcases le_or_gt 1 t with h1 | h1
+      · rw [abs_of_nonneg (Real.log_nonneg h1)]
+        exact le_trans (le_trans (Real.log_le_log hzpos hy.2) (le_abs_self _))
+          (le_max_right _ _)
+      · rw [abs_of_nonpos (Real.log_nonpos hzpos.le h1.le)]
+        calc -Real.log t ≤ -Real.log a := by linarith [Real.log_le_log ha hy.1]
+          _ ≤ |Real.log a| := neg_le_abs _
+          _ ≤ logB := le_max_left _ _
+    have hpow_le : t ^ r ≤ b ^ r := Real.rpow_le_rpow hzpos.le hy.2 hr
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (Real.rpow_nonneg hzpos.le r)]
+    exact mul_le_mul hpow_le hlog_le (abs_nonneg _) (Real.rpow_nonneg hb r)
+  have hintw := hint hw hwab
+  have hintv := hint hv hvab
+  -- The orbits themselves are integrable (bounded by `b`).
+  have hzint : ∀ {z : Y → ℝ}, AEStronglyMeasurable z ν →
+      (∀ᵐ y ∂ν, |z y| ∈ Set.Icc a b) → Integrable z ν := by
+    intro z hz hzab
+    refine (integrable_const b).mono' hz ?_
+    filter_upwards [hzab] with y hy; rw [Real.norm_eq_abs]; exact hy.2
+  have hwv_int : Integrable (fun y => |w y - v y|) ν :=
+    ((hzint hw hwab).sub (hzint hv hvab)).abs
+  -- `|∫(Iw - Iv)| ≤ ∫‖Iw - Iv‖ ≤ ∫ L·|w-v| = L·∫|w-v|`.
+  rw [← integral_sub hintw hintv]
+  have hnorm := norm_integral_le_integral_norm (μ := ν)
+      (fun y => |w y| ^ r * Real.log |w y| - |v y| ^ r * Real.log |v y|)
+  rw [Real.norm_eq_abs] at hnorm
+  refine le_trans hnorm ?_
+  rw [← integral_const_mul L]
+  refine integral_mono_ae (hintw.sub hintv).norm (hwv_int.const_mul L) ?_
+  filter_upwards [hvab, hwab] with y hvy hwy
+  rw [Real.norm_eq_abs]
+  set pw : ℝ := |w y| with hpw_def
+  set pv : ℝ := |v y| with hpv_def
+  calc |pw ^ r * Real.log pw - pv ^ r * Real.log pv|
+      ≤ L * |pw - pv| := hLip pv hvy pw hwy
+    _ ≤ L * |w y - v y| := by
+        refine mul_le_mul_of_nonneg_left ?_ hL
+        rw [hpw_def, hpv_def]; exact abs_abs_sub_abs_le_abs_sub _ _
+
 /-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
 everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
 Mathlib's finite-measure criterion, packaged for the bounded coefficient families used in the P2
@@ -1747,8 +1819,46 @@ theorem grossPow_hasDerivWithinAt
         · exact continuousAt_integral_rpow_mul_log D.μ hu_s_aesm hε_pos hwε hu_s_le_Mf
             (contDiff_grossExponent ρ p (n := 1)).continuous
             (fun τ => grossExponent_pos hp ρ τ) s
-      -- Final assembly: slope = gfun σ c → gfun s s = D2.
-      sorry
+      -- Final assembly: slope = gfun σ (cσ σ) → gfun s s = D2.
+      classical
+      have hD2_gfun : D2 = gfun s s := by
+        rw [hD2_def, hgfun_def, grossLogIntegral]
+      -- MVT choice function.
+      set cσ : ℝ → ℝ := fun σ =>
+        if h : ∃ c ∈ Set.uIcc s σ, (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ c
+          then h.choose else s with hcσ_def
+      have hcσ_mem : ∀ᶠ σ in l, cσ σ ∈ Set.uIcc s σ
+          ∧ (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ (cσ σ) := by
+        filter_upwards [self_mem_nhdsWithin] with σ hσ_in
+        have hex := h_mvt σ hσ_in.1 (by simpa using hσ_in.2)
+        have : cσ σ = hex.choose := by simp only [cσ, dif_pos hex]
+        rw [this]; exact ⟨hex.choose_spec.1, hex.choose_spec.2⟩
+      -- cσ σ → s (squeeze: |cσ σ − s| ≤ |σ − s| → 0).
+      have hcσ_tendsto : Filter.Tendsto cσ l (nhds s) := by
+        have hσ_tendsto : Filter.Tendsto (fun σ : ℝ => σ) l (nhds s) :=
+          Filter.tendsto_id.mono_left nhdsWithin_le_nhds
+        rw [tendsto_iff_dist_tendsto_zero] at hσ_tendsto ⊢
+        refine squeeze_zero' (Filter.Eventually.of_forall (fun _ => dist_nonneg)) ?_
+          hσ_tendsto
+        filter_upwards [hcσ_mem] with σ hσ
+        rw [Real.dist_eq, Real.dist_eq]
+        rcases Set.mem_uIcc.mp hσ.1 with ⟨h1, h2⟩ | ⟨h1, h2⟩
+        · rw [abs_of_nonneg (by linarith), abs_of_nonneg (by linarith)]; linarith
+        · rw [abs_of_nonpos (by linarith), abs_of_nonpos (by linarith)]; linarith
+      -- B-bracket: gfun s (cσ σ) → gfun s s.
+      have hB : Filter.Tendsto (fun σ => gfun s (cσ σ)) l (nhds (gfun s s)) :=
+        h_gfun_s_cont.tendsto.comp hcσ_tendsto
+      -- A-bracket: gfun σ (cσ σ) − gfun s (cσ σ) → 0.
+      have hA : Filter.Tendsto (fun σ => gfun σ (cσ σ) - gfun s (cσ σ)) l (nhds 0) := by
+        sorry
+      -- Combine: gfun σ (cσ σ) → gfun s s.
+      have hG : Filter.Tendsto (fun σ => gfun σ (cσ σ)) l (nhds (gfun s s)) := by
+        have := hA.add hB
+        simpa using this
+      rw [hD2_gfun]
+      refine hG.congr' ?_
+      filter_upwards [hcσ_mem] with σ hσ
+      exact (hσ.2).symm
     -- Combine.
     have h_sum := h_first.add h_second
     refine h_sum.congr' ?_
