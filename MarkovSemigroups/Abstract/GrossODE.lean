@@ -1850,7 +1850,57 @@ theorem grossPow_hasDerivWithinAt
         h_gfun_s_cont.tendsto.comp hcσ_tendsto
       -- A-bracket: gfun σ (cσ σ) − gfun s (cσ σ) → 0.
       have hA : Filter.Tendsto (fun σ => gfun σ (cσ σ) - gfun s (cσ σ)) l (nhds 0) := by
-        sorry
+        -- Uniform Lipschitz constant `L` over `[ε, Mf] × [q-1, q+1]`.
+        obtain ⟨L, hL_nn, hL⟩ := exists_lipschitz_rpow_mul_log (a := ε) (b := Mf)
+          (r₀ := q - 1) (r₁ := q + 1) hε_pos
+        have hq_cont : Continuous (grossExponent ρ p) :=
+          (contDiff_grossExponent ρ p (n := 1)).continuous
+        have h_qc : Filter.Tendsto (fun σ => grossExponent ρ p (cσ σ)) l (nhds q) :=
+          (hq_cont.tendsto s).comp hcσ_tendsto
+        set Cq : ℝ := |2 * ρ * (q - 1)| + 1 with hCq_def
+        have hCq_nn : 0 ≤ Cq := by rw [hCq_def]; positivity
+        have h_r_mem : ∀ᶠ σ in l,
+            grossExponent ρ p (cσ σ) ∈ Set.Icc (q - 1) (q + 1) := by
+          have h_lo := h_qc.eventually_const_le (show q - 1 < q by linarith)
+          have h_hi := h_qc.eventually_le_const (show q < q + 1 by linarith)
+          filter_upwards [h_lo, h_hi] with σ hlo hhi; exact ⟨hlo, hhi⟩
+        have h_coef_bd : ∀ᶠ σ in l,
+            |2 * ρ * (grossExponent ρ p (cσ σ) - 1)| ≤ Cq := by
+          have h_ten : Filter.Tendsto
+              (fun σ => |2 * ρ * (grossExponent ρ p (cσ σ) - 1)|) l
+              (nhds |2 * ρ * (q - 1)|) :=
+            ((h_qc.sub_const 1).const_mul (2 * ρ)).abs
+          exact h_ten.eventually_le_const (by rw [hCq_def]; linarith)
+        -- Pointwise bound via the integral-Lipschitz helper.
+        have h_ptwise : ∀ᶠ σ in l,
+            ‖gfun σ (cσ σ) - gfun s (cσ σ)‖
+              ≤ Cq * (L * ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+                  - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ) := by
+          filter_upwards [self_mem_nhdsWithin, h_r_mem, h_coef_bd]
+            with σ hσ_in hr_mem hcoef
+          have hσ0 : (0 : ℝ) ≤ σ := hσ_in.1
+          have hσab : ∀ᵐ y ∂D.μ,
+              |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∈ Set.Icc ε Mf := by
+            filter_upwards [D.toMarkovSemigroup.orbit_lower_bound hσ0 hf_Lp_ge_ε,
+              D.toMarkovSemigroup.Linfty_contraction hσ0 hf_Lp_le_Mf] with y h1 h2
+            exact ⟨le_trans h1 (le_abs_self _), h2⟩
+          have hsab : ∀ᵐ y ∂D.μ,
+              |((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∈ Set.Icc ε Mf := by
+            filter_upwards [hu_s_ge_ε, hu_s_le_Mf] with y h1 h2
+            exact ⟨le_trans h1 (le_abs_self _), h2⟩
+          have hJ := abs_integral_rpow_mul_log_sub_le D.μ
+            (v := ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ))
+            (w := ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ))
+            (Lp.aestronglyMeasurable _) (Lp.aestronglyMeasurable _)
+            hε_pos hεMf (grossExponent_pos hp ρ (cσ σ)).le hL_nn hsab hσab
+            (hL (grossExponent ρ p (cσ σ)) hr_mem)
+          simp only [hgfun_def]
+          rw [← mul_sub, Real.norm_eq_abs, abs_mul]
+          exact mul_le_mul hcoef hJ (abs_nonneg _) hCq_nn
+        -- The bound tends to `0`, so the difference does too.
+        refine squeeze_zero_norm' h_ptwise ?_
+        have := (h_orbit_L1.const_mul L).const_mul Cq
+        simpa using this
       -- Combine: gfun σ (cσ σ) → gfun s s.
       have hG : Filter.Tendsto (fun σ => gfun σ (cσ σ)) l (nhds (gfun s s)) := by
         have := hA.add hB
