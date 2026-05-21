@@ -2220,6 +2220,89 @@ theorem grossLogNorm_antitoneOn
     exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_core h_gen h_sv hf hf_nonneg
       hf_ne hf_pos (by simpa using hx)
 
+/-- **Core, strictly-positive hypercontractive bound** (the Gross "last mile").
+For a core `f` with `f ≥ ε > 0` a.e. and `f ≢ 0`, and `1 < p ≤ q ≤ q(t)` where
+`q(t) = 1+(p-1)e^{2ρt}` and `0 < t`, the orbit satisfies `‖P_t f‖_q ≤ ‖f‖_p`
+(as `eLpNorm`s on the probability measure `μ`).
+
+This is the analytic payoff of the Gross ODE: it combines
+`grossLogNorm_antitoneOn` (P2 ⊕ P3, giving `Λ(t) ≤ Λ(0)`), the identity
+`‖P_s f‖_{q(s)} = exp(Λ(s))` (via `MemLp.eLpNorm_eq_integral_rpow_norm` and
+`grossPow > 0`), and `L^q ≤ L^{q(t)}` monotonicity on a probability measure.
+The general-`f` hypercontractivity (`IsHypercontractive`) reduces to this
+bound via core density in `L^p` (handled at the call site / per instance). -/
+theorem eLpNorm_orbit_le_of_core_pos
+    (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
+    (h_lsi : D.SatisfiesLogSobolev ρ)
+    (h_core : CoreSemigroupInvariant D)
+    (h_gen : GeneratorCompat D)
+    (h_sv : StroockVaropoulos D)
+    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
+    {q t : ℝ} (ht : 0 < t) (hpq : p ≤ q) (hqt : q ≤ grossExponent ρ p t) :
+    eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal q) D.μ
+      ≤ eLpNorm ((D.coreToL2 hf : X → ℝ)) (ENNReal.ofReal p) D.μ := by
+  haveI : IsProbabilityMeasure D.μ := D.hμ
+  -- Bounded orbit ⇒ integrability of the orbit powers (the `h_int` for P2/P3).
+  obtain ⟨Mf, hf_le_Mf⟩ := D.IsCore_memLp_top hf
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
+  have hf_Lp_le_Mf : ∀ᵐ y ∂D.μ, |(D.coreToL2 hf : X → ℝ) y| ≤ Mf := by
+    filter_upwards [hcoe_f, hf_le_Mf] with y h1 h2; rw [h1]; exact h2
+  have h_orbit_bd : ∀ s : ℝ, 0 ≤ s → ∀ᵐ y ∂D.μ,
+      |((D.P s (D.coreToL2 hf) : X → ℝ) y)| ≤ Mf :=
+    fun s hs => D.toMarkovSemigroup.Linfty_contraction hs hf_Lp_le_Mf
+  have h_int : ∀ s ∈ Set.Ici (0 : ℝ), Integrable
+      (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ grossExponent ρ p s) D.μ := by
+    intro s hs
+    refine (integrable_const (Mf ^ grossExponent ρ p s)).mono'
+      ((continuous_abs.rpow_const
+        (fun _ => Or.inr (grossExponent_pos hp ρ s).le)).comp_aestronglyMeasurable
+        (Lp.aestronglyMeasurable _)) ?_
+    filter_upwards [h_orbit_bd s hs] with y hy
+    rw [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (abs_nonneg _) _)]
+    exact Real.rpow_le_rpow (abs_nonneg _) hy (grossExponent_pos hp ρ s).le
+  -- `‖P_s f‖_{q(s)} = ofReal (exp (Λ(s)))` for `s ≥ 0`.
+  have h_id : ∀ s : ℝ, 0 ≤ s →
+      eLpNorm ((D.P s (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal (grossExponent ρ p s)) D.μ
+        = ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p s)) := by
+    intro s hs
+    have hqs_pos : 0 < grossExponent ρ p s := grossExponent_pos hp ρ s
+    have hmem : MemLp ((D.P s (D.coreToL2 hf) : X → ℝ))
+        (ENNReal.ofReal (grossExponent ρ p s)) D.μ :=
+      MemLp.of_bound (Lp.aestronglyMeasurable _) Mf
+        (by filter_upwards [h_orbit_bd s hs] with y hy; rw [Real.norm_eq_abs]; exact hy)
+    have hFpos : 0 < grossPow D hf ρ p s :=
+      grossPow_pos D ρ p hρ hp hf hf_nonneg hf_ne hs (h_int s hs)
+    rw [MemLp.eLpNorm_eq_integral_rpow_norm (ENNReal.ofReal_pos.mpr hqs_pos).ne'
+      ENNReal.ofReal_ne_top hmem, ENNReal.toReal_ofReal hqs_pos.le]
+    -- `ofReal ((∫ ‖orbit‖^{q(s)})^{q(s)⁻¹}) = ofReal (exp Λ(s))`.
+    have hInt_eq : (∫ y, ‖((D.P s (D.coreToL2 hf) : X → ℝ) y)‖ ^ grossExponent ρ p s ∂D.μ)
+        = grossPow D hf ρ p s := by
+      unfold grossPow
+      refine integral_congr_ae ?_
+      filter_upwards with y; rw [Real.norm_eq_abs]
+    rw [hInt_eq, Real.rpow_def_of_pos hFpos, grossLogNorm, mul_comm]
+  -- Chain: `‖P_t f‖_q ≤ ‖P_t f‖_{q(t)} = ofReal(exp Λ(t)) ≤ ofReal(exp Λ(0)) = ‖f‖_p`.
+  have h_anti := grossLogNorm_antitoneOn D ρ p hρ hp h_lsi h_core h_gen h_sv hf hf_nonneg
+    hf_ne hf_pos h_int
+  calc eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal q) D.μ
+      ≤ eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ))
+          (ENNReal.ofReal (grossExponent ρ p t)) D.μ :=
+        eLpNorm_le_eLpNorm_of_exponent_le (ENNReal.ofReal_le_ofReal hqt)
+          (Lp.aestronglyMeasurable _)
+    _ = ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p t)) := h_id t ht.le
+    _ ≤ ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p 0)) :=
+        ENNReal.ofReal_le_ofReal (Real.exp_le_exp.mpr
+          (h_anti (Set.left_mem_Ici) (Set.mem_Ici.mpr ht.le) ht.le))
+    _ = eLpNorm ((D.P 0 (D.coreToL2 hf) : X → ℝ))
+          (ENNReal.ofReal (grossExponent ρ p 0)) D.μ := (h_id 0 le_rfl).symm
+    _ = eLpNorm ((D.coreToL2 hf : X → ℝ)) (ENNReal.ofReal p) D.μ := by
+        rw [show D.P 0 (D.coreToL2 hf) = D.coreToL2 hf from by
+            rw [D.P_zero, ContinuousLinearMap.id_apply],
+          show grossExponent ρ p 0 = p from by
+            simp only [grossExponent, mul_zero, Real.exp_zero, mul_one]; ring]
+
 end GrossODE
 
 /-! ## Assembly -/
