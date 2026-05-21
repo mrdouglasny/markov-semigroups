@@ -75,6 +75,37 @@
 > (`grossPow_pos`, `hasDerivAt_integral_rpow_exponent`,
 > `grossPow_hasDerivWithinAt`, `grossLogNorm_deriv_nonpos`, final
 > hypercontractivity).
+>
+> **Update (2026-05-21, P2 fully proved — `grossPow_hasDerivWithinAt`
+> ✅):** The P2 analytic bottleneck `grossPow_hasDerivWithinAt`
+> (`F'(s) = grossPowDeriv`) is now a **complete theorem**, `#print
+> axioms` = `[propext, Classical.choice, Quot.sound]` (Mathlib core
+> only; the structure fields `GeneratorCompat`/`CoreSemigroupInvariant`/
+> `IsCore_rpow_pos_strict`/`IsCore_memLp_top` are discharged
+> per-instance, not axioms). Closures:
+> • **`h_second`** (off-diagonal chain-rule half): MVT-in-τ choice
+>   function `cσ` + two-bracket `gfun σ (cσ σ) → gfun s s`; the
+>   A-bracket uses the new reusable helper
+>   **`abs_integral_rpow_mul_log_sub_le`** (integral Lipschitz bound:
+>   `|∫|w|^r log|w| − ∫|v|^r log|v|| ≤ L·∫|w−v|`) + uniform Lipschitz
+>   over `[ε,Mf]×[q-1,q+1]` + `squeeze_zero_norm'` with L¹ orbit
+>   convergence.
+> • **`h_energy`** (`D1 = -q·E(orbit, orbit^{q-1})`): via the generator
+>   pairing — `P_s Af = Ag'` (orbit generator) by strong-`L²` limit
+>   uniqueness (semigroup law + CLM continuity), then
+>   `⟪coreToL2(g'^{q-1}), Ag'⟫ = -E(g'^{q-1}, g')` + `energy_symm`.
+> • **Soundness refactor:** the abstract `D.energy` is a carré-du-champ
+>   (gradient) form, hence *not* a.e.-invariant; `grossPowDeriv`/
+>   `grossLogNormDeriv` previously evaluated it at the non-differentiable
+>   `Lp`-coe `⇑(P_s f)`. Fixed by evaluating at a smooth core
+>   representative **`orbitCoreRep`** (from `CoreSemigroupInvariant`);
+>   `grossLogNorm_deriv_nonpos` gained `h_core`/`h_gen`. (An
+>   unconditional `energy_ae_congr` field was considered and **rejected**
+>   — false for gradient-form energies like `ouEnergyFin`.)
+> `grossLogNorm_hasDerivWithinAt` is therefore also complete. GrossODE.lean
+> active sorries: 5 → **2** (`grossLogNorm_deriv_nonpos` / P3 algebra,
+> and the final `gross_lsi_implies_hypercontractive_of_hypotheses`
+> reduction). Full `lake build` green (3206 jobs).
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
@@ -217,20 +248,21 @@ proved*, not axiomatized).
 `.lean` axioms (incl. the 3 Gross-discharge general axioms, 2
 remaining `EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
 axioms, the legacy abstract Gross/S–V trio, Dobrushin–Zegarliński,
-Schwartz-convolution, diamagnetic). 9 `sorry` declarations: **8 in
-`Abstract/GrossODE.lean`** (the documented P2/P3 work items —
-`grossPow_pos`, `grossEntropy_eq`, the two general Leibniz lemmas,
-the `grossPow_hasDerivWithinAt` glue, `grossLogNorm_deriv_nonpos`
-(P3 algebra), the `antitoneOn` continuity bridge, and the final
-`eLpNorm↔∫·^q` reduction) + **1 in `TwoPoint.lean`** (quarantined,
-mathematically false for jump processes). Remaining Gross endgame:
-P2 (the one general Leibniz kernel + thin glue) → P3 algebra → W.
+Schwartz-convolution, diamagnetic). 3 `sorry` declarations: **2 in
+`Abstract/GrossODE.lean`** (`grossLogNorm_deriv_nonpos` (P3 algebra)
+and the final `eLpNorm↔∫·^q` hypercontractivity reduction) + **1 in
+`TwoPoint.lean`** (quarantined, mathematically false for jump
+processes). **P2 is fully proved** — `grossPow_pos`, `grossEntropy_eq`,
+both general Leibniz lemmas, `grossPow_hasDerivWithinAt`,
+`grossLogNorm_hasDerivWithinAt`, and the `antitoneOn` continuity bridge
+are all complete theorems. Remaining Gross endgame: P3 algebra → final
+HC reduction.
 
 ## Project structure
 
 | Module | Files | Sorry's | Axioms | Description |
 |---|---|---|---|---|
-| Abstract/ | 7 | 8 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (3: +Stroock-Varopoulos; predicates + relocated theorem in `GrossODE.lean` — P2/P3 scaffold, 8 documented WIP sorries), Borell-Herbst concentration (2: Herbst MGF + LSI⇒Poincaré) |
+| Abstract/ | 7 | 2 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (3: +Stroock-Varopoulos; predicates + relocated theorem in `GrossODE.lean` — **P2 fully proved**; 2 WIP sorries = P3 algebra + final HC reduction), Borell-Herbst concentration |
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
