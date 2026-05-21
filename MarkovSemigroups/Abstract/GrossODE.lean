@@ -1459,11 +1459,35 @@ theorem grossPow_hasDerivWithinAt
       (∫ y, deriv (fun x : ℝ => x ^ q) (u_s_func y) * (D.P s Af : X → ℝ) y ∂D.μ)
       (Set.Ici 0) s :=
     h_d1H_raw.congr (fun σ hσ => h_integrand_eq σ hσ) (h_integrand_eq s hs)
-  -- Remaining composition: combine h_d1H + h_d2H' via partial-to-total chain
-  -- rule for F(σ) = H(σ,σ) = ∫ |u_σ|^{q(σ)}, then identify the ∂₁H integral
-  -- ∫ deriv ψ (u_s) · (P_s Af) = -q · D.energy(u_s, u_s^{q-1}) via h_gen +
-  -- IsCore_rpow_pos_strict.
-  sorry
+  -- ===== Chain rule: F'(s) = ∂₁H + ∂₂H (Gemini-vetted architecture) =====
+  -- Abbreviations.
+  set D1 : ℝ := ∫ y, deriv (fun x : ℝ => x ^ q) (u_s_func y)
+      * (D.P s Af : X → ℝ) y ∂D.μ with hD1_def
+  set D2 : ℝ := 2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s
+    with hD2_def
+  -- Two-variable function H(σ, τ) := ∫ |u_σ|^{q(τ)}; F(σ) = grossPow = H(σ, σ).
+  set Hfun : ℝ → ℝ → ℝ := fun σ τ =>
+    ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ grossExponent ρ p τ ∂D.μ
+    with hHfun_def
+  -- The τ-derivative integrand g σ τ.
+  set gfun : ℝ → ℝ → ℝ := fun σ τ =>
+    2 * ρ * (grossExponent ρ p τ - 1)
+      * ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ grossExponent ρ p τ
+          * Real.log |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ
+    with hgfun_def
+  -- The goal `grossPow D hf ρ p` is `fun σ => Hfun σ σ` by def; the value
+  -- grossPowDeriv equals D1 + D2 (the second equality via the energy
+  -- identification, deferred). Reduce to the chain rule + energy identity.
+  -- Chain rule target: HasDerivWithinAt (fun σ => Hfun σ σ) (D1 + D2) (Ici 0) s.
+  have h_chain : HasDerivWithinAt (fun σ => Hfun σ σ) (D1 + D2) (Set.Ici 0) s := by
+    sorry
+  -- Energy identification: D1 = -q · D.energy(u_s, u_s^{q-1}), hence
+  -- D1 + D2 = grossPowDeriv.
+  have h_energy : D1 + D2 = grossPowDeriv D hf ρ p s := by
+    sorry
+  rw [← h_energy]
+  -- grossPow D hf ρ p = fun σ => Hfun σ σ (def-eq).
+  exact h_chain
 
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
 core `f` with `ρ > 0`, `p > 1`, the log-norm `Λ(s) = q(s)⁻¹ log F(s)`
