@@ -135,19 +135,46 @@ def grossLogNorm (D : DirichletMarkovSemigroup X) {f : X → ℝ}
     (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
   (grossExponent ρ p s)⁻¹ * Real.log (grossPow D hf ρ p s)
 
+open Classical in
+/-- A **core (smooth) representative of the orbit** `P_s f` for `s ≥ 0`,
+extracted from `CoreSemigroupInvariant` (`= f` for the unused `s < 0`).
+
+The Dirichlet energy of the orbit *must* be evaluated at this smooth
+representative, not at the `Lp`-coe representative `⇑(P_s f)`: the abstract
+`energy` is a *carré-du-champ* form (`∫ Σᵢ ∂ᵢu ∂ᵢv`, see the `ouEnergyFin`
+instance), so it depends on the gradient of the chosen representative.
+Mathlib's `Lp`-coe `⇑(P_s f)` is generically non-differentiable, so a
+gradient-form energy would return junk there. Working through a core
+representative keeps every energy evaluation on a smooth function. The
+value is representative-independent (justified by `energy_eq_deriv`
+uniqueness on core reps), but only this choice is needed downstream. -/
+noncomputable def orbitCoreRep (D : DirichletMarkovSemigroup X) {f : X → ℝ}
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) (s : ℝ) : X → ℝ :=
+  if h : 0 ≤ s then (h_core s h hf).choose else f
+
+/-- The defining properties of `orbitCoreRep`: it is a core function whose
+`L²` class is the orbit `P_s (coreToL2 f)`. -/
+lemma orbitCoreRep_spec (D : DirichletMarkovSemigroup X) {f : X → ℝ}
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) {s : ℝ} (hs : 0 ≤ s) :
+    ∃ hg' : D.IsCore (orbitCoreRep D hf h_core s),
+      D.P s (D.coreToL2 hf) = D.coreToL2 hg' := by
+  unfold orbitCoreRep
+  rw [dif_pos hs]
+  exact (h_core s hs hf).choose_spec
+
 /-- The Gross derivative value
 `Λ'(s) = (q'/(q² F))·Entμ(u^q) − E(u, u^{q-1})/F` (`u = P_s f`,
 `q = q(s)`, `F = grossPow`). P2 asserts `Λ` has this as its right
 derivative; P3 asserts it is `≤ 0`. -/
 def grossLogNormDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
-    (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) (ρ p s : ℝ) : ℝ :=
   2 * ρ * (grossExponent ρ p s - 1)
       / (grossExponent ρ p s ^ 2 * grossPow D hf ρ p s)
       * D.toDirichletSpace.entropy
           (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
             ^ grossExponent ρ p s)
-    - D.energy ((D.P s (D.coreToL2 hf) : X → ℝ))
-        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+    - D.energy (orbitCoreRep D hf h_core s)
+        (fun x => |orbitCoreRep D hf h_core s x|
           ^ (grossExponent ρ p s - 1))
       / grossPow D hf ρ p s
 
@@ -164,11 +191,11 @@ contribution (`∂_s |u|^{q(s)} = |u|^{q} log|u| · q'`); the second is
 the semigroup contribution (`∂_s u = A u`, `∫ u^{q-1} A u =
 −E(u,u^{q-1})` by `GeneratorCompat`). -/
 def grossPowDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
-    (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) (ρ p s : ℝ) : ℝ :=
   2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s
     - grossExponent ρ p s
-        * D.energy ((D.P s (D.coreToL2 hf) : X → ℝ))
-            (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+        * D.energy (orbitCoreRep D hf h_core s)
+            (fun x => |orbitCoreRep D hf h_core s x|
               ^ (grossExponent ρ p s - 1))
 
 /-- `F(s) = ∫ |u_s|^{q(s)} > 0`. Holds whenever
@@ -1612,7 +1639,7 @@ theorem grossPow_hasDerivWithinAt
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 ≤ s) :
     HasDerivWithinAt (grossPow D hf ρ p)
-      (grossPowDeriv D hf ρ p s) (Set.Ici 0) s := by
+      (grossPowDeriv D hf h_core ρ p s) (Set.Ici 0) s := by
   haveI : IsFiniteMeasure D.μ := inferInstance
   obtain ⟨ε, hε_pos, hf_ge_ε⟩ := hf_pos
   obtain ⟨Mf, hf_le_Mf⟩ := D.IsCore_memLp_top hf
@@ -1924,7 +1951,7 @@ theorem grossPow_hasDerivWithinAt
     ring
   -- Energy identification: D1 = -q · D.energy(u_s, u_s^{q-1}), hence
   -- D1 + D2 = grossPowDeriv.
-  have h_energy : D1 + D2 = grossPowDeriv D hf ρ p s := by
+  have h_energy : D1 + D2 = grossPowDeriv D hf h_core ρ p s := by
     sorry
   rw [← h_energy]
   -- grossPow D hf ρ p = fun σ => Hfun σ σ (def-eq).
@@ -1951,7 +1978,7 @@ theorem grossLogNorm_hasDerivWithinAt
     (h_int : Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
                           ^ grossExponent ρ p s) D.μ) :
     HasDerivWithinAt (grossLogNorm D hf ρ p)
-      (grossLogNormDeriv D hf ρ p s) (Set.Ici 0) s := by
+      (grossLogNormDeriv D hf h_core ρ p s) (Set.Ici 0) s := by
   set q := grossExponent ρ p s with hq_def
   have hqpos : 0 < q := grossExponent_pos hp ρ s
   have hqne : q ≠ 0 := ne_of_gt hqpos
@@ -1968,12 +1995,12 @@ theorem grossLogNorm_hasDerivWithinAt
     simpa using hq.inv hqne
   -- F = grossPow has within-derivative `F' = grossPowDeriv`.
   have hF : HasDerivWithinAt (grossPow D hf ρ p)
-      (grossPowDeriv D hf ρ p s) (Set.Ici 0) s :=
+      (grossPowDeriv D hf h_core ρ p s) (Set.Ici 0) s :=
     grossPow_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg hf_pos hs
   -- log F has within-derivative `F'/F`.
   have hlog : HasDerivWithinAt
       (fun s => Real.log (grossPow D hf ρ p s))
-      ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s)
+      ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s)
       (Set.Ici 0) s := by
     simpa [mul_comm] using
       (Real.hasDerivAt_log hFne).comp_hasDerivWithinAt s hF
@@ -1983,8 +2010,8 @@ theorem grossLogNorm_hasDerivWithinAt
   have hval : (-(2 * ρ * (q - 1)) / q ^ 2)
         * Real.log (grossPow D hf ρ p s)
       + (grossExponent ρ p s)⁻¹
-        * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s)
-      = grossLogNormDeriv D hf ρ p s := by
+        * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s)
+      = grossLogNormDeriv D hf h_core ρ p s := by
     rw [grossLogNormDeriv, grossEntropy_eq D ρ p hf, grossPowDeriv,
       grossLogIntegral, ← hq_def]
     field_simp
@@ -1992,7 +2019,7 @@ theorem grossLogNorm_hasDerivWithinAt
   have : HasDerivWithinAt (grossLogNorm D hf ρ p)
       ((-(2 * ρ * (q - 1)) / q ^ 2) * Real.log (grossPow D hf ρ p s)
         + (grossExponent ρ p s)⁻¹
-          * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s))
+          * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s))
       (Set.Ici 0) s := by
     simpa [grossLogNorm] using hmul
   rwa [hval] at this
@@ -2011,12 +2038,14 @@ E(u,u^{q-1})`. Hence the whole expression collapses to
 theorem grossLogNorm_deriv_nonpos
     (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
     (h_lsi : D.SatisfiesLogSobolev ρ)
+    (h_core : CoreSemigroupInvariant D)
+    (h_gen : GeneratorCompat D)
     (h_sv : StroockVaropoulos D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 < s) :
-    grossLogNormDeriv D hf ρ p s ≤ 0 := by
+    grossLogNormDeriv D hf h_core ρ p s ≤ 0 := by
   sorry
 
 /-- `Λ` is antitone on `[0,∞)`: continuity (P2 gives a right
@@ -2037,7 +2066,7 @@ theorem grossLogNorm_antitoneOn
                               ^ grossExponent ρ p s) D.μ) :
     AntitoneOn (grossLogNorm D hf ρ p) (Set.Ici 0) := by
   refine antitoneOn_of_hasDerivWithinAt_nonpos (convex_Ici 0)
-    (f' := grossLogNormDeriv D hf ρ p) ?_ ?_ ?_
+    (f' := grossLogNormDeriv D hf h_core ρ p) ?_ ?_ ?_
   · -- continuity on `[0,∞)`: each point has a within-derivative (P2),
     -- so `Λ` is continuous there.
     intro x hx
@@ -2049,8 +2078,8 @@ theorem grossLogNorm_antitoneOn
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf
       hf_nonneg hf_ne hf_pos hx0 (h_int x hx0)).mono interior_subset
   · intro x hx
-    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg hf_ne hf_pos
-      (by simpa using hx)
+    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_core h_gen h_sv hf hf_nonneg
+      hf_ne hf_pos (by simpa using hx)
 
 end GrossODE
 
