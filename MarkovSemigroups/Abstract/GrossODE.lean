@@ -52,6 +52,7 @@ import Mathlib.MeasureTheory.Function.UniformIntegrable
 import Mathlib.MeasureTheory.Function.UnifTight
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 import Mathlib.Analysis.Calculus.ParametricIntegral
+import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 
 open MeasureTheory ENNReal Set
 open scoped ENNReal InnerProductSpace
@@ -1393,16 +1394,54 @@ theorem grossPow_hasDerivWithinAt
       (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
       (2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s) s := by
     convert h_d2H using 1
-  -- The composition that turns ∂₁H + ∂₂H into the diagonal F'(s) is genuine
-  -- remaining work (~150+ LOC):
-  -- 1. ∂₁H = ∫ ψ'(u_s)·A(u_s) via hasDerivWithinAt_integral_of_strongL2Deriv
-  --    with u σ := D.P σ (D.coreToL2 hf), u' := D.P s Af (from
-  --    orbit_hasDerivWithinAt), ψ := x ↦ x^{q(s)} (avoiding |·|^q ContDiff
-  --    via a.e.-nonneg-orbit bridge).
-  -- 2. Partial-to-total chain rule: F'(s) = ∂₁H(s,s) + ∂₂H(s,s).
-  -- 3. Energy identification: ∫ ψ'(u_s)·A(u_s) = q·⟨u_s^{q-1}, A(u_s)⟩
-  --    = -q · D.energy(u_s, u_s^{q-1}) via h_gen with g := u_s^{q-1}
-  --    (using IsCore_rpow_pos_strict to discharge g ∈ IsCore).
+  -- Step ∂₁H: varying orbit, frozen exponent. Use ψ := Real.rpow · q(s)
+  -- (which is ContDiff ℝ 1 globally for q(s) ≥ 1; on the positive-orbit set,
+  -- it equals |·|^{q(s)} a.e.).
+  obtain ⟨Af, hAf_tendsto, hAf_pair⟩ := h_gen hf
+  set q : ℝ := grossExponent ρ p s with hq_def
+  have hq_pos : 0 < q := grossExponent_pos hp ρ s
+  have hq_one_le : (1 : ℝ) ≤ q := (one_lt_grossExponent hp ρ s).le
+  -- Orbit derivative at s.
+  have hu_deriv : HasDerivWithinAt (fun σ : ℝ => D.P σ (D.coreToL2 hf))
+      (D.P s Af) (Set.Ici 0) s :=
+    D.toMarkovSemigroup.orbit_hasDerivWithinAt hAf_tendsto hs
+  -- ψ := Real.rpow · q is ContDiff ℝ 1.
+  have hψ_cd : ContDiff ℝ 1 (fun x : ℝ => x ^ q) := by
+    have h := Real.contDiff_rpow_const_of_le (p := q) (n := 1)
+      (by exact_mod_cast hq_one_le)
+    exact h
+  -- |deriv ψ x| = |q · x^{q-1}| ≤ q · max(Mf, 1)^{q-1} on [-Mf, Mf].
+  -- Set the bound K := q * (max Mf 1) ^ (q - 1).
+  set Mf' : ℝ := max Mf 1 with hMf'_def
+  have hMf'_one : (1 : ℝ) ≤ Mf' := le_max_right _ _
+  have hMf'_pos : 0 < Mf' := lt_of_lt_of_le one_pos hMf'_one
+  set K : ℝ := q * Mf' ^ (q - 1) with hK_def
+  have hK_nn : 0 ≤ K := by
+    refine mul_nonneg hq_pos.le ?_
+    exact Real.rpow_nonneg hMf'_pos.le _
+  have hψ_bound : ∀ x ∈ Set.Icc (-Mf) Mf, |deriv (fun x : ℝ => x ^ q) x| ≤ K := by
+    intro x hx
+    -- deriv (fun x => x ^ q) = fun x => q * x^(q-1) via Real.deriv_rpow_const'.
+    have hderiv : deriv (fun x : ℝ => x ^ q) x = q * x ^ (q - 1) := by
+      have h := Real.deriv_rpow_const' (p := q)
+      exact congrFun h x
+    rw [hderiv, abs_mul, abs_of_pos hq_pos]
+    refine mul_le_mul_of_nonneg_left ?_ hq_pos.le
+    -- |x^(q-1)| ≤ |x|^(q-1) ≤ Mf'^(q-1).
+    calc |x ^ (q - 1)| ≤ |x| ^ (q - 1) := Real.abs_rpow_le_abs_rpow x (q - 1)
+      _ ≤ Mf' ^ (q - 1) := by
+          refine Real.rpow_le_rpow (abs_nonneg _) ?_ (by linarith)
+          calc |x| ≤ Mf := abs_le.mpr ⟨hx.1, hx.2⟩
+            _ ≤ Mf' := le_max_left _ _
+  -- Apply hasDerivWithinAt_integral_of_strongL2Deriv.
+  have h_d1H_raw := hasDerivWithinAt_integral_of_strongL2Deriv (Y := X) D.μ
+    (fun σ => D.P σ (D.coreToL2 hf)) (D.P s Af) hs hu_deriv
+    (fun x : ℝ => x ^ q) hψ_cd hK_nn hψ_bound hu_σ_le_Mf hu_s_le_Mf
+  -- h_d1H_raw : HasDerivWithinAt (fun σ => ∫ y, (u σ y)^q ∂ν)
+  --             (∫ y, deriv (fun x => x^q) (u_s y) * (u' y)) (Ici 0) s
+  -- Remaining: bridge (u σ y)^q to |u σ y|^{q(s)} via a.e. nonneg, then
+  -- combine with h_d2H' via partial-to-total chain rule, then identify
+  -- the derivative integral with -q · energy(u_s, u_s^{q-1}).
   sorry
 
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
