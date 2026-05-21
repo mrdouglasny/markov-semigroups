@@ -1439,9 +1439,30 @@ theorem grossPow_hasDerivWithinAt
     (fun x : ℝ => x ^ q) hψ_cd hK_nn hψ_bound hu_σ_le_Mf hu_s_le_Mf
   -- h_d1H_raw : HasDerivWithinAt (fun σ => ∫ y, (u σ y)^q ∂ν)
   --             (∫ y, deriv (fun x => x^q) (u_s y) * (u' y)) (Ici 0) s
-  -- Remaining: bridge (u σ y)^q to |u σ y|^{q(s)} via a.e. nonneg, then
-  -- combine with h_d2H' via partial-to-total chain rule, then identify
-  -- the derivative integral with -q · energy(u_s, u_s^{q-1}).
+  -- Bridge (u σ y)^q ↔ |u σ y|^q a.e. (orbit nonneg for σ ≥ 0).
+  have h_coreToL2_nn : (0 : Lp ℝ 2 D.μ) ≤ D.coreToL2 hf := by
+    rw [← Lp.coeFn_nonneg]
+    filter_upwards [hf_Lp_ge_ε] with y hy
+    simp only [Pi.zero_apply]; linarith
+  have h_orbit_nn : ∀ σ : ℝ, 0 ≤ σ → ∀ᵐ y ∂D.μ,
+      0 ≤ ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
+    fun σ hσ => (Lp.coeFn_nonneg _).mpr (D.P_positivity σ hσ _ h_coreToL2_nn)
+  have h_integrand_eq : ∀ σ ∈ Set.Ici (0:ℝ),
+      (∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ q ∂D.μ)
+        = ∫ y, ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y ^ q ∂D.μ := by
+    intro σ hσ
+    refine integral_congr_ae ?_
+    filter_upwards [h_orbit_nn σ hσ] with y hy
+    rw [abs_of_nonneg hy]
+  have h_d1H : HasDerivWithinAt
+      (fun σ => ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ q ∂D.μ)
+      (∫ y, deriv (fun x : ℝ => x ^ q) (u_s_func y) * (D.P s Af : X → ℝ) y ∂D.μ)
+      (Set.Ici 0) s :=
+    h_d1H_raw.congr (fun σ hσ => h_integrand_eq σ hσ) (h_integrand_eq s hs)
+  -- Remaining composition: combine h_d1H + h_d2H' via partial-to-total chain
+  -- rule for F(σ) = H(σ,σ) = ∫ |u_σ|^{q(σ)}, then identify the ∂₁H integral
+  -- ∫ deriv ψ (u_s) · (P_s Af) = -q · D.energy(u_s, u_s^{q-1}) via h_gen +
+  -- IsCore_rpow_pos_strict.
   sorry
 
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
