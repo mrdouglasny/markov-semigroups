@@ -249,6 +249,214 @@ lemma orbit_lower_bound (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
   rw [Pi.zero_apply, h_pt] at hy
   linarith
 
+/-- **Strong continuity at any `s ≥ 0`.** `P_strong_cont` gives this at
+`t = 0`; the semigroup property + `P_contraction` (`‖P t‖ ≤ 1`)
+upgrade it to every `s ≥ 0`, via the standard textbook argument:
+* Approach from above: for `σ = s + t` with `t > 0`,
+  `‖P σ g - P s g‖ = ‖P s (P t g) - P s g‖ ≤ ‖P t g - g‖ → 0`.
+* Approach from below: for `σ < s`, `P s g = P σ (P (s-σ) g)`, so
+  `‖P σ g - P s g‖ = ‖P σ (g - P (s-σ) g)‖ ≤ ‖g - P (s-σ) g‖ → 0`. -/
+lemma strong_cont_at (S : MarkovSemigroup X) (g : Lp ℝ 2 S.μ) {s : ℝ}
+    (hs : 0 ≤ s) :
+    Filter.Tendsto (fun σ : ℝ => S.P σ g) (nhdsWithin s (Set.Ici 0))
+      (nhds (S.P s g)) := by
+  rw [Metric.tendsto_nhdsWithin_nhds]
+  intro ε hε
+  have hcont0 := S.P_strong_cont g
+  rw [Metric.tendsto_nhdsWithin_nhds] at hcont0
+  obtain ⟨δ, hδ_pos, hδ⟩ := hcont0 ε hε
+  refine ⟨δ, hδ_pos, ?_⟩
+  intro σ hσ_in hσ_dist
+  rcases lt_trichotomy σ s with hσ_lt | hσ_eq | hσ_gt
+  · -- σ < s: P s g = P σ (P (s-σ) g), so P σ g - P s g = P σ (g - P (s-σ) g).
+    have hr_pos : 0 < s - σ := sub_pos.mpr hσ_lt
+    have hr_dist : dist (s - σ) 0 < δ := by
+      have : dist (s - σ) 0 = s - σ := by
+        rw [Real.dist_eq, sub_zero, abs_of_pos hr_pos]
+      rw [this]
+      have habsσ : |σ - s| < δ := by simpa [Real.dist_eq] using hσ_dist
+      have := abs_lt.mp habsσ; linarith
+    have h_g_close : dist (S.P (s - σ) g) g < ε := hδ hr_pos.le hr_dist
+    have h_decomp : S.P s g = S.P σ (S.P (s - σ) g) := by
+      have h_sg : S.P (σ + (s - σ)) = (S.P σ).comp (S.P (s - σ)) :=
+        S.P_semigroup σ (s - σ) hσ_in hr_pos.le
+      calc S.P s g = S.P (σ + (s - σ)) g := by rw [show σ + (s - σ) = s from by ring]
+        _ = ((S.P σ).comp (S.P (s - σ))) g := by rw [h_sg]
+        _ = S.P σ (S.P (s - σ) g) := rfl
+    rw [h_decomp]
+    -- dist (P σ g) (P σ (P (s-σ) g)) ≤ ‖P σ‖ · dist g (P (s-σ) g) ≤ dist g (P (s-σ) g) < ε.
+    calc dist (S.P σ g) (S.P σ (S.P (s - σ) g))
+        ≤ ‖S.P σ‖ * dist g (S.P (s - σ) g) := by
+          simpa [dist_eq_norm] using (S.P σ).lipschitz.norm_sub_le g (S.P (s - σ) g)
+      _ ≤ dist g (S.P (s - σ) g) :=
+          mul_le_of_le_one_left dist_nonneg (S.P_contraction σ hσ_in)
+      _ = dist (S.P (s - σ) g) g := dist_comm _ _
+      _ < ε := h_g_close
+  · -- σ = s.
+    subst hσ_eq; simpa using hε
+  · -- σ > s: P σ g = P s (P (σ-s) g).
+    have hr_pos : 0 < σ - s := sub_pos.mpr hσ_gt
+    have hr_dist : dist (σ - s) 0 < δ := by
+      have : dist (σ - s) 0 = σ - s := by
+        rw [Real.dist_eq, sub_zero, abs_of_pos hr_pos]
+      rw [this]
+      have habsσ : |σ - s| < δ := by simpa [Real.dist_eq] using hσ_dist
+      linarith [abs_lt.mp habsσ]
+    have h_g_close : dist (S.P (σ - s) g) g < ε := hδ hr_pos.le hr_dist
+    have h_decomp : S.P σ g = S.P s (S.P (σ - s) g) := by
+      have h_sg : S.P (s + (σ - s)) = (S.P s).comp (S.P (σ - s)) :=
+        S.P_semigroup s (σ - s) hs hr_pos.le
+      calc S.P σ g = S.P (s + (σ - s)) g := by rw [show s + (σ - s) = σ from by ring]
+        _ = ((S.P s).comp (S.P (σ - s))) g := by rw [h_sg]
+        _ = S.P s (S.P (σ - s) g) := rfl
+    rw [h_decomp]
+    calc dist (S.P s (S.P (σ - s) g)) (S.P s g)
+        ≤ ‖S.P s‖ * dist (S.P (σ - s) g) g := by
+          simpa [dist_eq_norm] using (S.P s).lipschitz.norm_sub_le (S.P (σ - s) g) g
+      _ ≤ dist (S.P (σ - s) g) g := mul_le_of_le_one_left dist_nonneg (S.P_contraction s hs)
+      _ < ε := h_g_close
+
+/-- **Orbit has right derivative `P_s Af` at any `s ≥ 0`.** From the
+strong-L² derivative `Af` at `t = 0` (given by e.g. `GeneratorCompat`),
+the orbit `σ ↦ P_σ f` is differentiable at every `s ≥ 0` (within
+`Ici 0`) with derivative `P_s Af`. Standard semigroup commutation
+trick + `strong_cont_at`:
+* For `σ > s`: write `σ = s + t`, then
+  `(σ-s)⁻¹ • (P_σ f - P_s f) = P_s (t⁻¹ • (P_t f - f)) → P_s Af`
+  by linearity of `P_s` and the `t→0+` limit.
+* For `σ < s`: write `s = σ + r`, then
+  `(σ-s)⁻¹ • (P_σ f - P_s f) = P_σ (r⁻¹ • (P_r f - f))`,
+  and we need the joint limit `P_σ (x_σ) → P_s (Af)` where
+  `x_σ → Af` and `P_σ → P_s` strongly. The standard triangle bound
+  `‖P_σ x_σ - P_s Af‖ ≤ ‖P_σ‖·‖x_σ - Af‖ + ‖P_σ Af - P_s Af‖` plus
+  `‖P_σ‖ ≤ 1` + `strong_cont_at` closes it. -/
+lemma orbit_hasDerivWithinAt (S : MarkovSemigroup X)
+    {f Af : Lp ℝ 2 S.μ}
+    (hAf : Filter.Tendsto (fun t : ℝ => t⁻¹ • (S.P t f - f))
+            (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds Af))
+    {s : ℝ} (hs : 0 ≤ s) :
+    HasDerivWithinAt (fun σ : ℝ => S.P σ f) (S.P s Af) (Set.Ici 0) s := by
+  rw [hasDerivWithinAt_iff_tendsto_slope]
+  -- Goal: Tendsto (slope (fun σ => P σ f) s) (𝓝[Ici 0 \ {s}] s) (𝓝 (P s Af))
+  rw [Metric.tendsto_nhdsWithin_nhds]
+  intro ε hε
+  -- From hAf in metric form.
+  have hAf_metric :
+      ∀ ε' > 0, ∃ δ' > 0, ∀ t, 0 < t → dist t 0 < δ' →
+        dist (t⁻¹ • (S.P t f - f)) Af < ε' := by
+    intro ε' hε'
+    rw [Metric.tendsto_nhdsWithin_nhds] at hAf
+    obtain ⟨δ, hδ, h⟩ := hAf ε' hε'
+    exact ⟨δ, hδ, fun t ht hdt => h ht hdt⟩
+  -- From strong_cont_at at s for Af.
+  have hcont := S.strong_cont_at Af hs
+  rw [Metric.tendsto_nhdsWithin_nhds] at hcont
+  obtain ⟨δ_cont, hδ_cont_pos, hδ_cont⟩ := hcont (ε / 2) (by linarith)
+  obtain ⟨δ_Af, hδ_Af_pos, hδ_Af⟩ := hAf_metric (ε / 2) (by linarith)
+  refine ⟨min δ_cont δ_Af, by positivity, ?_⟩
+  intro σ hσ_in hσ_dist
+  -- hσ_in : σ ∈ Ici 0 \ {s}.
+  obtain ⟨hσ_ge0, hσ_ne⟩ := hσ_in
+  simp only [Set.mem_singleton_iff] at hσ_ne
+  have hσ_dist_cont : dist σ s < δ_cont :=
+    lt_of_lt_of_le hσ_dist (min_le_left _ _)
+  have hσ_dist_Af : dist σ s < δ_Af :=
+    lt_of_lt_of_le hσ_dist (min_le_right _ _)
+  -- Slope: (σ - s)⁻¹ • (P σ f - P s f)
+  show dist (slope (fun σ => S.P σ f) s σ) (S.P s Af) < ε
+  rw [slope_def_module]
+  rcases lt_or_gt_of_ne hσ_ne with hσ_lt | hσ_gt
+  · -- σ < s: write s = σ + (s - σ), use P s = P σ ∘ P (s-σ).
+    have hr_pos : 0 < s - σ := sub_pos.mpr hσ_lt
+    have hr_dist : dist (s - σ) 0 < δ_Af := by
+      have : |s - σ| = s - σ := abs_of_pos hr_pos
+      have : dist (s - σ) 0 = s - σ := by rw [Real.dist_eq, sub_zero, this]
+      rw [this]
+      have habsσ : |σ - s| < δ_Af := by simpa [Real.dist_eq] using hσ_dist_Af
+      linarith [abs_lt.mp habsσ]
+    have h_close_inner :
+        dist ((s - σ)⁻¹ • (S.P (s - σ) f - f)) Af < ε / 2 :=
+      hδ_Af _ hr_pos hr_dist
+    -- P s f = P σ (P (s - σ) f).
+    have hP_decomp : S.P s f = S.P σ (S.P (s - σ) f) := by
+      have h := S.P_semigroup σ (s - σ) hσ_ge0 hr_pos.le
+      have : S.P (σ + (s - σ)) f = (S.P σ).comp (S.P (s - σ)) f := by
+        rw [h]
+      simpa [show σ + (s - σ) = s from by ring] using this
+    -- Slope: (σ - s)⁻¹ • (P σ f - P s f) = (σ - s)⁻¹ • (P σ f - P σ (P (s-σ) f))
+    --      = (σ - s)⁻¹ • P σ (f - P (s-σ) f)
+    --      = - (s - σ)⁻¹ • P σ (f - P (s-σ) f)
+    --      = (s - σ)⁻¹ • P σ (P (s-σ) f - f)
+    --      = P σ ((s - σ)⁻¹ • (P (s-σ) f - f))
+    have h_slope_eq : (σ - s)⁻¹ • (S.P σ f - S.P s f)
+        = S.P σ ((s - σ)⁻¹ • (S.P (s - σ) f - f)) := by
+      rw [hP_decomp, ← map_sub (S.P σ), ← map_smul]
+      congr 1
+      calc (σ - s)⁻¹ • (f - S.P (s - σ) f)
+          = -((s - σ)⁻¹) • (f - S.P (s - σ) f) := by
+              rw [show σ - s = -(s - σ) from by ring, inv_neg]
+        _ = -((s - σ)⁻¹ • (f - S.P (s - σ) f)) := by rw [neg_smul]
+        _ = (s - σ)⁻¹ • -(f - S.P (s - σ) f) := by rw [← smul_neg]
+        _ = (s - σ)⁻¹ • (S.P (s - σ) f - f) := by rw [neg_sub]
+    rw [h_slope_eq]
+    set inner := (s - σ)⁻¹ • (S.P (s - σ) f - f)
+    -- Step 1: dist (P σ inner) (P σ Af) ≤ ‖P σ‖ * dist inner Af ≤ dist inner Af.
+    have h1 : dist (S.P σ inner) (S.P σ Af) ≤ dist inner Af := by
+      have hnorm : ‖S.P σ inner - S.P σ Af‖ ≤ ‖S.P σ‖ * ‖inner - Af‖ := by
+        rw [← map_sub]; exact (S.P σ).le_opNorm _
+      calc dist (S.P σ inner) (S.P σ Af)
+          = ‖S.P σ inner - S.P σ Af‖ := dist_eq_norm _ _
+        _ ≤ ‖S.P σ‖ * ‖inner - Af‖ := hnorm
+        _ ≤ 1 * ‖inner - Af‖ := by
+            have hle : ‖S.P σ‖ ≤ 1 := S.P_contraction σ hσ_ge0
+            have hnn : 0 ≤ ‖inner - Af‖ := norm_nonneg _
+            exact mul_le_mul_of_nonneg_right hle hnn
+        _ = ‖inner - Af‖ := one_mul _
+        _ = dist inner Af := (dist_eq_norm _ _).symm
+    -- Step 2: dist (P σ Af) (P s Af) < ε / 2 by strong continuity at s.
+    have h2 : dist (S.P σ Af) (S.P s Af) < ε / 2 := hδ_cont hσ_ge0 hσ_dist_cont
+    -- Triangle: < ε/2 + ε/2.
+    calc dist (S.P σ inner) (S.P s Af)
+        ≤ dist (S.P σ inner) (S.P σ Af) + dist (S.P σ Af) (S.P s Af) :=
+          dist_triangle _ _ _
+      _ < ε / 2 + ε / 2 := by linarith [h1, h_close_inner]
+      _ = ε := by ring
+  · -- σ > s: write σ = s + (σ - s), use P σ = P s ∘ P (σ-s).
+    have ht_pos : 0 < σ - s := sub_pos.mpr hσ_gt
+    have ht_dist : dist (σ - s) 0 < δ_Af := by
+      have : |σ - s| = σ - s := abs_of_pos ht_pos
+      have heq : dist (σ - s) 0 = σ - s := by rw [Real.dist_eq, sub_zero, this]
+      rw [heq]
+      have habsσ : |σ - s| < δ_Af := by simpa [Real.dist_eq] using hσ_dist_Af
+      linarith [abs_lt.mp habsσ]
+    have h_close_inner :
+        dist ((σ - s)⁻¹ • (S.P (σ - s) f - f)) Af < ε / 2 :=
+      hδ_Af _ ht_pos ht_dist
+    -- P σ f = P s (P (σ - s) f).
+    have hP_decomp : S.P σ f = S.P s (S.P (σ - s) f) := by
+      have h := S.P_semigroup s (σ - s) hs ht_pos.le
+      have : S.P (s + (σ - s)) f = (S.P s).comp (S.P (σ - s)) f := by rw [h]
+      simpa [show s + (σ - s) = σ from by ring] using this
+    -- Slope: (σ - s)⁻¹ • (P σ f - P s f) = (σ - s)⁻¹ • (P s (P (σ-s) f) - P s f)
+    --      = P s ((σ - s)⁻¹ • (P (σ-s) f - f))
+    have h_slope_eq : (σ - s)⁻¹ • (S.P σ f - S.P s f)
+        = S.P s ((σ - s)⁻¹ • (S.P (σ - s) f - f)) := by
+      rw [hP_decomp, ← map_sub (S.P s), ← map_smul]
+    rw [h_slope_eq]
+    set inner := (σ - s)⁻¹ • (S.P (σ - s) f - f)
+    have hnorm : ‖S.P s inner - S.P s Af‖ ≤ ‖S.P s‖ * ‖inner - Af‖ := by
+      rw [← map_sub]; exact (S.P s).le_opNorm _
+    calc dist (S.P s inner) (S.P s Af)
+        = ‖S.P s inner - S.P s Af‖ := dist_eq_norm _ _
+      _ ≤ ‖S.P s‖ * ‖inner - Af‖ := hnorm
+      _ ≤ 1 * ‖inner - Af‖ := by
+          have hle : ‖S.P s‖ ≤ 1 := S.P_contraction s hs
+          exact mul_le_mul_of_nonneg_right hle (norm_nonneg _)
+      _ = ‖inner - Af‖ := one_mul _
+      _ = dist inner Af := (dist_eq_norm _ _).symm
+      _ < ε / 2 := h_close_inner
+      _ < ε := by linarith
+
 /-- A symmetric Markov semigroup is *hypercontractive* with rate `ρ > 0`
 if `P_t : L^p → L^q` is a contraction whenever
 `q ≤ 1 + (p − 1) · e^{2ρt}`:
