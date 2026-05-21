@@ -1480,7 +1480,32 @@ theorem grossPow_hasDerivWithinAt
   -- identification, deferred). Reduce to the chain rule + energy identity.
   -- Chain rule target: HasDerivWithinAt (fun σ => Hfun σ σ) (D1 + D2) (Ici 0) s.
   have h_chain : HasDerivWithinAt (fun σ => Hfun σ σ) (D1 + D2) (Set.Ici 0) s := by
-    sorry
+    rw [hasDerivWithinAt_iff_tendsto_slope]
+    -- Split: slope (diag) = slope (Hfun · s) + (Hfun σ σ - Hfun σ s)/(σ - s).
+    -- First term → D1 (h_d1H); second → D2 via MVT-in-τ + uniform Lipschitz.
+    have h_first : Filter.Tendsto (fun σ => slope (fun σ' => Hfun σ' s) s σ)
+        (nhdsWithin s (Set.Ici 0 \ {s})) (nhds D1) := by
+      have h := hasDerivWithinAt_iff_tendsto_slope.mp h_d1H
+      -- h_d1H's function is `fun σ => ∫|u_σ|^q`, and `Hfun σ' s = ∫|u_{σ'}|^{q(s)}`;
+      -- `q = grossExponent ρ p s`, so they agree.
+      exact h
+    have h_second : Filter.Tendsto
+        (fun σ => (Hfun σ σ - Hfun σ s) / (σ - s))
+        (nhdsWithin s (Set.Ici 0 \ {s})) (nhds D2) := by
+      sorry
+    -- Combine.
+    have h_sum := h_first.add h_second
+    refine h_sum.congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with σ hσ_in
+    obtain ⟨_, hσ_ne⟩ := hσ_in
+    rw [Set.mem_singleton_iff] at hσ_ne
+    -- slope (diag) σ = slope (Hfun · s) σ + (Hfun σ σ - Hfun σ s)/(σ-s).
+    show slope (fun σ' => Hfun σ' s) s σ + (Hfun σ σ - Hfun σ s) / (σ - s)
+        = slope (fun σ => Hfun σ σ) s σ
+    rw [slope_def_field, slope_def_field]
+    have hne : σ - s ≠ 0 := sub_ne_zero.mpr hσ_ne
+    field_simp
+    ring
   -- Energy identification: D1 = -q · D.energy(u_s, u_s^{q-1}), hence
   -- D1 + D2 = grossPowDeriv.
   have h_energy : D1 + D2 = grossPowDeriv D hf ρ p s := by
