@@ -19,6 +19,7 @@ When a planning doc in `plans/` is completed, also move the doc to
 
 | Date | Title | Net axiom count Δ |
 |---|---|---|
+| 2026-05-21 | [Gross LSI ⇒ HC abstract spine — `GrossODE.lean` sorry-free](#2026-05-21-gross-lsi--hc-abstract-spine-complete) | 0 (no new axioms; +1 vetted predicate `CoreLpL2Approx`, S–V relaxed `2≤q`→`1<q`) |
 | 2026-05-13 | [Lp-carrier refactor of abstract `MarkovSemigroup`](#2026-05-13-lp-carrier-refactor-of-abstract-markovsemigroup) | 0 (correctness fix; `hρ : 0 < ρ` firewall added) |
 | 2026-05-13 | [Stage N1 — multivariate Gaussian BE instance merged](#2026-05-13-stage-n1--multivariate-gaussian-be-instance-merged) | +3 placeholder GaussianFin axioms (all vetted Standard) |
 | 2026-05-13 | [Bundled `DirichletMarkovSemigroup` refactor + S–V axiom](#2026-05-13-bundled-dirichletmarkovsemigroup-refactor--stroockvaropoulos-axiom) | +1 (S–V axiom added, vetted Standard) |
@@ -30,6 +31,63 @@ When a planning doc in `plans/` is completed, also move the doc to
 | 2026-05-12 | [`IsCore` refactor `ContDiff ⊤ → ContDiff ∞`](#2026-05-12-iscore-refactor-contdiff--contdiff-) | 0 (correctness fix) |
 
 ---
+
+## 2026-05-21: Gross LSI ⇒ HC abstract spine complete
+
+**Goal:** finish the hypothesis-parameterised Gross theorem
+`gross_lsi_implies_hypercontractive_of_hypotheses` in
+`Abstract/GrossODE.lean` — i.e. prove P2 (`grossPow_hasDerivWithinAt`),
+P3 (`grossLogNorm_deriv_nonpos`), and the general-`f` reduction to
+`IsHypercontractive`, leaving only the per-instance discharge (W) for
+gaussian-hilbert.
+
+**Commits** (branch `gross-grossPow-hasDerivWithinAt-body`): helper
+`af8e881` (`abs_integral_rpow_mul_log_sub_le`); `h_second` `a075063`;
+energy→`orbitCoreRep` refactor `458d2f3`; `h_energy` `509773e`; P3
+`92ed88a`; SV-relaxation vetting `e64a7fe`; core+positive bound
+`df46789`; `CoreLpApprox` vetting `7b1b22a`; final theorem `82e1602`.
+
+**Resources:** one extended session. ~4 deep-think vetting calls
+(energy a.e.-invariance ×2, S–V `q>1` relaxation, `CoreLpL2Approx`).
+Several hundred lines net in `GrossODE.lean` + `Hypercontractivity.lean`.
+codex:rescue attempted on `h_second`, made no progress; done by hand.
+
+**Outcome:**
+* `GrossODE.lean` is **sorry-free**; `#print axioms
+  gross_lsi_implies_hypercontractive_of_hypotheses =
+  [propext, Classical.choice, Quot.sound]`.
+* P2 via `h_second` (MVT-in-τ + integral-Lipschitz helper +
+  `squeeze_zero_norm'`) ⊕ `h_energy` (generator pairing `P_s Af = Ag'`
+  by strong-`L²` limit uniqueness).
+* P3 via LSI on `u^{q/2}` + Stroock–Varopoulos (generator-paired) ⇒
+  `div_nonpos_iff`.
+* Final reduction: core+positive bound `eLpNorm_orbit_le_of_core_pos`
+  (antitone `Λ` + `eLpNorm↔(∫·^r)^{1/r}` + `L^q ≤ L^{q(t)}`) extended to
+  general `f` via the new `CoreLpL2Approx` (WLOG `f≥0`, `L²`-approx ⇒
+  a.e.-orbit subsequence, Fatou).
+* No new axioms. Added one per-instance hypothesis predicate
+  `CoreLpL2Approx`; relaxed `StroockVaropoulos._hq` `2 ≤ q → 1 < q`.
+* The four predicates `CoreSemigroupInvariant` / `GeneratorCompat` /
+  `StroockVaropoulos` / `CoreLpL2Approx` are discharged per-instance (W).
+
+**Lessons learned:**
+* **The abstract `D.energy` is a carré-du-champ (gradient) form → NOT
+  a.e.-invariant.** An unconditional `energy_ae_congr` field is *false*
+  for gradient energies (rejected after two vettings). The fix: evaluate
+  energy at a smooth core representative `orbitCoreRep` (from
+  `CoreSemigroupInvariant`), never at the `Lp`-coe rep. Dropped the
+  redundant `|·|` on the energy power so it matches the
+  `IsCore_rpow_pos_strict` core rep exactly.
+* **Vet hypothesis-relaxations before committing.** S–V holds for all
+  `q > 1` (equality for diffusions); `2 ≤ q` would have forced the HC
+  theorem to `p ≥ 2`. Deep-think confirmed `1 < q` is sound + necessary.
+* **Decouple the semigroup from density hypotheses.** `CoreLpL2Approx`
+  asks only for `L^p`+`L²` density of core (no `P_t`); the abstract glue
+  recovers a.e.-orbit convergence from `L²`-contraction +
+  `tendstoInMeasure_of_tendsto_Lp` (Gemini's refinement).
+* **`coreToL2 hf` is not syntactically `(IsCore_memLp hf).toLp f`** —
+  route a.e. facts through a folded `have hcoe : (coreToL2 hf : X→ℝ) =ᵐ f`
+  before `rw`/`simp`, else pattern matching fails.
 
 ## 2026-05-13: Lp-carrier refactor of abstract `MarkovSemigroup`
 

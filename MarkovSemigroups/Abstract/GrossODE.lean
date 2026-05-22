@@ -52,6 +52,7 @@ import Mathlib.MeasureTheory.Function.UniformIntegrable
 import Mathlib.MeasureTheory.Function.UnifTight
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 import Mathlib.Analysis.Calculus.ParametricIntegral
+import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 
 open MeasureTheory ENNReal Set
 open scoped ENNReal InnerProductSpace
@@ -98,6 +99,19 @@ theorem hasDerivAt_grossExponent (ρ p s : ℝ) :
   convert this using 1
   simp only [grossExponent]; ring
 
+/-- `grossExponent ρ p` is `C^∞` (and hence `C^1`). Composition of constants,
+linear maps, and `Real.exp`. -/
+theorem contDiff_grossExponent (ρ p : ℝ) {n : WithTop ℕ∞} :
+    ContDiff ℝ n (grossExponent ρ p) := by
+  unfold grossExponent
+  have h_lin : ContDiff ℝ n (fun s : ℝ => 2 * ρ * s) :=
+    (contDiff_const.mul contDiff_id)
+  have h_exp : ContDiff ℝ n (fun s : ℝ => Real.exp (2 * ρ * s)) :=
+    Real.contDiff_exp.comp h_lin
+  have h_mul : ContDiff ℝ n (fun s : ℝ => (p - 1) * Real.exp (2 * ρ * s)) :=
+    contDiff_const.mul h_exp
+  exact contDiff_const.add h_mul
+
 /-- The exponent path is monotone in `s` (for `p > 1`, `ρ ≥ 0`). -/
 theorem grossExponent_le_of_le {p : ℝ} (hp : 1 < p) {ρ : ℝ} (hρ : 0 ≤ ρ)
     {s t : ℝ} (hst : s ≤ t) : grossExponent ρ p s ≤ grossExponent ρ p t := by
@@ -121,19 +135,46 @@ def grossLogNorm (D : DirichletMarkovSemigroup X) {f : X → ℝ}
     (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
   (grossExponent ρ p s)⁻¹ * Real.log (grossPow D hf ρ p s)
 
+open Classical in
+/-- A **core (smooth) representative of the orbit** `P_s f` for `s ≥ 0`,
+extracted from `CoreSemigroupInvariant` (`= f` for the unused `s < 0`).
+
+The Dirichlet energy of the orbit *must* be evaluated at this smooth
+representative, not at the `Lp`-coe representative `⇑(P_s f)`: the abstract
+`energy` is a *carré-du-champ* form (`∫ Σᵢ ∂ᵢu ∂ᵢv`, see the `ouEnergyFin`
+instance), so it depends on the gradient of the chosen representative.
+Mathlib's `Lp`-coe `⇑(P_s f)` is generically non-differentiable, so a
+gradient-form energy would return junk there. Working through a core
+representative keeps every energy evaluation on a smooth function. The
+value is representative-independent (justified by `energy_eq_deriv`
+uniqueness on core reps), but only this choice is needed downstream. -/
+noncomputable def orbitCoreRep (D : DirichletMarkovSemigroup X) {f : X → ℝ}
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) (s : ℝ) : X → ℝ :=
+  if h : 0 ≤ s then (h_core s h hf).choose else f
+
+/-- The defining properties of `orbitCoreRep`: it is a core function whose
+`L²` class is the orbit `P_s (coreToL2 f)`. -/
+lemma orbitCoreRep_spec (D : DirichletMarkovSemigroup X) {f : X → ℝ}
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) {s : ℝ} (hs : 0 ≤ s) :
+    ∃ hg' : D.IsCore (orbitCoreRep D hf h_core s),
+      D.P s (D.coreToL2 hf) = D.coreToL2 hg' := by
+  unfold orbitCoreRep
+  rw [dif_pos hs]
+  exact (h_core s hs hf).choose_spec
+
 /-- The Gross derivative value
 `Λ'(s) = (q'/(q² F))·Entμ(u^q) − E(u, u^{q-1})/F` (`u = P_s f`,
 `q = q(s)`, `F = grossPow`). P2 asserts `Λ` has this as its right
 derivative; P3 asserts it is `≤ 0`. -/
 def grossLogNormDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
-    (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) (ρ p s : ℝ) : ℝ :=
   2 * ρ * (grossExponent ρ p s - 1)
       / (grossExponent ρ p s ^ 2 * grossPow D hf ρ p s)
       * D.toDirichletSpace.entropy
           (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
             ^ grossExponent ρ p s)
-    - D.energy ((D.P s (D.coreToL2 hf) : X → ℝ))
-        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+    - D.energy (orbitCoreRep D hf h_core s)
+        (fun x => orbitCoreRep D hf h_core s x
           ^ (grossExponent ρ p s - 1))
       / grossPow D hf ρ p s
 
@@ -150,11 +191,11 @@ contribution (`∂_s |u|^{q(s)} = |u|^{q} log|u| · q'`); the second is
 the semigroup contribution (`∂_s u = A u`, `∫ u^{q-1} A u =
 −E(u,u^{q-1})` by `GeneratorCompat`). -/
 def grossPowDeriv (D : DirichletMarkovSemigroup X) {f : X → ℝ}
-    (hf : D.IsCore f) (ρ p s : ℝ) : ℝ :=
+    (hf : D.IsCore f) (h_core : CoreSemigroupInvariant D) (ρ p s : ℝ) : ℝ :=
   2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s
     - grossExponent ρ p s
-        * D.energy ((D.P s (D.coreToL2 hf) : X → ℝ))
-            (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
+        * D.energy (orbitCoreRep D hf h_core s)
+            (fun x => orbitCoreRep D hf h_core s x
               ^ (grossExponent ρ p s - 1))
 
 /-- `F(s) = ∫ |u_s|^{q(s)} > 0`. Holds whenever
@@ -569,6 +610,265 @@ theorem hasDerivAt_integral_rpow_exponent {Y : Type*}
     rw [integral_mul_const, mul_comm]
   convert h_main.2 using 1
   rw [h_int_F's, ha.deriv]
+
+/-- Mean value theorem packaged with an unordered interval witness. -/
+lemma exists_hasDerivAt_eq_slope_uIcc {f f' : ℝ → ℝ} {a b : ℝ}
+    (hab : a ≠ b) (hfc : Continuous f) (hff' : ∀ x : ℝ, HasDerivAt f (f' x) x) :
+    ∃ c ∈ Set.uIcc a b, (f b - f a) / (b - a) = f' c := by
+  rcases lt_or_gt_of_ne hab with hab' | hba'
+  · obtain ⟨c, hc, hceq⟩ :=
+      exists_hasDerivAt_eq_slope f f' hab' hfc.continuousOn (fun x _ => hff' x)
+    refine ⟨c, ?_, hceq.symm⟩
+    simpa [Set.uIcc, min_eq_left hab'.le, max_eq_right hab'.le] using
+      Set.mem_Icc.mpr ⟨hc.1.le, hc.2.le⟩
+  · obtain ⟨c, hc, hceq⟩ :=
+      exists_hasDerivAt_eq_slope (a := b) (b := a) f f' hba' hfc.continuousOn
+        (fun x _ => hff' x)
+    have hquot : (f b - f a) / (b - a) = (f a - f b) / (a - b) := by
+      have h1 : b - a ≠ 0 := sub_ne_zero.mpr hab.symm
+      have h2 : a - b ≠ 0 := sub_ne_zero.mpr hab
+      field_simp [h1, h2]
+      ring
+    refine ⟨c, ?_, hquot.trans hceq.symm⟩
+    simpa [Set.uIcc, min_eq_right hba'.le, max_eq_left hba'.le] using
+      Set.mem_Icc.mpr ⟨hc.1.le, hc.2.le⟩
+
+/-- For a real-valued function, the integral of the absolute value is the `L¹` seminorm. -/
+lemma integral_abs_eq_eLpNorm_one_toReal {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    {f : Y → ℝ} (hf : Integrable (fun y => |f y|) ν) :
+    ∫ y, |f y| ∂ν = (eLpNorm f 1 ν).toReal := by
+  rw [integral_eq_lintegral_of_nonneg_ae (Filter.Eventually.of_forall fun _ => abs_nonneg _) hf.aestronglyMeasurable,
+    eLpNorm_one_eq_lintegral_enorm]
+  congr 1
+  apply lintegral_congr_ae
+  filter_upwards with y
+  simp [Real.enorm_eq_ofReal_abs]
+
+/-- On a probability space, `L² → 0` implies the integral of the absolute value tends to `0`. -/
+lemma tendsto_integral_abs_of_tendsto_eLpNorm_two_zero {ι Y : Type*}
+    [MeasurableSpace Y] (ν : Measure Y) [IsProbabilityMeasure ν] {l : Filter ι}
+    (F : ι → Y → ℝ)
+    (hF_meas : ∀ i, AEStronglyMeasurable (F i) ν)
+    (hF_int : ∀ᶠ i in l, Integrable (fun y => |F i y|) ν)
+    (hF_two : Filter.Tendsto (fun i => eLpNorm (F i) 2 ν) l (nhds 0)) :
+    Filter.Tendsto (fun i => ∫ y, |F i y| ∂ν) l (nhds 0) := by
+  have hF_one : Filter.Tendsto (fun i => eLpNorm (F i) 1 ν) l (nhds 0) := by
+    refine tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hF_two ?_ ?_
+    · intro i
+      exact bot_le
+    · intro i
+      exact eLpNorm_le_eLpNorm_of_exponent_le (μ := ν) (p := (1 : ℝ≥0∞)) (q := (2 : ℝ≥0∞))
+        (by norm_num) (hF_meas i)
+  have hF_one_real : Filter.Tendsto (fun i => (eLpNorm (F i) 1 ν).toReal) l (nhds 0) := by
+    exact (ENNReal.continuousAt_toReal ENNReal.zero_ne_top).tendsto.comp hF_one
+  have heq : ∀ᶠ i in l, ∫ y, |F i y| ∂ν = (eLpNorm (F i) 1 ν).toReal := by
+    filter_upwards [hF_int] with i hi
+    exact integral_abs_eq_eLpNorm_one_toReal hi
+  exact hF_one_real.congr' <| heq.mono fun i hi => hi.symm
+
+/-- **Pointwise derivative of `v ↦ v^r · log v` for `v > 0`.**
+`(v^r · log v)' = v^{r-1} · (r · log v + 1)`. -/
+lemma hasDerivAt_rpow_mul_log {r v : ℝ} (hv : 0 < v) :
+    HasDerivAt (fun w : ℝ => w ^ r * Real.log w)
+      (v ^ (r - 1) * (r * Real.log v + 1)) v := by
+  have h1 : HasDerivAt (fun w : ℝ => w ^ r) (r * v ^ (r - 1)) v :=
+    Real.hasDerivAt_rpow_const (Or.inl (ne_of_gt hv))
+  have h2 : HasDerivAt Real.log v⁻¹ v := Real.hasDerivAt_log (ne_of_gt hv)
+  have h3 := h1.mul h2
+  convert h3 using 1
+  -- Goal: v^(r-1)·(r·log v + 1) = r·v^(r-1)·log v + v^r·v⁻¹.
+  have hvr : v ^ r * v⁻¹ = v ^ (r - 1) := by
+    rw [← Real.rpow_neg_one v, ← Real.rpow_add hv, sub_eq_add_neg]
+  rw [hvr]; ring
+
+/-- **Uniform Lipschitz bound for `v ↦ v^r · log v`** on a compact positive
+interval `[a, b]` (`0 < a`), uniform over the exponent `r ∈ [r₀, r₁]`. Used
+in the `h_second` MVT step: the integrand `|u|^{q(τ)}·log|u|` is uniformly
+Lipschitz in the orbit value `|u| ∈ [a, b]` over `τ` near `s` (where
+`q(τ) ∈ [r₀, r₁]`), because strict positivity keeps both `v^{r-1}` and
+`log v` bounded. -/
+lemma exists_lipschitz_rpow_mul_log {a b r₀ r₁ : ℝ} (ha : 0 < a) :
+    ∃ L : ℝ, 0 ≤ L ∧ ∀ r ∈ Set.Icc r₀ r₁, ∀ v ∈ Set.Icc a b, ∀ w ∈ Set.Icc a b,
+      |w ^ r * Real.log w - v ^ r * Real.log v| ≤ L * |w - v| := by
+  -- The v-derivative `D r v := v^{r-1}·(r·log v + 1)`, continuous on the
+  -- compact box `[r₀,r₁]×[a,b]`, is bounded by some `L`.
+  set D : ℝ × ℝ → ℝ := fun p => p.2 ^ (p.1 - 1) * (p.1 * Real.log p.2 + 1) with hD_def
+  set box : Set (ℝ × ℝ) := Set.Icc r₀ r₁ ×ˢ Set.Icc a b with hbox_def
+  have hsnd_pos : ∀ p ∈ box, (0:ℝ) < p.2 := by
+    intro p hp; exact lt_of_lt_of_le ha (Set.mem_prod.mp hp).2.1
+  have hD_cont : ContinuousOn D box := by
+    refine ContinuousOn.mul ?_ ?_
+    · refine ContinuousOn.rpow continuousOn_snd
+        (continuousOn_fst.sub continuousOn_const) ?_
+      intro p hp; exact Or.inl (ne_of_gt (hsnd_pos p hp))
+    · refine ContinuousOn.add (ContinuousOn.mul continuousOn_fst ?_) continuousOn_const
+      refine Real.continuousOn_log.comp continuousOn_snd ?_
+      intro p hp; exact ne_of_gt (hsnd_pos p hp)
+  have hbox_cpt : IsCompact box := (isCompact_Icc).prod (isCompact_Icc)
+  -- Bound |D| on box by L := sup |D| (0 if box empty).
+  obtain ⟨L, hL_nn, hL⟩ : ∃ L : ℝ, 0 ≤ L ∧ ∀ p ∈ box, |D p| ≤ L := by
+    rcases box.eq_empty_or_nonempty with hempty | hne
+    · exact ⟨0, le_refl 0, fun p hp => absurd hp (by rw [hempty]; exact id)⟩
+    · obtain ⟨p₀, hp₀, hmax⟩ :=
+        hbox_cpt.exists_isMaxOn hne (continuous_abs.comp_continuousOn hD_cont)
+      exact ⟨|D p₀|, abs_nonneg _, fun p hp => hmax hp⟩
+  refine ⟨L, hL_nn, ?_⟩
+  intro r hr v hv w hw
+  -- Apply MVT bound on [a,b] (convex) with derivative D r ·.
+  have hbound : ∀ x ∈ Set.Icc a b, ‖D (r, x)‖ ≤ L := by
+    intro x hx
+    rw [Real.norm_eq_abs]
+    exact hL (r, x) (Set.mk_mem_prod hr hx)
+  have hderiv : ∀ x ∈ Set.Icc a b,
+      HasDerivWithinAt (fun w : ℝ => w ^ r * Real.log w) (D (r, x)) (Set.Icc a b) x := by
+    intro x hx
+    have hx_pos : 0 < x := lt_of_lt_of_le ha hx.1
+    exact (hasDerivAt_rpow_mul_log hx_pos).hasDerivWithinAt
+  have := (convex_Icc a b).norm_image_sub_le_of_norm_hasDerivWithin_le hderiv hbound hv hw
+  rwa [Real.norm_eq_abs, Real.norm_eq_abs] at this
+
+/-- **Continuity of the frozen-orbit log-integral.** For a measurable `w` that
+is bounded away from `0` and `∞` (`ε ≤ |w| ≤ M` a.e., `ε > 0`) on a finite
+measure space, and a continuous exponent path `a`, the map
+`τ ↦ ∫ |w|^{a τ} · log|w|` is continuous at every `τ₀`. This is the
+continuity-at-`s` half of the `h_second` MVT step (DCT: the strict bounds
+`ε ≤ |w| ≤ M` dominate the integrand by a constant). -/
+lemma continuousAt_integral_rpow_mul_log {Y : Type*} [MeasurableSpace Y]
+    (ν : Measure Y) [IsFiniteMeasure ν] {w : Y → ℝ}
+    (hw : AEStronglyMeasurable w ν) {ε M : ℝ} (hε : 0 < ε)
+    (hwε : ∀ᵐ y ∂ν, ε ≤ |w y|) (hwM : ∀ᵐ y ∂ν, |w y| ≤ M)
+    {a : ℝ → ℝ} (ha : Continuous a) (ha_pos : ∀ τ, 0 < a τ) (τ₀ : ℝ) :
+    ContinuousAt (fun τ => ∫ y, |w y| ^ a τ * Real.log |w y| ∂ν) τ₀ := by
+  set logB : ℝ := max |Real.log ε| |Real.log M| with hlogB_def
+  have hlogB_nn : 0 ≤ logB := le_trans (abs_nonneg _) (le_max_left _ _)
+  set C : ℝ := Real.exp ((|a τ₀| + 1) * logB) * logB with hC_def
+  -- Per-`y` continuity in `τ`.
+  have h_cont : ∀ᵐ y ∂ν,
+      ContinuousAt (fun τ => |w y| ^ a τ * Real.log |w y|) τ₀ := by
+    filter_upwards [hwε] with y hy
+    have hpos : 0 < |w y| := lt_of_lt_of_le hε hy
+    have h1 : Continuous (fun τ => |w y| ^ a τ) :=
+      (Real.continuous_const_rpow (ne_of_gt hpos)).comp ha
+    exact (h1.mul continuous_const).continuousAt
+  -- Domination by the constant `C`, eventually in `τ`.
+  have h_bound : ∀ᶠ τ in nhds τ₀, ∀ᵐ y ∂ν,
+      ‖|w y| ^ a τ * Real.log |w y|‖ ≤ C := by
+    have ha_loc : ∀ᶠ τ in nhds τ₀, |a τ| ≤ |a τ₀| + 1 := by
+      have : Filter.Tendsto (fun τ => |a τ|) (nhds τ₀) (nhds |a τ₀|) :=
+        (ha.continuousAt).abs
+      exact this.eventually_le_const (by linarith)
+    filter_upwards [ha_loc] with τ haτ
+    filter_upwards [hwε, hwM] with y hyε hyM
+    set t : ℝ := |w y| with ht_def
+    have hpos : 0 < t := lt_of_lt_of_le hε hyε
+    -- |log t| ≤ logB.
+    have hlog_le : |Real.log t| ≤ logB := by
+      rcases le_or_gt 1 t with h1le | h1lt
+      · have hub : Real.log t ≤ Real.log M := Real.log_le_log hpos hyM
+        have hge : 0 ≤ Real.log t := Real.log_nonneg h1le
+        rw [abs_of_nonneg hge]
+        exact le_trans (le_trans hub (le_abs_self _)) (le_max_right _ _)
+      · have hle0 : Real.log t ≤ 0 := Real.log_nonpos hpos.le h1lt.le
+        have hge : Real.log ε ≤ Real.log t := Real.log_le_log hε hyε
+        rw [abs_of_nonpos hle0]
+        have hneg : -Real.log t ≤ -Real.log ε := by linarith
+        exact le_trans (le_trans hneg (neg_le_abs _)) (le_max_left _ _)
+    -- t^{a τ} ≤ exp((|a τ₀|+1)·logB).
+    have hpow_le : t ^ a τ ≤ Real.exp ((|a τ₀| + 1) * logB) := by
+      rw [Real.rpow_def_of_pos hpos]
+      apply Real.exp_le_exp.mpr
+      calc Real.log t * a τ ≤ |Real.log t * a τ| := le_abs_self _
+        _ = |Real.log t| * |a τ| := abs_mul _ _
+        _ ≤ logB * (|a τ₀| + 1) :=
+            mul_le_mul hlog_le haτ (abs_nonneg _) hlogB_nn
+        _ = (|a τ₀| + 1) * logB := by ring
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (Real.rpow_nonneg hpos.le _)]
+    calc t ^ a τ * |Real.log t|
+        ≤ Real.exp ((|a τ₀| + 1) * logB) * logB :=
+          mul_le_mul hpow_le hlog_le (abs_nonneg _) (Real.exp_pos _).le
+      _ = C := rfl
+  -- Measurability.
+  have hF_meas : ∀ᶠ τ in nhds τ₀,
+      AEStronglyMeasurable (fun y => |w y| ^ a τ * Real.log |w y|) ν := by
+    filter_upwards with τ
+    refine AEStronglyMeasurable.mul ?_ ?_
+    · exact (continuous_abs.rpow_const
+        (fun _ => Or.inr (ha_pos τ).le)).comp_aestronglyMeasurable hw
+    · exact (Real.measurable_log.comp_aemeasurable
+        (continuous_abs.comp_aestronglyMeasurable hw).aemeasurable).aestronglyMeasurable
+  exact continuousAt_of_dominated hF_meas h_bound (integrable_const C) h_cont
+
+/-- **Integral Lipschitz bound for the log-integral.** If `v, w : Y → ℝ` are
+both a.e. valued (after `|·|`) in a compact positive interval `[a, b]`
+(`0 < a ≤ b`), and `x ↦ x^r·log x` is `L`-Lipschitz on `[a, b]` (`r ≥ 0`),
+then `|∫|w|^r·log|w| − ∫|v|^r·log|v|| ≤ L·∫|w − v|`. Used in the `h_second`
+MVT step to bound the off-diagonal `gfun σ − gfun s` by the `L¹` orbit
+distance: with `w, v` the orbits at `σ, s` (both in `[ε, Mf]` a.e.) and
+`L` the uniform Lipschitz constant from `exists_lipschitz_rpow_mul_log`. -/
+lemma abs_integral_rpow_mul_log_sub_le {Y : Type*} [MeasurableSpace Y]
+    (ν : Measure Y) [IsFiniteMeasure ν] {v w : Y → ℝ}
+    (hv : AEStronglyMeasurable v ν) (hw : AEStronglyMeasurable w ν)
+    {a b r L : ℝ} (ha : 0 < a) (hab : a ≤ b) (hr : 0 ≤ r) (hL : 0 ≤ L)
+    (hvab : ∀ᵐ y ∂ν, |v y| ∈ Set.Icc a b) (hwab : ∀ᵐ y ∂ν, |w y| ∈ Set.Icc a b)
+    (hLip : ∀ x ∈ Set.Icc a b, ∀ x' ∈ Set.Icc a b,
+        |x' ^ r * Real.log x' - x ^ r * Real.log x| ≤ L * |x' - x|) :
+    |(∫ y, |w y| ^ r * Real.log |w y| ∂ν) - ∫ y, |v y| ^ r * Real.log |v y| ∂ν|
+      ≤ L * ∫ y, |w y - v y| ∂ν := by
+  have hb : (0:ℝ) ≤ b := le_trans ha.le hab
+  set logB : ℝ := max |Real.log a| |Real.log b| with hlogB_def
+  -- Each log-integrand is integrable (bounded by `b^r · logB` on a finite measure).
+  have hint : ∀ {z : Y → ℝ}, AEStronglyMeasurable z ν →
+      (∀ᵐ y ∂ν, |z y| ∈ Set.Icc a b) →
+      Integrable (fun y => |z y| ^ r * Real.log |z y|) ν := by
+    intro z hz hzab
+    have hmeas : AEStronglyMeasurable (fun y => |z y| ^ r * Real.log |z y|) ν := by
+      refine AEStronglyMeasurable.mul ?_ ?_
+      · exact (continuous_abs.rpow_const (fun _ => Or.inr hr)).comp_aestronglyMeasurable hz
+      · exact (Real.measurable_log.comp_aemeasurable
+          (continuous_abs.comp_aestronglyMeasurable hz).aemeasurable).aestronglyMeasurable
+    refine (integrable_const (b ^ r * logB)).mono' hmeas ?_
+    filter_upwards [hzab] with y hy
+    set t : ℝ := |z y| with ht_def
+    have hzpos : 0 < t := lt_of_lt_of_le ha hy.1
+    have hlog_le : |Real.log t| ≤ logB := by
+      rcases le_or_gt 1 t with h1 | h1
+      · rw [abs_of_nonneg (Real.log_nonneg h1)]
+        exact le_trans (le_trans (Real.log_le_log hzpos hy.2) (le_abs_self _))
+          (le_max_right _ _)
+      · rw [abs_of_nonpos (Real.log_nonpos hzpos.le h1.le)]
+        calc -Real.log t ≤ -Real.log a := by linarith [Real.log_le_log ha hy.1]
+          _ ≤ |Real.log a| := neg_le_abs _
+          _ ≤ logB := le_max_left _ _
+    have hpow_le : t ^ r ≤ b ^ r := Real.rpow_le_rpow hzpos.le hy.2 hr
+    rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (Real.rpow_nonneg hzpos.le r)]
+    exact mul_le_mul hpow_le hlog_le (abs_nonneg _) (Real.rpow_nonneg hb r)
+  have hintw := hint hw hwab
+  have hintv := hint hv hvab
+  -- The orbits themselves are integrable (bounded by `b`).
+  have hzint : ∀ {z : Y → ℝ}, AEStronglyMeasurable z ν →
+      (∀ᵐ y ∂ν, |z y| ∈ Set.Icc a b) → Integrable z ν := by
+    intro z hz hzab
+    refine (integrable_const b).mono' hz ?_
+    filter_upwards [hzab] with y hy; rw [Real.norm_eq_abs]; exact hy.2
+  have hwv_int : Integrable (fun y => |w y - v y|) ν :=
+    ((hzint hw hwab).sub (hzint hv hvab)).abs
+  -- `|∫(Iw - Iv)| ≤ ∫‖Iw - Iv‖ ≤ ∫ L·|w-v| = L·∫|w-v|`.
+  rw [← integral_sub hintw hintv]
+  have hnorm := norm_integral_le_integral_norm (μ := ν)
+      (fun y => |w y| ^ r * Real.log |w y| - |v y| ^ r * Real.log |v y|)
+  rw [Real.norm_eq_abs] at hnorm
+  refine le_trans hnorm ?_
+  rw [← integral_const_mul L]
+  refine integral_mono_ae (hintw.sub hintv).norm (hwv_int.const_mul L) ?_
+  filter_upwards [hvab, hwab] with y hvy hwy
+  rw [Real.norm_eq_abs]
+  set pw : ℝ := |w y| with hpw_def
+  set pv : ℝ := |v y| with hpv_def
+  calc |pw ^ r * Real.log pw - pv ^ r * Real.log pv|
+      ≤ L * |pw - pv| := hLip pv hvy pw hwy
+    _ ≤ L * |w y - v y| := by
+        refine mul_le_mul_of_nonneg_left ?_ hL
+        rw [hpw_def, hpv_def]; exact abs_abs_sub_abs_le_abs_sub _ _
 
 /-- A family of real-valued functions on a finite measure space that is uniformly bounded almost
 everywhere by a constant is uniformly integrable in `L²`. This is the `p = 2` specialization of
@@ -1112,7 +1412,7 @@ Stated with no project definitions; Mathlib-upstreamable once proved.
 **Status: ✅ proved (axiom-free) — Bochner-Leibniz via the
 `averagedDerivField` toolkit (factorization, AE-bound, AE-measurability,
 MemLp 2, Vitali-driven `eLpNorm`→0). Discharge plan archived at
-`plans/p2-strongL2-leibniz-discharge.md`. ~150 L body (9 steps);
+`plans/archive/p2-strongL2-leibniz-discharge.md`. ~150 L body (9 steps);
 9 toolkit lemmas in this file feed it. Mathlib-upstreamable. -/
 theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
@@ -1335,32 +1635,387 @@ theorem grossPow_hasDerivWithinAt
     -- Path A: strictly-positive hypothesis (Gemini-vetted 2026-05-20).
     -- Lets us avoid the regularity-at-zero issue with `u_s^{q-1}` for
     -- non-integer `q-1` — on `[ε, ∞)`, `x ↦ x^{q-1}` is C^∞.
-    -- See `plans/gross-design-strictly-positive-escape.md` §4.
+    -- See `plans/archive/gross-design-strictly-positive-escape.md` §4.
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 ≤ s) :
     HasDerivWithinAt (grossPow D hf ρ p)
-      (grossPowDeriv D hf ρ p s) (Set.Ici 0) s := by
+      (grossPowDeriv D hf h_core ρ p s) (Set.Ici 0) s := by
   haveI : IsFiniteMeasure D.μ := inferInstance
   obtain ⟨ε, hε_pos, hf_ge_ε⟩ := hf_pos
-  -- Step 1: orbit u_s = P_s f satisfies u_s ≥ ε a.e. (from orbit_lower_bound).
+  obtain ⟨Mf, hf_le_Mf⟩ := D.IsCore_memLp_top hf
+  -- Lift bounds on f to bounds on (D.coreToL2 hf : X → ℝ).
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f :=
+    (D.IsCore_memLp hf).coeFn_toLp
   have hf_Lp_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ (D.coreToL2 hf : X → ℝ) y := by
-    have hcoe : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
-    filter_upwards [hcoe, hf_ge_ε] with y hcy hfy
-    rw [hcy]; exact hfy
-  have hu_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
+    filter_upwards [hcoe_f, hf_ge_ε] with y hcy hfy; rw [hcy]; exact hfy
+  have hf_Lp_le_Mf : ∀ᵐ y ∂D.μ, |(D.coreToL2 hf : X → ℝ) y| ≤ Mf := by
+    filter_upwards [hcoe_f, hf_le_Mf] with y hcy hfy; rw [hcy]; exact hfy
+  -- Orbit lower/upper bounds at time s and (eventually-σ) near s.
+  have hu_s_ge_ε : ∀ᵐ y ∂D.μ,
+      ε ≤ ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
     D.toMarkovSemigroup.orbit_lower_bound hs hf_Lp_ge_ε
-  -- Step 2: orbit u_s is also bounded above (from f ∈ Lp via IsCore + finiteness;
-  -- need a uniform L^∞ bound on f to invoke Linfty_contraction). For now defer
-  -- the full L^∞ bound construction — in concrete Gross applications it comes
-  -- from `IsCore` providing L^∞ regularity (an additional structural piece;
-  -- see §4 of the plan).
-  -- Step 3: |u_s|^{q-1} is in `IsCore` because u_s ≥ ε > 0 makes x ↦ x^{q-1}
-  -- smooth on the range. Needs a closure axiom `IsCore_smooth_comp_of_pos`
-  -- (weaker than full `IsCore_rpow_pos`; provable for Schwartz/polynomial cores).
-  -- Step 4: apply hasDerivAt_integral_rpow_exponent (exponent half) and
-  -- hasDerivWithinAt_integral_of_strongL2Deriv (orbit half), combine via
-  -- chain rule for H(σ, τ).
-  sorry
+  have hu_s_le_Mf : ∀ᵐ y ∂D.μ,
+      |((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ≤ Mf :=
+    D.toMarkovSemigroup.Linfty_contraction hs hf_Lp_le_Mf
+  have hu_σ_le_Mf : ∀ᶠ σ in nhdsWithin s (Set.Ici 0),
+      ∀ᵐ y ∂D.μ,
+        |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ≤ Mf := by
+    filter_upwards [self_mem_nhdsWithin] with σ hσ_in
+    exact D.toMarkovSemigroup.Linfty_contraction hσ_in hf_Lp_le_Mf
+  -- Step ∂₂H: frozen orbit, varying exponent. Apply
+  -- hasDerivAt_integral_rpow_exponent with w := orbit at s, a := grossExponent ρ p.
+  set u_s_func : X → ℝ := ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ)
+    with hu_s_func_def
+  have hu_s_aesm : AEStronglyMeasurable u_s_func D.μ :=
+    Lp.aestronglyMeasurable _
+  have h_d2H : HasDerivAt
+      (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
+      (2 * ρ * (grossExponent ρ p s - 1)
+        * ∫ y, |u_s_func y| ^ grossExponent ρ p s * Real.log |u_s_func y| ∂D.μ) s :=
+    hasDerivAt_integral_rpow_exponent D.μ hu_s_aesm hu_s_le_Mf
+      (contDiff_grossExponent ρ p (n := 1)) (hasDerivAt_grossExponent ρ p s)
+      (fun σ => grossExponent_pos hp ρ σ)
+  -- The integral in h_d2H's derivative IS grossLogIntegral (def-eq).
+  have h_d2H' : HasDerivAt
+      (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
+      (2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s) s := by
+    convert h_d2H using 1
+  -- Step ∂₁H: varying orbit, frozen exponent. Use ψ := Real.rpow · q(s)
+  -- (which is ContDiff ℝ 1 globally for q(s) ≥ 1; on the positive-orbit set,
+  -- it equals |·|^{q(s)} a.e.).
+  obtain ⟨Af, hAf_tendsto, hAf_pair⟩ := h_gen hf
+  set q : ℝ := grossExponent ρ p s with hq_def
+  have hq_pos : 0 < q := grossExponent_pos hp ρ s
+  have hq_one_le : (1 : ℝ) ≤ q := (one_lt_grossExponent hp ρ s).le
+  -- Orbit derivative at s.
+  have hu_deriv : HasDerivWithinAt (fun σ : ℝ => D.P σ (D.coreToL2 hf))
+      (D.P s Af) (Set.Ici 0) s :=
+    D.toMarkovSemigroup.orbit_hasDerivWithinAt hAf_tendsto hs
+  -- ψ := Real.rpow · q is ContDiff ℝ 1.
+  have hψ_cd : ContDiff ℝ 1 (fun x : ℝ => x ^ q) := by
+    have h := Real.contDiff_rpow_const_of_le (p := q) (n := 1)
+      (by exact_mod_cast hq_one_le)
+    exact h
+  -- |deriv ψ x| = |q · x^{q-1}| ≤ q · max(Mf, 1)^{q-1} on [-Mf, Mf].
+  -- Set the bound K := q * (max Mf 1) ^ (q - 1).
+  set Mf' : ℝ := max Mf 1 with hMf'_def
+  have hMf'_one : (1 : ℝ) ≤ Mf' := le_max_right _ _
+  have hMf'_pos : 0 < Mf' := lt_of_lt_of_le one_pos hMf'_one
+  set K : ℝ := q * Mf' ^ (q - 1) with hK_def
+  have hK_nn : 0 ≤ K := by
+    refine mul_nonneg hq_pos.le ?_
+    exact Real.rpow_nonneg hMf'_pos.le _
+  have hψ_bound : ∀ x ∈ Set.Icc (-Mf) Mf, |deriv (fun x : ℝ => x ^ q) x| ≤ K := by
+    intro x hx
+    -- deriv (fun x => x ^ q) = fun x => q * x^(q-1) via Real.deriv_rpow_const'.
+    have hderiv : deriv (fun x : ℝ => x ^ q) x = q * x ^ (q - 1) := by
+      have h := Real.deriv_rpow_const' (p := q)
+      exact congrFun h x
+    rw [hderiv, abs_mul, abs_of_pos hq_pos]
+    refine mul_le_mul_of_nonneg_left ?_ hq_pos.le
+    -- |x^(q-1)| ≤ |x|^(q-1) ≤ Mf'^(q-1).
+    calc |x ^ (q - 1)| ≤ |x| ^ (q - 1) := Real.abs_rpow_le_abs_rpow x (q - 1)
+      _ ≤ Mf' ^ (q - 1) := by
+          refine Real.rpow_le_rpow (abs_nonneg _) ?_ (by linarith)
+          calc |x| ≤ Mf := abs_le.mpr ⟨hx.1, hx.2⟩
+            _ ≤ Mf' := le_max_left _ _
+  -- Apply hasDerivWithinAt_integral_of_strongL2Deriv.
+  have h_d1H_raw := hasDerivWithinAt_integral_of_strongL2Deriv (Y := X) D.μ
+    (fun σ => D.P σ (D.coreToL2 hf)) (D.P s Af) hs hu_deriv
+    (fun x : ℝ => x ^ q) hψ_cd hK_nn hψ_bound hu_σ_le_Mf hu_s_le_Mf
+  -- h_d1H_raw : HasDerivWithinAt (fun σ => ∫ y, (u σ y)^q ∂ν)
+  --             (∫ y, deriv (fun x => x^q) (u_s y) * (u' y)) (Ici 0) s
+  -- Bridge (u σ y)^q ↔ |u σ y|^q a.e. (orbit nonneg for σ ≥ 0).
+  have h_coreToL2_nn : (0 : Lp ℝ 2 D.μ) ≤ D.coreToL2 hf := by
+    rw [← Lp.coeFn_nonneg]
+    filter_upwards [hf_Lp_ge_ε] with y hy
+    simp only [Pi.zero_apply]; linarith
+  have h_orbit_nn : ∀ σ : ℝ, 0 ≤ σ → ∀ᵐ y ∂D.μ,
+      0 ≤ ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y :=
+    fun σ hσ => (Lp.coeFn_nonneg _).mpr (D.P_positivity σ hσ _ h_coreToL2_nn)
+  have h_integrand_eq : ∀ σ ∈ Set.Ici (0:ℝ),
+      (∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ q ∂D.μ)
+        = ∫ y, ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y ^ q ∂D.μ := by
+    intro σ hσ
+    refine integral_congr_ae ?_
+    filter_upwards [h_orbit_nn σ hσ] with y hy
+    rw [abs_of_nonneg hy]
+  have h_d1H : HasDerivWithinAt
+      (fun σ => ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ q ∂D.μ)
+      (∫ y, deriv (fun x : ℝ => x ^ q) (u_s_func y) * (D.P s Af : X → ℝ) y ∂D.μ)
+      (Set.Ici 0) s :=
+    h_d1H_raw.congr (fun σ hσ => h_integrand_eq σ hσ) (h_integrand_eq s hs)
+  -- ===== Chain rule: F'(s) = ∂₁H + ∂₂H (Gemini-vetted architecture) =====
+  -- Abbreviations.
+  set D1 : ℝ := ∫ y, deriv (fun x : ℝ => x ^ q) (u_s_func y)
+      * (D.P s Af : X → ℝ) y ∂D.μ with hD1_def
+  set D2 : ℝ := 2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s
+    with hD2_def
+  -- Two-variable function H(σ, τ) := ∫ |u_σ|^{q(τ)}; F(σ) = grossPow = H(σ, σ).
+  set Hfun : ℝ → ℝ → ℝ := fun σ τ =>
+    ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ grossExponent ρ p τ ∂D.μ
+    with hHfun_def
+  -- The τ-derivative integrand g σ τ.
+  set gfun : ℝ → ℝ → ℝ := fun σ τ =>
+    2 * ρ * (grossExponent ρ p τ - 1)
+      * ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ^ grossExponent ρ p τ
+          * Real.log |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ
+    with hgfun_def
+  -- The goal `grossPow D hf ρ p` is `fun σ => Hfun σ σ` by def; the value
+  -- grossPowDeriv equals D1 + D2 (the second equality via the energy
+  -- identification, deferred). Reduce to the chain rule + energy identity.
+  -- Chain rule target: HasDerivWithinAt (fun σ => Hfun σ σ) (D1 + D2) (Ici 0) s.
+  have h_chain : HasDerivWithinAt (fun σ => Hfun σ σ) (D1 + D2) (Set.Ici 0) s := by
+    rw [hasDerivWithinAt_iff_tendsto_slope]
+    -- Split: slope (diag) = slope (Hfun · s) + (Hfun σ σ - Hfun σ s)/(σ - s).
+    -- First term → D1 (h_d1H); second → D2 via MVT-in-τ + uniform Lipschitz.
+    have h_first : Filter.Tendsto (fun σ => slope (fun σ' => Hfun σ' s) s σ)
+        (nhdsWithin s (Set.Ici 0 \ {s})) (nhds D1) := by
+      have h := hasDerivWithinAt_iff_tendsto_slope.mp h_d1H
+      -- h_d1H's function is `fun σ => ∫|u_σ|^q`, and `Hfun σ' s = ∫|u_{σ'}|^{q(s)}`;
+      -- `q = grossExponent ρ p s`, so they agree.
+      exact h
+    have h_second : Filter.Tendsto
+        (fun σ => (Hfun σ σ - Hfun σ s) / (σ - s))
+        (nhdsWithin s (Set.Ici 0 \ {s})) (nhds D2) := by
+      set l : Filter ℝ := nhdsWithin s (Set.Ici 0 \ {s}) with hl_def
+      -- ε ≤ Mf (nonempty probability space + the a.e. bounds).
+      have hεMf : ε ≤ Mf := by
+        obtain ⟨y, hy⟩ := (hu_s_ge_ε.and hu_s_le_Mf).exists
+        exact le_trans hy.1 (le_trans (le_abs_self _) hy.2)
+      -- τ-derivative of `Hfun σ ·` at every τ, for σ ≥ 0 (frozen-orbit rpow DCT).
+      have h_tau_deriv : ∀ σ : ℝ, σ ∈ Set.Ici (0:ℝ) → ∀ τ : ℝ,
+          HasDerivAt (fun t => Hfun σ t) (gfun σ τ) τ := by
+        intro σ hσ τ
+        have hbd : ∀ᵐ y ∂D.μ,
+            |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ≤ Mf :=
+          D.toMarkovSemigroup.Linfty_contraction hσ hf_Lp_le_Mf
+        exact hasDerivAt_integral_rpow_exponent D.μ (Lp.aestronglyMeasurable _) hbd
+          (contDiff_grossExponent ρ p (n := 1)) (hasDerivAt_grossExponent ρ p τ)
+          (fun σ' => grossExponent_pos hp ρ σ')
+      -- MVT-in-τ: eventually-σ, the off-diagonal slope = gfun σ c for some c ∈ uIcc s σ.
+      have h_mvt : ∀ σ : ℝ, σ ∈ Set.Ici (0:ℝ) → σ ≠ s →
+          ∃ c ∈ Set.uIcc s σ, (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ c := by
+        intro σ hσ hσs
+        have hdiff : Differentiable ℝ (fun t => Hfun σ t) :=
+          fun t => (h_tau_deriv σ hσ t).differentiableAt
+        exact exists_hasDerivAt_eq_slope_uIcc (Ne.symm hσs) hdiff.continuous
+          (fun τ => h_tau_deriv σ hσ τ)
+      -- L¹ orbit convergence: ∫|u_σ − u_s| → 0 as σ → s.
+      have h_orbit_L1 : Filter.Tendsto
+          (fun σ => ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+              - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ) l (nhds 0) := by
+        have h_orbit_cont : Filter.Tendsto (fun σ => D.P σ (D.coreToL2 hf)) l
+            (nhds (D.P s (D.coreToL2 hf))) :=
+          (hu_deriv.continuousWithinAt).mono_left (nhdsWithin_mono _ Set.diff_subset)
+        have h_dist : Filter.Tendsto
+            (fun σ => dist (D.P σ (D.coreToL2 hf)) (D.P s (D.coreToL2 hf))) l (nhds 0) :=
+          tendsto_iff_dist_tendsto_zero.mp h_orbit_cont
+        have h_eLp : Filter.Tendsto
+            (fun σ => eLpNorm (fun y =>
+              ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+                - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y) 2 D.μ) l (nhds 0) := by
+          have heq : (fun σ => eLpNorm (fun y =>
+              ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+                - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y) 2 D.μ)
+              = fun σ => ENNReal.ofReal
+                  (dist (D.P σ (D.coreToL2 hf)) (D.P s (D.coreToL2 hf))) := by
+            funext σ
+            rw [Lp.dist_def, ENNReal.ofReal_toReal
+              ((MemLp.sub (Lp.memLp _) (Lp.memLp _)).eLpNorm_lt_top.ne)]
+            rfl
+          rw [heq]
+          simpa using (ENNReal.continuous_ofReal.tendsto 0).comp h_dist
+        exact tendsto_integral_abs_of_tendsto_eLpNorm_two_zero D.μ
+          (fun σ y => ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+            - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y)
+          (fun σ => (Lp.aestronglyMeasurable _).sub (Lp.aestronglyMeasurable _))
+          (Filter.Eventually.of_forall fun σ =>
+            ((MemLp.sub (Lp.memLp _) (Lp.memLp _)).integrable one_le_two).abs)
+          h_eLp
+      -- Continuity of `gfun s ·` at s.
+      have hwε : ∀ᵐ y ∂D.μ, ε ≤ |u_s_func y| := by
+        filter_upwards [hu_s_ge_ε] with y hy
+        rw [abs_of_nonneg (le_trans hε_pos.le hy)]; exact hy
+      have h_gfun_s_cont : ContinuousAt (fun τ => gfun s τ) s := by
+        show ContinuousAt (fun τ => 2 * ρ * (grossExponent ρ p τ - 1)
+          * ∫ y, |u_s_func y| ^ grossExponent ρ p τ * Real.log |u_s_func y| ∂D.μ) s
+        refine ContinuousAt.mul ?_ ?_
+        · exact (continuous_const.mul
+            ((contDiff_grossExponent ρ p (n := 1)).continuous.sub continuous_const)).continuousAt
+        · exact continuousAt_integral_rpow_mul_log D.μ hu_s_aesm hε_pos hwε hu_s_le_Mf
+            (contDiff_grossExponent ρ p (n := 1)).continuous
+            (fun τ => grossExponent_pos hp ρ τ) s
+      -- Final assembly: slope = gfun σ (cσ σ) → gfun s s = D2.
+      classical
+      have hD2_gfun : D2 = gfun s s := by
+        rw [hD2_def, hgfun_def, grossLogIntegral]
+      -- MVT choice function.
+      set cσ : ℝ → ℝ := fun σ =>
+        if h : ∃ c ∈ Set.uIcc s σ, (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ c
+          then h.choose else s with hcσ_def
+      have hcσ_mem : ∀ᶠ σ in l, cσ σ ∈ Set.uIcc s σ
+          ∧ (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ (cσ σ) := by
+        filter_upwards [self_mem_nhdsWithin] with σ hσ_in
+        have hex := h_mvt σ hσ_in.1 (by simpa using hσ_in.2)
+        have : cσ σ = hex.choose := by simp only [cσ, dif_pos hex]
+        rw [this]; exact ⟨hex.choose_spec.1, hex.choose_spec.2⟩
+      -- cσ σ → s (squeeze: |cσ σ − s| ≤ |σ − s| → 0).
+      have hcσ_tendsto : Filter.Tendsto cσ l (nhds s) := by
+        have hσ_tendsto : Filter.Tendsto (fun σ : ℝ => σ) l (nhds s) :=
+          Filter.tendsto_id.mono_left nhdsWithin_le_nhds
+        rw [tendsto_iff_dist_tendsto_zero] at hσ_tendsto ⊢
+        refine squeeze_zero' (Filter.Eventually.of_forall (fun _ => dist_nonneg)) ?_
+          hσ_tendsto
+        filter_upwards [hcσ_mem] with σ hσ
+        rw [Real.dist_eq, Real.dist_eq]
+        rcases Set.mem_uIcc.mp hσ.1 with ⟨h1, h2⟩ | ⟨h1, h2⟩
+        · rw [abs_of_nonneg (by linarith), abs_of_nonneg (by linarith)]; linarith
+        · rw [abs_of_nonpos (by linarith), abs_of_nonpos (by linarith)]; linarith
+      -- B-bracket: gfun s (cσ σ) → gfun s s.
+      have hB : Filter.Tendsto (fun σ => gfun s (cσ σ)) l (nhds (gfun s s)) :=
+        h_gfun_s_cont.tendsto.comp hcσ_tendsto
+      -- A-bracket: gfun σ (cσ σ) − gfun s (cσ σ) → 0.
+      have hA : Filter.Tendsto (fun σ => gfun σ (cσ σ) - gfun s (cσ σ)) l (nhds 0) := by
+        -- Uniform Lipschitz constant `L` over `[ε, Mf] × [q-1, q+1]`.
+        obtain ⟨L, hL_nn, hL⟩ := exists_lipschitz_rpow_mul_log (a := ε) (b := Mf)
+          (r₀ := q - 1) (r₁ := q + 1) hε_pos
+        have hq_cont : Continuous (grossExponent ρ p) :=
+          (contDiff_grossExponent ρ p (n := 1)).continuous
+        have h_qc : Filter.Tendsto (fun σ => grossExponent ρ p (cσ σ)) l (nhds q) :=
+          (hq_cont.tendsto s).comp hcσ_tendsto
+        set Cq : ℝ := |2 * ρ * (q - 1)| + 1 with hCq_def
+        have hCq_nn : 0 ≤ Cq := by rw [hCq_def]; positivity
+        have h_r_mem : ∀ᶠ σ in l,
+            grossExponent ρ p (cσ σ) ∈ Set.Icc (q - 1) (q + 1) := by
+          have h_lo := h_qc.eventually_const_le (show q - 1 < q by linarith)
+          have h_hi := h_qc.eventually_le_const (show q < q + 1 by linarith)
+          filter_upwards [h_lo, h_hi] with σ hlo hhi; exact ⟨hlo, hhi⟩
+        have h_coef_bd : ∀ᶠ σ in l,
+            |2 * ρ * (grossExponent ρ p (cσ σ) - 1)| ≤ Cq := by
+          have h_ten : Filter.Tendsto
+              (fun σ => |2 * ρ * (grossExponent ρ p (cσ σ) - 1)|) l
+              (nhds |2 * ρ * (q - 1)|) :=
+            ((h_qc.sub_const 1).const_mul (2 * ρ)).abs
+          exact h_ten.eventually_le_const (by rw [hCq_def]; linarith)
+        -- Pointwise bound via the integral-Lipschitz helper.
+        have h_ptwise : ∀ᶠ σ in l,
+            ‖gfun σ (cσ σ) - gfun s (cσ σ)‖
+              ≤ Cq * (L * ∫ y, |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
+                  - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ) := by
+          filter_upwards [self_mem_nhdsWithin, h_r_mem, h_coef_bd]
+            with σ hσ_in hr_mem hcoef
+          have hσ0 : (0 : ℝ) ≤ σ := hσ_in.1
+          have hσab : ∀ᵐ y ∂D.μ,
+              |((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∈ Set.Icc ε Mf := by
+            filter_upwards [D.toMarkovSemigroup.orbit_lower_bound hσ0 hf_Lp_ge_ε,
+              D.toMarkovSemigroup.Linfty_contraction hσ0 hf_Lp_le_Mf] with y h1 h2
+            exact ⟨le_trans h1 (le_abs_self _), h2⟩
+          have hsab : ∀ᵐ y ∂D.μ,
+              |((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∈ Set.Icc ε Mf := by
+            filter_upwards [hu_s_ge_ε, hu_s_le_Mf] with y h1 h2
+            exact ⟨le_trans h1 (le_abs_self _), h2⟩
+          have hJ := abs_integral_rpow_mul_log_sub_le D.μ
+            (v := ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ))
+            (w := ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ))
+            (Lp.aestronglyMeasurable _) (Lp.aestronglyMeasurable _)
+            hε_pos hεMf (grossExponent_pos hp ρ (cσ σ)).le hL_nn hsab hσab
+            (hL (grossExponent ρ p (cσ σ)) hr_mem)
+          simp only [hgfun_def]
+          rw [← mul_sub, Real.norm_eq_abs, abs_mul]
+          exact mul_le_mul hcoef hJ (abs_nonneg _) hCq_nn
+        -- The bound tends to `0`, so the difference does too.
+        refine squeeze_zero_norm' h_ptwise ?_
+        have := (h_orbit_L1.const_mul L).const_mul Cq
+        simpa using this
+      -- Combine: gfun σ (cσ σ) → gfun s s.
+      have hG : Filter.Tendsto (fun σ => gfun σ (cσ σ)) l (nhds (gfun s s)) := by
+        have := hA.add hB
+        simpa using this
+      rw [hD2_gfun]
+      refine hG.congr' ?_
+      filter_upwards [hcσ_mem] with σ hσ
+      exact (hσ.2).symm
+    -- Combine.
+    have h_sum := h_first.add h_second
+    refine h_sum.congr' ?_
+    filter_upwards [self_mem_nhdsWithin] with σ hσ_in
+    obtain ⟨_, hσ_ne⟩ := hσ_in
+    rw [Set.mem_singleton_iff] at hσ_ne
+    -- slope (diag) σ = slope (Hfun · s) σ + (Hfun σ σ - Hfun σ s)/(σ-s).
+    show slope (fun σ' => Hfun σ' s) s σ + (Hfun σ σ - Hfun σ s) / (σ - s)
+        = slope (fun σ => Hfun σ σ) s σ
+    rw [slope_def_field, slope_def_field]
+    have hne : σ - s ≠ 0 := sub_ne_zero.mpr hσ_ne
+    field_simp
+    ring
+  -- Energy identification: D1 = -q · D.energy(u_s, u_s^{q-1}), hence
+  -- D1 + D2 = grossPowDeriv.
+  have h_energy : D1 + D2 = grossPowDeriv D hf h_core ρ p s := by
+    -- The orbit's core (smooth) representative `g'` and its defining data.
+    obtain ⟨hg', horb⟩ := orbitCoreRep_spec D hf h_core hs
+    set g' : X → ℝ := orbitCoreRep D hf h_core s with hg'_def
+    have hg'_ae : (D.coreToL2 hg' : X → ℝ) =ᵐ[D.μ] g' := (D.IsCore_memLp hg').coeFn_toLp
+    have horb_ae : u_s_func =ᵐ[D.μ] g' := by
+      rw [hu_s_func_def, horb]; exact hg'_ae
+    have hg'_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ g' y := by
+      filter_upwards [hu_s_ge_ε, horb_ae] with y h1 h2; rw [← h2]; exact h1
+    -- `g'^{q-1}` is a core function (strict-positive rpow closure).
+    have hg'pow : D.IsCore (fun x => g' x ^ (q - 1)) :=
+      D.IsCore_rpow_pos_strict hg' hε_pos hg'_ge_ε (q - 1)
+    have hg'pow_ae : (D.coreToL2 hg'pow : X → ℝ) =ᵐ[D.μ] fun x => g' x ^ (q - 1) :=
+      (D.IsCore_memLp hg'pow).coeFn_toLp
+    -- The generator `Ag'` of the orbit, with its form pairing.
+    obtain ⟨Ag', hAg'_tendsto, hAg'_pair⟩ := h_gen hg'
+    -- `P_s Af = Ag'`: both are the strong-`L²` right derivative of `t ↦ P_t(orbit)`.
+    have hAeq : D.P s Af = Ag' := by
+      have hcomp := ((D.P s).continuous.tendsto Af).comp hAf_tendsto
+      have h1 : Filter.Tendsto
+          (fun t : ℝ => t⁻¹ • (D.P t (D.coreToL2 hg') - D.coreToL2 hg'))
+          (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (D.P s Af)) := by
+        refine Filter.Tendsto.congr' ?_ hcomp
+        filter_upwards [self_mem_nhdsWithin] with t ht
+        have hcommute : D.P s (D.P t (D.coreToL2 hf)) = D.P t (D.P s (D.coreToL2 hf)) := by
+          rw [← ContinuousLinearMap.comp_apply, ← ContinuousLinearMap.comp_apply,
+            ← D.P_semigroup s t hs ht.le, ← D.P_semigroup t s ht.le hs, add_comm s t]
+        simp only [Function.comp_apply]
+        rw [map_smul, map_sub, ← horb, hcommute]
+      exact tendsto_nhds_unique h1 hAg'_tendsto
+    -- `D1 = q · ∫ (u_s)^{q-1}·(P_s Af)` (rpow derivative, pull out `q`).
+    have hstep1 : D1 = q * ∫ y, (u_s_func y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ := by
+      rw [hD1_def, ← integral_const_mul]
+      refine integral_congr_ae ?_
+      filter_upwards with y
+      have hderiv : deriv (fun x : ℝ => x ^ q) (u_s_func y) = q * (u_s_func y) ^ (q - 1) :=
+        congrFun (Real.deriv_rpow_const' (p := q)) (u_s_func y)
+      rw [hderiv]; ring
+    -- Bridge the integrand to the core rep `g'` (a.e.).
+    have hbridge : (∫ y, (u_s_func y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ)
+        = ∫ y, (g' y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ := by
+      refine integral_congr_ae ?_
+      filter_upwards [horb_ae] with y hy; rw [hy]
+    -- The integral is the `L²` pairing with `coreToL2 (g'^{q-1})`.
+    have h_inner_eq : (∫ y, (g' y) ^ (q - 1) * (D.P s Af : X → ℝ) y ∂D.μ)
+        = @inner ℝ (Lp ℝ 2 D.μ) _ (D.coreToL2 hg'pow) (D.P s Af) := by
+      rw [MeasureTheory.L2.inner_def]
+      refine integral_congr_ae ?_
+      filter_upwards [hg'pow_ae] with y hy
+      rw [hy]
+      show (g' y) ^ (q - 1) * (D.P s Af : X → ℝ) y
+          = (D.P s Af : X → ℝ) y * (g' y) ^ (q - 1)
+      ring
+    -- Assemble: `D1 = -q · E(g', g'^{q-1})`.
+    have hD1_eq : D1 = - q * D.energy g' (fun x => g' x ^ (q - 1)) := by
+      rw [hstep1, hbridge, h_inner_eq, hAeq, hAg'_pair hg'pow,
+        D.energy_symm (fun x => g' x ^ (q - 1)) g']
+      ring
+    rw [hD1_eq, hD2_def]
+    unfold grossPowDeriv
+    rw [← hq_def, ← hg'_def]
+    ring
+  rw [← h_energy]
+  -- grossPow D hf ρ p = fun σ => Hfun σ σ (def-eq).
+  exact h_chain
 
 /-- **P2 — the Gross ODE (right-derivative form).** For nonnegative
 core `f` with `ρ > 0`, `p > 1`, the log-norm `Λ(s) = q(s)⁻¹ log F(s)`
@@ -1383,7 +2038,7 @@ theorem grossLogNorm_hasDerivWithinAt
     (h_int : Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
                           ^ grossExponent ρ p s) D.μ) :
     HasDerivWithinAt (grossLogNorm D hf ρ p)
-      (grossLogNormDeriv D hf ρ p s) (Set.Ici 0) s := by
+      (grossLogNormDeriv D hf h_core ρ p s) (Set.Ici 0) s := by
   set q := grossExponent ρ p s with hq_def
   have hqpos : 0 < q := grossExponent_pos hp ρ s
   have hqne : q ≠ 0 := ne_of_gt hqpos
@@ -1400,12 +2055,12 @@ theorem grossLogNorm_hasDerivWithinAt
     simpa using hq.inv hqne
   -- F = grossPow has within-derivative `F' = grossPowDeriv`.
   have hF : HasDerivWithinAt (grossPow D hf ρ p)
-      (grossPowDeriv D hf ρ p s) (Set.Ici 0) s :=
+      (grossPowDeriv D hf h_core ρ p s) (Set.Ici 0) s :=
     grossPow_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf hf_nonneg hf_pos hs
   -- log F has within-derivative `F'/F`.
   have hlog : HasDerivWithinAt
       (fun s => Real.log (grossPow D hf ρ p s))
-      ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s)
+      ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s)
       (Set.Ici 0) s := by
     simpa [mul_comm] using
       (Real.hasDerivAt_log hFne).comp_hasDerivWithinAt s hF
@@ -1415,8 +2070,8 @@ theorem grossLogNorm_hasDerivWithinAt
   have hval : (-(2 * ρ * (q - 1)) / q ^ 2)
         * Real.log (grossPow D hf ρ p s)
       + (grossExponent ρ p s)⁻¹
-        * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s)
-      = grossLogNormDeriv D hf ρ p s := by
+        * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s)
+      = grossLogNormDeriv D hf h_core ρ p s := by
     rw [grossLogNormDeriv, grossEntropy_eq D ρ p hf, grossPowDeriv,
       grossLogIntegral, ← hq_def]
     field_simp
@@ -1424,7 +2079,7 @@ theorem grossLogNorm_hasDerivWithinAt
   have : HasDerivWithinAt (grossLogNorm D hf ρ p)
       ((-(2 * ρ * (q - 1)) / q ^ 2) * Real.log (grossPow D hf ρ p s)
         + (grossExponent ρ p s)⁻¹
-          * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf ρ p s))
+          * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s))
       (Set.Ici 0) s := by
     simpa [grossLogNorm] using hmul
   rwa [hval] at this
@@ -1443,13 +2098,94 @@ E(u,u^{q-1})`. Hence the whole expression collapses to
 theorem grossLogNorm_deriv_nonpos
     (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
     (h_lsi : D.SatisfiesLogSobolev ρ)
+    (h_core : CoreSemigroupInvariant D)
+    (h_gen : GeneratorCompat D)
     (h_sv : StroockVaropoulos D)
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 < s) :
-    grossLogNormDeriv D hf ρ p s ≤ 0 := by
-  sorry
+    grossLogNormDeriv D hf h_core ρ p s ≤ 0 := by
+  haveI : IsFiniteMeasure D.μ := inferInstance
+  obtain ⟨ε, hε_pos, hf_ge_ε⟩ := hf_pos
+  obtain ⟨_, h_lsi'⟩ := h_lsi
+  set q : ℝ := grossExponent ρ p s with hq_def
+  have hq1 : 1 < q := one_lt_grossExponent hp ρ s
+  have hq_pos : 0 < q := lt_trans one_pos hq1
+  have hqne : q ≠ 0 := hq_pos.ne'
+  obtain ⟨hu_core, horb⟩ := orbitCoreRep_spec D hf h_core hs.le
+  set u : X → ℝ := orbitCoreRep D hf h_core s with hu_def
+  -- Orbit bounds: `ε ≤ u` a.e. (transport `f ≥ ε` through the orbit).
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
+  have hf_Lp_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ (D.coreToL2 hf : X → ℝ) y := by
+    filter_upwards [hcoe_f, hf_ge_ε] with y h1 h2; rw [h1]; exact h2
+  have hu_Lp_ae : (D.coreToL2 hu_core : X → ℝ) =ᵐ[D.μ] u :=
+    (D.IsCore_memLp hu_core).coeFn_toLp
+  have horb_ae : (D.P s (D.coreToL2 hf) : X → ℝ) =ᵐ[D.μ] u := by
+    rw [horb]; exact hu_Lp_ae
+  have hu_ge_ε : ∀ᵐ y ∂D.μ, ε ≤ u y := by
+    filter_upwards [D.toMarkovSemigroup.orbit_lower_bound hs.le hf_Lp_ge_ε, horb_ae]
+      with y h1 h2; rw [← h2]; exact h1
+  -- `u^{q/2}` and `u^{q-1}` are core (strict-positive rpow closure).
+  have hu_half : D.IsCore (fun x => u x ^ (q / 2)) :=
+    D.IsCore_rpow_pos_strict hu_core hε_pos hu_ge_ε (q / 2)
+  have hu_one : D.IsCore (fun x => u x ^ (q - 1)) :=
+    D.IsCore_rpow_pos_strict hu_core hε_pos hu_ge_ε (q - 1)
+  -- LSI applied to `v = u^{q/2}`: `Ent(v·v) ≤ (2/ρ)·E(v,v)`.
+  have h_lsi_step : D.toDirichletSpace.entropy (fun x => u x ^ (q / 2) * u x ^ (q / 2))
+      ≤ (2 / ρ) * D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2)) :=
+    h_lsi' (fun x => u x ^ (q / 2)) hu_half
+  -- Stroock–Varopoulos (generator-paired) ⇒ `(4(q-1)/q²)E(u^{q/2}) ≤ E(u,u^{q-1})`.
+  obtain ⟨Au, hAu_tendsto, hAu_pair⟩ := h_gen hu_core
+  have h_sv_step : (4 * (q - 1) / q ^ 2) *
+        D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
+      ≤ D.energy u (fun x => u x ^ (q - 1)) := by
+    have h := h_sv hu_core q hq1 hu_half hu_one Au hAu_tendsto
+    rwa [show (⟪D.coreToL2 hu_one, -Au⟫_ℝ : ℝ) = D.energy u (fun x => u x ^ (q - 1)) from by
+      rw [inner_neg_right, hAu_pair hu_one, neg_neg,
+        D.energy_symm (fun x => u x ^ (q - 1)) u]] at h
+  -- Entropy is a.e.-invariant: `Ent(|orbit|^q) = Ent(u^{q/2}·u^{q/2})`.
+  have hEnt_bridge : D.toDirichletSpace.entropy
+        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+      = D.toDirichletSpace.entropy (fun x => u x ^ (q / 2) * u x ^ (q / 2)) := by
+    have hae : (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+        =ᵐ[D.μ] (fun x => u x ^ (q / 2) * u x ^ (q / 2)) := by
+      filter_upwards [horb_ae, hu_ge_ε] with x h1 h2
+      have hux : 0 < u x := lt_of_lt_of_le hε_pos h2
+      rw [h1, abs_of_nonneg hux.le, ← Real.rpow_add hux, show q / 2 + q / 2 = q by ring]
+    unfold DirichletSpace.entropy
+    simp only [show (D.toDirichletSpace).μ = D.μ from rfl]
+    congr 1
+    · exact integral_congr_ae (by filter_upwards [hae] with x hx; rw [hx])
+    · rw [integral_congr_ae hae]
+  -- `F = grossPow ≥ 0`.
+  have hF_nonneg : 0 ≤ grossPow D hf ρ p s := by
+    unfold grossPow
+    exact integral_nonneg (fun x => Real.rpow_nonneg (abs_nonneg _) _)
+  -- Key inequality: `2ρ(q-1)·Ent ≤ q²·E(u,u^{q-1})`.
+  have hkey : 2 * ρ * (q - 1) * D.toDirichletSpace.entropy
+        (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+      ≤ q ^ 2 * D.energy u (fun x => u x ^ (q - 1)) := by
+    set Ent := D.toDirichletSpace.entropy
+      (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ q)
+    set Eh := D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
+    set Euq := D.energy u (fun x => u x ^ (q - 1))
+    have hEnt_lsi : Ent ≤ (2 / ρ) * Eh := by rw [hEnt_bridge]; exact h_lsi_step
+    have h1 : ρ * Ent ≤ 2 * Eh := by
+      have h := mul_le_mul_of_nonneg_left hEnt_lsi hρ.le
+      rwa [show ρ * (2 / ρ * Eh) = 2 * Eh from by field_simp] at h
+    have h2 : 4 * (q - 1) * Eh ≤ q ^ 2 * Euq := by
+      have h := mul_le_mul_of_nonneg_left h_sv_step (sq_nonneg q)
+      rwa [show q ^ 2 * (4 * (q - 1) / q ^ 2 * Eh) = 4 * (q - 1) * Eh from by field_simp] at h
+    nlinarith [mul_le_mul_of_nonneg_left h1 (show (0 : ℝ) ≤ q - 1 by linarith), h2]
+  -- Conclude: `grossLogNormDeriv = (2ρ(q-1)·Ent - q²·E)/(q²·F) ≤ 0`.
+  rcases hF_nonneg.eq_or_lt with hF0 | hFpos
+  · rw [grossLogNormDeriv, ← hF0]; simp
+  · rw [grossLogNormDeriv, ← hq_def, ← hu_def, div_mul_eq_mul_div,
+      div_sub_div _ _ (mul_pos (pow_pos hq_pos 2) hFpos).ne' hFpos.ne']
+    refine div_nonpos_iff.mpr (Or.inr ⟨?_, ?_⟩)
+    · nlinarith [mul_le_mul_of_nonneg_right hkey hFpos.le]
+    · exact mul_nonneg (mul_nonneg (sq_nonneg q) hFpos.le) hFpos.le
 
 /-- `Λ` is antitone on `[0,∞)`: continuity (P2 gives a right
 derivative everywhere on the interior, hence continuity there;
@@ -1469,7 +2205,7 @@ theorem grossLogNorm_antitoneOn
                               ^ grossExponent ρ p s) D.μ) :
     AntitoneOn (grossLogNorm D hf ρ p) (Set.Ici 0) := by
   refine antitoneOn_of_hasDerivWithinAt_nonpos (convex_Ici 0)
-    (f' := grossLogNormDeriv D hf ρ p) ?_ ?_ ?_
+    (f' := grossLogNormDeriv D hf h_core ρ p) ?_ ?_ ?_
   · -- continuity on `[0,∞)`: each point has a within-derivative (P2),
     -- so `Λ` is continuous there.
     intro x hx
@@ -1481,8 +2217,91 @@ theorem grossLogNorm_antitoneOn
     exact (grossLogNorm_hasDerivWithinAt D ρ p hρ hp h_core h_gen hf
       hf_nonneg hf_ne hf_pos hx0 (h_int x hx0)).mono interior_subset
   · intro x hx
-    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_sv hf hf_nonneg hf_ne hf_pos
-      (by simpa using hx)
+    exact grossLogNorm_deriv_nonpos D ρ p hρ hp h_lsi h_core h_gen h_sv hf hf_nonneg
+      hf_ne hf_pos (by simpa using hx)
+
+/-- **Core, strictly-positive hypercontractive bound** (the Gross "last mile").
+For a core `f` with `f ≥ ε > 0` a.e. and `f ≢ 0`, and `1 < p ≤ q ≤ q(t)` where
+`q(t) = 1+(p-1)e^{2ρt}` and `0 < t`, the orbit satisfies `‖P_t f‖_q ≤ ‖f‖_p`
+(as `eLpNorm`s on the probability measure `μ`).
+
+This is the analytic payoff of the Gross ODE: it combines
+`grossLogNorm_antitoneOn` (P2 ⊕ P3, giving `Λ(t) ≤ Λ(0)`), the identity
+`‖P_s f‖_{q(s)} = exp(Λ(s))` (via `MemLp.eLpNorm_eq_integral_rpow_norm` and
+`grossPow > 0`), and `L^q ≤ L^{q(t)}` monotonicity on a probability measure.
+The general-`f` hypercontractivity (`IsHypercontractive`) reduces to this
+bound via core density in `L^p` (handled at the call site / per instance). -/
+theorem eLpNorm_orbit_le_of_core_pos
+    (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
+    (h_lsi : D.SatisfiesLogSobolev ρ)
+    (h_core : CoreSemigroupInvariant D)
+    (h_gen : GeneratorCompat D)
+    (h_sv : StroockVaropoulos D)
+    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
+    {q t : ℝ} (ht : 0 < t) (hpq : p ≤ q) (hqt : q ≤ grossExponent ρ p t) :
+    eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal q) D.μ
+      ≤ eLpNorm ((D.coreToL2 hf : X → ℝ)) (ENNReal.ofReal p) D.μ := by
+  haveI : IsProbabilityMeasure D.μ := D.hμ
+  -- Bounded orbit ⇒ integrability of the orbit powers (the `h_int` for P2/P3).
+  obtain ⟨Mf, hf_le_Mf⟩ := D.IsCore_memLp_top hf
+  have hcoe_f : (D.coreToL2 hf : X → ℝ) =ᵐ[D.μ] f := (D.IsCore_memLp hf).coeFn_toLp
+  have hf_Lp_le_Mf : ∀ᵐ y ∂D.μ, |(D.coreToL2 hf : X → ℝ) y| ≤ Mf := by
+    filter_upwards [hcoe_f, hf_le_Mf] with y h1 h2; rw [h1]; exact h2
+  have h_orbit_bd : ∀ s : ℝ, 0 ≤ s → ∀ᵐ y ∂D.μ,
+      |((D.P s (D.coreToL2 hf) : X → ℝ) y)| ≤ Mf :=
+    fun s hs => D.toMarkovSemigroup.Linfty_contraction hs hf_Lp_le_Mf
+  have h_int : ∀ s ∈ Set.Ici (0 : ℝ), Integrable
+      (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)| ^ grossExponent ρ p s) D.μ := by
+    intro s hs
+    refine (integrable_const (Mf ^ grossExponent ρ p s)).mono'
+      ((continuous_abs.rpow_const
+        (fun _ => Or.inr (grossExponent_pos hp ρ s).le)).comp_aestronglyMeasurable
+        (Lp.aestronglyMeasurable _)) ?_
+    filter_upwards [h_orbit_bd s hs] with y hy
+    rw [Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (abs_nonneg _) _)]
+    exact Real.rpow_le_rpow (abs_nonneg _) hy (grossExponent_pos hp ρ s).le
+  -- `‖P_s f‖_{q(s)} = ofReal (exp (Λ(s)))` for `s ≥ 0`.
+  have h_id : ∀ s : ℝ, 0 ≤ s →
+      eLpNorm ((D.P s (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal (grossExponent ρ p s)) D.μ
+        = ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p s)) := by
+    intro s hs
+    have hqs_pos : 0 < grossExponent ρ p s := grossExponent_pos hp ρ s
+    have hmem : MemLp ((D.P s (D.coreToL2 hf) : X → ℝ))
+        (ENNReal.ofReal (grossExponent ρ p s)) D.μ :=
+      MemLp.of_bound (Lp.aestronglyMeasurable _) Mf
+        (by filter_upwards [h_orbit_bd s hs] with y hy; rw [Real.norm_eq_abs]; exact hy)
+    have hFpos : 0 < grossPow D hf ρ p s :=
+      grossPow_pos D ρ p hρ hp hf hf_nonneg hf_ne hs (h_int s hs)
+    rw [MemLp.eLpNorm_eq_integral_rpow_norm (ENNReal.ofReal_pos.mpr hqs_pos).ne'
+      ENNReal.ofReal_ne_top hmem, ENNReal.toReal_ofReal hqs_pos.le]
+    -- `ofReal ((∫ ‖orbit‖^{q(s)})^{q(s)⁻¹}) = ofReal (exp Λ(s))`.
+    have hInt_eq : (∫ y, ‖((D.P s (D.coreToL2 hf) : X → ℝ) y)‖ ^ grossExponent ρ p s ∂D.μ)
+        = grossPow D hf ρ p s := by
+      unfold grossPow
+      refine integral_congr_ae ?_
+      filter_upwards with y; rw [Real.norm_eq_abs]
+    rw [hInt_eq, Real.rpow_def_of_pos hFpos, grossLogNorm, mul_comm]
+  -- Chain: `‖P_t f‖_q ≤ ‖P_t f‖_{q(t)} = ofReal(exp Λ(t)) ≤ ofReal(exp Λ(0)) = ‖f‖_p`.
+  have h_anti := grossLogNorm_antitoneOn D ρ p hρ hp h_lsi h_core h_gen h_sv hf hf_nonneg
+    hf_ne hf_pos h_int
+  calc eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal q) D.μ
+      ≤ eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ))
+          (ENNReal.ofReal (grossExponent ρ p t)) D.μ :=
+        eLpNorm_le_eLpNorm_of_exponent_le (ENNReal.ofReal_le_ofReal hqt)
+          (Lp.aestronglyMeasurable _)
+    _ = ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p t)) := h_id t ht.le
+    _ ≤ ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p 0)) :=
+        ENNReal.ofReal_le_ofReal (Real.exp_le_exp.mpr
+          (h_anti (Set.left_mem_Ici) (Set.mem_Ici.mpr ht.le) ht.le))
+    _ = eLpNorm ((D.P 0 (D.coreToL2 hf) : X → ℝ))
+          (ENNReal.ofReal (grossExponent ρ p 0)) D.μ := (h_id 0 le_rfl).symm
+    _ = eLpNorm ((D.coreToL2 hf : X → ℝ)) (ENNReal.ofReal p) D.μ := by
+        rw [show D.P 0 (D.coreToL2 hf) = D.coreToL2 hf from by
+            rw [D.P_zero, ContinuousLinearMap.id_apply],
+          show grossExponent ρ p 0 = p from by
+            simp only [grossExponent, mul_zero, Real.exp_zero, mul_one]; ring]
 
 end GrossODE
 
@@ -1506,14 +2325,113 @@ theorem gross_lsi_implies_hypercontractive_of_hypotheses
     (h_lsi : D.SatisfiesLogSobolev ρ)
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
-    (h_sv : StroockVaropoulos D) :
+    (h_sv : StroockVaropoulos D)
+    (h_approx : CoreLpL2Approx D) :
     D.toMarkovSemigroup.IsHypercontractive ρ := by
+  haveI : IsProbabilityMeasure D.μ := D.hμ
   refine ⟨hρ, ?_⟩
   intro p q t hp hpq ht hqt f hf_mem
-  -- Reduction (documented): `WLOG f ≥ 0` (replace by `|f|`); approximate
-  -- by core; identify `eLpNorm · (ofReal r)` with `(∫ ·^r)^{1/r}`;
-  -- then `‖P_t f‖_q ≤ ‖P_t f‖_{q(t)}` (probability measure, `q ≤ q(t)`
-  -- since `hqt`) `= exp (grossLogNorm … t) ≤ exp (grossLogNorm … 0)`
-  -- (by `GrossODE.grossLogNorm_antitoneOn` applied to `0 ≤ t`)
-  -- `= ‖f‖_p = ‖f‖_p`.
-  sorry
+  have hp1 : (1 : ℝ) ≤ p := hp.le
+  have hp1' : (1 : ℝ≥0∞) ≤ ENNReal.ofReal p := by
+    rw [← ENNReal.ofReal_one]; exact ENNReal.ofReal_le_ofReal hp1
+  have hq_pos : 0 < q := lt_of_lt_of_le (lt_trans one_pos hp) hpq
+  -- It suffices to prove the bound for nonnegative `f` (then `G1` handles `|f|`).
+  suffices hmain : ∀ (f₀ : Lp ℝ 2 D.μ), MemLp ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ →
+      0 ≤ f₀ → eLpNorm ((D.P t f₀ : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ
+        ≤ eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ by
+    -- ===== G1: WLOG `f ≥ 0`, replacing `f` by `|f|`. =====
+    have heq_abs : eLpNorm (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ
+        = eLpNorm ((f : X → ℝ)) (ENNReal.ofReal p) D.μ := by
+      have h1 : (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) =ᵐ[D.μ] fun x => ‖(f : X → ℝ) x‖ := by
+        filter_upwards [Lp.coeFn_abs f] with x hx; rw [hx, Real.norm_eq_abs]
+      exact (eLpNorm_congr_ae h1).trans (eLpNorm_norm _)
+    have habs_mem : MemLp (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ :=
+      ⟨Lp.aestronglyMeasurable _, by rw [heq_abs]; exact hf_mem.2⟩
+    -- `P_t` is monotone (positivity-preserving + linear).
+    have hP_mono : ∀ {a b : Lp ℝ 2 D.μ}, a ≤ b → D.P t a ≤ D.P t b := by
+      intro a b hab
+      have := D.P_positivity t ht.le (b - a) (sub_nonneg.mpr hab)
+      rw [map_sub] at this
+      exact sub_nonneg.mp this
+    have hf_le : D.P t f ≤ D.P t |f| := hP_mono (le_abs_self f)
+    have hf_ge : -(D.P t f) ≤ D.P t |f| := by rw [← map_neg]; exact hP_mono (neg_le_abs f)
+    have hae : ∀ᵐ x ∂D.μ, ‖((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) x‖
+        ≤ ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) x := by
+      filter_upwards [(Lp.coeFn_le _ _).mpr hf_le, (Lp.coeFn_le _ _).mpr hf_ge,
+        Lp.coeFn_neg (D.P t f)] with x h1 h2 h3
+      rw [Real.norm_eq_abs, abs_le]
+      have h2' : -(((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) x) ≤ ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) x := by
+        rwa [h3] at h2
+      exact ⟨by linarith, h1⟩
+    calc eLpNorm ((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ
+        ≤ eLpNorm ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ :=
+          eLpNorm_mono_ae_real hae
+      _ ≤ eLpNorm (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ :=
+          hmain |f| habs_mem (abs_nonneg f)
+      _ = eLpNorm ((f : X → ℝ)) (ENNReal.ofReal p) D.μ := heq_abs
+  -- ===== nonnegative case (G2–G4). =====
+  intro f₀ hf₀_mem hf₀_nn
+  obtain ⟨g, hg, hg_pos, hg_Lp, hg_L2⟩ := h_approx hp1 f₀ hf₀_mem hf₀_nn
+  -- `coreToL2 (hg n) → f₀` in `L²`, hence `P_t (coreToL2 (hg n)) → P_t f₀` in `L²`.
+  have hpern : ∀ n, eLpNorm (((D.coreToL2 (hg n)) : X → ℝ) - (f₀ : X → ℝ)) (2 : ℝ≥0∞) D.μ
+      = eLpNorm ((f₀ : X → ℝ) - g n) (2 : ℝ≥0∞) D.μ := by
+    intro n
+    have hcoe : ((D.coreToL2 (hg n)) : X → ℝ) =ᵐ[D.μ] g n := (D.IsCore_memLp (hg n)).coeFn_toLp
+    have h1 : (((D.coreToL2 (hg n)) : X → ℝ) - (f₀ : X → ℝ)) =ᵐ[D.μ] (g n - (f₀ : X → ℝ)) := by
+      filter_upwards [hcoe] with x hx; simp only [Pi.sub_apply, hx]
+    rw [eLpNorm_congr_ae h1,
+      show (g n - (f₀ : X → ℝ)) = -((f₀ : X → ℝ) - g n) from (neg_sub _ _).symm, eLpNorm_neg]
+  have h_ctL2 : Filter.Tendsto (fun n => D.coreToL2 (hg n)) Filter.atTop (nhds f₀) := by
+    refine (Lp.tendsto_Lp_iff_tendsto_eLpNorm' (fun n => D.coreToL2 (hg n)) f₀).mpr ?_
+    simp_rw [hpern]; exact hg_L2
+  have h_orbit : Filter.Tendsto (fun n => D.P t (D.coreToL2 (hg n))) Filter.atTop
+      (nhds (D.P t f₀)) := ((D.P t).continuous.tendsto f₀).comp h_ctL2
+  obtain ⟨ns, hns_mono, hns_ae⟩ :=
+    (tendstoInMeasure_of_tendsto_Lp h_orbit).exists_seq_tendsto_ae
+  -- Fatou / lower semicontinuity of `eLpNorm` under a.e. convergence.
+  have hconv : ∀ z : X → ℝ, eLpNorm z (ENNReal.ofReal q) D.μ = eLpNorm' z q D.μ := fun z => by
+    rw [eLpNorm_eq_eLpNorm' (by positivity) ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq_pos.le]
+  have h_fatou := Lp.eLpNorm'_lim_le_liminf_eLpNorm' (μ := D.μ) (p := q) hq_pos
+    (fun k => Lp.aestronglyMeasurable (D.P t (D.coreToL2 (hg (ns k))))) hns_ae
+  simp_rw [← hconv] at h_fatou
+  -- Termwise core bound (G3) and triangle inequality (for G4).
+  have h_termwise : ∀ k, eLpNorm ((D.P t (D.coreToL2 (hg (ns k))) : Lp ℝ 2 D.μ) : X → ℝ)
+      (ENNReal.ofReal q) D.μ ≤ eLpNorm (g (ns k)) (ENNReal.ofReal p) D.μ := by
+    intro k
+    obtain ⟨ε, hε, hεg⟩ := hg_pos (ns k)
+    have hne : ¬ g (ns k) =ᵐ[D.μ] 0 := by
+      intro hcontra
+      have h0 : ∀ᵐ x ∂D.μ, ε ≤ (0 : ℝ) := by
+        filter_upwards [hcontra] with x hx
+        have hgx : g (ns k) x = 0 := by simpa using hx
+        rw [← hgx]; exact hεg x
+      obtain ⟨x, hx⟩ := h0.exists; exact absurd hx (not_le.mpr hε)
+    have hbound := GrossODE.eLpNorm_orbit_le_of_core_pos D ρ p hρ hp h_lsi h_core h_gen h_sv
+      (hg (ns k)) (fun x => le_trans hε.le (hεg x)) hne
+      ⟨ε, hε, Filter.Eventually.of_forall hεg⟩ ht hpq hqt
+    have hcoe : ((D.coreToL2 (hg (ns k))) : X → ℝ) =ᵐ[D.μ] g (ns k) :=
+      (D.IsCore_memLp (hg (ns k))).coeFn_toLp
+    rwa [eLpNorm_congr_ae hcoe] at hbound
+  have htri : ∀ k, eLpNorm (g (ns k)) (ENNReal.ofReal p) D.μ
+      ≤ eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
+        + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ := by
+    intro k
+    have hsub := eLpNorm_sub_le (μ := D.μ) (p := ENNReal.ofReal p) (Lp.aestronglyMeasurable f₀)
+      ((Lp.aestronglyMeasurable f₀).sub (D.IsCore_memLp (hg (ns k))).aestronglyMeasurable) hp1'
+    rwa [show (f₀ : X → ℝ) - ((f₀ : X → ℝ) - g (ns k)) = g (ns k) from sub_sub_cancel _ _] at hsub
+  -- `b k → ‖f₀‖_p` since `‖f₀ - g (ns k)‖_p → 0`.
+  have hb_tendsto : Filter.Tendsto
+      (fun k => eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
+        + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ) Filter.atTop
+      (nhds (eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ)) := by
+    have h1 := hg_Lp.comp hns_mono.tendsto_atTop
+    simpa using tendsto_const_nhds.add h1
+  -- Assemble: `‖P_t f₀‖_q ≤ liminf ‖orbit‖_q ≤ liminf b = ‖f₀‖_p`.
+  refine le_trans h_fatou ?_
+  calc Filter.atTop.liminf (fun k => eLpNorm
+        ((D.P t (D.coreToL2 (hg (ns k))) : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ)
+      ≤ Filter.atTop.liminf (fun k => eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
+          + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ) :=
+        Filter.liminf_le_liminf
+          (Filter.Eventually.of_forall (fun k => le_trans (h_termwise k) (htri k)))
+    _ = eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ := hb_tendsto.liminf_eq

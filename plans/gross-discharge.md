@@ -1,20 +1,22 @@
 # Discharging the Gross axiom — reconciled against branch reality
 
-**Status (2026-05-20):** H0 ✅, G1 ✅, **G2 ✅ done**, P3
-**scaffolded**, **P2 ✅ DISCHARGED axiom-free** —
-the P2 Leibniz kernel `hasDerivWithinAt_integral_of_strongL2Deriv`
-in `Abstract/GrossODE.lean` is fully proved. `#print axioms` reports
-only `[propext, Classical.choice, Quot.sound]`. The proof = 11-lemma
-analytic toolkit (FTC factoring, `averagedDerivField`, factorization,
-a.e. bound + sub-bound, measurability, MemLp 2, UI, in-measure
-convergence, Vitali L²-convergence, `MemLp(ψ' ∘ u_s)`) + ~150-line
-9-step main body (Lp lifting via Classical padding, `Filter.Tendsto.inner`,
-`L2.inner_def`, integrated factorization, `hasDerivWithinAt_iff_tendsto_slope`
-close). See [`plans/p2-strongL2-leibniz-discharge.md`](p2-strongL2-leibniz-discharge.md).
-**Remaining for full Gross discharge:** P3 algebra (~200–400 L),
-W rewire (~10–30 L), Phase 4 `stroock_varopoulos` discharge.
-**Earlier (2026-05-17)** status: P2 decomposed with the Leibniz
-kernel `to be proved`; now proved.
+**Status (2026-05-21): ABSTRACT SPINE COMPLETE.** H0 ✅, G1 ✅, G2 ✅,
+G4 ✅, **P2 ✅, P3 ✅, final reduction ✅** — the hypothesis-parameterised
+theorem `gross_lsi_implies_hypercontractive_of_hypotheses` is fully
+proved and **`Abstract/GrossODE.lean` is sorry-free**; `#print axioms`
+= `[propext, Classical.choice, Quot.sound]`. The theorem takes four
+per-instance predicates as hypotheses: `CoreSemigroupInvariant`,
+`GeneratorCompat`, `StroockVaropoulos` (relaxed to `1 < q`, deep-think
+vetted), and `CoreLpL2Approx` (the 4th, deep-think vetted). Phase-by-phase
+detail and lessons are archived under
+[`archive/`](archive/) and consolidated in [`history.md`](history.md).
+
+**ONLY REMAINING WORK: W (wire gaussian-hilbert).** Discharge the four
+predicates for the GaussianFin / Ornstein–Uhlenbeck instance (smooth
+bounded core + `+1/n` density), and feed them to
+`gross_lsi_implies_hypercontractive_of_hypotheses` to eliminate the
+top-level `gross_lsi_implies_hypercontractive` axiom downstream. See §W
+below and [`gaussianfin-0b-readiness.md`](gaussianfin-0b-readiness.md).
 
 **Reconciled 2026-05-16 against branch `feat/lp-carrier-stdGaussianFin-dirichletmarkov`**
 (the rev gaussian-hilbert actually pins). Earlier hille-yosida/
@@ -183,7 +185,7 @@ Base every change on `feat/lp-carrier-stdGaussianFin-dirichletmarkov`.
 | G1 | Name the OU generator: `ouGenerator1D` (the `g″−x·g′` already used in `EuclideanStein.lean`) + `ouGeneratorFin` lift | new `EuclideanGenerator.lean` | **✅ DONE** — branch `924c405`; fully proved (no sorry, `#print axioms` clean), incl. named restatements of the proved heat-eqn + γ-IBP; non-breaking |
 | G2 | Strong-L² limit for GaussianFin ⇒ discharges `GeneratorCompat` | `EuclideanGenerator{Lp,Limit,Compat}.lean` | **✅ DONE** — `generatorCompat_stdGaussianFin` **sorry-free** (branch `aa9cc47`). `#print axioms` = Lean built-ins + exactly 2 custom: `gaussianFin_diffQuot_tendsto_Lp` + `gaussianFin_integrationByParts`, both *general Mathlib-native*, Gemini Standard-vetted (`AXIOM_AUDIT.md`). `gaussianOU_heatEquation_within_zero` proved-but-subsumed (off live path). `memLp_ouGeneratorFin`, `ouGeneratorFin_ibp` (=G4) proved. |
 | G4 | nD γ-IBP (form-id half of `h_gen`) | folded into G2 | **✅ DONE** — `gaussianFin_integrationByParts` (general vetted axiom) ⇒ `ouGeneratorFin_ibp_integral`/`ouGeneratorFin_ibp` proved. |
-| P2 | The Gross ODE: right-difference-quotient derivative of `∫(P_tf)^{q(t)}` (right-derivative only; `h_core`+`h_gen` self-contained) | `Abstract/GrossODE.lean` | **✅ Leibniz kernel + entropy bridge + antitoneOn continuity DISCHARGED axiom-free (2026-05-20).** Exponent calculus + chain-rule assembly `grossLogNorm_hasDerivWithinAt` + pointwise `hasDerivAt_abs_rpow_exponent` **proved**. **`hasDerivWithinAt_integral_of_strongL2Deriv`** is fully proved — `#print axioms` = `[propext, Classical.choice, Quot.sound]`. 11-lemma toolkit + ~150-line 9-step body. **`grossEntropy_eq`** (log-of-power algebra) ✅ DISCHARGED axiom-free via `Real.log_rpow` + 3-way case split on `q=0` / `|u|=0` / general. **`grossLogNorm_antitoneOn` continuity sorry closed** via `HasDerivWithinAt.continuousWithinAt`. Statements are project-definition-free → Mathlib-upstreamable. See `plans/p2-strongL2-leibniz-discharge.md`. Remaining: `hasDerivAt_integral_rpow_exponent` DCT plumbing ⬜ (needs `ContDiff ℝ 1 a` neighborhood-of-`s` hypothesis), `grossPow_pos` ⬜ (statement is false-as-stated for `f ≡ 0`, needs hypothesis fix), `grossPow_hasDerivWithinAt` composition ⬜ (blocked by the DCT lemma above + energy-pairing identification). |
+| P2 | The Gross ODE: right-difference-quotient derivative of `∫(P_tf)^{q(t)}` (right-derivative only; `h_core`+`h_gen` self-contained) | `Abstract/GrossODE.lean` | **✅ Leibniz kernel + entropy bridge + antitoneOn continuity DISCHARGED axiom-free (2026-05-20).** Exponent calculus + chain-rule assembly `grossLogNorm_hasDerivWithinAt` + pointwise `hasDerivAt_abs_rpow_exponent` **proved**. **`hasDerivWithinAt_integral_of_strongL2Deriv`** is fully proved — `#print axioms` = `[propext, Classical.choice, Quot.sound]`. 11-lemma toolkit + ~150-line 9-step body. **`grossEntropy_eq`** (log-of-power algebra) ✅ DISCHARGED axiom-free via `Real.log_rpow` + 3-way case split on `q=0` / `|u|=0` / general. **`grossLogNorm_antitoneOn` continuity sorry closed** via `HasDerivWithinAt.continuousWithinAt`. Statements are project-definition-free → Mathlib-upstreamable. See `plans/archive/p2-strongL2-leibniz-discharge.md`. Remaining: `hasDerivAt_integral_rpow_exponent` DCT plumbing ⬜ (needs `ContDiff ℝ 1 a` neighborhood-of-`s` hypothesis), `grossPow_pos` ⬜ (statement is false-as-stated for `f ≡ 0`, needs hypothesis fix), `grossPow_hasDerivWithinAt` composition ⬜ (blocked by the DCT lemma above + energy-pairing identification). |
 | P3 | Algebraic closure: P2 ⊕ `h_lsi` ⊕ `h_sv` ⊕ `q'=2ρ(q-1)` ⇒ `d⁺/dt log N ≤ 0`; `antitoneOn_of_hasDerivWithinAt_nonpos` on `Set.Ici 0` ⇒ `IsHypercontractive` (`0<ρ` firewall) | `Abstract/GrossODE.lean` | **🟡 scaffolded.** `antitoneOn` closure **proved structurally**; remaining: the cancellation `grossLogNorm_deriv_nonpos` (LSI on `u^{q/2}` + coupling + S–V) ⬜ + interior-continuity bridge ⬜ + final `eLpNorm↔∫·^q` reduction ⬜. ~200–400 L. |
 | W | Wire gaussian-hilbert: pass the 3 discharges to the now-theorem (`GrossODE.gross_lsi_implies_hypercontractive_of_hypotheses`) | gaussian-hilbert | ⬜ ~10–30 L, hrs (after P2/P3) |
 

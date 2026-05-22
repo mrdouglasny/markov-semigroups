@@ -1,3 +1,5 @@
+> **📦 ARCHIVED 2026-05-21 — work complete (GrossODE.lean is sorry-free). Retained for provenance; see [`../history.md`](../history.md).**
+
 # `grossPow_hasDerivWithinAt` — structural blockers and design decision
 
 **Date:** 2026-05-20

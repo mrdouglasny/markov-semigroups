@@ -63,7 +63,7 @@
 > corrected form is `h_u_bound` orbit-bound (not `ψ'`-at-`s`).
 > Statement uses only Mathlib definitions → Mathlib-upstreamable.
 > Full `lake build` green (3206 jobs). See
-> `plans/p2-strongL2-leibniz-discharge.md` and
+> `plans/archive/p2-strongL2-leibniz-discharge.md` and
 > `plans/gross-discharge.md`. Remaining for full Gross discharge:
 > P3 algebra (~200–400 L), W rewire (~10–30 L), Phase 4
 > `stroock_varopoulos`. **Today's closures (2026-05-20):** Steps 8 & 9
@@ -75,6 +75,84 @@
 > (`grossPow_pos`, `hasDerivAt_integral_rpow_exponent`,
 > `grossPow_hasDerivWithinAt`, `grossLogNorm_deriv_nonpos`, final
 > hypercontractivity).
+>
+> **Update (2026-05-21, P2 fully proved — `grossPow_hasDerivWithinAt`
+> ✅):** The P2 analytic bottleneck `grossPow_hasDerivWithinAt`
+> (`F'(s) = grossPowDeriv`) is now a **complete theorem**, `#print
+> axioms` = `[propext, Classical.choice, Quot.sound]` (Mathlib core
+> only; the structure fields `GeneratorCompat`/`CoreSemigroupInvariant`/
+> `IsCore_rpow_pos_strict`/`IsCore_memLp_top` are discharged
+> per-instance, not axioms). Closures:
+> • **`h_second`** (off-diagonal chain-rule half): MVT-in-τ choice
+>   function `cσ` + two-bracket `gfun σ (cσ σ) → gfun s s`; the
+>   A-bracket uses the new reusable helper
+>   **`abs_integral_rpow_mul_log_sub_le`** (integral Lipschitz bound:
+>   `|∫|w|^r log|w| − ∫|v|^r log|v|| ≤ L·∫|w−v|`) + uniform Lipschitz
+>   over `[ε,Mf]×[q-1,q+1]` + `squeeze_zero_norm'` with L¹ orbit
+>   convergence.
+> • **`h_energy`** (`D1 = -q·E(orbit, orbit^{q-1})`): via the generator
+>   pairing — `P_s Af = Ag'` (orbit generator) by strong-`L²` limit
+>   uniqueness (semigroup law + CLM continuity), then
+>   `⟪coreToL2(g'^{q-1}), Ag'⟫ = -E(g'^{q-1}, g')` + `energy_symm`.
+> • **Soundness refactor:** the abstract `D.energy` is a carré-du-champ
+>   (gradient) form, hence *not* a.e.-invariant; `grossPowDeriv`/
+>   `grossLogNormDeriv` previously evaluated it at the non-differentiable
+>   `Lp`-coe `⇑(P_s f)`. Fixed by evaluating at a smooth core
+>   representative **`orbitCoreRep`** (from `CoreSemigroupInvariant`);
+>   `grossLogNorm_deriv_nonpos` gained `h_core`/`h_gen`. (An
+>   unconditional `energy_ae_congr` field was considered and **rejected**
+>   — false for gradient-form energies like `ouEnergyFin`.)
+> `grossLogNorm_hasDerivWithinAt` is therefore also complete. GrossODE.lean
+> active sorries: 5 → **2** (`grossLogNorm_deriv_nonpos` / P3 algebra,
+> and the final `gross_lsi_implies_hypercontractive_of_hypotheses`
+> reduction). Full `lake build` green (3206 jobs).
+>
+> **Update (2026-05-21, P3 proved — `grossLogNorm_deriv_nonpos` ✅):**
+> The Gross cancellation `Λ'(s) ≤ 0` is now axiom-clean (`[propext,
+> Classical.choice, Quot.sound]`); `grossLogNorm_antitoneOn` is therefore
+> fully proved too — **the entire P2⊕P3 Gross-ODE spine is complete**.
+> Argument: LSI on `v=u^{q/2}` (`Ent(u^q) ≤ (2/ρ)E(v,v)`, entropy
+> a.e.-bridged from the `|orbit|^q` rep) + Stroock–Varopoulos
+> (generator-paired via `h_gen` ⇒ `Au` = orbit generator) ⇒
+> `2ρ(q-1)·Ent ≤ q²·E(u,u^{q-1})`, then `div_nonpos_iff` (F=0 trivial).
+> **`StroockVaropoulos._hq` relaxed `2 ≤ q` → `1 < q`** (the full range
+> the path `q(s)=1+(p-1)e^{2ρs}` visits for `p>1`; S–V holds throughout,
+> equality for gradient forms; **deep-think vetted 2026-05-21, rating
+> Standard — `plans/archive/sv-q-relaxation-vetting.md`**; no in-repo discharge
+> yet — gaussian-hilbert's W-step must target `q > 1`). GrossODE.lean
+> active sorries: 2 → **1**
+> (only the final `eLpNorm↔∫·^q` hypercontractivity reduction). Full
+> `lake build` green (3206 jobs).
+>
+> **Update (2026-05-21, core+positive HC bound ✅):** new theorem
+> `eLpNorm_orbit_le_of_core_pos` (axiom-clean) — the Gross "last mile":
+> for core `f` with `f ≥ ε > 0` a.e., `f ≢ 0`, `1 < p ≤ q ≤ q(t)`,
+> `‖P_t f‖_q ≤ ‖f‖_p`. Combines `L^q ≤ L^{q(t)}` monotonicity (prob
+> measure) + the identity `‖P_s f‖_{q(s)} = ofReal(exp Λ(s))`
+> (`MemLp.eLpNorm_eq_integral_rpow_norm` + `grossPow>0` +
+> `rpow_def_of_pos`) + `grossLogNorm_antitoneOn` (Λ(t) ≤ Λ(0),
+> Λ(0)=log‖f‖_p). The single remaining `GrossODE.lean` sorry
+> (`gross_lsi_implies_hypercontractive_of_hypotheses`) now reduces to
+> **only** the general-`f` extension via core density in `L^p`
+> (semigroup acts on `L²` vs the `L^p→L^q` bound — needs a 4th
+> density-style hypothesis predicate). Full `lake build` green (3206).
+>
+> **Update (2026-05-21, Gross discharge COMPLETE — `GrossODE.lean`
+> sorry-free):** `gross_lsi_implies_hypercontractive_of_hypotheses` is
+> now a **complete, axiom-clean theorem** (`#print axioms` = `[propext,
+> Classical.choice, Quot.sound]`); **`GrossODE.lean` has 0 sorries**. The
+> hypothesis-parameterised Gross theorem (LSI ⇒ hypercontractivity) takes
+> the four per-instance predicates `CoreSemigroupInvariant` /
+> `GeneratorCompat` / `StroockVaropoulos` / **`CoreLpL2Approx`** (the new
+> 4th, deep-think vetted — `plans/archive/corelpapprox-vetting.md`). Final
+> reduction: G1 WLOG `f≥0` (`|f|` Lp lattice + `P_positivity`
+> monotonicity), G2 core `L²`-approx ⇒ orbit `L²`-convergence ⇒
+> a.e.-subsequence (`tendstoInMeasure_of_tendsto_Lp` +
+> `exists_seq_tendsto_ae`), G3 termwise `eLpNorm_orbit_le_of_core_pos`,
+> G4 Fatou (`eLpNorm'_lim_le_liminf_eLpNorm'`) + `eLpNorm` triangle. Only
+> remaining work for the original `gross_lsi_implies_hypercontractive`
+> axiom: the per-instance W-step discharge in gaussian-hilbert (the four
+> predicates for GaussianFin/OU). Full `lake build` green (3206).
 
 **10 axioms. 2 sorry's total**, all quarantined in
 `Instances/WorkInProgress/TwoPoint.lean` (mathematically false for
@@ -217,20 +295,22 @@ proved*, not axiomatized).
 `.lean` axioms (incl. the 3 Gross-discharge general axioms, 2
 remaining `EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
 axioms, the legacy abstract Gross/S–V trio, Dobrushin–Zegarliński,
-Schwartz-convolution, diamagnetic). 9 `sorry` declarations: **8 in
-`Abstract/GrossODE.lean`** (the documented P2/P3 work items —
-`grossPow_pos`, `grossEntropy_eq`, the two general Leibniz lemmas,
-the `grossPow_hasDerivWithinAt` glue, `grossLogNorm_deriv_nonpos`
-(P3 algebra), the `antitoneOn` continuity bridge, and the final
-`eLpNorm↔∫·^q` reduction) + **1 in `TwoPoint.lean`** (quarantined,
-mathematically false for jump processes). Remaining Gross endgame:
-P2 (the one general Leibniz kernel + thin glue) → P3 algebra → W.
+Schwartz-convolution, diamagnetic). 1 `sorry` declaration: **`TwoPoint.lean`**
+(quarantined, mathematically false for jump processes). **`Abstract/GrossODE.lean`
+is sorry-free** — the entire hypothesis-parameterised Gross theorem
+(LSI ⇒ hypercontractivity) is complete: `grossPow_pos`, `grossEntropy_eq`,
+both general Leibniz lemmas, `grossPow_hasDerivWithinAt`,
+`grossLogNorm_hasDerivWithinAt`, `grossLogNorm_deriv_nonpos`,
+`grossLogNorm_antitoneOn`, `eLpNorm_orbit_le_of_core_pos`, and
+`gross_lsi_implies_hypercontractive_of_hypotheses`. Remaining for the
+original `gross_lsi_implies_hypercontractive` axiom: only the
+gaussian-hilbert W-step (the 4 per-instance predicates for GaussianFin/OU).
 
 ## Project structure
 
 | Module | Files | Sorry's | Axioms | Description |
 |---|---|---|---|---|
-| Abstract/ | 7 | 8 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, Gross (3: +Stroock-Varopoulos; predicates + relocated theorem in `GrossODE.lean` — P2/P3 scaffold, 8 documented WIP sorries), Borell-Herbst concentration (2: Herbst MGF + LSI⇒Poincaré) |
+| Abstract/ | 7 | 0 | 5 | Dirichlet forms, Poincaré, LSI, Holley-Stroock, **Gross LSI⇒HC fully proved & sorry-free** (3 axioms: +Stroock-Varopoulos; `gross_lsi_implies_hypercontractive_of_hypotheses` complete via the 4 per-instance predicates incl. `CoreLpL2Approx`), Borell-Herbst concentration |
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
