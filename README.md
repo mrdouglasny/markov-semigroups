@@ -300,10 +300,10 @@ kernel route), and `ouSemigroupFin_entropy_sq_decay_bound` (Workstream
 N1.c, the 1-parameter telescoping route) — leaving **0 GaussianFin
 Bakry–Émery *curvature* axioms**. (The OU *generator* subsystem in
 `Instances/WorkInProgress/EuclideanGenerator*.lean`, added later for the
-`GeneratorCompat` discharge, now carries one remaining analytic axiom —
-`gaussianFin_diffQuot_tendsto_Lp`. The pointwise endpoint heat equation
-`gaussianOU_heatEquation_within_zero` was discharged on 2026-05-22 and is now
-theorem-level infrastructure. See the W-step note below.)
+`GeneratorCompat` discharge, is now theorem-only: the coordinatewise Gaussian
+integration by parts, pointwise endpoint heat equation, and strong-`L²`
+difference quotient were all discharged on 2026-05-22. See the W-step note
+below.)
 
 **W-step — Gross axiom bypassed (2026-05-22):**
 `Instances/WorkInProgress/EuclideanHypercontractive.lean` discharges all four
@@ -312,10 +312,10 @@ for the standard Gaussian OU bundle — `CoreSemigroupInvariant`, `GeneratorComp
 `StroockVaropoulos`, `CoreLpL2Approx` — and assembles
 `stdGaussianFin_isHypercontractive`. Consequently `#print axioms` of that theorem
 (and of the downstream gaussian-hilbert `…_isHypercontractive`) lists only
-`gaussianFin_diffQuot_tendsto_Lp` (+ the 3 Lean built-ins) — **not**
-`gaussianFin_integrationByParts`, not `gross_lsi_implies_hypercontractive`, and
-(since 2026-05-22)
-**not** `stroock_varopoulos`. The latter is discharged in the concrete chain as the
+the 3 Lean built-ins `[propext, Classical.choice, Quot.sound]` — **not**
+`gaussianFin_diffQuot_tendsto_Lp`, not `gaussianFin_integrationByParts`, not
+`gross_lsi_implies_hypercontractive`, and (since 2026-05-22) **not**
+`stroock_varopoulos`. The latter is discharged in the concrete chain as the
 diffusion *equality* `BakryEmerySpace.stroockVaropoulos_eq`
 (`Diffusion/StroockVaropoulos.lean`) via the `rpow` chain rule; the `StroockVaropoulos`
 predicate carries `∃ε>0, ε≤u` a.e. (the chain rule needs strict positivity), supplied
