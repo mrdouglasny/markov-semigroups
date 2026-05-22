@@ -1,3 +1,17 @@
+> **W-STEP COMPLETE (2026-05-22) — Gross axiom eliminated from the concrete chain.**
+> `Instances/WorkInProgress/EuclideanHypercontractive.lean` discharges all four
+> per-instance hypotheses of the proved `gross_lsi_implies_hypercontractive_of_hypotheses`
+> for `stdGaussianFin_dirichletMarkovSemigroup` — `stdGaussianFin_coreSemigroupInvariant`,
+> `_generatorCompat`, `_stroockVaropoulos`, `_coreLpL2Approx` — plus the LSI bridge and
+> the assembly `stdGaussianFin_isHypercontractive`. `#print axioms` =
+> `[propext, stroock_varopoulos, Classical.choice, gaussianFin_diffQuot_tendsto_Lp,
+> gaussianFin_integrationByParts, Quot.sound]` — **no `gross_lsi_implies_hypercontractive`**.
+> The `StroockVaropoulos` predicate gained an a.e.-nonneg hypothesis on `u`
+> (deep-think-vetted SOUND + NECESSARY), supplied at the unique GrossODE call site.
+> Also: `IsCore_rpow_pos_strict` discharged (`partialDeriv_rpow` + `IsCoreFin_rpow_pos`);
+> two general lemmas extracted (`gaussianReal_isOpenPosMeasure`, `Continuous.le_of_ae_le`).
+> Total axiom count unchanged (no new axioms). Merged to `main` via PR #4/#5; full build green.
+
 > **Note (2026-05-17):** the historical headline below predates the
 > Lp-carrier / Gross-discharge work. **Current state is the
 > 2026-05-17 dated section** ("Gross-discharge — G2 complete")
