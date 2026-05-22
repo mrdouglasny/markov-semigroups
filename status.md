@@ -321,8 +321,10 @@ proved*, not axiomatized).
 `.lean` axioms (incl. the 3 Gross-discharge general axioms, 2
 remaining `EuclideanFin` BE tensor-lift axioms, 4 `EuclideanTests` scratch
 axioms, the legacy abstract Gross/S–V trio, Dobrushin–Zegarliński,
-Schwartz-convolution, diamagnetic). 1 `sorry` declaration: **`TwoPoint.lean`**
-(quarantined, mathematically false for jump processes). **`Abstract/GrossODE.lean`
+Schwartz-convolution, diamagnetic). **0 `sorry` declarations** — `TwoPoint.lean`'s
+sorry-backed (unsound) `BakryEmerySpace` instance was removed 2026-05-22 and its
+failure is now *proved* (`gamma_leibniz_fails`); markov-semigroups is sorry-free.
+**`Abstract/GrossODE.lean`
 is sorry-free** — the entire hypothesis-parameterised Gross theorem
 (LSI ⇒ hypercontractivity) is complete: `grossPow_pos`, `grossEntropy_eq`,
 both general Leibniz lemmas, `grossPow_hasDerivWithinAt`,
@@ -340,9 +342,9 @@ gaussian-hilbert W-step (the 4 per-instance predicates for GaussianFin/OU).
 | Diffusion/ | 5 | 0 | 0 | BakryEmerySpace, carré du champ, L² bridge |
 | Convergence/ | 5 | 0 | 0 | Doeblin, spectral gap, entropy decay, ergodicity |
 | Instances/BrascampLieb | 1 | 0 | 0 | Brascamp-Lieb inequality (fully proved) |
-| Instances/WorkInProgress/TwoPoint | 1 | 2 | 0 | Two-point space (2 sorry's = math false) |
+| Instances/WorkInProgress/TwoPoint | 1 | 0 | 0 | Two-point space — `gamma_leibniz_fails` proves the diffusion property fails (no sorry/axiom) |
 | Instances/WorkInProgress/Euclidean (+EuclideanStein, EuclideanHermite, EuclideanEntropyDecay) | 4 | 0 | 0 | Standard Gaussian / OU. Concrete instance **axiom-free**; the de Bruijn / Fisher-info entropy-decay facts are **discharged as theorems** in `General/OUEntropyDecomposition.lean` (itself axiom-free — AXIOM_AUDIT.md confirms). All 9 original Mehler-kernel axioms discharged. |
-| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}) | 6 | 0 | 5 | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. 1 remaining BE tensor-lift axiom (`ouSemigroupFin_entropy_sq_decay_bound`; `ouSemigroupFin_preserves_IsCore` **DISCHARGED 2026-05-19 via the Cameron–Martin kernel route**, Workstream N1.b) + 3 **Gross-discharge general Mathlib-native axioms** (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`), all Gemini Standard-vetted. `generatorCompat_stdGaussianFin` **sorry-free**; `ouSemigroupFin_l2_sq_hasDerivWithinAt` is now a theorem in `EuclideanFinBE.lean`. |
+| Instances/WorkInProgress/EuclideanFin (+EuclideanFinBE, EuclideanFinLp, EuclideanGenerator{,Lp,Limit,Compat}, EuclideanHypercontractive) | 7 | 0 | — | Multivariate Gaussian / Lp-carrier `stdGaussianFin_dirichletMarkovSemigroup`. The three Gross-discharge axioms (`gaussianOU_heatEquation_within_zero`, `gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`) are all **discharged to theorems (2026-05-22)**; `stdGaussianFin_isHypercontractive` is assembled here and `#print axioms` = the bare Mathlib trio. See the master plan and the session headline at the top of this file. |
 | Instances/WorkInProgress/EuclideanTests | 1 | 0 | 4 | Scaffolding axioms (`gaussianResolvent*`, `gaussianBochner_identity`) — excluded by policy, not consumed by main tree |
 | Matrix/ | 4 | 0 | 1 | Heat kernel, Trotter, diamagnetic inequality (`m_matrix_inverse_nonneg` now imported from `SpectralPositivity` as a theorem) |
 | Coupling/ | 1 | 0 | 0 | TV coupling characterization |
@@ -460,9 +462,12 @@ Neumann decay is interleaved.
 
 ## Sorry's by location
 
-### Instances/WorkInProgress/TwoPoint.lean (2 sorry's — mathematically false)
-- `Γ_leibniz` — Leibniz/diffusion property fails for jump processes
-- `semigroup_entropy_sq_decay_bound` — consequence of Leibniz failure
+### Instances/WorkInProgress/TwoPoint.lean (0 sorry's — failure now PROVED, 2026-05-22)
+The sorry-backed `BakryEmerySpace TwoPoint` instance (whose `Γ_leibniz` and
+`semigroup_entropy_sq_decay_bound` fields are mathematically *false* for a jump
+process) was unsound and is removed. `gamma_leibniz_fails` now proves the diffusion
+Leibniz property fails (explicit counterexample), so the failure is recorded honestly
+as a theorem rather than stubbed with a sorry.
 
 ### Instances/WorkInProgress/Euclidean.lean + EuclideanStein.lean (0 sorry's, 2 axioms)
 The previously-flagged 9 sorries (Lean-infrastructure gaps for
