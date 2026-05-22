@@ -67,7 +67,7 @@ structure RegularizedSquare (f : ℝ → ℝ) (M ε : ℝ) where
 /-- The regularized square of an IsCore function. -/
 def regularizedSquare {f : ℝ → ℝ} (hf : IsCore f) {M : ℝ}
     (hM : ∀ x, ‖f x‖ ≤ M ∧ ‖deriv f x‖ ≤ M ∧ ‖deriv (deriv f) x‖ ≤ M)
-    {ε : ℝ} (hε : 0 < ε) :
+    {ε : ℝ} (_hε : 0 < ε) :
     RegularizedSquare f M ε where
   toFun := fun x => f x ^ 2 + ε
   contDiff := by
@@ -123,7 +123,7 @@ The proof packages the above and combines A1, A2 to derive the bound. -/
 
 /-- A pointwise bound on `s log s` and its absolute value for `s ∈ [0, A]`,
 extracted as a uniform constant via compactness. -/
-private lemma exists_mul_log_bound (A : ℝ) (hA : 0 ≤ A) :
+private lemma exists_mul_log_bound (A : ℝ) (_hA : 0 ≤ A) :
     ∃ B : ℝ, 0 ≤ B ∧ ∀ s ∈ Set.Icc (0 : ℝ) A, |s * Real.log s| ≤ B := by
   have h_compact : IsCompact (Set.Icc (0 : ℝ) A) := isCompact_Icc
   have h_cont_abs : Continuous (fun s => |s * Real.log s|) :=
@@ -137,7 +137,7 @@ private lemma exists_mul_log_bound (A : ℝ) (hA : 0 ≤ A) :
 /-- For `IsCore f`, the OU semigroup applied to `f² + ε` equals
 `ouSemigroup t (f²) + ε`. -/
 private lemma ouSemigroup_sq_add_const {f : ℝ → ℝ} (hf : IsCore f) (ε : ℝ)
-    (t : ℝ) (ht : 0 ≤ t) :
+    (t : ℝ) (_ht : 0 ≤ t) :
     ouSemigroup t (fun x => f x ^ 2 + ε) =
     fun x => ouSemigroup t (fun x => f x ^ 2) x + ε := by
   ext x
