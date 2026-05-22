@@ -173,6 +173,7 @@ MarkovSemigroups/
     Concentration.lean          -- Borell-Herbst sub-Gaussian concentration from LSI
   Diffusion/                    -- Layer 2: abstract diffusions (Gamma, Gamma_2)
     CarreDuChamp.lean           -- BakryEmerySpace: Gamma, semigroup, curvature
+    StroockVaropoulos.lean      -- RpowChainRule + stroockVaropoulos_eq (S-V equality for diffusion forms)
     BakryEmery.lean             -- Bakry-Emery curvature criterion
     L2Semigroup.lean            -- Bridge to hille-yosida semigroup theory
     InvariantMeasure.lean       -- Invariant probability measures
@@ -280,7 +281,7 @@ and links to the discharge plans.*
 |-------|-----------|
 | `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 (bundled `DirichletMarkovSemigroup`). **Bypassed in the concrete Gaussian chain** since 2026-05-22 — see below; retained only for the abstract `hypercontractive_of_logSobolev` / `gross_lsi_iff` wrappers |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 (now on bundled `DirichletMarkovSemigroup`) |
-| `stroock_varopoulos` | BGL Prop 1.7.1 (intermediate-step lemma for Gross; **Standard** by gemini-3.1-pro two-pass 2026-05-13) |
+| `stroock_varopoulos` | BGL Prop 1.7.1 (intermediate-step lemma for Gross; **Standard** by gemini-3.1-pro two-pass 2026-05-13). **Bypassed in the concrete Gaussian chain** since 2026-05-22 — discharged there as the *equality* `BakryEmerySpace.stroockVaropoulos_eq` (`Diffusion/StroockVaropoulos.lean`) via the diffusion `rpow` chain rule; retained for non-diffusion / abstract uses |
 | `diamagnetic_resolvent` | Diamagnetic inequality (assembles 5 steps) |
 | `zegarlinski_lsi_inequality` | Otto-Reznikoff (2007) J. Funct. Anal. 243 Thm 1; Zegarlinski (1996) CMP 175; BGL §5.7.5 |
 | `cov_entrywise_bound_of_zegarlinski` | Helffer-Sjöstrand (1994) J. Stat. Phys. 74; Naddaf-Spencer (1997) CMP 183; BGL §4.5 |
@@ -305,13 +306,14 @@ per-instance hypotheses of the *proved* `gross_lsi_implies_hypercontractive_of_h
 for the standard Gaussian OU bundle — `CoreSemigroupInvariant`, `GeneratorCompat`,
 `StroockVaropoulos`, `CoreLpL2Approx` — and assembles
 `stdGaussianFin_isHypercontractive`. Consequently `#print axioms` of that theorem
-(and of the downstream gaussian-hilbert `…_isHypercontractive`) lists
-`stroock_varopoulos`, `gaussianFin_diffQuot_tendsto_Lp`,
-`gaussianFin_integrationByParts` (+ the 3 Lean built-ins) but **not**
-`gross_lsi_implies_hypercontractive`. The `StroockVaropoulos` predicate gained an
-a.e.-nonnegativity hypothesis on `u` (deep-think-vetted SOUND + NECESSARY), supplied
-at the unique abstract call site from the positive orbit. Total axiom count is
-unchanged (no new axioms introduced).
+(and of the downstream gaussian-hilbert `…_isHypercontractive`) lists only
+`gaussianFin_diffQuot_tendsto_Lp` and `gaussianFin_integrationByParts` (+ the 3 Lean
+built-ins) — **not** `gross_lsi_implies_hypercontractive` and (since 2026-05-22)
+**not** `stroock_varopoulos`. The latter is discharged in the concrete chain as the
+diffusion *equality* `BakryEmerySpace.stroockVaropoulos_eq`
+(`Diffusion/StroockVaropoulos.lean`) via the `rpow` chain rule; the `StroockVaropoulos`
+predicate carries `∃ε>0, ε≤u` a.e. (the chain rule needs strict positivity), supplied
+at the unique abstract call site from the positive orbit. No new axioms introduced.
 
 **Discharged 2026-05-12:**
 * `ouSemigroup_fisher_info_decay` (A1, BGL Proposition 5.5.2) — the
