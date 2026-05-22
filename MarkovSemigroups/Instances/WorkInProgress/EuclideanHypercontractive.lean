@@ -42,4 +42,18 @@ theorem stdGaussianFin_coreSemigroupInvariant (n : ℕ) :
     (D.IsCore_memLp (ouSemigroupFin_preserves_IsCore t ht hg)).coeFn_toLp
   exact hP.trans (hmid.trans hg'_ae.symm)
 
+/-- **`GeneratorCompat` for the standard Gaussian OU semigroup.** The generator
+element is `ouGeneratorFinLp hf`; the strong-`L²` difference-quotient convergence is
+`ouSemigroupFinLp_diffQuot_tendsto`, and the Dirichlet-form pinning
+`⟪coreToL2 g, A f⟫ = -energy g f` is the integration-by-parts identity
+`ouGeneratorFin_ibp`. All bridges (`P_t = ouSemigroupFinLp`, `coreToL2 = .toLp`,
+`energy = ouEnergyFin`) hold definitionally. -/
+theorem stdGaussianFin_generatorCompat (n : ℕ) :
+    GeneratorCompat (stdGaussianFin_dirichletMarkovSemigroup n) := by
+  intro f hf
+  refine ⟨ouGeneratorFinLp hf, ?_, ?_⟩
+  · exact ouSemigroupFinLp_diffQuot_tendsto (n := n) hf
+  · intro g hg
+    exact ouGeneratorFin_ibp hf hg
+
 end GaussianFin
