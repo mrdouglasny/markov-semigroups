@@ -300,10 +300,10 @@ kernel route), and `ouSemigroupFin_entropy_sq_decay_bound` (Workstream
 N1.c, the 1-parameter telescoping route) — leaving **0 GaussianFin
 Bakry–Émery *curvature* axioms**. (The OU *generator* subsystem in
 `Instances/WorkInProgress/EuclideanGenerator*.lean`, added later for the
-`GeneratorCompat` discharge, still carries three analytic axioms —
-`gaussianFin_integrationByParts`, `gaussianFin_diffQuot_tendsto_Lp`, and
-`gaussianOU_heatEquation_within_zero`; the first two are the only non-standard
-axioms remaining in the hypercontractivity chain. See the W-step note below.)
+`GeneratorCompat` discharge, now carries two analytic axioms —
+`gaussianFin_diffQuot_tendsto_Lp` and `gaussianOU_heatEquation_within_zero`;
+only the first remains on the live hypercontractivity chain. See the W-step
+note below.)
 
 **W-step — Gross axiom bypassed (2026-05-22):**
 `Instances/WorkInProgress/EuclideanHypercontractive.lean` discharges all four
@@ -312,8 +312,9 @@ for the standard Gaussian OU bundle — `CoreSemigroupInvariant`, `GeneratorComp
 `StroockVaropoulos`, `CoreLpL2Approx` — and assembles
 `stdGaussianFin_isHypercontractive`. Consequently `#print axioms` of that theorem
 (and of the downstream gaussian-hilbert `…_isHypercontractive`) lists only
-`gaussianFin_diffQuot_tendsto_Lp` and `gaussianFin_integrationByParts` (+ the 3 Lean
-built-ins) — **not** `gross_lsi_implies_hypercontractive` and (since 2026-05-22)
+`gaussianFin_diffQuot_tendsto_Lp` (+ the 3 Lean built-ins) — **not**
+`gaussianFin_integrationByParts`, not `gross_lsi_implies_hypercontractive`, and
+(since 2026-05-22)
 **not** `stroock_varopoulos`. The latter is discharged in the concrete chain as the
 diffusion *equality* `BakryEmerySpace.stroockVaropoulos_eq`
 (`Diffusion/StroockVaropoulos.lean`) via the `rpow` chain rule; the `StroockVaropoulos`

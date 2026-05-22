@@ -115,7 +115,7 @@ vetting-amenable textbook statement; the project-specific
 `gaussianOU_heatEquation_within_zero` (the Gross-G2 deep cruxes are
 deferred to general vetted axioms; the discharge route is the
 coordinatewise Fubini lift of the *proved* 1D
-`Gaussian1D.gaussian_generator_ibp`).
+`Gaussian1D.gaussian_dirichlet_form_bilinear`).
 
 Reference: Bakry–Gentil–Ledoux, *Analysis and Geometry of Markov
 Diffusion Operators* (2014), §2.7 / §1.6 (the Dirichlet form
@@ -130,8 +130,181 @@ the linear-growth `g·(x·∇f)`; IBP is coordinatewise-Fubini, no
 mixed/third partials); `g`'s pure-2nd-partial bound is superfluous-
 but-harmless (kept for core-class symmetry). Discharge route: the
 coordinatewise Fubini lift of the proved 1D
-`Gaussian1D.gaussian_generator_ibp`. -/
-axiom gaussianFin_integrationByParts {n : ℕ}
+`Gaussian1D.gaussian_dirichlet_form_bilinear`. -/
+private theorem gaussianFin_integrationByParts_coord {n : ℕ}
+    {f g : (Fin (n + 1) → ℝ) → ℝ}
+    (hf : IsCoreFin f) (hg : IsCoreFin g) (i : Fin (n + 1)) :
+    ∫ x, g x * (secondPartial i f x - x i * partialDeriv i f x) ∂γFin (n + 1)
+      = - ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (n + 1) := by
+  obtain ⟨hf_smooth, Mf, hf_bd⟩ := hf
+  obtain ⟨hg_smooth, Mg, hg_bd⟩ := hg
+  have hf_core : IsCoreFin f := ⟨hf_smooth, Mf, hf_bd⟩
+  have hg_core : IsCoreFin g := ⟨hg_smooth, Mg, hg_bd⟩
+  have hg_meas : Measurable g := IsCoreFin.measurable hg_core
+  have hMf0 : (0 : ℝ) ≤ Mf := le_trans (norm_nonneg _) ((hf_bd (fun _ => 0)).1)
+  have hMg0 : (0 : ℝ) ≤ Mg := le_trans (norm_nonneg _) ((hg_bd (fun _ => 0)).1)
+  let φ : ℝ × (Fin n → ℝ) → (Fin (n + 1) → ℝ) :=
+    fun p => Fin.insertNth (α := fun _ => ℝ) i p.1 p.2
+  let A : ℝ × (Fin n → ℝ) → ℝ :=
+    fun p => g (φ p) * (secondPartial i f (φ p) - p.1 * partialDeriv i f (φ p))
+  let B : ℝ × (Fin n → ℝ) → ℝ :=
+    fun p => partialDeriv i g (φ p) * partialDeriv i f (φ p)
+  have hφ_meas : Measurable φ := by
+    have hφ_cont : Continuous φ :=
+      Continuous.finInsertNth i continuous_fst continuous_snd
+    exact hφ_cont.measurable
+  have hA1_int : Integrable (fun p : ℝ × (Fin n → ℝ) => g (φ p) * secondPartial i f (φ p))
+      (Gaussian1D.γ.prod (γFin n)) := by
+    refine Integrable.mono' (integrable_const (Mg * Mf))
+      (((hg_meas.comp hφ_meas).mul
+        ((IsCoreFin.secondPartial_measurable hf_core i).comp hφ_meas)).aestronglyMeasurable) ?_
+    filter_upwards with p
+    calc
+      ‖g (φ p) * secondPartial i f (φ p)‖
+          = ‖g (φ p)‖ * ‖secondPartial i f (φ p)‖ := by rw [norm_mul]
+      _ ≤ Mg * Mf := by
+          exact mul_le_mul ((hg_bd (φ p)).1) ((hf_bd (φ p)).2.2 i)
+            (norm_nonneg _) hMg0
+  have hA2_int : Integrable (fun p : ℝ × (Fin n → ℝ) => g (φ p) * (p.1 * partialDeriv i f (φ p)))
+      (Gaussian1D.γ.prod (γFin n)) := by
+    refine Integrable.mono'
+      ((((memLp_id_gaussianReal 1).integrable le_rfl).abs.comp_fst (γFin n)).const_mul (Mg * Mf))
+      (((hg_meas.comp hφ_meas).mul
+        (measurable_fst.mul ((IsCoreFin.partial_measurable hf_core i).comp hφ_meas))).aestronglyMeasurable) ?_
+    filter_upwards with p
+    calc
+      ‖g (φ p) * (p.1 * partialDeriv i f (φ p))‖
+          = ‖g (φ p)‖ * (‖p.1‖ * ‖partialDeriv i f (φ p)‖) := by
+              rw [norm_mul, norm_mul]
+      _ = ‖g (φ p)‖ * (|p.1| * ‖partialDeriv i f (φ p)‖) := by
+              simp [Real.norm_eq_abs]
+      _ ≤ Mg * (|p.1| * Mf) := by
+        have hpartial : |p.1| * ‖partialDeriv i f (φ p)‖ ≤ |p.1| * Mf :=
+          mul_le_mul_of_nonneg_left ((hf_bd (φ p)).2.1 i) (abs_nonneg _)
+        calc
+          ‖g (φ p)‖ * (|p.1| * ‖partialDeriv i f (φ p)‖)
+              ≤ Mg * (|p.1| * ‖partialDeriv i f (φ p)‖) := by
+                  exact mul_le_mul_of_nonneg_right ((hg_bd (φ p)).1)
+                    (mul_nonneg (abs_nonneg _) (norm_nonneg _))
+          _ ≤ Mg * (|p.1| * Mf) := by
+                  exact mul_le_mul_of_nonneg_left hpartial hMg0
+      _ = (Mg * Mf) * |p.1| := by ring
+  have hA_int : Integrable A (Gaussian1D.γ.prod (γFin n)) := by
+    simpa [A, mul_sub] using hA1_int.sub hA2_int
+  have hB_int : Integrable B (Gaussian1D.γ.prod (γFin n)) := by
+    refine Integrable.mono' (integrable_const (Mg * Mf))
+      ((((IsCoreFin.partial_measurable hg_core i).comp hφ_meas).mul
+        ((IsCoreFin.partial_measurable hf_core i).comp hφ_meas)).aestronglyMeasurable) ?_
+    filter_upwards with p
+    calc
+      ‖partialDeriv i g (φ p) * partialDeriv i f (φ p)‖
+          = ‖partialDeriv i g (φ p)‖ * ‖partialDeriv i f (φ p)‖ := by rw [norm_mul]
+      _ ≤ Mg * Mf := by
+          exact mul_le_mul ((hg_bd (φ p)).2.1 i) ((hf_bd (φ p)).2.1 i)
+            (norm_nonneg _) hMg0
+  have hA_split :
+      ∫ x, g x * (secondPartial i f x - x i * partialDeriv i f x) ∂γFin (n + 1)
+        = ∫ p, A p ∂(Gaussian1D.γ.prod (γFin n)) := by
+    let e : (Fin (n + 1) → ℝ) ≃ᵐ ℝ × (Fin n → ℝ) :=
+      MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+    have he : MeasurePreserving e (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) :=
+      measurePreserving_piFinSuccAbove_γFin (n := n) i
+    have hEq :
+        (fun x : Fin (n + 1) → ℝ => g x * (secondPartial i f x - x i * partialDeriv i f x))
+          = A ∘ e := by
+      funext x
+      simp [A, φ, e]
+    rw [hEq]
+    exact he.integral_comp' A
+  have hB_split :
+      ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (n + 1)
+        = ∫ p, B p ∂(Gaussian1D.γ.prod (γFin n)) := by
+    let e : (Fin (n + 1) → ℝ) ≃ᵐ ℝ × (Fin n → ℝ) :=
+      MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i
+    have he : MeasurePreserving e (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) :=
+      measurePreserving_piFinSuccAbove_γFin (n := n) i
+    have hEq :
+        (fun x : Fin (n + 1) → ℝ => partialDeriv i g x * partialDeriv i f x)
+          = B ∘ e := by
+      funext x
+      simp [B, φ, e]
+    rw [hEq]
+    exact he.integral_comp' B
+  have hinner : ∀ y : Fin n → ℝ,
+      ∫ s, A (s, y) ∂Gaussian1D.γ = - ∫ s, B (s, y) ∂Gaussian1D.γ := by
+    intro y
+    have hg_slice_smooth : ContDiff ℝ ∞ (fun s => g (Fin.insertNth (α := fun _ => ℝ) i s y)) := by
+      simpa [slice_eq_coordSection] using
+        (section_contDiff hg_smooth i (Fin.insertNth (α := fun _ => ℝ) i 0 y))
+    have hf_slice_smooth : ContDiff ℝ ∞ (fun s => f (Fin.insertNth (α := fun _ => ℝ) i s y)) := by
+      simpa [slice_eq_coordSection] using
+        (section_contDiff hf_smooth i (Fin.insertNth (α := fun _ => ℝ) i 0 y))
+    have hg_slice_deriv :
+        deriv (fun s => g (Fin.insertNth (α := fun _ => ℝ) i s y)) =
+          fun s => partialDeriv i g (Fin.insertNth (α := fun _ => ℝ) i s y) := by
+      simpa [slice_eq_coordSection, update_insertNth_same] using
+        (section_deriv hg_smooth i (Fin.insertNth (α := fun _ => ℝ) i 0 y))
+    have hf_slice_deriv :
+        deriv (fun s => f (Fin.insertNth (α := fun _ => ℝ) i s y)) =
+          fun s => partialDeriv i f (Fin.insertNth (α := fun _ => ℝ) i s y) := by
+      simpa [slice_eq_coordSection, update_insertNth_same] using
+        (section_deriv hf_smooth i (Fin.insertNth (α := fun _ => ℝ) i 0 y))
+    have hf_slice_second :
+        deriv (deriv (fun s => f (Fin.insertNth (α := fun _ => ℝ) i s y))) =
+          fun s => secondPartial i f (Fin.insertNth (α := fun _ => ℝ) i s y) := by
+      simpa [slice_eq_coordSection, update_insertNth_same] using
+        (section_secondDeriv hf_core i (Fin.insertNth (α := fun _ => ℝ) i 0 y))
+    have hg_slice_bd : ∀ s, |g (Fin.insertNth (α := fun _ => ℝ) i s y)| ≤ Mg := by
+      intro s
+      rw [← Real.norm_eq_abs]
+      exact (hg_bd _).1
+    have hg_slice_deriv_bd :
+        ∀ s, |deriv (fun r => g (Fin.insertNth (α := fun _ => ℝ) i r y)) s| ≤ Mg := by
+      intro s
+      rw [hg_slice_deriv, ← Real.norm_eq_abs]
+      exact (hg_bd _).2.1 i
+    have hf_slice_bd : ∀ s, |f (Fin.insertNth (α := fun _ => ℝ) i s y)| ≤ Mf := by
+      intro s
+      rw [← Real.norm_eq_abs]
+      exact (hf_bd _).1
+    have hf_slice_deriv_bd :
+        ∀ s, |deriv (fun r => f (Fin.insertNth (α := fun _ => ℝ) i r y)) s| ≤ Mf := by
+      intro s
+      rw [hf_slice_deriv, ← Real.norm_eq_abs]
+      exact (hf_bd _).2.1 i
+    have hf_slice_second_bd :
+        ∀ s, |deriv (deriv (fun r => f (Fin.insertNth (α := fun _ => ℝ) i r y))) s| ≤ Mf := by
+      intro s
+      rw [hf_slice_second, ← Real.norm_eq_abs]
+      exact (hf_bd _).2.2 i
+    have h1d := Gaussian1D.gaussian_dirichlet_form_bilinear
+      (f := fun s => g (Fin.insertNth (α := fun _ => ℝ) i s y))
+      (h := fun s => f (Fin.insertNth (α := fun _ => ℝ) i s y))
+      (hf := hg_slice_smooth.of_le
+        (by
+          exact WithTop.coe_le_coe.mpr (show (1 : ℕ∞) ≤ ⊤ by simp)))
+      hg_slice_bd hg_slice_deriv_bd
+      (hh := hf_slice_smooth.of_le
+        (by
+          exact WithTop.coe_le_coe.mpr (show (2 : ℕ∞) ≤ ⊤ by simp)))
+      hf_slice_bd hf_slice_deriv_bd hf_slice_second_bd
+    rw [hf_slice_second, hg_slice_deriv, hf_slice_deriv] at h1d
+    simpa [A, B, φ] using h1d
+  calc
+    ∫ x, g x * (secondPartial i f x - x i * partialDeriv i f x) ∂γFin (n + 1)
+      = ∫ p, A p ∂(Gaussian1D.γ.prod (γFin n)) := hA_split
+    _ = ∫ y, ∫ s, A (s, y) ∂Gaussian1D.γ ∂γFin n := by
+          rw [integral_prod_symm A hA_int]
+    _ = ∫ y, - ∫ s, B (s, y) ∂Gaussian1D.γ ∂γFin n := by
+          refine integral_congr_ae (Filter.Eventually.of_forall hinner)
+    _ = - ∫ y, ∫ s, B (s, y) ∂Gaussian1D.γ ∂γFin n := by
+          rw [integral_neg]
+    _ = - ∫ p, B p ∂(Gaussian1D.γ.prod (γFin n)) := by
+          rw [integral_prod_symm B hB_int]
+    _ = - ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (n + 1) := by
+          rw [hB_split]
+
+theorem gaussianFin_integrationByParts {n : ℕ}
     (f g : (Fin n → ℝ) → ℝ)
     (hf_smooth : ContDiff ℝ ∞ f) (Mf : ℝ)
     (hf_bd : ∀ x : Fin n → ℝ,
@@ -158,7 +331,115 @@ axiom gaussianFin_integrationByParts {n : ℕ}
           (∑ i : Fin n,
             fderiv ℝ g x (Pi.single i 1) * fderiv ℝ f x (Pi.single i 1))
           ∂(MeasureTheory.Measure.pi
-              (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1))
+              (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)) := by
+  have hf : IsCoreFin f := by
+    refine ⟨hf_smooth, Mf, ?_⟩
+    simpa [partialDeriv, secondPartial] using hf_bd
+  have hg : IsCoreFin g := by
+    refine ⟨hg_smooth, Mg, ?_⟩
+    simpa [partialDeriv, secondPartial] using hg_bd
+  have hMf0 : (0 : ℝ) ≤ Mf := le_trans (norm_nonneg _) ((hf_bd (fun _ => 0)).1)
+  have hMg0 : (0 : ℝ) ≤ Mg := le_trans (norm_nonneg _) ((hg_bd (fun _ => 0)).1)
+  change ∫ x, g x *
+      ((∑ i : Fin n, secondPartial i f x) - ∑ i : Fin n, x i * partialDeriv i f x) ∂γFin n
+      = - ∫ x, (∑ i : Fin n, partialDeriv i g x * partialDeriv i f x) ∂γFin n
+  cases n with
+  | zero =>
+      simp [γFin]
+  | succ m =>
+      have hcoord :
+          ∀ i : Fin (m + 1),
+            ∫ x, g x * (secondPartial i f x - x i * partialDeriv i f x) ∂γFin (m + 1)
+              = - ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
+        intro i
+        exact gaussianFin_integrationByParts_coord (n := m) hf hg i
+      have hterm_int :
+          ∀ i : Fin (m + 1),
+            Integrable (fun x => g x * (secondPartial i f x - x i * partialDeriv i f x))
+              (γFin (m + 1)) := by
+        intro i
+        have hA : Integrable (fun x : Fin (m + 1) → ℝ => g x * secondPartial i f x) (γFin (m + 1)) := by
+          refine integrable_of_bound (M := Mg * Mf)
+            ((IsCoreFin.measurable hg).mul (IsCoreFin.secondPartial_measurable hf i)) ?_
+          intro x
+          calc
+            ‖g x * secondPartial i f x‖
+                = ‖g x‖ * ‖secondPartial i f x‖ := by rw [norm_mul]
+            _ ≤ Mg * Mf := by
+                exact mul_le_mul ((hg_bd x).1) ((hf_bd x).2.2 i) (norm_nonneg _) hMg0
+        have hB : Integrable (fun x : Fin (m + 1) → ℝ => g x * (x i * partialDeriv i f x))
+            (γFin (m + 1)) := by
+          refine Integrable.mono'
+            ((integrable_abs_eval_γFin (n := m + 1) i).const_mul (Mg * Mf))
+            (((IsCoreFin.measurable hg).mul
+              ((measurable_pi_apply i).mul (IsCoreFin.partial_measurable hf i))).aestronglyMeasurable) ?_
+          filter_upwards with x
+          calc
+            ‖g x * (x i * partialDeriv i f x)‖
+                = ‖g x‖ * (‖x i‖ * ‖partialDeriv i f x‖) := by
+                    rw [norm_mul, norm_mul]
+            _ = ‖g x‖ * (|x i| * ‖partialDeriv i f x‖) := by
+                    simp [Real.norm_eq_abs]
+            _ ≤ Mg * (|x i| * Mf) := by
+                have hpartial : |x i| * ‖partialDeriv i f x‖ ≤ |x i| * Mf :=
+                  mul_le_mul_of_nonneg_left ((hf_bd x).2.1 i) (abs_nonneg _)
+                calc
+                  ‖g x‖ * (|x i| * ‖partialDeriv i f x‖)
+                      ≤ Mg * (|x i| * ‖partialDeriv i f x‖) := by
+                          exact mul_le_mul_of_nonneg_right ((hg_bd x).1)
+                            (mul_nonneg (abs_nonneg _) (norm_nonneg _))
+                  _ ≤ Mg * (|x i| * Mf) := by
+                          exact mul_le_mul_of_nonneg_left hpartial hMg0
+            _ = (Mg * Mf) * |x i| := by ring
+        simpa [mul_sub] using hA.sub hB
+      have hsum_int :
+          ∀ i ∈ (Finset.univ : Finset (Fin (m + 1))),
+            Integrable (fun x => g x * (secondPartial i f x - x i * partialDeriv i f x))
+              (γFin (m + 1)) := by
+        intro i hi
+        exact hterm_int i
+      have henergy_int :
+          ∀ i ∈ (Finset.univ : Finset (Fin (m + 1))),
+            Integrable (fun x => partialDeriv i g x * partialDeriv i f x) (γFin (m + 1)) := by
+        intro i hi
+        refine integrable_of_bound (M := Mg * Mf)
+          ((IsCoreFin.partial_measurable hg i).mul (IsCoreFin.partial_measurable hf i)) ?_
+        intro x
+        calc
+          ‖partialDeriv i g x * partialDeriv i f x‖
+              = ‖partialDeriv i g x‖ * ‖partialDeriv i f x‖ := by rw [norm_mul]
+          _ ≤ Mg * Mf := by
+              exact mul_le_mul ((hg_bd x).2.1 i) ((hf_bd x).2.1 i) (norm_nonneg _) hMg0
+      calc
+        ∫ x, g x *
+            ((∑ i : Fin (m + 1), secondPartial i f x)
+              - ∑ i : Fin (m + 1), x i * partialDeriv i f x) ∂γFin (m + 1)
+            = ∫ x, ∑ i : Fin (m + 1), g x * (secondPartial i f x - x i * partialDeriv i f x)
+                ∂γFin (m + 1) := by
+                  refine integral_congr_ae (Filter.Eventually.of_forall ?_)
+                  intro x
+                  change g x * ((∑ i : Fin (m + 1), secondPartial i f x)
+                    - ∑ i : Fin (m + 1), x i * partialDeriv i f x)
+                    = ∑ i : Fin (m + 1), g x * (secondPartial i f x - x i * partialDeriv i f x)
+                  rw [mul_sub, Finset.mul_sum, Finset.mul_sum, ← Finset.sum_sub_distrib]
+                  refine Finset.sum_congr rfl ?_
+                  intro i hi
+                  ring
+        _ = ∑ i : Fin (m + 1),
+              ∫ x, g x * (secondPartial i f x - x i * partialDeriv i f x) ∂γFin (m + 1) := by
+                rw [integral_finset_sum (s := Finset.univ) (f := fun i x =>
+                  g x * (secondPartial i f x - x i * partialDeriv i f x)) hsum_int]
+        _ = ∑ i : Fin (m + 1),
+              - ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
+                refine Finset.sum_congr rfl ?_
+                intro i hi
+                exact hcoord i
+        _ = - ∑ i : Fin (m + 1),
+              ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
+                simp
+        _ = - ∫ x, ∑ i : Fin (m + 1), partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
+                rw [integral_finset_sum (s := Finset.univ) (f := fun i x =>
+                  partialDeriv i g x * partialDeriv i f x) henergy_int]
 
 /-- **G4 — nD Gaussian integration by parts, integral form**
 (`∫ g·(ouGeneratorFin f) dγFin n = -ouEnergyFin g f`). Derived from
