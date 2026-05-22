@@ -187,7 +187,7 @@ MarkovSemigroups/
     BrascampLieb.lean           -- Brascamp-Lieb for log-concave measures
     WorkInProgress/             -- Layer 3, in progress (honest sorries)
       Euclidean.lean            --   R: standard Gaussian, OU semigroup (2 sorry = Lean gaps; axiom-free, Mehler-kernel axioms discharged)
-      TwoPoint.lean             --   {0,1}: diffusion axiom fails (2 sorry)
+      TwoPoint.lean             --   {0,1}: not a diffusion — gamma_leibniz_fails PROVES Γ_leibniz fails (0 sorry, 0 axiom)
       EuclideanHypercontractive.lean -- R^n Gaussian: discharges the 4 Gross hypotheses + assembles stdGaussianFin_isHypercontractive (no gross_lsi_implies_hypercontractive axiom)
   Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
