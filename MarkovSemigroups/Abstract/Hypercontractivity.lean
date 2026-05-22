@@ -131,13 +131,13 @@ lemma Linfty_contraction (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
   have hPt_const1 : S.P t (Lp.const 2 S.μ (1:ℝ)) = Lp.const 2 S.μ (1:ℝ) := by
     refine S.P_conservation t ht _ ?_
     filter_upwards [Lp.coeFn_const 2 S.μ (1:ℝ)] with x hx
-    simpa using hx
+    exact hx
   -- Lp.const M = M • Lp.const 1 (Lp identifies a.e. equal functions).
   have hMlp_smul : Mlp = M • Lp.const 2 S.μ (1:ℝ) := by
     refine Lp.ext ?_
     filter_upwards [hMlp_coe, Lp.coeFn_smul M (Lp.const 2 S.μ (1:ℝ)),
-                    Lp.coeFn_const 2 S.μ (1:ℝ)] with y h1 h2 h3
-    simp [h1, h2, h3]
+                    Lp.coeFn_const 2 S.μ (1:ℝ)] with y h1 h2 _
+    simp [h1, h2]
   -- Hence P_t (Lp.const M) = Lp.const M.
   have hPt_Mlp : S.P t Mlp = Mlp := by
     calc S.P t Mlp
@@ -217,12 +217,12 @@ lemma orbit_lower_bound (S : MarkovSemigroup X) {t : ℝ} (ht : 0 ≤ t)
   have hPt_const1 : S.P t (Lp.const 2 S.μ (1:ℝ)) = Lp.const 2 S.μ (1:ℝ) := by
     refine S.P_conservation t ht _ ?_
     filter_upwards [Lp.coeFn_const 2 S.μ (1:ℝ)] with x hx
-    simpa using hx
+    exact hx
   have hεlp_smul : εlp = ε • Lp.const 2 S.μ (1:ℝ) := by
     refine Lp.ext ?_
     filter_upwards [hεlp_coe, Lp.coeFn_smul ε (Lp.const 2 S.μ (1:ℝ)),
-                    Lp.coeFn_const 2 S.μ (1:ℝ)] with y h1 h2 h3
-    simp [h1, h2, h3]
+                    Lp.coeFn_const 2 S.μ (1:ℝ)] with y h1 h2 _
+    simp [h1, h2]
   have hPt_εlp : S.P t εlp = εlp := by
     calc S.P t εlp
         = S.P t (ε • Lp.const 2 S.μ (1:ℝ)) := by rw [hεlp_smul]

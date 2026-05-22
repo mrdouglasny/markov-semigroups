@@ -221,7 +221,7 @@ puts `0` in the core; counterexample-vetted by Gemini deep-think,
 `gemini-3.1-pro-preview`). Body proof + integrability hypothesis
 strengthening deferred.** -/
 theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
-    (hρ : 0 < ρ) (hp : 1 < p) {f : X → ℝ} (hf : D.IsCore f)
+    (_hρ : 0 < ρ) (hp : 1 < p) {f : X → ℝ} (hf : D.IsCore f)
     (hf_nonneg : ∀ x, 0 ≤ f x) (hf_ne : ¬ f =ᵐ[D.μ] 0)
     {s : ℝ} (hs : 0 ≤ s)
     (h_int : Integrable (fun x => |((D.P s (D.coreToL2 hf) : X → ℝ) x)|
@@ -273,7 +273,7 @@ theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
     rw [integral_pos_iff_support_of_nonneg_ae
         (Filter.Eventually.of_forall hf_nonneg) hf_int]
     by_contra h
-    push_neg at h
+    push Not at h
     refine hf_ne ?_
     rw [Filter.EventuallyEq, ae_iff]
     exact le_antisymm h (zero_le _)
@@ -286,8 +286,7 @@ theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
     ext x
     simp only [Function.mem_support]
     constructor
-    · intro hne
-      intro hux
+    · intro hne hux
       apply hne
       rw [hux, abs_zero, Real.zero_rpow hq_ne]
     · intro hne hux
@@ -1027,8 +1026,7 @@ lemma averagedDerivField_ae_bound {Y : Type*} [MeasurableSpace Y]
     intro t ht
     have ht_Icc : t ∈ Set.Icc (0:ℝ) 1 := by
       have : Set.uIoc (0:ℝ) 1 = Set.Ioc 0 1 := by
-        simp [Set.uIoc, min_eq_left (by linarith : (0:ℝ) ≤ 1),
-              max_eq_right (by linarith : (0:ℝ) ≤ 1)]
+        simp [Set.uIoc]
       rw [this] at ht
       exact ⟨ht.1.le, ht.2⟩
     simpa [Real.norm_eq_abs] using hψ_bound _ (hmem t ht_Icc)
@@ -1071,8 +1069,7 @@ lemma averagedDerivField_sub_le_of_close
     -- Reduce to t ∈ Icc 0 1.
     have ht_Icc : t ∈ Set.Icc (0:ℝ) 1 := by
       have : Set.uIoc (0:ℝ) 1 = Set.Ioc 0 1 := by
-        simp [Set.uIoc, min_eq_left (by linarith : (0:ℝ) ≤ 1),
-              max_eq_right (by linarith : (0:ℝ) ≤ 1)]
+        simp [Set.uIoc]
       rw [this] at ht
       exact ⟨ht.1.le, ht.2⟩
     obtain ⟨ht0, ht1⟩ := ht_Icc
@@ -1256,7 +1253,7 @@ lemma averagedDerivField_tendstoInMeasure
   rw [hedist_u] at h_not_u_bad
   have hu_lt : |(u σ : Y → ℝ) y - (u s : Y → ℝ) y| < δ := by
     by_contra hge
-    push_neg at hge
+    push Not at hge
     exact absurd h_not_u_bad (not_lt.mpr (ENNReal.ofReal_le_ofReal hge))
   have hM_bound := h_imp hu_lt.le
   -- hM_bound : |M_σ y - ψ'(u_s y)| ≤ ω
@@ -1416,7 +1413,7 @@ MemLp 2, Vitali-driven `eLpNorm`→0). Discharge plan archived at
 9 toolkit lemmas in this file feed it. Mathlib-upstreamable. -/
 theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
     [MeasurableSpace Y] (ν : Measure Y) [IsFiniteMeasure ν]
-    (u : ℝ → Lp ℝ 2 ν) (u' : Lp ℝ 2 ν) {s : ℝ} (hs : 0 ≤ s)
+    (u : ℝ → Lp ℝ 2 ν) (u' : Lp ℝ 2 ν) {s : ℝ} (_hs : 0 ≤ s)
     (hu : HasDerivWithinAt u u' (Set.Ici 0) s)
     (ψ : ℝ → ℝ) (hψ : ContDiff ℝ 1 ψ)
     {M K : ℝ} (hK_nn : 0 ≤ K)
@@ -1628,10 +1625,10 @@ axiom-free; the body composition needs the 4 structural pieces above
 to invoke them. Effort to finish: substantial (decide which design
 route, then ~200 L body + propagation). -/
 theorem grossPow_hasDerivWithinAt
-    (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (hρ : 0 < ρ) (hp : 1 < p)
+    (D : DirichletMarkovSemigroup X) (ρ p : ℝ) (_hρ : 0 < ρ) (hp : 1 < p)
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
-    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
+    {f : X → ℝ} (hf : D.IsCore f) (_hf_nonneg : ∀ x, 0 ≤ f x)
     -- Path A: strictly-positive hypothesis (Gemini-vetted 2026-05-20).
     -- Lets us avoid the regularity-at-zero issue with `u_s^{q-1}` for
     -- non-integer `q-1` — on `[ε, ∞)`, `x ↦ x^{q-1}` is C^∞.
@@ -2101,8 +2098,8 @@ theorem grossLogNorm_deriv_nonpos
     (h_core : CoreSemigroupInvariant D)
     (h_gen : GeneratorCompat D)
     (h_sv : StroockVaropoulos D)
-    {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
-    (hf_ne : ¬ f =ᵐ[D.μ] 0)
+    {f : X → ℝ} (hf : D.IsCore f) (_hf_nonneg : ∀ x, 0 ≤ f x)
+    (_hf_ne : ¬ f =ᵐ[D.μ] 0)
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
     {s : ℝ} (hs : 0 < s) :
     grossLogNormDeriv D hf h_core ρ p s ≤ 0 := by
@@ -2241,7 +2238,7 @@ theorem eLpNorm_orbit_le_of_core_pos
     {f : X → ℝ} (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_ne : ¬ f =ᵐ[D.μ] 0)
     (hf_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ f y)
-    {q t : ℝ} (ht : 0 < t) (hpq : p ≤ q) (hqt : q ≤ grossExponent ρ p t) :
+    {q t : ℝ} (ht : 0 < t) (_hpq : p ≤ q) (hqt : q ≤ grossExponent ρ p t) :
     eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ)) (ENNReal.ofReal q) D.μ
       ≤ eLpNorm ((D.coreToL2 hf : X → ℝ)) (ENNReal.ofReal p) D.μ := by
   haveI : IsProbabilityMeasure D.μ := D.hμ
@@ -2295,7 +2292,7 @@ theorem eLpNorm_orbit_le_of_core_pos
     _ = ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p t)) := h_id t ht.le
     _ ≤ ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p 0)) :=
         ENNReal.ofReal_le_ofReal (Real.exp_le_exp.mpr
-          (h_anti (Set.left_mem_Ici) (Set.mem_Ici.mpr ht.le) ht.le))
+          (h_anti Set.self_mem_Ici (Set.mem_Ici.mpr ht.le) ht.le))
     _ = eLpNorm ((D.P 0 (D.coreToL2 hf) : X → ℝ))
           (ENNReal.ofReal (grossExponent ρ p 0)) D.μ := (h_id 0 le_rfl).symm
     _ = eLpNorm ((D.coreToL2 hf : X → ℝ)) (ENNReal.ofReal p) D.μ := by

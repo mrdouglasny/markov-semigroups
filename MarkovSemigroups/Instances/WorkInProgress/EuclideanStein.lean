@@ -705,7 +705,7 @@ theorem gaussian_dirichlet_form_bilinear
     (hf : ContDiff ℝ 1 f) {Mf : ℝ}
     (hf_bd : ∀ y, |f y| ≤ Mf) (hf'_bd : ∀ y, |deriv f y| ≤ Mf)
     (hh : ContDiff ℝ 2 h) {Mh Mh' Mh'' : ℝ}
-    (hh_bd : ∀ y, |h y| ≤ Mh) (hh'_bd : ∀ y, |deriv h y| ≤ Mh')
+    (_hh_bd : ∀ y, |h y| ≤ Mh) (hh'_bd : ∀ y, |deriv h y| ≤ Mh')
     (hh''_bd : ∀ y, |deriv (deriv h) y| ≤ Mh'') :
     ∫ y, f y * (deriv (deriv h) y - y * deriv h y) ∂γ
       = -∫ y, deriv f y * deriv h y ∂γ := by

@@ -75,6 +75,9 @@ noncomputable def AbstractInfluenceMatrix.neumannEntrywise
     (M : AbstractInfluenceMatrix Λ) (x y : Λ) : ℝ :=
   ∑' n, M.iterate n x y
 
+section
+omit [Fintype Λ]
+
 /-- The entrywise Neumann sum is bounded by the resolvent norm
 `1/(1-α)`. This is `neumann_series_pointwise_bound` (proved). -/
 lemma AbstractInfluenceMatrix.neumannEntrywise_le
@@ -87,6 +90,8 @@ lemma AbstractInfluenceMatrix.neumannEntrywise_nonneg
     (M : AbstractInfluenceMatrix Λ) (x y : Λ) :
     0 ≤ M.neumannEntrywise x y :=
   tsum_nonneg fun n => M.iterate_nonneg n x y
+
+end
 
 /-! ## Coordinate functions and covariance -/
 
