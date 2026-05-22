@@ -2140,7 +2140,9 @@ theorem grossLogNorm_deriv_nonpos
   have h_sv_step : (4 * (q - 1) / q ^ 2) *
         D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
       ≤ D.energy u (fun x => u x ^ (q - 1)) := by
-    have h := h_sv hu_core q hq1 hu_half hu_one Au hAu_tendsto
+    have hu_nonneg : ∀ᵐ y ∂D.μ, 0 ≤ u y :=
+      hu_ge_ε.mono fun y h => le_trans hε_pos.le h
+    have h := h_sv hu_core hu_nonneg q hq1 hu_half hu_one Au hAu_tendsto
     rwa [show (⟪D.coreToL2 hu_one, -Au⟫_ℝ : ℝ) = D.energy u (fun x => u x ^ (q - 1)) from by
       rw [inner_neg_right, hAu_pair hu_one, neg_neg,
         D.energy_symm (fun x => u x ^ (q - 1)) u]] at h

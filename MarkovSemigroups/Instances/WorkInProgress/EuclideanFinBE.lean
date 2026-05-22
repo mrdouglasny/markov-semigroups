@@ -9,7 +9,10 @@ namespace GaussianFin
 
 variable {n : ℕ}
 
-private theorem ouSemigroupFin_ae_eq_of_aeEq (t : ℝ) (ht : 0 ≤ t)
+/-- The OU semigroup respects a.e. equality of inputs (its Mehler kernel pushforward
+is absolutely continuous w.r.t. `γFin n`). Needed by the `CoreSemigroupInvariant`
+discharge in `EuclideanHypercontractive`. -/
+theorem ouSemigroupFin_ae_eq_of_aeEq (t : ℝ) (ht : 0 ≤ t)
     {f g : (Fin n → ℝ) → ℝ} (hfg : f =ᵐ[γFin n] g) :
     ouSemigroupFin t f =ᵐ[γFin n] ouSemigroupFin t g := by
   let hmp :
