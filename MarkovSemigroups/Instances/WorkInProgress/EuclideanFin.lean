@@ -26,6 +26,39 @@ open MeasureTheory Filter Set Real ProbabilityTheory
 
 noncomputable section
 
+/-! ### General lemmas (Mathlib-PR candidates)
+
+Two facts of independent interest, stated at full generality. Both are extracted
+from the Gaussian Bakry-Émery instance work but mention only Mathlib notions.
+-/
+
+/-- A non-degenerate real Gaussian measure has full topological support: every
+nonempty open set has positive measure.
+
+Follows from `volume ≪ gaussianReal` (the Gaussian density is everywhere positive)
+together with the open-positivity of Lebesgue measure. Mathlib has no `IsOpenPosMeasure`
+instance for `gaussianReal`; this is a clean upstream candidate. -/
+theorem gaussianReal_isOpenPosMeasure (μ : ℝ) {v : NNReal} (hv : v ≠ 0) :
+    (gaussianReal μ v).IsOpenPosMeasure :=
+  (gaussianReal_absolutelyContinuous' μ hv).isOpenPosMeasure
+
+/-- For a full-support measure (`IsOpenPosMeasure`), a continuous function that
+satisfies a bound almost everywhere satisfies it everywhere. This is the order
+analogue of `MeasureTheory.Measure.eq_of_ae_eq` (which lives in `OpenPos.lean`,
+where only the `=` versions are provided). Upstream candidate. -/
+theorem Continuous.le_of_ae_le {X : Type*} [TopologicalSpace X]
+    {α : Type*} [TopologicalSpace α] [LinearOrder α] [OrderClosedTopology α]
+    {m : MeasurableSpace X} {μ : Measure X} [μ.IsOpenPosMeasure]
+    {f g : X → α} (hf : Continuous f) (hg : Continuous g)
+    (hae : f ≤ᵐ[μ] g) : ∀ x, f x ≤ g x := by
+  intro x
+  by_contra hlt
+  rw [not_le] at hlt
+  have h0 : μ {y | g y < f y} = 0 := by
+    have h := ae_iff.mp hae
+    simpa only [not_le] using h
+  exact (isOpen_lt hg hf).measure_ne_zero μ ⟨x, hlt⟩ h0
+
 namespace GaussianFin
 
 open scoped BigOperators ContDiff
@@ -40,13 +73,10 @@ instance instIsProbabilityMeasureγFin (n : ℕ) : IsProbabilityMeasure (γFin n
   unfold γFin
   infer_instance
 
-/-- The 1D standard Gaussian has full support: every nonempty open set has
-positive measure. Follows from `volume ≪ gaussianReal` (the Gaussian density
-is everywhere positive) and the open-positivity of Lebesgue measure. -/
+/-- The 1D standard Gaussian has full support (special case of
+`gaussianReal_isOpenPosMeasure`). -/
 instance instIsOpenPosMeasureγ : Gaussian1D.γ.IsOpenPosMeasure :=
-  ⟨fun _U hU hUne hzero =>
-    absurd (ProbabilityTheory.gaussianReal_absolutelyContinuous' 0 (by norm_num) hzero)
-      (hU.measure_ne_zero (volume : Measure ℝ) hUne)⟩
+  gaussianReal_isOpenPosMeasure 0 (by norm_num)
 
 /-- The multivariate standard Gaussian `γFin n` has full support
 (product of full-support factors). -/
@@ -57,14 +87,8 @@ instance instIsOpenPosMeasureγFin (n : ℕ) : (γFin n).IsOpenPosMeasure := by
 /-- For a continuous `f`, an a.e. lower bound `ε ≤ f` w.r.t. the full-support
 measure `γFin n` upgrades to a pointwise (everywhere) lower bound. -/
 theorem le_of_ae_le_of_continuous {n : ℕ} {f : (Fin n → ℝ) → ℝ} (hf : Continuous f)
-    {ε : ℝ} (hae : ∀ᵐ y ∂γFin n, ε ≤ f y) : ∀ x, ε ≤ f x := by
-  intro x
-  by_contra hlt
-  rw [not_le] at hlt
-  have hmeas0 : γFin n {y | f y < ε} = 0 := by
-    have h := ae_iff.mp hae
-    simpa [not_le] using h
-  exact (isOpen_lt hf continuous_const).measure_ne_zero (γFin n) ⟨x, hlt⟩ hmeas0
+    {ε : ℝ} (hae : ∀ᵐ y ∂γFin n, ε ≤ f y) : ∀ x, ε ≤ f x :=
+  Continuous.le_of_ae_le continuous_const hf hae
 
 theorem measurePreserving_piFinSuccAbove_γFin {n : ℕ} (i : Fin (n + 1)) :
     MeasurePreserving (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i)
