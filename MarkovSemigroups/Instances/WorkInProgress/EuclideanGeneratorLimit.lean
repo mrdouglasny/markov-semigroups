@@ -42,6 +42,497 @@ private theorem stein_partialDeriv_ouShiftFin_all {f : (Fin n → ℝ) → ℝ}
       simpa using
         (stein_partialDeriv_ouShiftFin (n := m) (f := f) hf t i x)
 
+private theorem tendsto_ouSemigroupFin_pointwise_atZero
+    {g : (Fin n → ℝ) → ℝ} (hg_cont : Continuous g) {M : ℝ}
+    (hg_bd : ∀ z, ‖g z‖ ≤ M) (x : Fin n → ℝ) :
+    Tendsto (fun t : ℝ => ouSemigroupFin t g x) (𝓝[Set.Ici 0] 0) (𝓝 (g x)) := by
+  show Tendsto (fun t : ℝ => ∫ y, g (ouShiftFin t x y) ∂γFin n) (𝓝[Set.Ici 0] 0) (𝓝 (g x))
+  have h_target :
+      Tendsto (fun t : ℝ => ∫ y, g (ouShiftFin t x y) ∂γFin n)
+        (𝓝[Set.Ici 0] 0) (𝓝 (∫ _y : Fin n → ℝ, g x ∂γFin n)) := by
+    refine MeasureTheory.tendsto_integral_filter_of_dominated_convergence
+      (fun _ => M) ?_ ?_ (integrable_const M) ?_
+    · filter_upwards with t
+      have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+        continuity
+      exact (hg_cont.comp hshift).aestronglyMeasurable
+    · filter_upwards with t
+      exact Filter.Eventually.of_forall (fun y => hg_bd (ouShiftFin t x y))
+    · filter_upwards with y
+      have harg : Tendsto (fun t : ℝ => ouShiftFin t x y) (𝓝[Set.Ici 0] 0) (𝓝 x) := by
+        have hcont : Continuous (fun t : ℝ => ouShiftFin t x y) := by
+          continuity
+        have hzero : ouShiftFin 0 x y = x := by
+          funext i
+          simp [ouShiftFin]
+        have h : Tendsto (fun t : ℝ => ouShiftFin t x y) (𝓝[Set.Ici 0] 0)
+            (𝓝 (ouShiftFin 0 x y)) :=
+          hcont.continuousAt.continuousWithinAt
+        simpa [hzero] using h
+      exact (hg_cont.tendsto x).comp harg
+  simpa using h_target
+
+set_option maxHeartbeats 800000 in
+private theorem hasDerivAt_t_ouSemigroupFin_pos_aux {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (x : Fin n → ℝ) {t₀ : ℝ} (ht₀ : 0 < t₀) :
+    HasDerivAt (fun t : ℝ => ouSemigroupFin t f x)
+      (∑ i : Fin n,
+        (Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x
+          - x i * (Real.exp (-t₀) * ouSemigroupFin t₀ (partialDeriv i f) x))) t₀ := by
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  have hM0 : (0 : ℝ) ≤ M := le_trans (norm_nonneg _) ((hM (fun _ => 0)).1)
+  let ε : ℝ := t₀ / 2
+  have hε_pos : 0 < ε := by
+    dsimp [ε]
+    positivity
+  have hε_lt : ε < t₀ := by
+    dsimp [ε]
+    linarith
+  have h_nbhd : Set.Ioo ε (t₀ + 1) ∈ 𝓝 t₀ := by
+    exact Ioo_mem_nhds hε_lt (by linarith)
+  let F : ℝ → (Fin n → ℝ) → ℝ := fun t y => f (ouShiftFin t x y)
+  let F' : ℝ → (Fin n → ℝ) → ℝ := fun t y =>
+    ∑ i : Fin n,
+      (-Real.exp (-t) * x i
+        + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i) *
+        partialDeriv i f (ouShiftFin t x y)
+  let B : ℝ := Real.sqrt (1 - Real.exp (-2 * ε))
+  have hB_pos : 0 < B := by
+    have hlt : Real.exp (-2 * ε) < 1 := by
+      apply Real.exp_lt_one_iff.mpr
+      linarith
+    have hinner : 0 < 1 - Real.exp (-2 * ε) := by
+      linarith
+    simpa [B] using Real.sqrt_pos.mpr hinner
+  have hF_meas :
+      ∀ t ∈ Set.Ioo ε (t₀ + 1), AEStronglyMeasurable (F t) (γFin n) := by
+    intro t ht
+    have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t x y) := by
+      continuity
+    exact (hf_core.measurable.comp hshift.measurable).aestronglyMeasurable
+  have hF_int : Integrable (F t₀) (γFin n) := by
+    refine Integrable.mono' (integrable_const M) (hF_meas t₀ ⟨hε_lt, by linarith⟩) ?_
+    exact Filter.Eventually.of_forall (fun y => (hM (ouShiftFin t₀ x y)).1)
+  have hF'_meas : AEStronglyMeasurable (F' t₀) (γFin n) := by
+    change AEStronglyMeasurable
+      (fun y : Fin n → ℝ =>
+        ∑ i : Fin n,
+          (-Real.exp (-t₀) * x i
+            + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+            partialDeriv i f (ouShiftFin t₀ x y))
+      (γFin n)
+    have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t₀ x y) := by
+      continuity
+    exact (Finset.measurable_sum (Finset.univ : Finset (Fin n)) (by
+      intro i hi
+      have hcoeff_meas :
+          Measurable (fun y : Fin n → ℝ =>
+            (-Real.exp (-t₀) * x i : ℝ)
+              + ((Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) : ℝ) * y i) := by
+        have hconst : Measurable (fun _y : Fin n → ℝ => (-Real.exp (-t₀) * x i : ℝ)) :=
+          measurable_const
+        have hlin : Measurable (fun y : Fin n → ℝ =>
+            ((Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) : ℝ) * y i) :=
+          measurable_const.mul (measurable_pi_apply i)
+        exact hconst.add hlin
+      exact hcoeff_meas.mul ((hf_core.partial_measurable i).comp hshift.measurable))).aestronglyMeasurable
+  have h_bound :
+      ∀ᵐ y ∂γFin n, ∀ t ∈ Set.Ioo ε (t₀ + 1), ‖F' t y‖ ≤
+        ∑ i : Fin n, M * (|x i| + (1 / B) * |y i|) := by
+    filter_upwards with y t ht
+    have hcoeff :
+        ∀ i : Fin n,
+          |(-Real.exp (-t) * x i
+              + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i)|
+            ≤ |x i| + (1 / B) * |y i| := by
+      intro i
+      have ht_pos : 0 < t := lt_trans hε_pos ht.1
+      have h_exp_le : Real.exp (-t) ≤ 1 :=
+        Real.exp_le_one_iff.mpr (by linarith)
+      have h_exp2_le : Real.exp (-2 * t) ≤ 1 :=
+        Real.exp_le_one_iff.mpr (by linarith)
+      have h_exp_nn : 0 ≤ Real.exp (-t) := (Real.exp_pos _).le
+      have h_exp2_nn : 0 ≤ Real.exp (-2 * t) := (Real.exp_pos _).le
+      have h_sqrt_ge : B ≤ Real.sqrt (1 - Real.exp (-2 * t)) := by
+        have hmono : Real.exp (-2 * t) ≤ Real.exp (-2 * ε) := by
+          apply Real.exp_le_exp.mpr
+          nlinarith [ht.1]
+        have hinner_le : 1 - Real.exp (-2 * ε) ≤ 1 - Real.exp (-2 * t) := by
+          linarith
+        dsimp [B]
+        exact Real.sqrt_le_sqrt hinner_le
+      have h_ratio_le : Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t)) ≤ 1 / B := by
+        calc
+          Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))
+              ≤ 1 / Real.sqrt (1 - Real.exp (-2 * t)) := by
+                  gcongr
+          _ ≤ 1 / B := by
+                  exact one_div_le_one_div_of_le hB_pos h_sqrt_ge
+      calc
+        |(-Real.exp (-t) * x i
+            + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i)|
+            ≤ |(-Real.exp (-t) * x i)| +
+                |(Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i| :=
+              abs_add_le _ _
+        _ = Real.exp (-t) * |x i| +
+              (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * |y i| := by
+              rw [abs_mul, abs_mul, abs_neg, abs_of_nonneg h_exp_nn,
+                abs_of_nonneg (div_nonneg h_exp2_nn (Real.sqrt_nonneg _))]
+        _ ≤ 1 * |x i| + (1 / B) * |y i| := by
+              gcongr
+        _ = |x i| + (1 / B) * |y i| := by ring
+    change
+      ‖∑ i : Fin n,
+          (-Real.exp (-t) * x i
+            + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i) *
+            partialDeriv i f (ouShiftFin t x y)‖
+        ≤ ∑ i : Fin n, M * (|x i| + (1 / B) * |y i|)
+    calc
+      ‖F' t y‖
+          ≤ ∑ i : Fin n,
+              ‖(-Real.exp (-t) * x i
+                + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i) *
+                partialDeriv i f (ouShiftFin t x y)‖ := norm_sum_le _ _
+      _ ≤ ∑ i : Fin n,
+            (|x i| + (1 / B) * |y i|) * M := by
+              refine Finset.sum_le_sum ?_
+              intro i hi
+              calc
+                ‖(-Real.exp (-t) * x i
+                    + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i) *
+                    partialDeriv i f (ouShiftFin t x y)‖
+                    = |(-Real.exp (-t) * x i
+                        + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i)| *
+                        ‖partialDeriv i f (ouShiftFin t x y)‖ := by
+                          rw [norm_mul, Real.norm_eq_abs]
+                _ ≤ (|x i| + (1 / B) * |y i|) * M := by
+                    exact mul_le_mul (hcoeff i) ((hM (ouShiftFin t x y)).2.1 i)
+                      (norm_nonneg _) (by positivity)
+      _ = ∑ i : Fin n, M * (|x i| + (1 / B) * |y i|) := by
+            refine Finset.sum_congr rfl ?_
+            intro i hi
+            ring
+  have h_bound_int : Integrable (fun y : Fin n → ℝ =>
+      ∑ i : Fin n, M * (|x i| + (1 / B) * |y i|)) (γFin n) := by
+    have hterm :
+        ∀ i : Fin n, Integrable (fun y : Fin n → ℝ => M * (|x i| + (1 / B) * |y i|)) (γFin n) := by
+      intro i
+      have h_eval : Integrable (fun y : Fin n → ℝ => |y i|) (γFin n) := integrable_abs_eval_γFin i
+      simpa [mul_add, add_comm, add_left_comm, add_assoc, mul_comm, mul_left_comm, mul_assoc]
+        using (integrable_const (M * |x i|)).add (h_eval.const_mul (M * (1 / B)))
+    refine integrable_finset_sum (s := Finset.univ)
+      (f := fun i (y : Fin n → ℝ) => M * (|x i| + (1 / B) * |y i|)) ?_
+    intro i hi
+    exact hterm i
+  have h_diff :
+      ∀ᵐ y ∂γFin n, ∀ t ∈ Set.Ioo ε (t₀ + 1), HasDerivAt (fun s => F s y) (F' t y) t := by
+    filter_upwards with y t ht
+    have h_shift :
+        HasDerivAt (fun s : ℝ => ouShiftFin s x y)
+          (fun i => -Real.exp (-t) * x i
+            + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i) t := by
+      rw [hasDerivAt_pi]
+      intro i
+      have h1 : HasDerivAt (fun s : ℝ => Real.exp (-s) * x i) (-Real.exp (-t) * x i) t := by
+        have hneg : HasDerivAt (fun s : ℝ => -s) (-1 : ℝ) t := by
+          simpa using (hasDerivAt_id t).neg
+        have hexp : HasDerivAt (fun s : ℝ => Real.exp (-s)) (Real.exp (-t) * (-1)) t := hneg.exp
+        convert hexp.mul_const (x i) using 1 <;> ring
+      have h2 :
+          HasDerivAt (fun s : ℝ => Real.sqrt (1 - Real.exp (-2 * s)) * y i)
+            ((Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i) t := by
+        exact (Gaussian1D.hasDerivAt_b t (lt_trans hε_pos ht.1)).mul_const (y i)
+      simpa [ouShiftFin] using h1.add h2
+    have h_f :
+        HasFDerivAt f (fderiv ℝ f (ouShiftFin t x y)) (ouShiftFin t x y) :=
+      ((hf_smooth.differentiable (by simp)).differentiableAt).hasFDerivAt
+    have h_comp := h_f.comp_hasDerivAt t h_shift
+    have hsum := fderiv_apply_eq_sum_partial hf_smooth (ouShiftFin t x y)
+      (fun i => -Real.exp (-t) * x i
+        + (Real.exp (-2 * t) / Real.sqrt (1 - Real.exp (-2 * t))) * y i)
+    rw [hsum] at h_comp
+    simpa [F, F'] using h_comp
+  have hF_meas_ev : ∀ᶠ t in 𝓝 t₀, AEStronglyMeasurable (F t) (γFin n) :=
+    Filter.eventually_of_mem h_nbhd hF_meas
+  obtain ⟨_, h_deriv⟩ :=
+    hasDerivAt_integral_of_dominated_loc_of_deriv_le h_nbhd
+      hF_meas_ev hF_int hF'_meas h_bound h_bound_int h_diff
+  have h_term_int :
+      ∀ i : Fin n,
+        Integrable
+          (fun y : Fin n → ℝ =>
+            (-Real.exp (-t₀) * x i
+              + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+              partialDeriv i f (ouShiftFin t₀ x y)) (γFin n) := by
+    intro i
+    refine Integrable.mono'
+      ((integrable_const (M * |x i|)).add
+        ((integrable_abs_eval_γFin i).const_mul (M * (Real.exp (-2 * t₀) /
+          Real.sqrt (1 - Real.exp (-2 * t₀)))))) ?_ ?_
+    · have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t₀ x y) := by
+        continuity
+      exact ((((measurable_const.mul measurable_const).add
+        ((measurable_const.mul (measurable_pi_apply i)))).mul
+        ((hf_core.partial_measurable i).comp hshift.measurable)).aestronglyMeasurable)
+    · filter_upwards with y
+      have hcoef :
+          |(-Real.exp (-t₀) * x i
+              + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i)|
+            ≤ Real.exp (-t₀) * |x i| +
+              (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * |y i| := by
+        calc
+          |(-Real.exp (-t₀) * x i
+              + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i)|
+              ≤ |(-Real.exp (-t₀) * x i)| +
+                  |(Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i| :=
+                abs_add_le _ _
+          _ = Real.exp (-t₀) * |x i| +
+              (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * |y i| := by
+                rw [abs_mul, abs_mul, abs_neg, abs_of_nonneg (Real.exp_pos _).le,
+                  abs_of_nonneg (div_nonneg (Real.exp_pos _).le (Real.sqrt_nonneg _))]
+      calc
+        ‖(-Real.exp (-t₀) * x i
+            + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+            partialDeriv i f (ouShiftFin t₀ x y)‖
+            = |(-Real.exp (-t₀) * x i
+                + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i)| *
+                ‖partialDeriv i f (ouShiftFin t₀ x y)‖ := by
+                    rw [norm_mul, Real.norm_eq_abs]
+        _ ≤ (Real.exp (-t₀) * |x i| +
+              (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * |y i|) * M := by
+              exact mul_le_mul hcoef ((hM (ouShiftFin t₀ x y)).2.1 i) (norm_nonneg _) (by positivity)
+        _ ≤ M * |x i| + (M * (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀)))) * |y i| := by
+              have h_exp_le : Real.exp (-t₀) ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+              have h1 : (Real.exp (-t₀) * |x i|) * M ≤ M * |x i| := by
+                calc
+                  (Real.exp (-t₀) * |x i|) * M ≤ (1 * |x i|) * M := by
+                    gcongr
+                  _ = M * |x i| := by ring
+              ring_nf
+              linarith [h1]
+  have h_eval :
+      ∫ y, F' t₀ y ∂γFin n
+        = ∑ i : Fin n,
+            (Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x
+              - x i * (Real.exp (-t₀) * ouSemigroupFin t₀ (partialDeriv i f) x)) := by
+    rw [show (∫ y, F' t₀ y ∂γFin n) =
+        ∫ y, ∑ i : Fin n,
+          ((-Real.exp (-t₀) * x i
+            + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+            partialDeriv i f (ouShiftFin t₀ x y)) ∂γFin n from rfl]
+    rw [integral_finset_sum]
+    · refine Finset.sum_congr rfl ?_
+      intro i hi
+      have hshift : Continuous (fun y : Fin n → ℝ => ouShiftFin t₀ x y) := by
+        continuity
+      have hpartial_meas :
+          Measurable (fun y : Fin n → ℝ => partialDeriv i f (ouShiftFin t₀ x y)) :=
+        (hf_core.partial_measurable i).comp hshift.measurable
+      have hpartial_int :
+          Integrable (fun y : Fin n → ℝ => partialDeriv i f (ouShiftFin t₀ x y)) (γFin n) := by
+        refine integrable_of_bound (M := M) hpartial_meas ?_
+        intro y
+        exact (hM (ouShiftFin t₀ x y)).2.1 i
+      have h1 :
+          Integrable (fun y : Fin n → ℝ =>
+            (-Real.exp (-t₀) * x i) * partialDeriv i f (ouShiftFin t₀ x y)) (γFin n) := by
+        exact hpartial_int.const_mul (-Real.exp (-t₀) * x i)
+      have h2 :
+          Integrable (fun y : Fin n → ℝ =>
+            ((Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+              partialDeriv i f (ouShiftFin t₀ x y)) (γFin n) := by
+        have hy_partial :
+            Integrable (fun y : Fin n → ℝ => y i * partialDeriv i f (ouShiftFin t₀ x y)) (γFin n) := by
+          refine Integrable.mono' ((integrable_abs_eval_γFin i).const_mul M)
+            ((measurable_pi_apply i).mul hpartial_meas).aestronglyMeasurable ?_
+          filter_upwards with y
+          calc
+            ‖y i * partialDeriv i f (ouShiftFin t₀ x y)‖
+                = |y i| * ‖partialDeriv i f (ouShiftFin t₀ x y)‖ := by
+                    rw [norm_mul, Real.norm_eq_abs]
+            _ ≤ |y i| * M := by
+                  exact mul_le_mul_of_nonneg_left ((hM (ouShiftFin t₀ x y)).2.1 i) (abs_nonneg _)
+            _ = M * |y i| := by ring
+        simpa [mul_assoc] using
+          hy_partial.const_mul (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀)))
+      calc
+        ∫ y,
+            ((-Real.exp (-t₀) * x i
+              + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+              partialDeriv i f (ouShiftFin t₀ x y)) ∂γFin n
+            = ∫ y,
+                (-Real.exp (-t₀) * x i) * partialDeriv i f (ouShiftFin t₀ x y)
+                  + ((Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+                    partialDeriv i f (ouShiftFin t₀ x y) ∂γFin n := by
+                      refine integral_congr_ae (Filter.Eventually.of_forall ?_)
+                      intro y
+                      ring
+        _ = (-Real.exp (-t₀) * x i) * ouSemigroupFin t₀ (partialDeriv i f) x
+              + (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) *
+                ∫ y, y i * partialDeriv i f (ouShiftFin t₀ x y) ∂γFin n := by
+                  rw [integral_add h1 h2, integral_const_mul]
+                  have hcongr :
+                      (∫ y,
+                        ((Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) * y i) *
+                          partialDeriv i f (ouShiftFin t₀ x y) ∂γFin n)
+                        =
+                      ∫ y,
+                        (Real.exp (-2 * t₀) / Real.sqrt (1 - Real.exp (-2 * t₀))) *
+                          (y i * partialDeriv i f (ouShiftFin t₀ x y)) ∂γFin n := by
+                    refine integral_congr_ae (Filter.Eventually.of_forall ?_)
+                    intro y
+                    ring
+                  rw [hcongr, integral_const_mul]
+                  simp [ouSemigroupFin]
+        _ = (-Real.exp (-t₀) * x i) * ouSemigroupFin t₀ (partialDeriv i f) x
+              + Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x := by
+                  rw [stein_partialDeriv_ouShiftFin_all hf_core t₀ i x]
+                  have hsqrt_pos : 0 < Real.sqrt (1 - Real.exp (-2 * t₀)) := by
+                    apply Real.sqrt_pos.mpr
+                    have hlt : Real.exp (-2 * t₀) < 1 := by
+                      apply Real.exp_lt_one_iff.mpr
+                      linarith
+                    linarith
+                  have hsqrt_ne : Real.sqrt (1 - Real.exp (-2 * t₀)) ≠ 0 := hsqrt_pos.ne'
+                  rw [div_eq_mul_inv]
+                  calc
+                    (-Real.exp (-t₀) * x i) * ouSemigroupFin t₀ (partialDeriv i f) x +
+                        Real.exp (-2 * t₀) * (Real.sqrt (1 - Real.exp (-2 * t₀)))⁻¹ *
+                          (Real.sqrt (1 - Real.exp (-2 * t₀)) *
+                            ouSemigroupFin t₀ (secondPartial i f) x)
+                        =
+                      (-Real.exp (-t₀) * x i) * ouSemigroupFin t₀ (partialDeriv i f) x +
+                        Real.exp (-2 * t₀) *
+                          ((Real.sqrt (1 - Real.exp (-2 * t₀)))⁻¹ *
+                            Real.sqrt (1 - Real.exp (-2 * t₀))) *
+                          ouSemigroupFin t₀ (secondPartial i f) x
+                        := by ring
+                    _ =
+                      (-Real.exp (-t₀) * x i) * ouSemigroupFin t₀ (partialDeriv i f) x +
+                        Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x := by
+                          rw [inv_mul_cancel₀ hsqrt_ne]
+                          ring_nf
+        _ = Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x
+              - x i * (Real.exp (-t₀) * ouSemigroupFin t₀ (partialDeriv i f) x) := by
+                  ring
+    · intro i hi
+      exact h_term_int i
+  have h_lhs : (fun t : ℝ => ∫ y, F t y ∂γFin n) = fun t => ouSemigroupFin t f x := rfl
+  rw [h_lhs] at h_deriv
+  rw [h_eval] at h_deriv
+  exact h_deriv
+
+private theorem hasDerivAt_t_ouSemigroupFin_pos {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (x : Fin n → ℝ) {t₀ : ℝ} (ht₀ : 0 < t₀) :
+    HasDerivAt (fun t : ℝ => ouSemigroupFin t f x)
+      (ouGeneratorFin (ouSemigroupFin t₀ f) x) t₀ := by
+  have haux := hasDerivAt_t_ouSemigroupFin_pos_aux hf x ht₀
+  have hcore_t : IsCoreFin (ouSemigroupFin t₀ f) :=
+    ouSemigroupFin_preserves_IsCore t₀ ht₀.le hf
+  have hrewrite :
+      (∑ i : Fin n,
+        (Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x
+          - x i * (Real.exp (-t₀) * ouSemigroupFin t₀ (partialDeriv i f) x)))
+        = ouGeneratorFin (ouSemigroupFin t₀ f) x := by
+    rw [ouGeneratorFin_apply]
+    have hsum_second :
+        (∑ i : Fin n, Real.exp (-2 * t₀) * ouSemigroupFin t₀ (secondPartial i f) x) =
+          ∑ i : Fin n, secondPartial i (ouSemigroupFin t₀ f) x := by
+      refine Finset.sum_congr rfl ?_
+      intro i hi
+      rw [secondPartial_eq_section_deriv_of_contDiff hcore_t.contDiff i x,
+        section_secondDeriv_ouSemigroupFin_eq hf t₀ i x]
+      simp
+    have hsum_first :
+        (∑ i : Fin n, x i * (Real.exp (-t₀) * ouSemigroupFin t₀ (partialDeriv i f) x)) =
+          ∑ i : Fin n, x i * partialDeriv i (ouSemigroupFin t₀ f) x := by
+      refine Finset.sum_congr rfl ?_
+      intro i hi
+      rw [partialDeriv_ouSemigroupFin_eq (n := n) t₀ ht₀.le hf i]
+    rw [Finset.sum_sub_distrib, hsum_second, hsum_first]
+  convert haux using 1
+  exact hrewrite.symm
+
+private theorem hasDerivWithinAt_t_ouSemigroupFin_zero_core {f : (Fin n → ℝ) → ℝ}
+    (hf : IsCoreFin f) (x : Fin n → ℝ) :
+    HasDerivWithinAt (fun t : ℝ => ouSemigroupFin t f x)
+      (ouGeneratorFin f x) (Set.Ici 0) 0 := by
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  refine hasDerivWithinAt_Ici_of_tendsto_deriv (s := Set.Ioi 0)
+    (f := fun t : ℝ => ouSemigroupFin t f x) (e := ouGeneratorFin f x) (a := 0) ?_ ?_
+    self_mem_nhdsWithin ?_
+  · intro t ht
+    exact (hasDerivAt_t_ouSemigroupFin_pos hf_core x ht).differentiableAt.differentiableWithinAt
+  · have hcont := tendsto_ouSemigroupFin_pointwise_atZero hf_smooth.continuous (fun z => (hM z).1) x
+    show ContinuousWithinAt (fun t : ℝ => ouSemigroupFin t f x) (Set.Ioi 0) 0
+    rw [ContinuousWithinAt, ouSemigroupFin_zero]
+    exact hcont.mono_left (nhdsWithin_mono _ Set.Ioi_subset_Ici_self)
+  · have hderiv_eq :
+      ∀ᶠ t in 𝓝[Set.Ioi 0] 0,
+        deriv (fun t : ℝ => ouSemigroupFin t f x) t
+          = ∑ i : Fin n,
+              (Real.exp (-2 * t) * ouSemigroupFin t (secondPartial i f) x
+                - x i * (Real.exp (-t) * ouSemigroupFin t (partialDeriv i f) x)) := by
+      have hmem : ∀ᶠ t : ℝ in 𝓝[Set.Ioi 0] 0, t ∈ Set.Ioi (0 : ℝ) := self_mem_nhdsWithin
+      filter_upwards [hmem] with t ht
+      exact (hasDerivAt_t_ouSemigroupFin_pos_aux hf_core x ht).deriv
+    have h_second :
+        Tendsto (fun t : ℝ =>
+          ∑ i : Fin n, Real.exp (-2 * t) * ouSemigroupFin t (secondPartial i f) x)
+          (𝓝[Set.Ioi 0] 0) (𝓝 (∑ i : Fin n, secondPartial i f x)) := by
+      refine tendsto_finset_sum Finset.univ (fun i _ => ?_)
+      have h_exp : Tendsto (fun t : ℝ => Real.exp (-2 * t)) (𝓝[Set.Ioi 0] 0) (𝓝 1) := by
+        have hcont : Continuous (fun t : ℝ => Real.exp (-2 * t)) := by
+          continuity
+        have h : Tendsto (fun t : ℝ => Real.exp (-2 * t)) (𝓝[Set.Ioi 0] 0)
+            (𝓝 (Real.exp (-2 * 0))) :=
+          hcont.continuousAt.continuousWithinAt
+        simpa using h
+      have h_pt :
+          Tendsto (fun t : ℝ => ouSemigroupFin t (secondPartial i f) x)
+            (𝓝[Set.Ioi 0] 0) (𝓝 (secondPartial i f x)) := by
+        have := tendsto_ouSemigroupFin_pointwise_atZero
+          (hf_core.secondPartial_continuous i) (fun z => (hM z).2.2 i) x
+        exact this.mono_left (nhdsWithin_mono _ Set.Ioi_subset_Ici_self)
+      simpa using h_exp.mul h_pt
+    have h_first :
+        Tendsto (fun t : ℝ =>
+          ∑ i : Fin n, x i * (Real.exp (-t) * ouSemigroupFin t (partialDeriv i f) x))
+          (𝓝[Set.Ioi 0] 0) (𝓝 (∑ i : Fin n, x i * partialDeriv i f x)) := by
+      refine tendsto_finset_sum Finset.univ (fun i _ => ?_)
+      have h_exp : Tendsto (fun t : ℝ => Real.exp (-t)) (𝓝[Set.Ioi 0] 0) (𝓝 1) := by
+        have hcont : Continuous (fun t : ℝ => Real.exp (-t)) := by
+          continuity
+        have h : Tendsto (fun t : ℝ => Real.exp (-t)) (𝓝[Set.Ioi 0] 0)
+            (𝓝 (Real.exp (-0))) :=
+          hcont.continuousAt.continuousWithinAt
+        simpa using h
+      have h_pt :
+          Tendsto (fun t : ℝ => ouSemigroupFin t (partialDeriv i f) x)
+            (𝓝[Set.Ioi 0] 0) (𝓝 (partialDeriv i f x)) := by
+        have := tendsto_ouSemigroupFin_pointwise_atZero
+          (hf_core.partial_continuous i) (fun z => (hM z).2.1 i) x
+        exact this.mono_left (nhdsWithin_mono _ Set.Ioi_subset_Ici_self)
+      simpa [mul_assoc] using (h_exp.mul h_pt).const_mul (x i)
+    have h_lim :
+        Tendsto
+          (fun t : ℝ =>
+            ∑ i : Fin n,
+              (Real.exp (-2 * t) * ouSemigroupFin t (secondPartial i f) x
+                - x i * (Real.exp (-t) * ouSemigroupFin t (partialDeriv i f) x)))
+          (𝓝[Set.Ioi 0] 0)
+          (𝓝 (ouGeneratorFin f x)) := by
+      simpa [ouGeneratorFin_apply] using h_second.sub h_first
+    have hderiv_eq' :
+        (fun t : ℝ => deriv (fun t : ℝ => ouSemigroupFin t f x) t) =ᶠ[𝓝[Set.Ioi 0] 0]
+          (fun t : ℝ =>
+            ∑ i : Fin n,
+              (Real.exp (-2 * t) * ouSemigroupFin t (secondPartial i f) x
+                - x i * (Real.exp (-t) * ouSemigroupFin t (partialDeriv i f) x))) := hderiv_eq
+    exact Tendsto.congr' hderiv_eq'.symm h_lim
+
 /-- **Ornstein–Uhlenbeck pointwise heat equation at `t = 0⁺`** (the
 right-endpoint of the Mehler-semigroup time derivative).
 
@@ -72,7 +563,7 @@ endpoint form correct. Discharge route: parametric differentiation
 under the integral with the Pi-valued chain rule through the Mehler
 shift + the scaling identity `∂ᵢ²(Pₜf) = e^{-2t} Pₜ(∂ᵢ²f)` (see the
 two-interface obstacle note on the project lemma below). -/
-axiom gaussianOU_heatEquation_within_zero {n : ℕ}
+theorem gaussianOU_heatEquation_within_zero {n : ℕ}
     (f : (Fin n → ℝ) → ℝ) (hf_smooth : ContDiff ℝ ∞ f) (M : ℝ)
     (hf_bd : ∀ x : Fin n → ℝ,
       ‖f x‖ ≤ M ∧
@@ -92,7 +583,13 @@ axiom gaussianOU_heatEquation_within_zero {n : ℕ}
           fderiv ℝ (fun z => fderiv ℝ f z (Pi.single i 1)) x
             (Pi.single i 1))
         - ∑ i : Fin n, x i * fderiv ℝ f x (Pi.single i 1))
-      (Set.Ici 0) 0
+      (Set.Ici 0) 0 := by
+  have hf : IsCoreFin f := by
+    refine ⟨hf_smooth, M, ?_⟩
+    simpa [partialDeriv, secondPartial] using hf_bd
+  simpa only [ouSemigroupFin, ouShiftFin, γFin, Gaussian1D.γ,
+    ouGeneratorFin_apply, secondPartial, partialDeriv] using
+    hasDerivWithinAt_t_ouSemigroupFin_zero_core hf x
 
 /-- **The precise blocker (Codex 2026-05-16): the nD pointwise OU
 heat equation at `t = 0⁺`.** The branch controls *spatial*
@@ -128,10 +625,7 @@ theorem hasDerivWithinAt_t_ouSemigroupFin_zero {f : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) (x : Fin n → ℝ) :
     HasDerivWithinAt (fun t : ℝ => ouSemigroupFin t f x)
       (ouGeneratorFin f x) (Set.Ici 0) 0 := by
-  obtain ⟨hsm, M, hM⟩ := hf
-  simpa only [ouSemigroupFin, ouShiftFin, γFin, Gaussian1D.γ,
-    ouGeneratorFin_apply, secondPartial, partialDeriv] using
-    gaussianOU_heatEquation_within_zero (n := n) f hsm M hM x
+  exact hasDerivWithinAt_t_ouSemigroupFin_zero_core hf x
 
 /-- **OU difference-quotient `→` generator, strong `L²`** (the DCT
 upgrade of the pointwise heat equation — third Gross-discharge crux).

@@ -300,10 +300,10 @@ kernel route), and `ouSemigroupFin_entropy_sq_decay_bound` (Workstream
 N1.c, the 1-parameter telescoping route) — leaving **0 GaussianFin
 Bakry–Émery *curvature* axioms**. (The OU *generator* subsystem in
 `Instances/WorkInProgress/EuclideanGenerator*.lean`, added later for the
-`GeneratorCompat` discharge, now carries two analytic axioms —
-`gaussianFin_diffQuot_tendsto_Lp` and `gaussianOU_heatEquation_within_zero`;
-only the first remains on the live hypercontractivity chain. See the W-step
-note below.)
+`GeneratorCompat` discharge, now carries one remaining analytic axiom —
+`gaussianFin_diffQuot_tendsto_Lp`. The pointwise endpoint heat equation
+`gaussianOU_heatEquation_within_zero` was discharged on 2026-05-22 and is now
+theorem-level infrastructure. See the W-step note below.)
 
 **W-step — Gross axiom bypassed (2026-05-22):**
 `Instances/WorkInProgress/EuclideanHypercontractive.lean` discharges all four
