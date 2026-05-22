@@ -187,6 +187,7 @@ MarkovSemigroups/
     WorkInProgress/             -- Layer 3, in progress (honest sorries)
       Euclidean.lean            --   R: standard Gaussian, OU semigroup (2 sorry = Lean gaps; axiom-free, Mehler-kernel axioms discharged)
       TwoPoint.lean             --   {0,1}: diffusion axiom fails (2 sorry)
+      EuclideanHypercontractive.lean -- R^n Gaussian: discharges the 4 Gross hypotheses + assembles stdGaussianFin_isHypercontractive (no gross_lsi_implies_hypercontractive axiom)
   Convergence/                  -- Consequences (uses Layer 1 only)
     SpectralGap.lean            -- Exponential mixing from gap
     RelativeEntropy.lean        -- Entropy decay under semigroup
@@ -277,7 +278,7 @@ and links to the discharge plans.*
 
 | Axiom | Reference |
 |-------|-----------|
-| `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 (now on bundled `DirichletMarkovSemigroup`) |
+| `gross_lsi_implies_hypercontractive` | Gross (1975), Theorem 1 (bundled `DirichletMarkovSemigroup`). **Bypassed in the concrete Gaussian chain** since 2026-05-22 — see below; retained only for the abstract `hypercontractive_of_logSobolev` / `gross_lsi_iff` wrappers |
 | `gross_hypercontractive_implies_lsi` | Gross (1975), Theorem 2 (now on bundled `DirichletMarkovSemigroup`) |
 | `stroock_varopoulos` | BGL Prop 1.7.1 (intermediate-step lemma for Gross; **Standard** by gemini-3.1-pro two-pass 2026-05-13) |
 | `diamagnetic_resolvent` | Diamagnetic inequality (assembles 5 steps) |
@@ -297,6 +298,20 @@ derivative `ouSemigroupFin_l2_sq_hasDerivWithinAt` (in
 kernel route), and `ouSemigroupFin_entropy_sq_decay_bound` (Workstream
 N1.c, the 1-parameter telescoping route) — leaving **0 GaussianFin
 axioms**.
+
+**W-step — Gross axiom bypassed (2026-05-22):**
+`Instances/WorkInProgress/EuclideanHypercontractive.lean` discharges all four
+per-instance hypotheses of the *proved* `gross_lsi_implies_hypercontractive_of_hypotheses`
+for the standard Gaussian OU bundle — `CoreSemigroupInvariant`, `GeneratorCompat`,
+`StroockVaropoulos`, `CoreLpL2Approx` — and assembles
+`stdGaussianFin_isHypercontractive`. Consequently `#print axioms` of that theorem
+(and of the downstream gaussian-hilbert `…_isHypercontractive`) lists
+`stroock_varopoulos`, `gaussianFin_diffQuot_tendsto_Lp`,
+`gaussianFin_integrationByParts` (+ the 3 Lean built-ins) but **not**
+`gross_lsi_implies_hypercontractive`. The `StroockVaropoulos` predicate gained an
+a.e.-nonnegativity hypothesis on `u` (deep-think-vetted SOUND + NECESSARY), supplied
+at the unique abstract call site from the positive orbit. Total axiom count is
+unchanged (no new axioms introduced).
 
 **Discharged 2026-05-12:**
 * `ouSemigroup_fisher_info_decay` (A1, BGL Proposition 5.5.2) — the
