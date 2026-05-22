@@ -599,9 +599,16 @@ end DirichletMarkovSemigroup
 structure).
 
 For a `DirichletMarkovSemigroup` `D`, any nonnegative `f ∈ D.IsCore`,
-any `p ≥ 2`, and assuming `f^{p/2}` and `f^{p-1}` lie in the core:
+any `p > 1`, and assuming `f^{p/2}` and `f^{p-1}` lie in the core:
 
   `(4(p − 1) / p²) · E(f^{p/2}, f^{p/2}) ≤ E(f, f^{p−1})`.
+
+(The exponent range is `p > 1` — the full range the Gross interpolation
+path `q(s) = 1+(p₀-1)e^{2ρs}` visits for `p₀ > 1`. S–V holds throughout
+`p > 1`; for diffusion/gradient forms it is in fact an equality. The
+`2 ≤ p → 1 < p` relaxation is deep-think vetted, rating Standard — see
+`plans/archive/sv-q-relaxation-vetting.md`, which vetted the matching
+`StroockVaropoulos._hq` predicate relaxation.)
 
 In operator form (using `E(f, g) = -⟨[f], L[g]⟩` on the core):
   `-⟨[f^{p−1}], L[f]⟩ ≥ (4(p − 1) / p²) · ⟨-[L(f^{p/2})], [f^{p/2}]⟩`.
@@ -612,7 +619,7 @@ and the chain rule for `(d/dt) ‖P_t f‖_p^p`, it closes the
 differential inequality `(d/dt) ‖P_t f‖_{q(t)} ≤ 0` along the path
 `q(t) = 1 + (p − 1) · e^{2ρt}`. -/
 axiom stroock_varopoulos {X : Type*} [MeasurableSpace X]
-    (D : DirichletMarkovSemigroup X) (p : ℝ) (hp : 2 ≤ p)
+    (D : DirichletMarkovSemigroup X) (p : ℝ) (hp : 1 < p)
     (f : X → ℝ) (hf : D.IsCore f) (hf_nonneg : ∀ x, 0 ≤ f x)
     (hf_p_half : D.IsCore (fun x => f x ^ (p / 2)))
     (hf_p_one : D.IsCore (fun x => f x ^ (p - 1))) :
