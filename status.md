@@ -1,3 +1,15 @@
+> **STROOCK–VAROPOULOS DISCHARGED (2026-05-22, PR #7) — 2 axioms left in the HC chain.**
+> New `Diffusion/StroockVaropoulos.lean` (level-B, reusable): `BakryEmerySpace.RpowChainRule`
+> (diffusion chain rule `Γ(uʳ,g)=r·u^{r-1}·Γ(u,g)`) + `BakryEmerySpace.stroockVaropoulos_eq`
+> (S–V as an EQUALITY for any diffusion form; both sides `=(q-1)∫u^{q-2}Γ(u,u)`).
+> `GaussianFin.rpowChainRule` discharges it for `ouGammaFin` via `partialDeriv_rpow`;
+> `stdGaussianFin_stroockVaropoulos` now closes by `le_of_eq` (no `stroock_varopoulos`
+> axiom). `StroockVaropoulos` predicate strengthened `∀ᵐ 0≤u` → `∃ε>0, ε≤u a.e.`.
+> `#print axioms stdGaussianFin_isHypercontractive` = `[propext, Classical.choice,
+> gaussianFin_diffQuot_tendsto_Lp, gaussianFin_integrationByParts, Quot.sound]` —
+> **only the OU-generator pair remains**. The non-diffusion S–V *inequality*
+> (Beurling–Deny) has a marked slot in the new file.
+
 > **W-STEP COMPLETE (2026-05-22) — Gross axiom eliminated from the concrete chain.**
 > `Instances/WorkInProgress/EuclideanHypercontractive.lean` discharges all four
 > per-instance hypotheses of the proved `gross_lsi_implies_hypercontractive_of_hypotheses`
