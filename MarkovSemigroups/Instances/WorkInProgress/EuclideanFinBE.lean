@@ -798,20 +798,13 @@ noncomputable def stdGaussianFin_dirichletMarkovSemigroup (n : ℕ) :
   IsCore_const := IsCoreFin_const
   IsCore_add := fun hf hg => IsCoreFin_add hf hg
   IsCore_smul := fun c _ hf => IsCoreFin_smul c hf
-  -- New field added 2026-05-20 (Path A, strictly-positive escape).
-  -- Discharge for `IsCoreFin = C^∞ ∧ bounded-derivatives` core: for
-  -- `f ≥ ε > 0` (a.e.) and `f ∈ IsCoreFin`, `x ↦ f x ^ r` is C^∞ (chain
-  -- rule: `(f^r)' = r·f^{r-1}·f'` etc.; `f^{r-1}` bounded since
-  -- `ε ≤ f ≤ M` gives `min(ε^{r-1}, M^{r-1}) ≤ f^{r-1} ≤ max(ε^{r-1}, M^{r-1})`).
-  -- Subtlety: the abstract axiom takes a.e. ε-positivity, but
-  -- `IsCoreFin` is pointwise (C^∞ + bounded everywhere). Bridging needs
-  -- a pointwise representative — for `f ∈ IsCoreFin` with `f ≥ ε > 0`
-  -- a.e., the C^∞ + pointwise-bounded conclusion forces `f ≥ ε - δ`
-  -- pointwise for any δ > 0 by continuity if X has a topology. For
-  -- `Fin n → ℝ` this is standard. ~30-50 LOC of chain-rule + bound
-  -- propagation; deferred to a later commit.
+  -- Path A, strictly-positive escape. For `f ∈ IsCoreFin` with `ε ≤ f` a.e.,
+  -- the full-support property of `γFin n` upgrades the a.e. bound to a pointwise
+  -- one (`le_of_ae_le_of_continuous`), and then `IsCoreFin_rpow_pos` gives `f^r`
+  -- core via the chain rule plus bounded-derivative propagation on `[ε, M]`.
   IsCore_rpow_pos_strict := by
-    sorry  -- C^∞ chain rule + bounded-derivatives bound propagation
+    intro f hf ε hε hae r
+    exact IsCoreFin_rpow_pos hf hε (le_of_ae_le_of_continuous hf.continuous hae) r
   IsCore_memLp_top := fun {f} hf => by
     -- IsCoreFin includes `∃ M, ∀ x, ‖f x‖ ≤ M`. Extract directly.
     obtain ⟨M, hM⟩ := hf.bound_exists

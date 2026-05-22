@@ -26,6 +26,39 @@ open MeasureTheory Filter Set Real ProbabilityTheory
 
 noncomputable section
 
+/-! ### General lemmas (Mathlib-PR candidates)
+
+Two facts of independent interest, stated at full generality. Both are extracted
+from the Gaussian Bakry-Émery instance work but mention only Mathlib notions.
+-/
+
+/-- A non-degenerate real Gaussian measure has full topological support: every
+nonempty open set has positive measure.
+
+Follows from `volume ≪ gaussianReal` (the Gaussian density is everywhere positive)
+together with the open-positivity of Lebesgue measure. Mathlib has no `IsOpenPosMeasure`
+instance for `gaussianReal`; this is a clean upstream candidate. -/
+theorem gaussianReal_isOpenPosMeasure (μ : ℝ) {v : NNReal} (hv : v ≠ 0) :
+    (gaussianReal μ v).IsOpenPosMeasure :=
+  (gaussianReal_absolutelyContinuous' μ hv).isOpenPosMeasure
+
+/-- For a full-support measure (`IsOpenPosMeasure`), a continuous function that
+satisfies a bound almost everywhere satisfies it everywhere. This is the order
+analogue of `MeasureTheory.Measure.eq_of_ae_eq` (which lives in `OpenPos.lean`,
+where only the `=` versions are provided). Upstream candidate. -/
+theorem Continuous.le_of_ae_le {X : Type*} [TopologicalSpace X]
+    {α : Type*} [TopologicalSpace α] [LinearOrder α] [OrderClosedTopology α]
+    {m : MeasurableSpace X} {μ : Measure X} [μ.IsOpenPosMeasure]
+    {f g : X → α} (hf : Continuous f) (hg : Continuous g)
+    (hae : f ≤ᵐ[μ] g) : ∀ x, f x ≤ g x := by
+  intro x
+  by_contra hlt
+  rw [not_le] at hlt
+  have h0 : μ {y | g y < f y} = 0 := by
+    have h := ae_iff.mp hae
+    simpa only [not_le] using h
+  exact (isOpen_lt hg hf).measure_ne_zero μ ⟨x, hlt⟩ h0
+
 namespace GaussianFin
 
 open scoped BigOperators ContDiff
@@ -39,6 +72,23 @@ def γFin (n : ℕ) : Measure (Fin n → ℝ) :=
 instance instIsProbabilityMeasureγFin (n : ℕ) : IsProbabilityMeasure (γFin n) := by
   unfold γFin
   infer_instance
+
+/-- The 1D standard Gaussian has full support (special case of
+`gaussianReal_isOpenPosMeasure`). -/
+instance instIsOpenPosMeasureγ : Gaussian1D.γ.IsOpenPosMeasure :=
+  gaussianReal_isOpenPosMeasure 0 (by norm_num)
+
+/-- The multivariate standard Gaussian `γFin n` has full support
+(product of full-support factors). -/
+instance instIsOpenPosMeasureγFin (n : ℕ) : (γFin n).IsOpenPosMeasure := by
+  unfold γFin
+  infer_instance
+
+/-- For a continuous `f`, an a.e. lower bound `ε ≤ f` w.r.t. the full-support
+measure `γFin n` upgrades to a pointwise (everywhere) lower bound. -/
+theorem le_of_ae_le_of_continuous {n : ℕ} {f : (Fin n → ℝ) → ℝ} (hf : Continuous f)
+    {ε : ℝ} (hae : ∀ᵐ y ∂γFin n, ε ≤ f y) : ∀ x, ε ≤ f x :=
+  Continuous.le_of_ae_le continuous_const hf hae
 
 theorem measurePreserving_piFinSuccAbove_γFin {n : ℕ} (i : Fin (n + 1)) :
     MeasurePreserving (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i)
@@ -1209,6 +1259,116 @@ theorem partialDeriv_add (i : Fin n) {f g : (Fin n → ℝ) → ℝ}
   have hdg : DifferentiableAt ℝ g x := (hg.differentiable (by simp)).differentiableAt
   unfold partialDeriv
   rw [fderiv_add hdf hdg, ContinuousLinearMap.add_apply]
+
+/-- Chain rule for the coordinate partial of a real power: when `f` is `C^∞` and
+nowhere zero, `∂ᵢ(fᵣ) = r · f^{r-1} · ∂ᵢf`. -/
+theorem partialDeriv_rpow (i : Fin n) {f : (Fin n → ℝ) → ℝ} (hf : ContDiff ℝ ∞ f)
+    (hfne : ∀ x, f x ≠ 0) (r : ℝ) :
+    partialDeriv i (fun z => f z ^ r) = fun x => (r * f x ^ (r - 1)) * partialDeriv i f x := by
+  funext x
+  have hfx : HasFDerivAt f (fderiv ℝ f x) x :=
+    (hf.differentiable (by simp)).differentiableAt.hasFDerivAt
+  have h := hfx.rpow_const (p := r) (Or.inl (hfne x))
+  unfold partialDeriv
+  rw [h.fderiv, ContinuousLinearMap.smul_apply, smul_eq_mul]
+
+/-- **Strictly-positive `rpow` closure for `IsCoreFin`.** If `f` is a Gaussian
+core function bounded below by some `ε > 0`, then `x ↦ f x ^ r` is again core, for
+any real exponent `r`. On `[ε, M]` the function `t ↦ t^c` and its first two
+derivatives are bounded, so all `C^∞_b` data of `f^r` follow from the chain and
+product rules. Discharges the `IsCore_rpow_pos_strict` field for the Gaussian
+instance. -/
+theorem IsCoreFin_rpow_pos {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f)
+    {ε : ℝ} (hε : 0 < ε) (hpos : ∀ x, ε ≤ f x) (r : ℝ) :
+    IsCoreFin (fun x => f x ^ r) := by
+  obtain ⟨hf_smooth, M, hM⟩ := hf
+  have hf_core : IsCoreFin f := ⟨hf_smooth, M, hM⟩
+  have hfpos : ∀ x, 0 < f x := fun x => lt_of_lt_of_le hε (hpos x)
+  have hfne : ∀ x, f x ≠ 0 := fun x => (hfpos x).ne'
+  have hfleM : ∀ x, f x ≤ M := fun x =>
+    (le_abs_self _).trans (by simpa [Real.norm_eq_abs] using (hM x).1)
+  have hMpos : 0 < M := lt_of_lt_of_le hε ((hpos 0).trans (hfleM 0))
+  -- Uniform bound on `f^c` over the orbit, for any exponent `c`.
+  have rbd : ∀ (c : ℝ) (x), f x ^ c ≤ ε ^ c + M ^ c := by
+    intro c x
+    rcases le_total 0 c with hc | hc
+    · have h := Real.rpow_le_rpow (hfpos x).le (hfleM x) hc
+      have := Real.rpow_nonneg hε.le c
+      linarith
+    · have h := Real.rpow_le_rpow_of_nonpos hε (hpos x) hc
+      have := Real.rpow_nonneg hMpos.le c
+      linarith
+  have hsmooth : ContDiff ℝ ∞ (fun x => f x ^ r) := hf_smooth.rpow_const_of_ne hfne
+  set C1 : ℝ := |r| * (ε ^ (r - 1) + M ^ (r - 1)) * M with hC1
+  set C2 : ℝ := |r| * |r - 1| * (ε ^ (r - 1 - 1) + M ^ (r - 1 - 1)) * M ^ 2 with hC2
+  set B0 : ℝ := ε ^ r + M ^ r with hB0
+  have hC1nn : 0 ≤ C1 := by positivity
+  have hC2nn : 0 ≤ C2 := by positivity
+  have hB0nn : 0 ≤ B0 := by positivity
+  refine ⟨hsmooth, ⟨B0 + C1 + (C1 + C2), fun x => ⟨?_, ?_, ?_⟩⟩⟩
+  · -- value bound
+    rw [Real.norm_eq_abs, abs_of_pos (Real.rpow_pos_of_pos (hfpos x) r)]
+    have := rbd r x
+    linarith
+  · -- first-partial bound
+    intro i
+    rw [partialDeriv_rpow i hf_smooth hfne r, Real.norm_eq_abs, abs_mul, abs_mul,
+      abs_of_pos (Real.rpow_pos_of_pos (hfpos x) _)]
+    have hb1 : |partialDeriv i f x| ≤ M := by simpa [Real.norm_eq_abs] using (hM x).2.1 i
+    have key : |r| * f x ^ (r - 1) * |partialDeriv i f x| ≤ C1 := by
+      rw [hC1]
+      apply mul_le_mul _ hb1 (abs_nonneg _) (by positivity)
+      exact mul_le_mul_of_nonneg_left (rbd (r - 1) x) (abs_nonneg r)
+    linarith
+  · -- second-partial bound
+    intro i
+    have hAsmooth : ContDiff ℝ ∞ (fun x => r * f x ^ (r - 1)) :=
+      contDiff_const.mul (hf_smooth.rpow_const_of_ne hfne)
+    have hBsmooth' : ContDiff ℝ ∞ (partialDeriv i f) := hf_core.partial_contDiff i
+    have hform : secondPartial i (fun z => f z ^ r) x
+        = r * (r - 1) * f x ^ (r - 1 - 1) * partialDeriv i f x ^ 2
+          + r * f x ^ (r - 1) * secondPartial i f x := by
+      have hkey : partialDeriv i (fun z => f z ^ r)
+          = (fun y => r * f y ^ (r - 1)) * partialDeriv i f := by
+        rw [partialDeriv_rpow i hf_smooth hfne r]; rfl
+      have hAd : partialDeriv i (fun y => r * f y ^ (r - 1))
+          = fun y => r * ((r - 1) * f y ^ (r - 1 - 1) * partialDeriv i f y) := by
+        have hrw : (fun y => r * f y ^ (r - 1)) = (r : ℝ) • (fun y => f y ^ (r - 1)) := by
+          funext y; simp [Pi.smul_apply, smul_eq_mul]
+        rw [hrw, partialDeriv_smul, partialDeriv_rpow i hf_smooth hfne (r - 1)]
+      show partialDeriv i (partialDeriv i (fun z => f z ^ r)) x = _
+      rw [hkey, partialDeriv_mul i hAsmooth hBsmooth', hAd]
+      show r * ((r - 1) * f x ^ (r - 1 - 1) * partialDeriv i f x) * partialDeriv i f x
+          + r * f x ^ (r - 1) * secondPartial i f x
+          = r * (r - 1) * f x ^ (r - 1 - 1) * partialDeriv i f x ^ 2
+            + r * f x ^ (r - 1) * secondPartial i f x
+      ring
+    rw [hform, Real.norm_eq_abs]
+    have hb1 : |partialDeriv i f x| ≤ M := by simpa [Real.norm_eq_abs] using (hM x).2.1 i
+    have hb2 : |secondPartial i f x| ≤ M := by simpa [Real.norm_eq_abs] using (hM x).2.2 i
+    have hsq : partialDeriv i f x ^ 2 ≤ M ^ 2 :=
+      sq_le_sq' (abs_le.mp hb1).1 (abs_le.mp hb1).2
+    have hB : |r * f x ^ (r - 1) * secondPartial i f x| ≤ C1 := by
+      rw [abs_mul, abs_mul, abs_of_pos (Real.rpow_pos_of_pos (hfpos x) _), hC1]
+      apply mul_le_mul _ hb2 (abs_nonneg _) (by positivity)
+      exact mul_le_mul_of_nonneg_left (rbd (r - 1) x) (abs_nonneg r)
+    have hA : |r * (r - 1) * f x ^ (r - 1 - 1) * partialDeriv i f x ^ 2| ≤ C2 := by
+      have hp1 : |f x ^ (r - 1 - 1)| = f x ^ (r - 1 - 1) :=
+        abs_of_pos (Real.rpow_pos_of_pos (hfpos x) _)
+      have hp2 : |partialDeriv i f x ^ 2| = partialDeriv i f x ^ 2 :=
+        abs_of_nonneg (sq_nonneg _)
+      rw [abs_mul, abs_mul, abs_mul, hp1, hp2, hC2]
+      have h1 : |r| * |r - 1| * f x ^ (r - 1 - 1) ≤ |r| * |r - 1| * (ε ^ (r - 1 - 1) + M ^ (r - 1 - 1)) :=
+        mul_le_mul_of_nonneg_left (rbd (r - 1 - 1) x) (by positivity)
+      calc |r| * |r - 1| * f x ^ (r - 1 - 1) * partialDeriv i f x ^ 2
+          ≤ |r| * |r - 1| * (ε ^ (r - 1 - 1) + M ^ (r - 1 - 1)) * M ^ 2 := by
+            apply mul_le_mul h1 hsq (sq_nonneg _) (by positivity)
+        _ = C2 := by rw [hC2]
+    calc |r * (r - 1) * f x ^ (r - 1 - 1) * partialDeriv i f x ^ 2 + r * f x ^ (r - 1) * secondPartial i f x|
+        ≤ |r * (r - 1) * f x ^ (r - 1 - 1) * partialDeriv i f x ^ 2|
+            + |r * f x ^ (r - 1) * secondPartial i f x| := abs_add_le _ _
+      _ ≤ C2 + C1 := add_le_add hA hB
+      _ ≤ B0 + C1 + (C1 + C2) := by linarith
 
 theorem IsCoreFin.integrable_gamma {f g : (Fin n → ℝ) → ℝ}
     (hf : IsCoreFin f) (hg : IsCoreFin g) :
