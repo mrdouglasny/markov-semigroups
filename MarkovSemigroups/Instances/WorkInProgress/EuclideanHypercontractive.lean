@@ -13,6 +13,7 @@ axiom from the downstream `gaussian-hilbert` chain.
 -/
 
 import MarkovSemigroups.Abstract.GrossODE
+import MarkovSemigroups.Diffusion.StroockVaropoulos
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinBE
 import Mathlib.Analysis.SpecialFunctions.SmoothTransition
 
@@ -198,16 +199,34 @@ theorem stdGaussianFin_generatorCompat (n : ℕ) :
   · intro g hg
     exact ouGeneratorFin_ibp hf hg
 
-/-- **`StroockVaropoulos` for the standard Gaussian OU semigroup.** The a.e.
-nonnegativity upgrades to everywhere positivity (full support), the limit `Au` is
-identified with the generator `ouGeneratorFinLp hu` by uniqueness, the right-hand
-inner product unfolds to `energy u (u^{q-1})` via `ouGeneratorFin_ibp`, and the
-remaining energy inequality is the textbook Stroock–Varopoulos axiom. -/
+/-- **The Gaussian OU carré-du-champ satisfies the `rpow` chain rule.**
+`Γ(uʳ, g) = r·u^{r-1}·Γ(u, g)` for strictly positive core `u`, via the coordinate
+chain rule `partialDeriv_rpow`. This is the diffusion property that powers the
+Stroock–Varopoulos *equality* (`BakryEmerySpace.stroockVaropoulos_eq`). -/
+theorem rpowChainRule (n : ℕ) : (stdGaussianFin.bakryEmerySpace n).RpowChainRule := by
+  intro u hu hu_pos g _hg r x
+  have hu' : IsCoreFin u := hu
+  have hu_ne : ∀ y, u y ≠ 0 := fun y => (hu_pos y).ne'
+  show ouGammaFin (fun y => u y ^ r) g x = r * u x ^ (r - 1) * ouGammaFin u g x
+  unfold ouGammaFin
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun i _ => ?_
+  rw [partialDeriv_rpow i hu'.contDiff hu_ne r]
+  ring
+
+/-- **`StroockVaropoulos` for the standard Gaussian OU semigroup.** The orbit's
+strict positivity (`ε ≤ u` a.e. ⇒ everywhere, full support) lets the carré-du-champ
+chain rule turn S–V into the *equality* `BakryEmerySpace.stroockVaropoulos_eq`
+(no `stroock_varopoulos` axiom). The limit `Au` is identified with the generator
+`ouGeneratorFinLp hu` by uniqueness, and the right-hand inner product unfolds to
+`energy u (u^{q-1})` via `ouGeneratorFin_ibp`. -/
 theorem stdGaussianFin_stroockVaropoulos (n : ℕ) :
     StroockVaropoulos (stdGaussianFin_dirichletMarkovSemigroup n) := by
   set D := stdGaussianFin_dirichletMarkovSemigroup n with hD
-  intro u hu hu_nonneg q hq hu_half hu_one Au hAu
-  have hu_nn : ∀ x, 0 ≤ u x := le_of_ae_le_of_continuous hu.continuous hu_nonneg
+  intro u hu hu_pos q hq hu_half hu_one Au hAu
+  obtain ⟨ε, hε, hu_ge⟩ := hu_pos
+  have hu_pos_all : ∀ x, 0 < u x := fun x =>
+    lt_of_lt_of_le hε (le_of_ae_le_of_continuous hu.continuous hu_ge x)
   -- `Au` is the OU generator of `u` (unique strong-L² limit of the difference quotient).
   have hAu_eq : Au = ouGeneratorFinLp hu :=
     tendsto_nhds_unique hAu (ouSemigroupFinLp_diffQuot_tendsto (n := n) hu)
@@ -216,8 +235,14 @@ theorem stdGaussianFin_stroockVaropoulos (n : ℕ) :
       = - D.energy (fun x => u x ^ (q - 1)) u := ouGeneratorFin_ibp hu hu_one
   have hpair : (⟪D.coreToL2 hu_one, -Au⟫_ℝ : ℝ) = D.energy u (fun x => u x ^ (q - 1)) := by
     rw [hAu_eq, inner_neg_right, hibp, neg_neg, D.energy_symm (fun x => u x ^ (q - 1)) u]
+  -- Stroock–Varopoulos is an *equality* for the gradient form.
+  have hSV : (4 * (q - 1) / q ^ 2) *
+        D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
+      = D.energy u (fun x => u x ^ (q - 1)) :=
+    (stdGaussianFin.bakryEmerySpace n).stroockVaropoulos_eq (rpowChainRule n)
+      hu hu_pos_all q hq hu_half hu_one
   rw [hpair]
-  exact stroock_varopoulos D q hq u hu hu_nn hu_half hu_one
+  exact le_of_eq hSV
 
 /-- **`CoreLpL2Approx` for the standard Gaussian OU semigroup.** Approximate a
 nonnegative `f ∈ L²(γFin n) ∩ L^p(γFin n)` by smooth compactly supported

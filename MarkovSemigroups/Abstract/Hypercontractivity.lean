@@ -719,7 +719,7 @@ Mathlib convention for binders required by the statement's shape but
 not referenced in the body — the discharger still supplies them
 positionally. -/
 def StroockVaropoulos (D : DirichletMarkovSemigroup X) : Prop :=
-  ∀ {u : X → ℝ} (hu : D.IsCore u) (_hu_nonneg : ∀ᵐ y ∂D.μ, 0 ≤ u y)
+  ∀ {u : X → ℝ} (hu : D.IsCore u) (_hu_pos : ∃ ε : ℝ, 0 < ε ∧ ∀ᵐ y ∂D.μ, ε ≤ u y)
     (q : ℝ) (_hq : 1 < q)
     (_hu_half : D.IsCore (fun x => u x ^ (q / 2)))
     (hu_one : D.IsCore (fun x => u x ^ (q - 1)))
