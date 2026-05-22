@@ -14,7 +14,11 @@ The carré du champ and curvature:
   E(f,f) = α · (f 0 - f 1)² / 2
   ρ = 2α  (spectral gap)
 
-This verifies that all BakryEmerySpace class fields are satisfiable.
+All `BakryEmerySpace` fields are satisfiable for `{0,1}` **except** the
+diffusion-specific ones: the Leibniz/chain rule `Γ_leibniz` is *false* for this jump
+process, so no `BakryEmerySpace TwoPoint` instance can exist. `gamma_leibniz_fails`
+proves that failure explicitly — a finite continuous-time Markov chain is a jump
+process, not a diffusion (BGL §1.6).
 -/
 
 import MarkovSemigroups.Diffusion.CarreDuChamp
@@ -428,110 +432,24 @@ theorem semigroup_entropy_sq_ergodic_pf (hα : 0 < α) (f : TwoPoint → ℝ) :
 
 variable (hα : 0 < α)
 
-/-- The BakryEmerySpace instance for TwoPoint with rate α > 0. -/
-@[reducible]
-def bakryEmerySpace : BakryEmerySpace TwoPoint where
-  toDirichletSpace := dirichletSpace α hα
-  Γ := Gamma α
-  Γ_symm := fun f g => by ext x; simp only [Gamma]; ring
-  Γ_nonneg := fun f x => by
-    simp only [Gamma]
-    have : 0 ≤ (f .zero - f .one) ^ 2 := sq_nonneg _
-    nlinarith
-  energy_eq_integral_Γ := fun f g => by
-    change energy α f g = ∫ x, Gamma α f g x ∂uniformMeasure
-    rw [integral_uniformMeasure]
-    simp only [Gamma, energy]; ring
-  IsCore_mul := by intros; trivial
-  IsCore_semigroup := by intros; trivial
-  Γ_leibniz := fun f g h _ _ _ x => by
-    -- The Leibniz/diffusion property fails for discrete spaces.
-    -- The two-point Markov chain is a jump process, not a diffusion.
-    -- This field is mathematically false; sorry is unavoidable here.
-    sorry
-  Γ_const := fun c f => by
-    ext x; simp [Gamma, sub_self, mul_zero, zero_mul]
-  semigroup := semigroup α
-  ρ := 2 * α
-  hρ := by linarith
-  gradient_decay := fun f t ht _ => by
-    change ∫ x, Gamma α (semigroup α t f) (semigroup α t f) x ∂uniformMeasure ≤
-      exp (-2 * (2 * α) * t) * ∫ x, Gamma α f f x ∂uniformMeasure
-    rw [integral_Gamma_semigroup, integral_uniformMeasure]
-    simp only [Gamma]
-    rw [show -2 * (2 * α) * t = -4 * α * t by ring]
-    nlinarith [sq_nonneg (f .zero - f .one), exp_nonneg (-4 * α * t)]
-  semigroup_zero := fun f => by
-    ext i; simp [semigroup, coeff_zero]
-  semigroup_add := fun s t f hs ht _ => by
-    ext i; cases i <;> simp only [semigroup, coeff, flip_zero, flip_one] <;> {
-      rw [show -2 * α * (s + t) = (-2 * α * s) + (-2 * α * t) from by ring, exp_add]
-      ring
-    }
-  semigroup_contraction := fun f t ht _ => by
-    change ∫ x, (semigroup α t f x) ^ 2 ∂uniformMeasure ≤
-      ∫ x, (f x) ^ 2 ∂uniformMeasure
-    exact semigroup_contraction_eq α hα f t ht
-  semigroup_mean := fun f t _ _ => by
-    change ∫ x, semigroup α t f x ∂uniformMeasure = ∫ x, f x ∂uniformMeasure
-    exact semigroup_mean_pres α f t
-  semigroup_selfAdjoint := fun f g t _ _ _ => by
-    change ∫ x, semigroup α t f x * g x ∂uniformMeasure =
-      ∫ x, f x * semigroup α t g x ∂uniformMeasure
-    exact semigroup_selfAdj α f g t
-  semigroup_l2_decay_bound := fun f t ht _ => by
-    -- Need: ∫f² - ∫(P_t f)² ≤ (1 - e^{-2(2α)t})/(2α) * E(f)
-    change ∫ x, (f x) ^ 2 ∂uniformMeasure - ∫ x, (semigroup α t f x) ^ 2 ∂uniformMeasure ≤
-      (1 - exp (-2 * (2 * α) * t)) / (2 * α) * energy α f f
-    rw [integral_sq_uniformMeasure, semigroup_l2_sq_eq]
-    simp only [energy]
-    rw [show -2 * (2 * α) * t = -4 * α * t by ring]
-    have h_ident : (f .zero ^ 2 + f .one ^ 2) / 2 =
-        ((f .zero + f .one) / 2) ^ 2 + ((f .zero - f .one) / 2) ^ 2 := by ring
-    rw [h_ident]
-    -- LHS = (1 - e^{-4αt}) * ((f0-f1)/2)^2
-    -- RHS = (1 - e^{-4αt}) / (2α) * (α * d * d / 2)
-    -- = (1 - e^{-4αt}) * α * d^2 / (4α) = (1 - e^{-4αt}) * d^2 / 4
-    -- = (1 - e^{-4αt}) * (d/2)^2 = LHS
-    set e := exp (-4 * α * t)
-    set d := f .zero - f .one
-    -- Both sides equal (1 - e) * (d/2)^2
-    -- Simplify LHS: (mean^2 + (d/2)^2) - (mean^2 + e*(d/2)^2) = (1-e)*(d/2)^2
-    -- Simplify RHS: (1-e)/(2α) * (α*d*d/2) = (1-e)*d^2/4 = (1-e)*(d/2)^2
-    have h_2α_ne : (2 * α) ≠ 0 := by linarith
-    field_simp
-    nlinarith
-  semigroup_l2_sq_hasDerivWithinAt := fun f t ht _ => by
-    change HasDerivWithinAt (fun s => ∫ x, (semigroup α s f x) ^ 2 ∂uniformMeasure)
-      (-2 * ∫ x, Gamma α (semigroup α t f) (semigroup α t f) x ∂uniformMeasure)
-      (Ici 0) t
-    rw [integral_Gamma_semigroup]
-    exact semigroup_l2_sq_deriv α f t
-  semigroup_ergodic := fun f _ => by
-    change Tendsto (fun t => ∫ x, (semigroup α t f x) ^ 2 ∂uniformMeasure -
-      (∫ x, f x ∂uniformMeasure) ^ 2) atTop (nhds 0)
-    exact semigroup_ergodic_pf α hα f
-  semigroup_entropy_sq_decay_bound := fun f t ht _ => by
-    -- NOTE: This bound is false for the two-point space (a jump process).
-    -- The BakryEmerySpace entropy decay bound Ent(f²) - Ent(P_t(f²)) ≤
-    -- (1-e^{-2ρt})(2/ρ)E(f) follows from the identity I(f²) = 4E(f) via
-    -- the Leibniz rule for Γ (BGL §5.5). On the two-point space, Γ_leibniz
-    -- fails (line 317), and consequently this bound also fails: for
-    -- f(.zero)=1000, f(.one)=999, α=1, as t → ∞ the LHS → Ent(f²) ≈ 3000
-    -- while the RHS → (f0-f1)²/2 = 0.5. The sorry here is paired with
-    -- the Γ_leibniz sorry—both reflect that the two-point space is a jump
-    -- process, not a diffusion, and the diffusion-specific axioms do not hold.
-    change DirichletSpace.entropy (ds := dirichletSpace α hα)
-        (fun x => f x * f x) -
-      DirichletSpace.entropy (ds := dirichletSpace α hα)
-        (semigroup α t (fun x => f x * f x)) ≤
-      (1 - exp (-2 * (2 * α) * t)) * (2 / (2 * α)) * energy α f f
-    sorry
-  semigroup_entropy_sq_ergodic := fun f _ => by
-    -- P_t(f²) converges pointwise to the constant m = (f0²+f1²)/2,
-    -- so its entropy → m·log(m) - m·log(m) = 0 by continuity of x·log(x).
-    exact semigroup_entropy_sq_ergodic_pf α hα f
+/-- **The two-point space is not a diffusion.** Its carré-du-champ `Gamma α`
+violates the Leibniz/diffusion identity `Γ(f·g, h) = f·Γ(g,h) + g·Γ(f,h)`: taking
+`f = g = h` the indicator of `.zero`, at `x = .zero` the left-hand side is `α/2`
+while the right-hand side is `α`. Hence **no `BakryEmerySpace TwoPoint` instance can
+exist** — the `{0,1}` continuous-time Markov chain is a jump process, not a diffusion
+(so the `Γ_leibniz` field, and the entropy-decay bound that depends on it, are false
+here). -/
+theorem gamma_leibniz_fails (hα : 0 < α) :
+    ¬ ∀ (f g h : TwoPoint → ℝ) (x : TwoPoint),
+        Gamma α (f * g) h x = f x * Gamma α g h x + g x * Gamma α f h x := by
+  intro H
+  classical
+  set e : TwoPoint → ℝ := fun i => if i = TwoPoint.zero then 1 else 0 with he
+  have e0 : e TwoPoint.zero = 1 := by simp [he]
+  have e1 : e TwoPoint.one = 0 := by simp [he]
+  have key := H e e e TwoPoint.zero
+  simp only [Gamma, Pi.mul_apply, e0, e1] at key
+  norm_num at key
+  linarith
 
 end TwoPoint
-
-end

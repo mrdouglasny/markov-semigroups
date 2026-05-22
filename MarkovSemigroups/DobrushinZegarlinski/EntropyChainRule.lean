@@ -136,6 +136,9 @@ point of the bind by `spec.condDist {x}`, hence integration commutes
 through.
 -/
 
+section
+omit [Fintype Λ]
+
 /-- The single-site Gibbs conditional `σ ↦ spec.condDist {x} σ`,
 viewed as a measure-valued map, is measurable.
 
@@ -204,10 +207,15 @@ lemma bind_condDist_singleton_eq
     have h_bd : ∫⁻ σ, (spec.condDist {x} σ) A ∂μ ≤ ∫⁻ _, 1 ∂μ :=
       lintegral_mono fun _ => prob_le_one
     have h1 : ∫⁻ _ : SpinConfig Λ ℝ, (1 : ENNReal) ∂μ = μ Set.univ := by
-      simp [lintegral_one]
+      simp
     rw [h1] at h_bd
-    exact ne_top_of_le_ne_top (by simp [measure_ne_top]) h_bd
+    exact ne_top_of_le_ne_top (by simp) h_bd
   exact (ENNReal.toReal_eq_toReal_iff' h_lhs_ne (measure_ne_top _ A)).mp h_dlr.symm
+
+end
+
+section
+omit [Fintype Λ]
 
 /-- **Integral preservation (DLR), lintegral version.**
 
@@ -215,7 +223,6 @@ For nonneg measurable `f`, integration against `μ` commutes with the
 single-site Gibbs smoothing:
 
   ∫⁻ τ, f τ ∂μ = ∫⁻ σ, ∫⁻ τ, f τ ∂(γ.condDist {x} σ) ∂μ.
-
 This is `Measure.lintegral_bind` applied to the DLR fixed point. -/
 lemma lintegral_siteSmoothing
     (spec : GibbsSpec Λ ℝ) (μ : Measure (SpinConfig Λ ℝ))
@@ -361,6 +368,11 @@ lemma integrable_siteSmoothing_of_nonneg
     rw [h_f_lint_eq]
     exact hf_int.hasFiniteIntegral
 
+end
+
+section
+omit [Fintype Λ]
+
 /-- **Integral preservation (DLR), Bochner version (general integrable `g`).**
 
 For a measurable integrable `g`, integration of the single-site
@@ -405,7 +417,7 @@ theorem integral_siteSmoothing
     intro σ
     by_cases h : 0 ≤ g σ
     · simp [g_pos, g_neg, max_eq_left h, max_eq_right (neg_nonpos_of_nonneg h)]
-    · push_neg at h
+    · push Not at h
       have h_le : g σ ≤ 0 := h.le
       have h_pos : 0 ≤ -(g σ) := neg_nonneg.mpr h_le
       simp [g_pos, g_neg, max_eq_right h_le, max_eq_left h_pos]
@@ -458,12 +470,17 @@ theorem integral_siteSmoothing
         apply integral_congr_ae
         exact Filter.Eventually.of_forall fun σ => (h_decompose σ).symm
 
+section
+omit [Fintype Λ]
+
 /-- The integral of `g` against the single-site Gibbs conditional,
 viewed as a function of the boundary `σ`, is nothing other than the
 smoothing `siteSmoothing γ x g`. -/
 lemma siteSmoothing_eq_integral (spec : GibbsSpec Λ ℝ) (x : Λ)
     (g : SpinConfig Λ ℝ → ℝ) (σ : SpinConfig Λ ℝ) :
     siteSmoothing spec x g σ = ∫ τ, g τ ∂(spec.condDist {x} σ) := rfl
+
+end
 
 /-- Auxiliary integrability assumption: the single-site smoothings of
 `g` and of `g · log g` are integrable, and the smoothing of `g`
@@ -546,6 +563,8 @@ theorem entropy_decomposition_single_site
   unfold entropy
   rw [h_g]
   ring
+
+end
 
 /-- **Marginal entropy is nonneg.** Standard application of Jensen's
 inequality to `t ↦ t log t` (convex on `[0, ∞)`).
