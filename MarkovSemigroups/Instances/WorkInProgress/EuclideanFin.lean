@@ -40,6 +40,32 @@ instance instIsProbabilityMeasureγFin (n : ℕ) : IsProbabilityMeasure (γFin n
   unfold γFin
   infer_instance
 
+/-- The 1D standard Gaussian has full support: every nonempty open set has
+positive measure. Follows from `volume ≪ gaussianReal` (the Gaussian density
+is everywhere positive) and the open-positivity of Lebesgue measure. -/
+instance instIsOpenPosMeasureγ : Gaussian1D.γ.IsOpenPosMeasure :=
+  ⟨fun _U hU hUne hzero =>
+    absurd (ProbabilityTheory.gaussianReal_absolutelyContinuous' 0 (by norm_num) hzero)
+      (hU.measure_ne_zero (volume : Measure ℝ) hUne)⟩
+
+/-- The multivariate standard Gaussian `γFin n` has full support
+(product of full-support factors). -/
+instance instIsOpenPosMeasureγFin (n : ℕ) : (γFin n).IsOpenPosMeasure := by
+  unfold γFin
+  infer_instance
+
+/-- For a continuous `f`, an a.e. lower bound `ε ≤ f` w.r.t. the full-support
+measure `γFin n` upgrades to a pointwise (everywhere) lower bound. -/
+theorem le_of_ae_le_of_continuous {n : ℕ} {f : (Fin n → ℝ) → ℝ} (hf : Continuous f)
+    {ε : ℝ} (hae : ∀ᵐ y ∂γFin n, ε ≤ f y) : ∀ x, ε ≤ f x := by
+  intro x
+  by_contra hlt
+  rw [not_le] at hlt
+  have hmeas0 : γFin n {y | f y < ε} = 0 := by
+    have h := ae_iff.mp hae
+    simpa [not_le] using h
+  exact (isOpen_lt hf continuous_const).measure_ne_zero (γFin n) ⟨x, hlt⟩ hmeas0
+
 theorem measurePreserving_piFinSuccAbove_γFin {n : ℕ} (i : Fin (n + 1)) :
     MeasurePreserving (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (n + 1) => ℝ) i)
       (γFin (n + 1)) (Gaussian1D.γ.prod (γFin n)) := by
