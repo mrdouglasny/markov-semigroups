@@ -928,7 +928,7 @@ theorem norm_sq_toLp_eq_integral_sq {f : (Fin n → ℝ) → ℝ}
       rw [MeasureTheory.L2.inner_def]
       simp [pow_two]
     have h2 : ⟪hf.toLp f, hf.toLp f⟫_ℝ = ‖hf.toLp f‖ ^ 2 := by
-      simpa using (inner_self_eq_norm_sq_to_K (hf.toLp f))
+      exact inner_self_eq_norm_sq_to_K (hf.toLp f)
     exact h1.trans h2
   calc
     ‖hf.toLp f‖ ^ 2 = ∫ x, (hf.toLp f) x * (hf.toLp f) x ∂γFin n := hinner.symm
@@ -1154,7 +1154,7 @@ theorem ouSemigroupFinLp_semigroup (s t : ℝ) (hs : 0 ≤ s) (ht : 0 ≤ t) :
   apply ContinuousLinearMap.ext
   intro u
   have huClosure : u ∈ closure (smoothCoreSet (n := n)) := by
-    simpa [smoothCoreSet_dense (n := n).closure_eq] using (show u ∈ (Set.univ : Set (Lp ℝ 2 (γFin n))) by simp)
+    simp [smoothCoreSet_dense (n := n).closure_eq]
   simpa [S] using hClosed.closure_subset_iff.mpr hSubset huClosure
 
 theorem ouSemigroupFinLp_symmetric (t : ℝ) (ht : 0 ≤ t)
@@ -1184,8 +1184,7 @@ theorem ouSemigroupFinLp_symmetric (t : ℝ) (ht : 0 ≤ t)
       exact ouSemigroupFinLp_symmetric_of_bound (n := n) t ht hfw_core.measurable hfv_core.measurable
         hMw hMv
     have huClosure : u ∈ closure (smoothCoreSet (n := n)) := by
-      simpa [smoothCoreSet_dense (n := n).closure_eq] using
-        (show u ∈ (Set.univ : Set (Lp ℝ 2 (γFin n))) by simp)
+      simp [smoothCoreSet_dense (n := n).closure_eq]
     simpa [Su] using hSu_closed.closure_subset_iff.mpr hSu_subset huClosure
   let T : Set (Lp ℝ 2 (γFin n)) :=
     {v | ⟪f, ouSemigroupFinLp (n := n) t v⟫_ℝ =
@@ -1198,8 +1197,7 @@ theorem ouSemigroupFinLp_symmetric (t : ℝ) (ht : 0 ≤ t)
     intro v hv
     simpa [T] using hSmoothRight v hv f
   have hgClosure : g ∈ closure (smoothCoreSet (n := n)) := by
-    simpa [smoothCoreSet_dense (n := n).closure_eq] using
-      (show g ∈ (Set.univ : Set (Lp ℝ 2 (γFin n))) by simp)
+    simp [smoothCoreSet_dense (n := n).closure_eq]
   simpa [T] using hT_closed.closure_subset_iff.mpr hT_subset hgClosure
 
 private theorem ouShiftFin_tendsto_zero (x y : Fin n → ℝ) :
