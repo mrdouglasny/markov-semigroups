@@ -441,4 +441,27 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
       tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hg_r_tendsto
         (fun m => bot_le) htwo_tendsto_le
 
+/-- The standard Gaussian Bakry-Émery bundle satisfies the log-Sobolev inequality
+with constant `1`, inherited from `stdGaussianFin.bakryEmerySpace`. -/
+theorem stdGaussianFin_satisfiesLogSobolev (n : ℕ) :
+    (stdGaussianFin_dirichletMarkovSemigroup n).SatisfiesLogSobolev 1 :=
+  BakryEmerySpace.satisfiesLogSobolev (be := stdGaussianFin.bakryEmerySpace n)
+
+/-- **Hypercontractivity of the standard Gaussian OU semigroup at `ρ = 1`.**
+
+Assembles the LSI with the four discharged hypotheses
+(`CoreSemigroupInvariant`, `GeneratorCompat`, `StroockVaropoulos`, `CoreLpL2Approx`)
+through the *proved* theorem `gross_lsi_implies_hypercontractive_of_hypotheses`.
+Crucially this does **not** use the `gross_lsi_implies_hypercontractive` axiom, so
+it eliminates that axiom from the downstream `gaussian-hilbert` chain. -/
+theorem stdGaussianFin_isHypercontractive (n : ℕ) :
+    (stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.IsHypercontractive 1 :=
+  gross_lsi_implies_hypercontractive_of_hypotheses
+    (stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos
+    (stdGaussianFin_satisfiesLogSobolev n)
+    (stdGaussianFin_coreSemigroupInvariant n)
+    (stdGaussianFin_generatorCompat n)
+    (stdGaussianFin_stroockVaropoulos n)
+    (stdGaussianFin_coreLpL2Approx n)
+
 end GaussianFin
