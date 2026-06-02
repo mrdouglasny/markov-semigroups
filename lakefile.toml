@@ -9,17 +9,17 @@ autoImplicit = false
 [[require]]
 name = "HilleYosida"
 git = "https://github.com/mrdouglasny/hille-yosida.git"
-rev = "main"
+rev = "493143c"
 
 [[require]]
 name = "SpectralPositivity"
 git = "https://github.com/mrdouglasny/spectral-positivity.git"
-rev = "main"
+rev = "073f4af"
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-version = "git#v4.29.0"
+version = "git#v4.30.0"
 
 [[lean_lib]]
 name = "MarkovSemigroups"

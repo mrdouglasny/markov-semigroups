@@ -226,7 +226,7 @@ lemma condDist_multiFiber_eq_zero [MeasurableSingletonClass S]
     simp only [fiber, evalAt, Set.mem_preimage, Set.mem_singleton_iff] at hτ'
     rw [hτ'] at h1
     exact hne h1
-  exact le_antisymm (measure_mono hsub |>.trans h_fib_compl.le) (zero_le _)
+  exact le_antisymm (measure_mono hsub |>.trans h_fib_compl.le) (zero_le)
 
 /-- When `z ∉ N_f` and σ is in the multi-fiber:
 `γ.condDist {z} σ (A ∩ multiFiber N_f a) = γ.condDist {z} σ A`. -/
@@ -254,7 +254,7 @@ lemma condDist_inter_multiFiber_eq [MeasurableSingletonClass S]
     exact measure_union hdisj hmeas
   have h_zero : γ.condDist {z} σ (A ∩ (multiFiber N_f a)ᶜ) = 0 :=
     le_antisymm (measure_mono Set.inter_subset_right |>.trans
-      (condDist_multiFiber_compl_eq_zero γ z N_f hz σ a hσ).le) (zero_le _)
+      (condDist_multiFiber_compl_eq_zero γ z N_f hz σ a hσ).le) (zero_le)
   rw [h_zero, add_zero] at h_split
   exact h_split.symm
 
@@ -266,7 +266,7 @@ lemma condDist_inter_multiFiber_eq_zero [MeasurableSingletonClass S]
     (A : Set (SpinConfig I S)) :
     γ.condDist {z} σ (A ∩ multiFiber N_f a) = 0 :=
   le_antisymm (measure_mono Set.inter_subset_right |>.trans
-    (condDist_multiFiber_eq_zero γ z N_f hz σ a hσ).le) (zero_le _)
+    (condDist_multiFiber_eq_zero γ z N_f hz σ a hσ).le) (zero_le)
 
 /-- **DLR for `condFiniteSupportMeasure` at every z ∉ N_f.**
 

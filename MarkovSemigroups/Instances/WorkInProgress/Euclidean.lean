@@ -116,8 +116,7 @@ theorem ou_kernel_map (t : ℝ) (ht : 0 ≤ t) :
     · simp
     · simp only [mul_one]
       exact NNReal.eq (by simp [NNReal.coe_add, NNReal.coe_mk]; exact hab_real)
-  rw [hgoal] at hmap
-  exact hmap
+  exact hmap.trans hgoal
 
 /-! ## DirichletSpace instance -/
 
@@ -970,11 +969,9 @@ theorem ouSemigroup_compose (s t : ℝ) (hs : 0 ≤ s) (ht : 0 ≤ t) {f : ℝ �
     · simp
     · simp only [mul_one]
       apply NNReal.eq
-      simp [NNReal.coe_add, NNReal.coe_mk]
-      have h_norm : (-(2 * (s + t)) : ℝ) = -2 * (s + t) := by ring
-      rw [h_norm]
+      simp only [NNReal.coe_add, NNReal.coe_mk]
       exact h_var_eq
-  rw [h_eq] at hΨ_law
+  replace hΨ_law := hΨ_law.trans h_eq
   -- hΨ_law: (γ.prod γ).map Ψ = N(0, 1-exp(-2(s+t)))
   -- Step 4: γ.map (fun z => bst * z) = N(0, bst²) = N(0, 1-exp(-2(s+t))).
   have hZ : HasLaw (fun z : ℝ => z) γ γ := ⟨measurable_id.aemeasurable, by simp⟩
@@ -988,9 +985,8 @@ theorem ouSemigroup_compose (s t : ℝ) (hs : 0 ≤ s) (ht : 0 ≤ t) {f : ℝ �
     rw [this]
     simp only [mul_zero, mul_one]
     congr 1
-    apply NNReal.eq; simp
-    have h_norm : (-(2 * (s + t)) : ℝ) = -2 * (s + t) := by ring
-    rw [h_norm]
+    apply NNReal.eq
+    simp only [NNReal.coe_mk]
     exact h_bst_sq
   -- Step 5: Integrability
   have hf_int_basic : ∀ c d : ℝ,

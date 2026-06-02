@@ -409,7 +409,7 @@ private lemma condDist_intersect_basePreimage_zero
       ext ⟨i, hi⟩; exact hτ i (fun hiz => hz (Finset.mem_singleton.mp hiz ▸ hi))
     rw [h_eq]; exact hσ
   -- A ∩ {τ | (prodEquiv τ).1 ∈ T} ⊆ Agreeᶜ
-  apply le_antisymm _ (zero_le _)
+  apply le_antisymm _ (zero_le)
   calc γ.condDist {z} σ (A ∩ {τ | (prodEquiv N_f τ).1 ∈ T})
       ≤ γ.condDist {z} σ (Agreeᶜ) := by
         apply measure_mono; intro τ ⟨_, hτT⟩ hτAgree
@@ -519,7 +519,7 @@ private lemma fiberMeasure_dlr_ae_fixed
             ≤ fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ≠ b} :=
               measure_mono (fun σ (hσ : (prodEquiv N_f σ).1 ∉ T) (hh : (prodEquiv N_f σ).1 = b) =>
                 hσ (hh.symm ▸ hbT))
-          _ = 0 := fiberMeasure_compl_base m N_f b) (zero_le _)
+          _ = 0 := fiberMeasure_compl_base m N_f b) (zero_le)
       -- A ⊆ (A ∩ BP) ∪ BPᶜ
       calc fiberMeasure m N_f b A
           ≤ fiberMeasure m N_f b ((A ∩ {σ | (prodEquiv N_f σ).1 ∈ T}) ∪
@@ -543,7 +543,7 @@ private lemma fiberMeasure_dlr_ae_fixed
           _ ≤ fiberMeasure m N_f b {σ | (prodEquiv N_f σ).1 ≠ b} := by
               apply measure_mono; intro σ (hσ : (prodEquiv N_f σ).1 ∈ T)
                 (hh : (prodEquiv N_f σ).1 = b); exact hbT (hh ▸ hσ)
-          _ = 0 := fiberMeasure_compl_base m N_f b) (zero_le _)
+          _ = 0 := fiberMeasure_compl_base m N_f b) (zero_le)
       rw [h_zero]; simp
   -- RHS of hABP = ∫ b, indicator T G b
   have hABP_rhs : ∀ b,

@@ -56,7 +56,7 @@ private theorem matrix_entry_le_norm (A : Matrix n n ℝ) (i j : n) :
     ‖A i j‖ ≤ ‖A‖ := by
   simp only [Matrix.linfty_opNorm_def]
   have h1 : ‖A i j‖₊ ≤ ∑ j' : n, ‖A i j'‖₊ :=
-    Finset.single_le_sum (f := fun j' => ‖A i j'‖₊) (fun _ _ => zero_le _)
+    Finset.single_le_sum (f := fun j' => ‖A i j'‖₊) (fun _ _ => zero_le)
       (Finset.mem_univ j)
   have h2 : (∑ j' : n, ‖A i j'‖₊) ≤ Finset.univ.sup
       (fun i' : n => ∑ j' : n, ‖A i' j'‖₊) := by
@@ -204,12 +204,12 @@ theorem heat_kernel_entrywise_nonneg (M : Matrix n n ℝ)
   -- Split exp by commutativity (scalar matrix commutes with everything)
   have hcomm : Commute (((-t) * α) • (1 : Matrix n n ℝ)) (t • (α • (1 : Matrix n n ℝ) - M)) :=
     Commute.smul_left (Commute.smul_right (Commute.one_left _) _) _
-  rw [NormedSpace.exp_add_of_commute hcomm]
+  rw [Matrix.exp_add_of_commute _ _ hcomm]
   -- exp(-tα·1) = exp(-tα) • 1 (scalar matrix)
   have hexp_scalar : NormedSpace.exp (((-t) * α) • (1 : Matrix n n ℝ)) =
       NormedSpace.exp ((-t) * α) • (1 : Matrix n n ℝ) := by
-    rw [← Algebra.algebraMap_eq_smul_one, ← Algebra.algebraMap_eq_smul_one,
-        ← NormedSpace.algebraMap_exp_comm]
+    rw [← Algebra.algebraMap_eq_smul_one, ← Algebra.algebraMap_eq_smul_one]
+    exact (NormedSpace.algebraMap_exp_comm (𝔸 := Matrix n n ℝ) ((-t) * α)).symm
   rw [hexp_scalar]
   -- Product: (c • 1) * B = c • B
   rw [Algebra.smul_mul_assoc]

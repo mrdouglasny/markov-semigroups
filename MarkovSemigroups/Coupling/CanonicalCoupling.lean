@@ -63,7 +63,7 @@ theorem measureInf_singleton [Countable S] [MeasurableSingletonClass S]
   apply le_antisymm
   · -- sInf ≤ min: take t = {a} and t = empty
     have hbdd : BddBelow {m | ∃ t, m = μ (t ∩ {a}) + ν (tᶜ ∩ {a})} :=
-      ⟨0, fun m ⟨_, hm⟩ => hm ▸ zero_le _⟩
+      ⟨0, fun m ⟨_, hm⟩ => hm ▸ zero_le⟩
     apply le_min
     · exact csInf_le hbdd ⟨{a}, by simp⟩
     · exact csInf_le hbdd ⟨∅, by simp⟩
@@ -285,7 +285,7 @@ theorem residual_prod_diagonal_zero
     ext ⟨x, y⟩; simp [diagonal]
   rw [hdiag_eq]
   -- Measure of countable union ≤ sum of measures (equality for disjoint)
-  apply le_antisymm _ (zero_le _)
+  apply le_antisymm _ (zero_le)
   calc (residμ.prod residν) (⋃ a : S, {(a, a)})
       ≤ ∑' a, (residμ.prod residν) {(a, a)} := measure_iUnion_le _
     _ = ∑' a, residμ {a} * residν {a} := by

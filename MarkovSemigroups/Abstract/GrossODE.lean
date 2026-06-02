@@ -276,7 +276,7 @@ theorem grossPow_pos (D : DirichletMarkovSemigroup X) (ρ p : ℝ)
     push Not at h
     refine hf_ne ?_
     rw [Filter.EventuallyEq, ae_iff]
-    exact le_antisymm h (zero_le _)
+    exact le_antisymm h (zero_le)
   -- Step D: 0 < ∫ |u|^q. Use integral_pos_iff_support + support (|u|^q) = support u.
   show 0 < ∫ x, |u x| ^ q ∂D.μ
   rw [integral_pos_iff_support_of_nonneg_ae
@@ -1229,7 +1229,7 @@ lemma averagedDerivField_tendstoInMeasure
     (g := fun _ => (0 : ℝ≥0∞)) (h := fun σ => ν {y | ENNReal.ofReal δ ≤
         edist ((u σ : Y → ℝ) y) ((u s : Y → ℝ) y)})
     tendsto_const_nhds hu_δ
-    (Filter.Eventually.of_forall fun _ => zero_le _) ?_
+    (Filter.Eventually.of_forall fun _ => zero_le) ?_
   -- Show eventually-σ: ν(bad σ) ≤ ν(u-bad σ) via a.e. set inclusion.
   filter_upwards [h_u_bound] with σ hσ
   refine MeasureTheory.measure_mono_ae ?_

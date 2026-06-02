@@ -194,7 +194,7 @@ lemma condDist_fiber_eq_zero
     intro τ hτ hτ'
     simp [fiber, evalAt, Set.mem_preimage] at hτ hτ'
     exact hσ (hτ'.symm.trans hτ)
-  exact le_antisymm (measure_mono hsub |>.trans h_compl.le) (zero_le _)
+  exact le_antisymm (measure_mono hsub |>.trans h_compl.le) (zero_le)
 
 /-- When z != x and sigma(x) = a, conditioning at {z} preserves the fiber:
 gamma.condDist {z} sigma (A ∩ fiber x a) = gamma.condDist {z} sigma A. -/
@@ -219,7 +219,7 @@ lemma condDist_inter_fiber_eq
   -- The second term is 0
   have h_zero : γ.condDist {z} σ (A ∩ (fiber x a)ᶜ) = 0 :=
     le_antisymm (measure_mono Set.inter_subset_right |>.trans
-      (condDist_fiber_compl_eq_zero γ z x hzx σ a hσ).le) (zero_le _)
+      (condDist_fiber_compl_eq_zero γ z x hzx σ a hσ).le) (zero_le)
   -- goal: ... (A ∩ fiber x a) = ... A
   -- h_split: ... A = ... (A ∩ fiber x a) + ... (A ∩ (fiber x a)^c)
   -- h_zero: ... (A ∩ (fiber x a)^c) = 0
@@ -235,7 +235,7 @@ lemma condDist_inter_fiber_eq_zero
     (A : Set (SpinConfig I S)) :
     γ.condDist {z} σ (A ∩ fiber x a) = 0 :=
   le_antisymm (measure_mono Set.inter_subset_right |>.trans
-    (condDist_fiber_eq_zero γ z x hzx σ a hσ).le) (zero_le _)
+    (condDist_fiber_eq_zero γ z x hzx σ a hσ).le) (zero_le)
 
 /-! ## DLR for condSingleSiteMeasure -/
 

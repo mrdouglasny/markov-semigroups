@@ -83,13 +83,11 @@ lemma norm_pow_sub_pow_le {R : Type*} [NormedRing R] [NormOneClass R] (a b : R) 
 section NormBounds
 
 attribute [local instance] Matrix.linftyOpNormedAddCommGroup
+attribute [local instance] Matrix.linftyOpNormedSpace
 attribute [local instance] Matrix.linftyOpNormedRing
 attribute [local instance] Matrix.linftyOpNormedAlgebra
 
-set_option synthInstance.maxHeartbeats 200000 in
-set_option maxHeartbeats 800000 in
-instance matCompleteSpace : CompleteSpace (Matrix n n ℂ) :=
-  FiniteDimensional.complete ℂ _
+instance matCompleteSpace : CompleteSpace (Matrix n n ℂ) := inferInstance
 
 set_option synthInstance.maxHeartbeats 800000 in
 set_option maxHeartbeats 1200000 in
@@ -415,6 +413,7 @@ section TrotterProof
 -- on Matrix n n ℂ (proved by `ext U; exact Iff.rfl`), so convergence
 -- results transfer freely between the two settings.
 attribute [local instance] Matrix.linftyOpNormedAddCommGroup
+attribute [local instance] Matrix.linftyOpNormedSpace
 attribute [local instance] Matrix.linftyOpNormedRing
 attribute [local instance] Matrix.linftyOpNormedAlgebra
 
@@ -443,7 +442,7 @@ theorem trotter_product_formula (A B : Matrix n n ℂ) :
     -- Convert to ε-δ via Metric.tendsto_atTop.
     -- This works because the linftyOp topology (from local instances)
     -- is definitionally equal to the default Pi topology on Matrix n n ℂ.
-    rw [Metric.tendsto_atTop]
+    refine Metric.tendsto_atTop.mpr ?_
     intro ε hε
     -- Abbreviations
     set P := fun k : ℕ => exp ((1 / (k : ℂ)) • A) * exp ((1 / (k : ℂ)) • B)

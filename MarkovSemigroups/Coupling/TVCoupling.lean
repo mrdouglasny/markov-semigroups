@@ -281,7 +281,7 @@ theorem overlapMeasure_mass (μ ν : Measure X)
   -- Show the sInf equals μ(s) + ν(sᶜ) (attained at the Hahn set)
   have h_inf_eq : sInf {m | ∃ t, m = μ t + ν tᶜ} = μ s + ν sᶜ := by
     apply le_antisymm
-    · exact csInf_le ⟨0, fun m ⟨t, ht⟩ => ht ▸ zero_le _⟩ ⟨s, rfl⟩
+    · exact csInf_le ⟨0, fun m ⟨t, ht⟩ => ht ▸ zero_le⟩ ⟨s, rfl⟩
     · apply le_csInf
       · exact ⟨μ s + ν sᶜ, s, rfl⟩
       rintro m ⟨t, rfl⟩
@@ -493,7 +493,7 @@ theorem exists_maximal_coupling (μ ν : Measure X)
       have h1 : (μ.restrict sᶜ) (A ∩ s) = 0 := by
         rw [Measure.restrict_apply (hA.inter hs)]
         simp [Set.inter_assoc, Set.compl_inter_self]
-      exact le_antisymm (h1 ▸ Measure.sub_le (A ∩ s)) (zero_le _)
+      exact le_antisymm (h1 ▸ Measure.sub_le (A ∩ s)) (zero_le)
     have hβ_support : ∀ A, MeasurableSet A → β (A ∩ sᶜ) = 0 := by
       intro A hA
       have h1 : (ν.restrict s) (A ∩ sᶜ) = 0 := by
@@ -502,7 +502,7 @@ theorem exists_maximal_coupling (μ ν : Measure X)
           rw [eq_empty_iff_forall_notMem]
           intro x ⟨⟨_, hxsc⟩, hxs⟩; exact hxsc hxs
         rw [this]; exact measure_empty
-      exact le_antisymm (h1 ▸ Measure.sub_le (A ∩ sᶜ)) (zero_le _)
+      exact le_antisymm (h1 ▸ Measure.sub_le (A ∩ sᶜ)) (zero_le)
     -- sᶜ × s ⊆ {p | p.1 ≠ p.2}: if x ∈ sᶜ, y ∈ s, then x ≠ y
     -- (γ.prod β) is supported on sᶜ × s, so {≠} has full measure
     have hprod_ne : (γ.prod β) {p : X × X | p.1 ≠ p.2} = (γ.prod β) Set.univ := by
@@ -520,7 +520,7 @@ theorem exists_maximal_coupling (μ ν : Measure X)
         · exact Or.inl ⟨hxs, hxs⟩
         · exact Or.inr ⟨hxs, hxs⟩
       have hprod_diag_zero : (γ.prod β) (diagonal X) = 0 := by
-        apply le_antisymm _ (zero_le _)
+        apply le_antisymm _ (zero_le)
         calc (γ.prod β) (diagonal X)
             ≤ (γ.prod β) ((s ×ˢ s) ∪ (sᶜ ×ˢ sᶜ)) := measure_mono hdiag_sub
           _ ≤ (γ.prod β) (s ×ˢ s) + (γ.prod β) (sᶜ ×ˢ sᶜ) := measure_union_le _ _

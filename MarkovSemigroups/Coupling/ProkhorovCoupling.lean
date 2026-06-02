@@ -289,7 +289,7 @@ private theorem inf_eq_withDensity_min {Y : Type*} [MeasurableSpace Y]
     intro C hC
     rw [Measure.inf_apply hC]
     apply csInf_le
-    · exact ⟨0, fun m ⟨_, hm⟩ => hm ▸ zero_le _⟩
+    · exact ⟨0, fun m ⟨_, hm⟩ => hm ▸ zero_le⟩
     refine ⟨{y | f_d y ≤ g_d y}, ?_⟩
     have ht_meas : MeasurableSet {y | f_d y ≤ g_d y} := measurableSet_le hf_m hg_m
     -- Show the value at the witness equals the withDensity value
@@ -484,7 +484,7 @@ private theorem canonicalMaximalCoupling_compact_ne_le_residual
   -- Piece 2: c⁻¹ * (resid_μ.prod resid_ν)({≠}) ≤ c⁻¹ * (resid_μ.prod resid_ν)(univ) = c
   calc ((μ - μ ⊓ ν) Set.univ)⁻¹ * ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)) {p | p.1 ≠ p.2}
       ≤ ((μ - μ ⊓ ν) Set.univ)⁻¹ * ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)) Set.univ :=
-        by exact mul_le_mul_of_nonneg_left (measure_mono (Set.subset_univ _)) (zero_le _)
+        by exact mul_le_mul_of_nonneg_left (measure_mono (Set.subset_univ _)) (zero_le)
     _ = ((μ - μ ⊓ ν) Set.univ)⁻¹ * ((μ - μ ⊓ ν) Set.univ * (ν - μ ⊓ ν) Set.univ) := by
         congr 1
         rw [show (Set.univ : Set (X × X)) = Set.univ ×ˢ Set.univ from (Set.univ_prod_univ).symm,
