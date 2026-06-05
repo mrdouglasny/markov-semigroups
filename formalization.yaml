@@ -217,10 +217,16 @@ automation:
     - method: "agent"
       models: ["claude-opus-4-8"]
       framework: "Claude Code"
+      prompting_notes: "Primary prover: cycle-by-cycle proving with compiler-guided repair."
+    - method: "agent"
+      models: ["gpt-5.4-codex"]
+      framework: "Codex"
+      prompting_notes: "Auxiliary proving (AGENTS.md present; per commit co-author trailers)."
+    - method: "other"
+      models: ["gemini-3.1-pro-preview", "gemini-3-pro-preview"]
+      framework: "Gemini (deep-think / chat)"
       prompting_notes: >
-        Cycle-by-cycle proving with compiler-guided repair. Several deep analytic
-        cruxes and axiom-soundness checks were cross-vetted with external models
-        (Gemini gemini-3-pro-preview / gemini-3.1-pro-preview, Codex GPT-5.4); see
+        Adversarial vetting of deep analytic cruxes and axiom soundness; see
         AXIOM_AUDIT.md for per-axiom vetting verdicts and provenance.
   notes: >
     Built on the hille-yosida C₀-semigroup framework. Downstream gaussian-hilbert
