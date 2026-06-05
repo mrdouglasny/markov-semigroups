@@ -1,0 +1,332 @@
+# formalization.yaml — https://github.com/mathlib-initiative/formalization.yaml (v0.3)
+# Describes the `main` branch state (sorry-free; 8 textbook axioms in consumed paths,
+#   plus WIP/scaffolding axioms excluded from the main tree — see status.md / AXIOM_AUDIT.md).
+version: "v0.3"
+
+project:
+  name: "markov-semigroups"
+  authors: ["Michael R. Douglas"]
+  license: "Apache-2.0"
+
+sources:
+  - title: "Analysis and Geometry of Markov Diffusion Operators"
+    authors: ["Dominique Bakry", "Ivan Gentil", "Michel Ledoux"]
+    id: "ISBN:978-3-319-00226-2"
+    type: "textbook"
+    license: "proprietary"
+    note: "BGL (Grundlehren 348, Springer 2014); primary reference for Bakry-Émery, LSI, Poincaré, Stroock-Varopoulos, Herbst, OU/Mehler."
+  - title: "Logarithmic Sobolev inequalities"
+    authors: ["Leonard Gross"]
+    id: "10.2307/2373688"
+    type: "paper"
+    license: "proprietary"
+    note: "Amer. J. Math. 97 (1975), 1061-1083; Gross LSI <-> hypercontractivity (Thms 1 & 2)."
+  - title: "Logarithmic Sobolev inequalities and stochastic Ising models"
+    authors: ["Richard Holley", "Daniel Stroock"]
+    id: "10.1007/BF01011165"
+    type: "paper"
+    license: "proprietary"
+    note: "J. Stat. Phys. 46 (1987), 1159-1194; bounded-density (Holley-Stroock) perturbation of LSI."
+  - title: "The description of a random field by means of conditional probabilities and conditions of its regularity"
+    authors: ["R. L. Dobrushin"]
+    id: "10.1137/1113026"
+    type: "paper"
+    license: "proprietary"
+    note: "Theory Probab. Appl. 13 (1968), 197-224; Dobrushin uniqueness condition."
+  - title: "A new criterion for the logarithmic Sobolev inequality and two applications (Otto-Reznikoff)"
+    authors: ["Felix Otto", "Maria G. Reznikoff"]
+    id: "10.1016/j.jfa.2006.10.002"
+    type: "paper"
+    license: "proprietary"
+    note: "J. Funct. Anal. 243 (2007); covariance-criterion route to a global LSI (Zegarlinski-type theorem). Used as the textbook axiom `zegarlinski_lsi_inequality`."
+  - title: "On the correlations for Kac-like models in the convex case (Helffer-Sjöstrand)"
+    authors: ["Bernard Helffer", "Johannes Sjöstrand"]
+    id: "10.1007/BF02188217"
+    type: "paper"
+    license: "proprietary"
+    note: "J. Stat. Phys. 74 (1994); Helffer-Sjöstrand covariance representation. Used as the textbook axiom `cov_entrywise_bound_of_zegarlinski`."
+  - title: "Functional Integration and Quantum Physics"
+    authors: ["Barry Simon"]
+    id: "ISBN:978-0-8218-6941-3"
+    type: "textbook"
+    license: "proprietary"
+    note: "Ch. 22, diamagnetic inequality; basis for the `diamagnetic_resolvent` axiom (declared for external callers, no in-repo consumer)."
+
+status:
+  scope: >
+    A Mathlib library for Markov semigroups, functional inequalities, and
+    convergence to equilibrium, organized in three abstraction layers:
+    (1) Abstract/ — Dirichlet forms with Poincaré, log-Sobolev (Gross),
+    Holley-Stroock perturbation, and Borell-Herbst concentration;
+    (2) Diffusion/ — abstract Bakry-Émery diffusion generators (carré du
+    champ Γ, iterated Γ₂, curvature criterion Γ₂ ≥ ρΓ ⟹ LSI(ρ)), abstract
+    Ornstein-Uhlenbeck semigroup, Stroock-Varopoulos as a diffusion equality;
+    (3) Instances/ — concrete spaces (R, R^n, T^d Gaussian/OU; Brascamp-Lieb
+    for log-concave measures). Plus convergence-to-equilibrium (spectral gap,
+    entropy decay, ergodicity, Doeblin mixing), TV coupling theory (maximal
+    and Prokhorov couplings), Dobrushin uniqueness for lattice spin systems
+    with exponential correlation decay, the Dobrushin-Zegarlinski global LSI
+    + Helffer-Sjöstrand entrywise covariance bound for continuous spins, and
+    finite-matrix semigroup theory (Z-matrix heat-kernel positivity, Trotter,
+    diamagnetic inequality). Wiener-chaos / multivariate-Hermite content was
+    relocated to the downstream gaussian-hilbert repo (2026-05-10).
+  sorry_count: 0
+  sorry_in_definitions: 0
+  axioms:
+    # Textbook axioms actually consumed by main-tree theorems (per status.md / AXIOM_AUDIT.md):
+    - gross_lsi_implies_hypercontractive       # Abstract/Hypercontractivity.lean (Gross Thm 1; bypassed in the concrete Gaussian chain)
+    - gross_hypercontractive_implies_lsi       # Abstract/Hypercontractivity.lean (Gross Thm 2)
+    - stroock_varopoulos                       # Abstract/Hypercontractivity.lean (BGL §1.7; bypassed concretely via stroockVaropoulos_eq)
+    - herbst_mgf_bound                         # Abstract/Concentration.lean (BGL §5.4.1)
+    - poincare_of_lsi                          # Abstract/Concentration.lean (BGL Prop 5.1.3)
+    - zegarlinski_lsi_inequality               # DobrushinZegarlinski/GlobalLSI.lean (Otto-Reznikoff)
+    - cov_entrywise_bound_of_zegarlinski       # DobrushinZegarlinski/EntrywiseCovariance.lean (Helffer-Sjöstrand)
+    - diamagnetic_resolvent                    # Matrix/Diamagnetic.lean (Simon Ch.22; declared for external callers, no in-repo consumer)
+    # Excluded by policy (WorkInProgress / staged infrastructure, no main-tree consumer):
+    - contDiff_top_convolution_schwartzKernel  # General/SchwartzConvolution.lean (staged; no consumers)
+    - gaussianResolvent                        # Instances/WorkInProgress/EuclideanTests.lean (scaffolding)
+    - gaussianResolvent_ibp                    # Instances/WorkInProgress/EuclideanTests.lean (scaffolding)
+    - gaussianResolvent_ibp_integrable         # Instances/WorkInProgress/EuclideanTests.lean (scaffolding)
+    - gaussianBochner_identity                 # Instances/WorkInProgress/EuclideanTests.lean (scaffolding)
+  main_results:
+    # --- Bakry-Émery (Diffusion/) ---
+    - declaration: "BakryEmerySpace.satisfiesPoincare"
+      file: "MarkovSemigroups/Diffusion/CarreDuChamp.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Bakry-Émery curvature ρ implies the Poincaré inequality Var(f) ≤ (1/ρ) E(f,f)"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "BakryEmerySpace.satisfiesLogSobolev"
+      file: "MarkovSemigroups/Diffusion/CarreDuChamp.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Bakry-Émery curvature ρ implies the log-Sobolev inequality Ent(f²) ≤ (2/ρ) E(f,f)"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "BakryEmerySpace.variance_decay"
+      file: "MarkovSemigroups/Diffusion/CarreDuChamp.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Var(P_t f) ≤ e^{-2ρt} Var(f) from the Bakry-Émery Poincaré bound + Grönwall"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "BakryEmerySpace.stroockVaropoulos_eq"
+      file: "MarkovSemigroups/Diffusion/StroockVaropoulos.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Stroock-Varopoulos identity for diffusion forms (discharges the abstract axiom in the concrete chain)"
+          source: "ISBN:978-3-319-00226-2"
+    # --- Gross LSI <-> hypercontractivity (Abstract/) ---
+    - declaration: "GrossODE.gross_lsi_implies_hypercontractive_of_hypotheses"
+      file: "MarkovSemigroups/Abstract/GrossODE.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Gross's LSI ⇒ hypercontractivity, fully proved from the four per-instance predicates (Gross-ODE route)"
+          source: "10.2307/2373688"
+    # --- Brascamp-Lieb (Instances/) ---
+    - declaration: "LogConcaveMeasure.brascampLieb"
+      file: "MarkovSemigroups/Instances/BrascampLieb.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Brascamp-Lieb variance inequality for log-concave measures e^{-V} with V strictly convex"
+          source: "ISBN:978-3-319-00226-2"
+    # --- Concentration (Abstract/) ---
+    - declaration: "MarkovSemigroups.Abstract.lipschitz_concentration_of_lsi"
+      file: "MarkovSemigroups/Abstract/Concentration.lean"
+      sorry_count: 0
+      axioms: ["herbst_mgf_bound"]
+      literature_dependencies:
+        - statement: "Borell-Herbst sub-Gaussian concentration for Lipschitz functions under LSI"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "MarkovSemigroups.Abstract.variance_lipschitz_le_of_lsi"
+      file: "MarkovSemigroups/Abstract/Concentration.lean"
+      sorry_count: 0
+      axioms: ["poincare_of_lsi"]
+      literature_dependencies:
+        - statement: "LSI ⇒ Poincaré; Var(F) ≤ L²/c for L-Lipschitz F"
+          source: "ISBN:978-3-319-00226-2"
+    # --- Convergence to equilibrium (Convergence/) ---
+    - declaration: "doeblin_n_step_mixing"
+      file: "MarkovSemigroups/Convergence/Doeblin.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Doeblin's condition ⇒ geometric n-step TV mixing"
+          source: "ISBN:978-3-319-00226-2"
+    # --- Coupling (Coupling/) ---
+    - declaration: "tvNorm_eq_inf_coupling"
+      file: "MarkovSemigroups/Coupling/TVCoupling.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Total variation distance equals the infimum over couplings of the disagreement probability (maximal coupling)"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "prokhorov_coupling_theorem"
+      file: "MarkovSemigroups/Coupling/ProkhorovCoupling.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Min-disagreement coupling on compact spin spaces via Prokhorov compactness"
+          source: "ISBN:978-3-319-00226-2"
+    # --- Dobrushin uniqueness (Dobrushin/) ---
+    - declaration: "dobrushin_uniqueness"
+      file: "MarkovSemigroups/Dobrushin/Uniqueness.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Dobrushin's condition (influence-matrix column sums < 1) ⇒ unique Gibbs measure with exponential correlation decay"
+          source: "10.1137/1113026"
+    # --- Dobrushin-Zegarlinski (DobrushinZegarlinski/) ---
+    - declaration: "MarkovSemigroups.DobrushinZegarlinski.global_lsi_of_zegarlinski"
+      file: "MarkovSemigroups/DobrushinZegarlinski/GlobalLSI.lean"
+      sorry_count: 0
+      axioms: ["zegarlinski_lsi_inequality"]
+      literature_dependencies:
+        - statement: "Uniform local LSI + Zegarlinski gradient-coupling condition ⇒ volume-independent global LSI"
+          source: "10.1016/j.jfa.2006.10.002"
+    - declaration: "MarkovSemigroups.DobrushinZegarlinski.cov_entrywise_decay_nn"
+      file: "MarkovSemigroups/DobrushinZegarlinski/EntrywiseCovariance.lean"
+      sorry_count: 0
+      axioms: ["cov_entrywise_bound_of_zegarlinski"]
+      literature_dependencies:
+        - statement: "Helffer-Sjöstrand entrywise covariance bound |Cov(σ_x,σ_y)| ≤ α^{d(x,y)}/(c(1-α)) for finite-range potentials"
+          source: "10.1007/BF02188217"
+    # --- Matrix semigroup theory (Matrix/) ---
+    - declaration: "MatrixSemigroup.heat_kernel_entrywise_nonneg"
+      file: "MarkovSemigroups/Matrix/HeatKernel.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "exp(-tM) ≥ 0 entrywise for Z-matrices (Metzler-shift decomposition)"
+          source: "ISBN:978-0-8218-6941-3"
+    # --- Two-point space: diffusion axiom is a genuine constraint ---
+    - declaration: "TwoPoint.gamma_leibniz_fails"
+      file: "MarkovSemigroups/Instances/WorkInProgress/TwoPoint.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "the carré-du-champ Leibniz/diffusion property fails for a jump process on {0,1} (explicit counterexample)"
+          source: "ISBN:978-3-319-00226-2"
+
+automation:
+  methods:
+    - method: "agent"
+      models: ["claude-opus-4-8"]
+      framework: "Claude Code"
+      prompting_notes: >
+        Cycle-by-cycle proving with compiler-guided repair. Several deep analytic
+        cruxes and axiom-soundness checks were cross-vetted with external models
+        (Gemini gemini-3-pro-preview / gemini-3.1-pro-preview, Codex GPT-5.4); see
+        AXIOM_AUDIT.md for per-axiom vetting verdicts and provenance.
+  notes: >
+    Built on the hille-yosida C₀-semigroup framework. Downstream gaussian-hilbert
+    and lgt pin frozen commits. WorkInProgress/ instances are imported by the
+    top-level module so `#print axioms` reports the axiom/sorry surface honestly.
+
+fidelity:
+  divergences: >
+    Most results are stated in the most general abstract layer available rather
+    than specialized: functional inequalities live on abstract Dirichlet spaces;
+    the diffusion theory uses an abstract carré-du-champ Γ (axiomatized, not
+    ⟨∇f,∇g⟩ on a smooth manifold), so no Riemannian-manifold library is needed
+    (R^n uses Mathlib `fderiv`, T^d uses Fourier modes). The Stroock-Varopoulos
+    inequality is, in the concrete diffusion chain, discharged as an equality
+    (`stroockVaropoulos_eq`) rather than the textbook inequality. The abstract
+    Gross LSI⇒HC theorem is proved hypothesis-parameterised
+    (`gross_lsi_implies_hypercontractive_of_hypotheses`); the legacy bundled
+    axiom `gross_lsi_implies_hypercontractive` is retained only for the abstract
+    `gross_equivalence` wrappers and is bypassed in the concrete Gaussian chain.
+
+review:
+  status: "self-assessed"
+  reviewers: []
+  notes: >
+    Sorry-free across the entire tree (verified: no `sorry` term/tactic tokens in
+    any .lean file; status.md 2026-05-22 canonical). Counts are taken from
+    status.md and AXIOM_AUDIT.md (build not re-run here). Eight textbook axioms
+    appear in consumed paths (only `herbst_mgf_bound`, `poincare_of_lsi`,
+    `zegarlinski_lsi_inequality`, `cov_entrywise_bound_of_zegarlinski`, and the
+    Gross/Stroock-Varopoulos abstract wrappers have in-repo consumers;
+    `diamagnetic_resolvent` is declared for external callers only). Additional
+    WorkInProgress scaffolding axioms (`gaussianResolvent*`, `gaussianBochner_identity`)
+    and the staged `contDiff_top_convolution_schwartzKernel` have no main-tree
+    consumers and are excluded by policy. Many BGL Ch.2 / §5.5 OU-Mehler facts
+    that were once axioms have since been discharged to theorems (axiom-free
+    Gaussian1D / GaussianFin instances).
+
+alignment:
+  namespace: "MarkovSemigroups"
+  statements:
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "BakryEmerySpace.satisfiesPoincare"
+      module: "MarkovSemigroups.Diffusion.CarreDuChamp"
+      status: "proved"
+      note: "Bakry-Émery curvature ρ ⟹ Poincaré(ρ)."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "BakryEmerySpace.satisfiesLogSobolev"
+      module: "MarkovSemigroups.Diffusion.CarreDuChamp"
+      status: "proved"
+      note: "Bakry-Émery curvature ρ ⟹ LSI(ρ)."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "BakryEmerySpace.stroockVaropoulos_eq"
+      module: "MarkovSemigroups.Diffusion.StroockVaropoulos"
+      status: "proved"
+      note: "Stroock-Varopoulos as a diffusion equality; bypasses the abstract `stroock_varopoulos` axiom concretely."
+    - source: "10.2307/2373688"
+      lean: "GrossODE.gross_lsi_implies_hypercontractive_of_hypotheses"
+      module: "MarkovSemigroups.Abstract.GrossODE"
+      status: "proved"
+      note: "Gross LSI ⇒ hypercontractivity, hypothesis-parameterised; the bundled `gross_lsi_implies_hypercontractive` axiom remains for abstract wrappers."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "LogConcaveMeasure.brascampLieb"
+      module: "MarkovSemigroups.Instances.BrascampLieb"
+      status: "proved"
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "MarkovSemigroups.Abstract.lipschitz_concentration_of_lsi"
+      module: "MarkovSemigroups.Abstract.Concentration"
+      status: "literature-dependency"
+      note: "proved from the `herbst_mgf_bound` axiom (BGL §5.4.1) + Mathlib's Chernoff bound."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "doeblin_n_step_mixing"
+      module: "MarkovSemigroups.Convergence.Doeblin"
+      status: "proved"
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "tvNorm_eq_inf_coupling"
+      module: "MarkovSemigroups.Coupling.TVCoupling"
+      status: "proved"
+      note: "TV = inf over couplings of disagreement; maximal coupling constructed."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "prokhorov_coupling_theorem"
+      module: "MarkovSemigroups.Coupling.ProkhorovCoupling"
+      status: "proved"
+    - source: "10.1137/1113026"
+      lean: "dobrushin_uniqueness"
+      module: "MarkovSemigroups.Dobrushin.Uniqueness"
+      status: "proved"
+      note: "Dobrushin uniqueness + exponential correlation decay."
+    - source: "10.1016/j.jfa.2006.10.002"
+      lean: "MarkovSemigroups.DobrushinZegarlinski.global_lsi_of_zegarlinski"
+      module: "MarkovSemigroups.DobrushinZegarlinski.GlobalLSI"
+      status: "literature-dependency"
+      note: "proved from the `zegarlinski_lsi_inequality` axiom (Otto-Reznikoff / Zegarlinski / BGL §5.7)."
+    - source: "10.1007/BF02188217"
+      lean: "MarkovSemigroups.DobrushinZegarlinski.cov_entrywise_decay_nn"
+      module: "MarkovSemigroups.DobrushinZegarlinski.EntrywiseCovariance"
+      status: "literature-dependency"
+      note: "proved from the `cov_entrywise_bound_of_zegarlinski` axiom (Helffer-Sjöstrand); the abstract Neumann-decay scaffolding is axiom-free."
+    - source: "ISBN:978-0-8218-6941-3"
+      lean: "MatrixSemigroup.heat_kernel_entrywise_nonneg"
+      module: "MarkovSemigroups.Matrix.HeatKernel"
+      status: "proved"
+      note: "Z-matrix heat-kernel positivity; the `diamagnetic_resolvent` axiom (Simon Ch.22) is declared but has no in-repo consumer."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "TwoPoint.gamma_leibniz_fails"
+      module: "MarkovSemigroups.Instances.WorkInProgress.TwoPoint"
+      status: "proved"
+      note: "negative result: the diffusion (Γ-Leibniz) property genuinely fails for a jump process."
+
+acknowledgements: ""
