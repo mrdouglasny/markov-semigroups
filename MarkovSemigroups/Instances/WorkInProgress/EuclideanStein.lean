@@ -270,7 +270,7 @@ theorem hasDerivAt_b (τ : ℝ) (hτ : 0 < τ) :
   have h_u : HasDerivAt (fun s : ℝ => 1 - Real.exp (-2 * s))
       (2 * Real.exp (-2 * τ)) τ := by
     have := (hasDerivAt_const τ (1 : ℝ)).sub h_exp
-    convert this using 1; ring
+    refine this.congr_deriv ?_; ring
   have h_sqrt := h_u.sqrt hu_pos.ne'
   convert h_sqrt using 1
   rw [mul_div_mul_left _ _ (by norm_num : (2 : ℝ) ≠ 0)]
@@ -393,7 +393,7 @@ theorem hasDerivAt_t_ouSemigroup (t₀ : ℝ) (ht₀ : 0 < t₀)
     have h_α : HasDerivAt (fun s : ℝ => Real.exp (-s) * x)
         (-Real.exp (-τ) * x) τ := by
       have h1 : HasDerivAt (fun s : ℝ => -s) (-1 : ℝ) τ := by
-        simpa using (hasDerivAt_id τ).neg
+        simpa [Pi.neg_def] using (hasDerivAt_id τ).neg
       have h2 : HasDerivAt (fun s : ℝ => Real.exp (-s))
           (Real.exp (-τ) * (-1)) τ := h1.exp
       have h3 : HasDerivAt (fun s : ℝ => Real.exp (-s) * x)
@@ -464,7 +464,7 @@ theorem hasDerivAt_t_ouSemigroup (t₀ : ℝ) (ht₀ : 0 < t₀)
       ((IsCore.contDiff_deriv hf_core).differentiable
         (by simp)).differentiableAt.hasDerivAt
     have := h_outer.comp y h_inner
-    simpa [mul_comm (deriv (deriv f) _)] using this.deriv
+    simpa [mul_comm (deriv (deriv f) _), Function.comp_def] using this.deriv
   have hg'_bd : ∀ y, ‖deriv g y‖ ≤ M := fun y => by
     rw [hg'_eq y]
     show |b₀ * deriv (deriv f) (a₀ * x + b₀ * y)| ≤ M
@@ -720,7 +720,7 @@ theorem gaussian_dirichlet_form_bilinear
   have hh_C1 : ContDiff ℝ 1 h := hh.of_le (by norm_num : (1 : WithTop ℕ∞) ≤ 2)
   have hh_diff : Differentiable ℝ h := hh_C1.differentiable (by norm_num)
   have hh' : ContDiff ℝ 1 (deriv h) := by
-    have h2 : ContDiff ℝ (1 + 1) h := by simpa using hh
+    have h2 : ContDiff ℝ (1 + 1) h := hh.of_le (by norm_num)
     exact h2.deriv'
   have hh'_diff : Differentiable ℝ (deriv h) := hh'.differentiable (by norm_num)
   -- Measurability.
@@ -988,7 +988,7 @@ theorem hasDerivAt_l2sq_ouSemigroup_pos (t₀ : ℝ) (ht₀ : 0 < t₀)
         (ouSemigroup s f x) := by
       simpa using hasDerivAt_pow 2 (ouSemigroup s f x)
     have := h_sq.comp s h_heat
-    convert this using 1
+    simpa [Function.comp_def] using this
   have hF_meas_ev : ∀ᶠ s in nhds t₀, AEStronglyMeasurable (F s) γ :=
     Filter.eventually_of_mem h_nbhd hF_meas
   obtain ⟨_, h_deriv⟩ :=

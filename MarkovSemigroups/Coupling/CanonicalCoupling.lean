@@ -191,7 +191,7 @@ theorem canonicalMaximalCoupling_fst [Countable S] [MeasurableSingletonClass S]
   rw [Measure.map_add _ _ measurable_fst]
   -- Step 2: diagonal part
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.fst = μ ⊓ ν := by
-    rw [Measure.map_map measurable_fst measurable_diag]; convert Measure.map_id using 2
+    rw [Measure.map_map measurable_fst measurable_diag]; convert Measure.map_id using 2; rfl
   rw [hd, Measure.map_smul]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.fst =
       (ν - μ ⊓ ν) Set.univ • (μ - μ ⊓ ν) := Measure.map_fst_prod
@@ -212,7 +212,7 @@ theorem canonicalMaximalCoupling_snd [Countable S] [MeasurableSingletonClass S]
   unfold canonicalMaximalCoupling
   rw [Measure.map_add _ _ measurable_snd]
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.snd = μ ⊓ ν := by
-    rw [Measure.map_map measurable_snd measurable_diag]; convert Measure.map_id using 2
+    rw [Measure.map_map measurable_snd measurable_diag]; convert Measure.map_id using 2; rfl
   rw [hd, Measure.map_smul]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.snd =
       (μ - μ ⊓ ν) Set.univ • (ν - μ ⊓ ν) := Measure.map_snd_prod
@@ -317,8 +317,9 @@ theorem canonicalMaximalCoupling_ne
     -- Diagonal part: 0
     have hdiag_ne : ((μ ⊓ ν).map (fun a => (a, a))) {p : S × S | p.1 ≠ p.2} = 0 := by
       rw [Measure.map_apply measurable_diag hne_meas]
-      convert (μ ⊓ ν).empty
-      ext x; simp
+      have hset : (fun a => (a, a)) ⁻¹' {p : S × S | p.1 ≠ p.2} = (∅ : Set S) := by
+        ext x; simp
+      rw [hset, measure_empty]
     -- Product part on {ne} = total mass of product (since diagonal has 0 mass)
     have hprod_ne : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)) {p : S × S | p.1 ≠ p.2} =
         ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)) Set.univ := by

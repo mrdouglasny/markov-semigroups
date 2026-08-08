@@ -278,7 +278,7 @@ theorem semigroup_l2_sq_deriv (f : TwoPoint → ℝ) (t : ℝ) :
     (hasDerivWithinAt_neg_four_alpha α t).exp
   -- Multiply by constant d2
   have h_prod := h_exp.mul_const d2
-  convert h_prod using 1
+  refine h_prod.congr_deriv ?_
   ring
 
 /-- Ergodicity: Var(P_t f) → 0 as t → ∞. -/

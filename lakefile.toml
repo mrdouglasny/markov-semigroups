@@ -8,18 +8,18 @@ autoImplicit = false
 
 [[require]]
 name = "HilleYosida"
-git = "https://github.com/mrdouglasny/hille-yosida.git"
-rev = "493143c"
+git = "https://github.com/FredRaj3/hille-yosida.git"
+rev = "6bcced5a792dbb032da56b736e6fa9d1e3f29efd"
 
 [[require]]
 name = "SpectralPositivity"
-git = "https://github.com/mrdouglasny/spectral-positivity.git"
-rev = "073f4af"
+git = "https://github.com/FredRaj3/spectral-positivity.git"
+rev = "d83bc9c71dcfcd2d5d432ad1131e09b141703f1c"
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-version = "git#v4.30.0"
+version = "git#v4.33.0-rc1"
 
 [[lean_lib]]
 name = "MarkovSemigroups"

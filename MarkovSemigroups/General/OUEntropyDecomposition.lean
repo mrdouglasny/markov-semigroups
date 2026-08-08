@@ -772,7 +772,11 @@ theorem hasDerivAt_entropy_ouSemigroup
     have h_comp := h_log_deriv.comp x h_Ptg_deriv
     have h_comp' : HasDerivAt (fun y => Real.log (ouSemigroup t g y))
         (deriv (ouSemigroup t g) x / ouSemigroup t g x) x := by
-      convert h_comp using 1; field_simp
+      have h_comp2 : HasDerivAt (fun y => Real.log (ouSemigroup t g y))
+          ((ouSemigroup t g x)⁻¹ * deriv (ouSemigroup t g) x) x := by
+        simpa [Function.comp_def] using h_comp
+      refine h_comp2.congr_deriv ?_
+      field_simp
     exact h_comp'.add_const 1
   -- Bound on |(log P_t g + 1)'| ≤ M/ε.
   have h_logPtg'_bd : ∀ x,
@@ -1095,7 +1099,7 @@ theorem hasDerivAt_entropy_ouSemigroup
       intro s y z hs
       have h_α : HasDerivAt (fun u : ℝ => a u * y) (-a s * y) s := by
         have h1 : HasDerivAt (fun u : ℝ => -u) (-1 : ℝ) s := by
-          simpa using (hasDerivAt_id s).neg
+          simpa [Pi.neg_def] using (hasDerivAt_id s).neg
         have h2 : HasDerivAt (fun u : ℝ => Real.exp (-u)) (Real.exp (-s) * (-1)) s := h1.exp
         have h3 : HasDerivAt (fun u : ℝ => Real.exp (-u) * y)
             (Real.exp (-s) * (-1) * y) s := h2.mul_const y
@@ -1444,7 +1448,7 @@ theorem hasDerivAt_entropy_ouSemigroup
       -- The RHS is measurable: P_t g is C², log P_t g + 1 is C¹.
       have h_dd_meas : Measurable (deriv (deriv (ouSemigroup t g))) := by
         have h_C1' : ContDiff ℝ 1 (deriv (ouSemigroup t g)) := by
-          have h2 : ContDiff ℝ (1 + 1) (ouSemigroup t g) := by simpa using h_Ptg_C2
+          have h2 : ContDiff ℝ (1 + 1) (ouSemigroup t g) := h_Ptg_C2.of_le (by norm_num)
           exact h2.deriv'
         exact (h_C1'.continuous_deriv (le_refl 1)).measurable
       have h_d_meas : Measurable (deriv (ouSemigroup t g)) :=
@@ -1510,7 +1514,7 @@ theorem hasDerivAt_entropy_ouSemigroup
       have h_log_comp : HasDerivAt (fun u => Real.log (ouSemigroup u g y))
           (hPsy s y * (ouSemigroup s g y)⁻¹) s := by
         have := h_log_at.comp s h_inner_at_s
-        simpa [mul_comm] using this
+        simpa [mul_comm, Function.comp_def] using this
       -- Now d/ds [P_s g y * log(P_s g y)] = hPsy s y * log(P_s g y) + P_s g y * (hPsy s y / P_s g y)
       --                                    = hPsy s y * (log(P_s g y) + 1).
       have h_prod : HasDerivAt (fun u => ouSemigroup u g y * Real.log (ouSemigroup u g y))

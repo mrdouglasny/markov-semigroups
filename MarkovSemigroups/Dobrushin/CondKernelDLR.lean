@@ -186,11 +186,13 @@ private lemma lintegral_fiberMeasure_eq_measure
   have hA' : MeasurableSet ((prodEquiv N_f) '' A) :=
     (prodEquiv N_f).measurableSet_image.mpr hA
   -- {ω | (b, ω) ∈ e '' A} = Prod.mk b ⁻¹' (e '' A) definitionally
-  convert Measure.lintegral_condKernel_mem hA' using 1
-  -- ρ (e '' A) = μ A
-  rw [Measure.map_apply (prodEquiv N_f).measurable hA']
-  congr 1
-  exact ((prodEquiv N_f).preimage_image A).symm
+  -- `Prod.mk b ⁻¹' s` and `{y | (b, y) ∈ s}` are definitionally equal, so the
+  -- disintegration lemma closes the goal directly once its RHS `ρ (e '' A)` is
+  -- rewritten to `μ A`.
+  have hmain := Measure.lintegral_condKernel_mem (ρ := μ.map (prodEquiv N_f)) hA'
+  rw [Measure.map_apply (prodEquiv N_f).measurable hA',
+      (prodEquiv N_f).preimage_image A] at hmain
+  exact hmain
 
 /-- The RHS integral after disintegration -/
 private lemma integral_condDist_fiberMeasure_eq

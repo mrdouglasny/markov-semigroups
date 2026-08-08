@@ -482,9 +482,10 @@ theorem exists_maximal_coupling (μ ν : Measure X)
     have hdiag_ne : ∀ (m : Measure X), (m.map diag) {p : X × X | p.1 ≠ p.2} = 0 := by
       intro m
       rw [Measure.map_apply hdiag hne_meas]
-      convert m.empty
-      ext x
-      simp [diag, mem_preimage, mem_setOf_eq]
+      have hset : diag ⁻¹' {p : X × X | p.1 ≠ p.2} = (∅ : Set X) := by
+        ext x
+        simp [diag, mem_preimage, mem_setOf_eq]
+      rw [hset, measure_empty]
     -- Step 2: γ is supported on sᶜ, β is supported on s
     -- Therefore (γ.prod β) is supported on sᶜ × s ⊆ {p | p.1 ≠ p.2}
     have hγ_support : ∀ A, MeasurableSet A → γ (A ∩ s) = 0 := by

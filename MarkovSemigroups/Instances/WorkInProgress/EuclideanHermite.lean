@@ -560,7 +560,7 @@ theorem iteratedDeriv_ouSemigroup_pos (t : ℝ) (ht : 0 < t)
     have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
       hf_diff.differentiableAt.hasDerivAt
     have := h_f.comp y h_inner
-    simpa [mul_comm b (deriv f _)] using this
+    simpa [mul_comm b (deriv f _), Function.comp_def] using this
   have hf_xy_contDiff : ∀ x, ContDiff ℝ 1 (fun y => f (a * x + b * y)) := by
     intro x
     have h_inner : ContDiff ℝ 1 (fun y : ℝ => a * x + b * y) :=
