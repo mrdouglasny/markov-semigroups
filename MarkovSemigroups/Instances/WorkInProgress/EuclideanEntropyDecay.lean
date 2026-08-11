@@ -96,7 +96,7 @@ def regularizedSquare {f : ℝ → ℝ} (hf : IsCore f) {M : ℝ}
     have hf_deriv : HasDerivAt f (deriv f x) x := hf_diff.hasDerivAt
     -- HasDerivAt (f^2) at x with value 2 * f x * deriv f x.
     have hf_sq : HasDerivAt (fun y => f y ^ 2) (2 * f x ^ 1 * deriv f x) x := by
-      simpa using hf_deriv.pow 2
+      simpa [Pi.pow_def] using hf_deriv.pow 2
     -- Adding the constant ε.
     have hf_sq_add : HasDerivAt (fun y => f y ^ 2 + ε) (2 * f x ^ 1 * deriv f x) x :=
       hf_sq.add_const ε
@@ -549,7 +549,7 @@ theorem ouSemigroup_entropy_sq_decay_bound_proved (f : ℝ → ℝ) (t : ℝ) (h
         intro x
         have hf_deriv : HasDerivAt f (deriv f x) x := (hf_diff x).hasDerivAt
         have hf_sq : HasDerivAt (fun y => f y ^ 2) (2 * f x ^ 1 * deriv f x) x := by
-          simpa using hf_deriv.pow 2
+          simpa [Pi.pow_def] using hf_deriv.pow 2
         have h := hf_sq.add_const ε
         have := h.deriv
         show deriv g_ε x = 2 * f x * deriv f x
@@ -1058,7 +1058,7 @@ def bakryEmerySpace : BakryEmerySpace ℝ where
     ouSemigroup_l2_decay_bound f t ht hf
   semigroup_l2_sq_hasDerivWithinAt := fun f t ht hf => by
     have h := ouSemigroup_l2_sq_hasDerivWithinAt_proved f t ht hf
-    simpa [ouGamma] using h
+    exact h
   semigroup_ergodic := fun f hf => ouSemigroup_ergodic f hf
   semigroup_entropy_sq_decay_bound := fun f t ht hf =>
     ouSemigroup_entropy_sq_decay_bound_proved f t ht hf

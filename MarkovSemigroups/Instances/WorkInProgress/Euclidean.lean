@@ -114,8 +114,9 @@ theorem ou_kernel_map (t : ℝ) (ht : 0 ≤ t) :
         = gaussianReal 0 1
     congr 1
     · simp
-    · simp only [mul_one]
-      exact NNReal.eq (by simp [NNReal.coe_add, NNReal.coe_mk]; exact hab_real)
+    · apply NNReal.eq
+      show a ^ 2 * 1 + b ^ 2 * 1 = 1
+      linarith [hab_real]
   exact hmap.trans hgoal
 
 /-! ## DirichletSpace instance -/
@@ -460,13 +461,12 @@ theorem gaussian2D_orthogonal_invariance
           (Measure.map (WithLp.toLp 2)
             (Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ))) =
         Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ) := by
-    simpa [ew] using
-      (MeasurableEquiv.map_map_symm
+    exact MeasurableEquiv.map_map_symm
         (ν := Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ))
-        ew)
+        ew
   have hback_right :
       Measure.map WithLp.ofLp (Measure.map (WithLp.toLp 2) (γ.prod γ)) = γ.prod γ := by
-    simpa [ew] using (MeasurableEquiv.map_map_symm (ν := γ.prod γ) ew)
+    exact MeasurableEquiv.map_map_symm (ν := γ.prod γ) ew
   calc
     Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ)
         = Measure.map WithLp.ofLp
@@ -546,7 +546,7 @@ theorem hasDerivAt_ouSemigroup_C1 (t : ℝ) {f : ℝ → ℝ}
     have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
       (hf_C1.differentiable (by simp)).differentiableAt.hasDerivAt
     have := h_f.comp x h_inner
-    simpa [mul_comm a (deriv f _)] using this
+    simpa [mul_comm a (deriv f _), Function.comp_def] using this
   obtain ⟨_, h_deriv⟩ :=
     hasDerivAt_integral_of_dominated_loc_of_deriv_le hs
       (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bound h_bound_int h_diff
@@ -601,8 +601,8 @@ theorem hasDerivAt_deriv_ouSemigroup (t : ℝ) {f : ℝ → ℝ} (hf : IsCore f)
   -- Goal: HasDerivAt (fun x => e^{-t} * P_t(f') x) (e^{-2t} * P_t(f'') x₀) x₀.
   have h := h_inner.const_mul (Real.exp (-t))
   -- h : HasDerivAt (fun x => e^{-t} * P_t(f') x) (e^{-t} * (e^{-t} * P_t(f'') x₀)) x₀.
-  convert h using 1
-  -- e^{-2t} * P_t(f'') x₀ = e^{-t} * (e^{-t} * P_t(f'') x₀)
+  refine h.congr_deriv ?_
+  -- e^{-t} * (e^{-t} * P_t(f'') x₀) = e^{-2t} * P_t(f'') x₀
   rw [show Real.exp (-2 * t) = Real.exp (-t) * Real.exp (-t) from by
     rw [show (-2 * t : ℝ) = -t + -t from by ring, Real.exp_add]]
   ring
@@ -967,10 +967,9 @@ theorem ouSemigroup_compose (s t : ℝ) (hs : 0 ≤ s) (ht : 0 ≤ t) {f : ℝ �
       gaussianReal 0 ⟨1 - Real.exp (-2 * (s + t)), hbst_nn⟩ := by
     congr 1
     · simp
-    · simp only [mul_one]
-      apply NNReal.eq
-      simp only [NNReal.coe_add, NNReal.coe_mk]
-      exact h_var_eq
+    · apply NNReal.eq
+      show (at_ * bs) ^ 2 * 1 + bt ^ 2 * 1 = 1 - Real.exp (-2 * (s + t))
+      linarith [h_var_eq]
   replace hΨ_law := hΨ_law.trans h_eq
   -- hΨ_law: (γ.prod γ).map Ψ = N(0, 1-exp(-2(s+t)))
   -- Step 4: γ.map (fun z => bst * z) = N(0, bst²) = N(0, 1-exp(-2(s+t))).

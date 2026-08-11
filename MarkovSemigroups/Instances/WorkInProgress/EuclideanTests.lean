@@ -282,7 +282,7 @@ theorem cos_isCore : IsCore Real.cos := by
     funext y
     have h1 : HasDerivAt (fun z => -Real.sin z) (-Real.cos y) y := by
       have := (Real.hasDerivAt_sin y).neg
-      simpa using this
+      exact this
     exact h1.deriv
   refine ⟨h_cos, ?_, ?_⟩
   · rw [h_dcos]
@@ -399,7 +399,7 @@ theorem hasDerivAt_V_gauss (x : ℝ) : HasDerivAt V_gauss x x := by
   have h₁ : HasDerivAt (fun z : ℝ => z ^ 2) (2 * x) x := by
     simpa using hasDerivAt_pow 2 x
   have h₂ := h₁.div_const 2
-  convert h₂ using 1; ring
+  exact h₂.congr_deriv (by ring)
 
 theorem contDiff_V_gauss : ContDiff ℝ 2 V_gauss := by
   unfold V_gauss; fun_prop

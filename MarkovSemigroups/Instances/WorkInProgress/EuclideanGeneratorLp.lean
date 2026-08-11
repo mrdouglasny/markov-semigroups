@@ -190,7 +190,7 @@ private theorem gaussianFin_integrationByParts_coord {n : ℕ}
                   exact mul_le_mul_of_nonneg_left hpartial hMg0
       _ = (Mg * Mf) * |p.1| := by ring
   have hA_int : Integrable A (Gaussian1D.γ.prod (γFin n)) := by
-    simpa [A, mul_sub] using hA1_int.sub hA2_int
+    simpa [A, mul_sub, Pi.sub_def] using hA1_int.sub hA2_int
   have hB_int : Integrable B (Gaussian1D.γ.prod (γFin n)) := by
     refine Integrable.mono' (integrable_const (Mg * Mf))
       ((((IsCoreFin.partial_measurable hg_core i).comp hφ_meas).mul
@@ -334,10 +334,10 @@ theorem gaussianFin_integrationByParts {n : ℕ}
               (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)) := by
   have hf : IsCoreFin f := by
     refine ⟨hf_smooth, Mf, ?_⟩
-    simpa [partialDeriv, secondPartial] using hf_bd
+    exact hf_bd
   have hg : IsCoreFin g := by
     refine ⟨hg_smooth, Mg, ?_⟩
-    simpa [partialDeriv, secondPartial] using hg_bd
+    exact hg_bd
   have hMf0 : (0 : ℝ) ≤ Mf := le_trans (norm_nonneg _) ((hf_bd (fun _ => 0)).1)
   have hMg0 : (0 : ℝ) ≤ Mg := le_trans (norm_nonneg _) ((hg_bd (fun _ => 0)).1)
   change ∫ x, g x *
@@ -391,7 +391,7 @@ theorem gaussianFin_integrationByParts {n : ℕ}
                   _ ≤ Mg * (|x i| * Mf) := by
                           exact mul_le_mul_of_nonneg_left hpartial hMg0
             _ = (Mg * Mf) * |x i| := by ring
-        simpa [mul_sub] using hA.sub hB
+        simpa [mul_sub, Pi.sub_def] using hA.sub hB
       have hsum_int :
           ∀ i ∈ (Finset.univ : Finset (Fin (m + 1))),
             Integrable (fun x => g x * (secondPartial i f x - x i * partialDeriv i f x))
@@ -450,9 +450,9 @@ theorem ouGeneratorFin_ibp_integral {f g : (Fin n → ℝ) → ℝ}
     ∫ x, g x * ouGeneratorFin f x ∂γFin n = - ouEnergyFin g f := by
   obtain ⟨hsf, Mf, hMf⟩ := hf
   obtain ⟨hsg, Mg, hMg⟩ := hg
-  simpa only [ouGeneratorFin_apply, ouEnergyFin, ouGammaFin, γFin,
-    Gaussian1D.γ, secondPartial, partialDeriv] using
-    gaussianFin_integrationByParts (n := n) f g hsf Mf hMf hsg Mg hMg
+  simp only [ouGeneratorFin_apply, ouEnergyFin, ouGammaFin, γFin,
+    Gaussian1D.γ, secondPartial, partialDeriv]
+  exact gaussianFin_integrationByParts (n := n) f g hsf Mf hMf hsg Mg hMg
 
 /-- **G4 — nD Gaussian integration by parts (inner-product form).**
 For core `f, g`: `⟪g, ouGeneratorFin f⟫_{L²(γFin n)} = -ouEnergyFin g f`.

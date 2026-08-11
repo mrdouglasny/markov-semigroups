@@ -90,7 +90,7 @@ theorem hasDerivAt_grossExponent (ρ p s : ℝ) :
     simpa using ((hasDerivAt_id s).const_mul (2 * ρ))
   have hexp : HasDerivAt (fun s : ℝ => Real.exp (2 * ρ * s))
       (Real.exp (2 * ρ * s) * (2 * ρ)) s := by
-    simpa using (Real.hasDerivAt_exp (2 * ρ * s)).comp s hbase
+    simpa [Function.comp_def] using (Real.hasDerivAt_exp (2 * ρ * s)).comp s hbase
   have hcomb : HasDerivAt (fun s : ℝ => 1 + (p - 1) * Real.exp (2 * ρ * s))
       ((p - 1) * (Real.exp (2 * ρ * s) * (2 * ρ))) s :=
     (hexp.const_mul (p - 1)).const_add 1
@@ -388,7 +388,7 @@ theorem hasDerivAt_abs_rpow_exponent (c : ℝ) {a : ℝ → ℝ} {a' s : ℝ}
     have hmul : HasDerivAt (fun σ => Real.log |c| * a σ)
         (Real.log |c| * a') s := ha.const_mul _
     have hexp := (Real.hasDerivAt_exp (Real.log |c| * a s)).comp s hmul
-    convert hexp using 1
+    refine hexp.congr_deriv ?_
     rw [Real.rpow_def_of_pos hc]; ring
 
 /-- **General (Mathlib-native): parametric `rpow`-exponent Leibniz.**
@@ -674,8 +674,8 @@ lemma hasDerivAt_rpow_mul_log {r v : ℝ} (hv : 0 < v) :
     Real.hasDerivAt_rpow_const (Or.inl (ne_of_gt hv))
   have h2 : HasDerivAt Real.log v⁻¹ v := Real.hasDerivAt_log (ne_of_gt hv)
   have h3 := h1.mul h2
-  convert h3 using 1
-  -- Goal: v^(r-1)·(r·log v + 1) = r·v^(r-1)·log v + v^r·v⁻¹.
+  refine h3.congr_deriv ?_
+  -- Goal: r·v^(r-1)·log v + v^r·v⁻¹ = v^(r-1)·(r·log v + 1).
   have hvr : v ^ r * v⁻¹ = v ^ (r - 1) := by
     rw [← Real.rpow_neg_one v, ← Real.rpow_add hv, sub_eq_add_neg]
   rw [hvr]; ring
@@ -1676,7 +1676,8 @@ theorem grossPow_hasDerivWithinAt
   have h_d2H' : HasDerivAt
       (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
       (2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s) s := by
-    convert h_d2H using 1
+    refine h_d2H.congr_deriv ?_
+    rw [grossLogIntegral, hu_s_func_def]
   -- Step ∂₁H: varying orbit, frozen exponent. Use ψ := Real.rpow · q(s)
   -- (which is ContDiff ℝ 1 globally for q(s) ≥ 1; on the positive-orbit set,
   -- it equals |·|^{q(s)} a.e.).
@@ -1822,7 +1823,7 @@ theorem grossPow_hasDerivWithinAt
               ((MemLp.sub (Lp.memLp _) (Lp.memLp _)).eLpNorm_lt_top.ne)]
             rfl
           rw [heq]
-          simpa using (ENNReal.continuous_ofReal.tendsto 0).comp h_dist
+          simpa [Function.comp_def] using (ENNReal.continuous_ofReal.tendsto 0).comp h_dist
         exact tendsto_integral_abs_of_tendsto_eLpNorm_two_zero D.μ
           (fun σ y => ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
             - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y)
@@ -2049,7 +2050,7 @@ theorem grossLogNorm_hasDerivWithinAt
   -- 1/q has within-derivative `-(q')/q²`.
   have hinv : HasDerivWithinAt (fun s => (grossExponent ρ p s)⁻¹)
       (-(2 * ρ * (q - 1)) / q ^ 2) (Set.Ici 0) s := by
-    simpa using hq.inv hqne
+    exact hq.inv hqne
   -- F = grossPow has within-derivative `F' = grossPowDeriv`.
   have hF : HasDerivWithinAt (grossPow D hf ρ p)
       (grossPowDeriv D hf h_core ρ p s) (Set.Ici 0) s :=
@@ -2059,8 +2060,8 @@ theorem grossLogNorm_hasDerivWithinAt
       (fun s => Real.log (grossPow D hf ρ p s))
       ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s)
       (Set.Ici 0) s := by
-    simpa [mul_comm] using
-      (Real.hasDerivAt_log hFne).comp_hasDerivWithinAt s hF
+    refine ((Real.hasDerivAt_log hFne).comp_hasDerivWithinAt s hF).congr_deriv ?_
+    ring
   -- Λ = (1/q) · log F by the product rule; reconcile the chain value
   -- with `grossLogNormDeriv` via the entropy identity.
   have hmul := hinv.mul hlog
@@ -2078,7 +2079,7 @@ theorem grossLogNorm_hasDerivWithinAt
         + (grossExponent ρ p s)⁻¹
           * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s))
       (Set.Ici 0) s := by
-    simpa [grossLogNorm] using hmul
+    exact hmul
   rwa [hval] at this
 
 /-! ## P3 — algebraic closure -/

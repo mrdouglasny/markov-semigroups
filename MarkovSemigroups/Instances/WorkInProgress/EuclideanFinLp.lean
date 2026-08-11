@@ -481,11 +481,14 @@ private theorem integralProdRightL2_coeFn_ae
           Prod.fst ⁻¹' s = s ×ˢ (Set.univ : Set (Fin n → ℝ)) := by
         ext z
         simp
-      simpa [fstPullL2, hs_prod, hpre]
-        using
-          (MeasureTheory.Lp.indicatorConstLp_compMeasurePreserving
-            (p := 2) (f := Prod.fst) (μ := (γFin n).prod (γFin n)) (μb := γFin n)
-            (hs := hs) (hμs := hμs.ne) (c := (1 : ℝ)) measurePreserving_fst)
+      have hcomp :=
+        MeasureTheory.Lp.indicatorConstLp_compMeasurePreserving
+          (p := 2) (f := Prod.fst) (μ := (γFin n).prod (γFin n)) (μb := γFin n)
+          (hs := hs) (hμs := hμs.ne) (c := (1 : ℝ)) measurePreserving_fst
+      -- Line up the sets, then close by defeq: `fstPullL2` is
+      -- `compMeasurePreservingₗᵢ`, whose coercion is `compMeasurePreserving`.
+      simp only [fstPullL2, hpre] at hcomp ⊢
+      exact hcomp
     rw [hfst_indicator]
     have hinner_prod :
         inner ℝ
@@ -541,15 +544,14 @@ theorem ouSemigroupFinLpNonneg_coeFn_ae (t : ℝ) (ht : 0 ≤ t)
       ((mixPullL2 (n := n) t ht f : Lp ℝ 2 ((γFin n).prod (γFin n))) :
           ((Fin n → ℝ) × (Fin n → ℝ)) → ℝ) =ᵐ[((γFin n).prod (γFin n))]
         fun z => f (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) z) := by
-    simpa [mixPullL2, hmp] using
+    simpa [mixPullL2, hmp, Function.comp_def] using
       (MeasureTheory.Lp.coeFn_compMeasurePreserving (g := f) (hf := hmp))
   have hsec :
     ∀ᵐ x ∂γFin n,
       (fun y => ((mixPullL2 (n := n) t ht f :
         Lp ℝ 2 ((γFin n).prod (γFin n))) : ((Fin n → ℝ) × (Fin n → ℝ)) → ℝ) (x, y)) =ᵐ[γFin n]
         (fun y => f (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) (x, y))) := by
-    simpa [Function.curry] using
-      (MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod)
+    exact MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
   filter_upwards [hsec] with x hx
   rw [ouSemigroupFin]
   exact integral_congr_ae hx
@@ -1020,7 +1022,7 @@ private theorem ouSemigroupFin_ae_eq_of_aeEq (t : ℝ) (ht : 0 ≤ t)
       ∀ᵐ x ∂γFin n,
         (fun y => f (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) (x, y))) =ᵐ[γFin n]
         (fun y => g (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) (x, y))) := by
-    simpa [Function.curry] using MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
+    exact MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
   filter_upwards [hsec] with x hx
   rw [ouSemigroupFin, ouSemigroupFin]
   exact integral_congr_ae hx

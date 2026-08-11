@@ -237,7 +237,7 @@ theorem canonicalMaximalCoupling_compact_fst
   unfold canonicalMaximalCoupling_compact
   rw [Measure.map_add _ _ measurable_fst]
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.fst = μ ⊓ ν := by
-    rw [Measure.map_map measurable_fst measurable_diag]; convert Measure.map_id using 2
+    rw [Measure.map_map measurable_fst measurable_diag]; convert Measure.map_id using 2; rfl
   rw [hd, Measure.map_smul]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.fst =
       (ν - μ ⊓ ν) Set.univ • (μ - μ ⊓ ν) := Measure.map_fst_prod
@@ -259,7 +259,7 @@ theorem canonicalMaximalCoupling_compact_snd
   unfold canonicalMaximalCoupling_compact
   rw [Measure.map_add _ _ measurable_snd]
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.snd = μ ⊓ ν := by
-    rw [Measure.map_map measurable_snd measurable_diag]; convert Measure.map_id using 2
+    rw [Measure.map_map measurable_snd measurable_diag]; convert Measure.map_id using 2; rfl
   rw [hd, Measure.map_smul]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.snd =
       (μ - μ ⊓ ν) Set.univ • (ν - μ ⊓ ν) := Measure.map_snd_prod
