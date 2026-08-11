@@ -9,12 +9,12 @@ autoImplicit = false
 [[require]]
 name = "HilleYosida"
 git = "https://github.com/FredRaj3/hille-yosida.git"
-rev = "6bcced5a792dbb032da56b736e6fa9d1e3f29efd"
+rev = "e6a6d59817afcfe8348e9da3e022638e0273c98d"
 
 [[require]]
 name = "SpectralPositivity"
 git = "https://github.com/FredRaj3/spectral-positivity.git"
-rev = "d83bc9c71dcfcd2d5d432ad1131e09b141703f1c"
+rev = "270b2084ddb337b2d46fd2d14b0df291c6ec6a3d"
 
 [[require]]
 name = "mathlib"
