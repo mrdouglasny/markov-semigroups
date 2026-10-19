@@ -90,7 +90,7 @@ theorem hasDerivAt_grossExponent (ρ p s : ℝ) :
     simpa using ((hasDerivAt_id s).const_mul (2 * ρ))
   have hexp : HasDerivAt (fun s : ℝ => Real.exp (2 * ρ * s))
       (Real.exp (2 * ρ * s) * (2 * ρ)) s := by
-    simpa using (Real.hasDerivAt_exp (2 * ρ * s)).comp s hbase
+    simpa using! (Real.hasDerivAt_exp (2 * ρ * s)).comp s hbase
   have hcomb : HasDerivAt (fun s : ℝ => 1 + (p - 1) * Real.exp (2 * ρ * s))
       ((p - 1) * (Real.exp (2 * ρ * s) * (2 * ρ))) s :=
     (hexp.const_mul (p - 1)).const_add 1
@@ -159,7 +159,7 @@ lemma orbitCoreRep_spec (D : DirichletMarkovSemigroup X) {f : X → ℝ}
     ∃ hg' : D.IsCore (orbitCoreRep D hf h_core s),
       D.P s (D.coreToL2 hf) = D.coreToL2 hg' := by
   unfold orbitCoreRep
-  rw [dif_pos hs]
+  rw [dite_eq_left hs]
   exact (h_core s hs hf).choose_spec
 
 /-- The Gross derivative value
@@ -389,6 +389,7 @@ theorem hasDerivAt_abs_rpow_exponent (c : ℝ) {a : ℝ → ℝ} {a' s : ℝ}
         (Real.log |c| * a') s := ha.const_mul _
     have hexp := (Real.hasDerivAt_exp (Real.log |c| * a s)).comp s hmul
     convert hexp using 1
+    · rfl
     rw [Real.rpow_def_of_pos hc]; ring
 
 /-- **General (Mathlib-native): parametric `rpow`-exponent Leibniz.**
@@ -634,10 +635,10 @@ lemma exists_hasDerivAt_eq_slope_uIcc {f f' : ℝ → ℝ} {a b : ℝ}
 
 /-- For a real-valued function, the integral of the absolute value is the `L¹` seminorm. -/
 lemma integral_abs_eq_eLpNorm_one_toReal {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
-    {f : Y → ℝ} (hf : Integrable (fun y => |f y|) ν) :
+    {f : Y → ℝ} (hf : Integrable (fun y => |f y|) ν) (hf_meas : AEStronglyMeasurable f ν) :
     ∫ y, |f y| ∂ν = (eLpNorm f 1 ν).toReal := by
   rw [integral_eq_lintegral_of_nonneg_ae (Filter.Eventually.of_forall fun _ => abs_nonneg _) hf.aestronglyMeasurable,
-    eLpNorm_one_eq_lintegral_enorm]
+    eLpNorm_one_eq_lintegral_enorm hf_meas]
   congr 1
   apply lintegral_congr_ae
   filter_upwards with y
@@ -657,12 +658,12 @@ lemma tendsto_integral_abs_of_tendsto_eLpNorm_two_zero {ι Y : Type*}
       exact bot_le
     · intro i
       exact eLpNorm_le_eLpNorm_of_exponent_le (μ := ν) (p := (1 : ℝ≥0∞)) (q := (2 : ℝ≥0∞))
-        (by norm_num) (hF_meas i)
+        (by norm_num)
   have hF_one_real : Filter.Tendsto (fun i => (eLpNorm (F i) 1 ν).toReal) l (nhds 0) := by
     exact (ENNReal.continuousAt_toReal ENNReal.zero_ne_top).tendsto.comp hF_one
   have heq : ∀ᶠ i in l, ∫ y, |F i y| ∂ν = (eLpNorm (F i) 1 ν).toReal := by
     filter_upwards [hF_int] with i hi
-    exact integral_abs_eq_eLpNorm_one_toReal hi
+    exact integral_abs_eq_eLpNorm_one_toReal hi (hF_meas i)
   exact hF_one_real.congr' <| heq.mono fun i hi => hi.symm
 
 /-- **Pointwise derivative of `v ↦ v^r · log v` for `v > 0`.**
@@ -892,7 +893,7 @@ lemma uniformIntegrable_two_of_ae_bound {ι Y : Type*}
     eLpNorm ({x : Y | K + 1 ≤ ‖f i x‖₊}.indicator (f i)) 2 ν
         = eLpNorm (0 : Y → ℝ) 2 ν := eLpNorm_congr_ae hempty
     _ = 0 := by simp
-    _ ≤ ENNReal.ofReal ε := by positivity
+    _ ≤ ε := by positivity
 
 /-- **Pointwise FTC: averaged-derivative form of the increment.** For `ψ : ℝ → ℝ`
 of class `C¹` and any two reals `a, b`,
@@ -1348,7 +1349,7 @@ lemma averagedDerivField_tendsto_eLpNorm
   -- UnifIntegrable + UnifTight from UI / finite measure.
   have hui_τ : UnifIntegrable
       (fun n => (averagedDerivField u ψ (σ_seq (n + N)) s : Y → ℝ)) 2 ν :=
-    hUI.2.1
+    hUI.1
   have hut_τ : UnifTight
       (fun n => (averagedDerivField u ψ (σ_seq (n + N)) s : Y → ℝ)) 2 ν := by
     intro ε _
@@ -1442,7 +1443,7 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
       (nhdsWithin s (Set.Ici 0)) (nhds 0) := by
     refine Filter.Tendsto.congr' ?_ hVitali
     filter_upwards [h_u_bound] with σ hσ
-    simp only [M_Lp, dif_pos hσ]
+    simp only [M_Lp, dite_eq_left hσ]
     apply eLpNorm_congr_ae
     filter_upwards [(averagedDerivField_memLp_two
       hψ hψ_bound hσ h_u_s_bound).coeFn_toLp] with y hy
@@ -1465,7 +1466,7 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
   -- 6. Slope-filter is included in the nhdsWithin filter: 𝓝[Set.Ici 0 \ {s}] s ≤ 𝓝[Set.Ici 0] s.
   have hM_Lp_slopefilter : Filter.Tendsto M_Lp
       (nhdsWithin s (Set.Ici 0 \ {s})) (nhds g_Lp) :=
-    hM_Lp_tendsto.mono_left (nhdsWithin_mono _ Set.diff_subset)
+    hM_Lp_tendsto.mono_left (nhdsWithin_mono _ Set.sdiff_subset)
   -- 7. Filter.Tendsto.inner combines slope u s and M_Lp.
   have h_inner_tendsto : Filter.Tendsto
       (fun σ => @inner ℝ (Lp ℝ 2 ν) _ (slope u s σ) (M_Lp σ))
@@ -1508,7 +1509,7 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
   -- Eventually-σ: assemble (i) hσ ∈ Ici 0 \ {s}, (ii) hσ_bound : a.e. |u σ| ≤ M.
   have h_u_bd_diff : ∀ᶠ σ in nhdsWithin s (Set.Ici 0 \ {s}),
       ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M :=
-    h_u_bound.filter_mono (nhdsWithin_mono _ Set.diff_subset)
+    h_u_bound.filter_mono (nhdsWithin_mono _ Set.sdiff_subset)
   filter_upwards [self_mem_nhdsWithin, h_u_bd_diff] with σ hσ_diff hσ_bound
   have hσ_ne : σ ≠ s := hσ_diff.2
   have hΔ_ne : σ - s ≠ 0 := sub_ne_zero.mpr hσ_ne
@@ -1538,7 +1539,7 @@ theorem hasDerivWithinAt_integral_of_strongL2Deriv {Y : Type*}
       change (if h : ∀ᵐ y ∂ν, |(u σ : Y → ℝ) y| ≤ M then
           (averagedDerivField_memLp_two hψ hψ_bound h h_u_s_bound).toLp _
         else g_Lp) = _
-      rw [dif_pos hσ_bound]
+      rw [dite_eq_left hσ_bound]
     rw [hM_unfold]
     exact (averagedDerivField_memLp_two hψ hψ_bound hσ_bound h_u_s_bound).coeFn_toLp
   -- slope u s σ representative: =ᵐ (σ-s)⁻¹ * ((u σ) - (u s)).
@@ -1677,6 +1678,7 @@ theorem grossPow_hasDerivWithinAt
       (fun τ : ℝ => ∫ y, |u_s_func y| ^ grossExponent ρ p τ ∂D.μ)
       (2 * ρ * (grossExponent ρ p s - 1) * grossLogIntegral D hf ρ p s) s := by
     convert h_d2H using 1
+    rfl
   -- Step ∂₁H: varying orbit, frozen exponent. Use ψ := Real.rpow · q(s)
   -- (which is ContDiff ℝ 1 globally for q(s) ≥ 1; on the positive-orbit set,
   -- it equals |·|^{q(s)} a.e.).
@@ -1804,7 +1806,7 @@ theorem grossPow_hasDerivWithinAt
               - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y| ∂D.μ) l (nhds 0) := by
         have h_orbit_cont : Filter.Tendsto (fun σ => D.P σ (D.coreToL2 hf)) l
             (nhds (D.P s (D.coreToL2 hf))) :=
-          (hu_deriv.continuousWithinAt).mono_left (nhdsWithin_mono _ Set.diff_subset)
+          (hu_deriv.continuousWithinAt).mono_left (nhdsWithin_mono _ Set.sdiff_subset)
         have h_dist : Filter.Tendsto
             (fun σ => dist (D.P σ (D.coreToL2 hf)) (D.P s (D.coreToL2 hf))) l (nhds 0) :=
           tendsto_iff_dist_tendsto_zero.mp h_orbit_cont
@@ -1822,7 +1824,7 @@ theorem grossPow_hasDerivWithinAt
               ((MemLp.sub (Lp.memLp _) (Lp.memLp _)).eLpNorm_lt_top.ne)]
             rfl
           rw [heq]
-          simpa using (ENNReal.continuous_ofReal.tendsto 0).comp h_dist
+          simpa using! (ENNReal.continuous_ofReal.tendsto 0).comp h_dist
         exact tendsto_integral_abs_of_tendsto_eLpNorm_two_zero D.μ
           (fun σ y => ((D.P σ (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y
             - ((D.P s (D.coreToL2 hf) : Lp ℝ 2 D.μ) : X → ℝ) y)
@@ -1855,7 +1857,7 @@ theorem grossPow_hasDerivWithinAt
           ∧ (Hfun σ σ - Hfun σ s) / (σ - s) = gfun σ (cσ σ) := by
         filter_upwards [self_mem_nhdsWithin] with σ hσ_in
         have hex := h_mvt σ hσ_in.1 (by simpa using hσ_in.2)
-        have : cσ σ = hex.choose := by simp only [cσ, dif_pos hex]
+        have : cσ σ = hex.choose := by simp only [cσ, dite_eq_left hex]
         rw [this]; exact ⟨hex.choose_spec.1, hex.choose_spec.2⟩
       -- cσ σ → s (squeeze: |cσ σ − s| ≤ |σ − s| → 0).
       have hcσ_tendsto : Filter.Tendsto cσ l (nhds s) := by
@@ -2049,7 +2051,7 @@ theorem grossLogNorm_hasDerivWithinAt
   -- 1/q has within-derivative `-(q')/q²`.
   have hinv : HasDerivWithinAt (fun s => (grossExponent ρ p s)⁻¹)
       (-(2 * ρ * (q - 1)) / q ^ 2) (Set.Ici 0) s := by
-    simpa using hq.inv hqne
+    simpa using! hq.inv hqne
   -- F = grossPow has within-derivative `F' = grossPowDeriv`.
   have hF : HasDerivWithinAt (grossPow D hf ρ p)
       (grossPowDeriv D hf h_core ρ p s) (Set.Ici 0) s :=
@@ -2059,7 +2061,7 @@ theorem grossLogNorm_hasDerivWithinAt
       (fun s => Real.log (grossPow D hf ρ p s))
       ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s)
       (Set.Ici 0) s := by
-    simpa [mul_comm] using
+    simpa [mul_comm] using!
       (Real.hasDerivAt_log hFne).comp_hasDerivWithinAt s hF
   -- Λ = (1/q) · log F by the product rule; reconcile the chain value
   -- with `grossLogNormDeriv` via the entropy identity.
@@ -2078,7 +2080,7 @@ theorem grossLogNorm_hasDerivWithinAt
         + (grossExponent ρ p s)⁻¹
           * ((grossPow D hf ρ p s)⁻¹ * grossPowDeriv D hf h_core ρ p s))
       (Set.Ici 0) s := by
-    simpa [grossLogNorm] using hmul
+    simpa [grossLogNorm] using! hmul
   rwa [hval] at this
 
 /-! ## P3 — algebraic closure -/
@@ -2288,7 +2290,6 @@ theorem eLpNorm_orbit_le_of_core_pos
       ≤ eLpNorm ((D.P t (D.coreToL2 hf) : X → ℝ))
           (ENNReal.ofReal (grossExponent ρ p t)) D.μ :=
         eLpNorm_le_eLpNorm_of_exponent_le (ENNReal.ofReal_le_ofReal hqt)
-          (Lp.aestronglyMeasurable _)
     _ = ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p t)) := h_id t ht.le
     _ ≤ ENNReal.ofReal (Real.exp (grossLogNorm D hf ρ p 0)) :=
         ENNReal.ofReal_le_ofReal (Real.exp_le_exp.mpr
@@ -2342,9 +2343,9 @@ theorem gross_lsi_implies_hypercontractive_of_hypotheses
         = eLpNorm ((f : X → ℝ)) (ENNReal.ofReal p) D.μ := by
       have h1 : (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) =ᵐ[D.μ] fun x => ‖(f : X → ℝ) x‖ := by
         filter_upwards [Lp.coeFn_abs f] with x hx; rw [hx, Real.norm_eq_abs]
-      exact (eLpNorm_congr_ae h1).trans (eLpNorm_norm _)
+      exact (eLpNorm_congr_ae h1).trans (eLpNorm_norm _ (Lp.aestronglyMeasurable _))
     have habs_mem : MemLp (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ :=
-      ⟨Lp.aestronglyMeasurable _, by rw [heq_abs]; exact hf_mem.2⟩
+      memLp_iff.mpr (by rw [heq_abs]; exact hf_mem.eLpNorm_lt_top)
     -- `P_t` is monotone (positivity-preserving + linear).
     have hP_mono : ∀ {a b : Lp ℝ 2 D.μ}, a ≤ b → D.P t a ≤ D.P t b := by
       intro a b hab
@@ -2363,7 +2364,7 @@ theorem gross_lsi_implies_hypercontractive_of_hypotheses
       exact ⟨by linarith, h1⟩
     calc eLpNorm ((D.P t f : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ
         ≤ eLpNorm ((D.P t |f| : Lp ℝ 2 D.μ) : X → ℝ) (ENNReal.ofReal q) D.μ :=
-          eLpNorm_mono_ae_real hae
+          eLpNorm_mono_ae_real (Lp.aestronglyMeasurable _) hae
       _ ≤ eLpNorm (((|f| : Lp ℝ 2 D.μ)) : X → ℝ) (ENNReal.ofReal p) D.μ :=
           hmain |f| habs_mem (abs_nonneg f)
       _ = eLpNorm ((f : X → ℝ)) (ENNReal.ofReal p) D.μ := heq_abs
@@ -2387,11 +2388,13 @@ theorem gross_lsi_implies_hypercontractive_of_hypotheses
   obtain ⟨ns, hns_mono, hns_ae⟩ :=
     (tendstoInMeasure_of_tendsto_Lp h_orbit).exists_seq_tendsto_ae
   -- Fatou / lower semicontinuity of `eLpNorm` under a.e. convergence.
-  have hconv : ∀ z : X → ℝ, eLpNorm z (ENNReal.ofReal q) D.μ = eLpNorm' z q D.μ := fun z => by
-    rw [eLpNorm_eq_eLpNorm' (by positivity) ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq_pos.le]
+  have hconv : ∀ z : X → ℝ, AEStronglyMeasurable z D.μ →
+      eLpNorm z (ENNReal.ofReal q) D.μ = eLpNorm' z q D.μ := fun z hz => by
+    rw [eLpNorm_eq_eLpNorm' (by positivity) ENNReal.ofReal_ne_top hz,
+      ENNReal.toReal_ofReal hq_pos.le]
   have h_fatou := Lp.eLpNorm'_lim_le_liminf_eLpNorm' (μ := D.μ) (p := q) hq_pos
     (fun k => Lp.aestronglyMeasurable (D.P t (D.coreToL2 (hg (ns k))))) hns_ae
-  simp_rw [← hconv] at h_fatou
+  simp_rw [← hconv _ (Lp.aestronglyMeasurable _)] at h_fatou
   -- Termwise core bound (G3) and triangle inequality (for G4).
   have h_termwise : ∀ k, eLpNorm ((D.P t (D.coreToL2 (hg (ns k))) : Lp ℝ 2 D.μ) : X → ℝ)
       (ENNReal.ofReal q) D.μ ≤ eLpNorm (g (ns k)) (ENNReal.ofReal p) D.μ := by
@@ -2414,8 +2417,8 @@ theorem gross_lsi_implies_hypercontractive_of_hypotheses
       ≤ eLpNorm ((f₀ : X → ℝ)) (ENNReal.ofReal p) D.μ
         + eLpNorm ((f₀ : X → ℝ) - g (ns k)) (ENNReal.ofReal p) D.μ := by
     intro k
-    have hsub := eLpNorm_sub_le (μ := D.μ) (p := ENNReal.ofReal p) (Lp.aestronglyMeasurable f₀)
-      ((Lp.aestronglyMeasurable f₀).sub (D.IsCore_memLp (hg (ns k))).aestronglyMeasurable) hp1'
+    have hsub := eLpNorm_sub_le (μ := D.μ) (p := ENNReal.ofReal p) (f := (f₀ : X → ℝ))
+      (g := (f₀ : X → ℝ) - g (ns k)) hp1'
     rwa [show (f₀ : X → ℝ) - ((f₀ : X → ℝ) - g (ns k)) = g (ns k) from sub_sub_cancel _ _] at hsub
   -- `b k → ‖f₀‖_p` since `‖f₀ - g (ns k)‖_p → 0`.
   have hb_tendsto : Filter.Tendsto

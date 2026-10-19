@@ -287,7 +287,7 @@ lemma strong_cont_at (S : MarkovSemigroup X) (g : Lp ℝ 2 S.μ) {s : ℝ}
     -- dist (P σ g) (P σ (P (s-σ) g)) ≤ ‖P σ‖ · dist g (P (s-σ) g) ≤ dist g (P (s-σ) g) < ε.
     calc dist (S.P σ g) (S.P σ (S.P (s - σ) g))
         ≤ ‖S.P σ‖ * dist g (S.P (s - σ) g) := by
-          simpa [dist_eq_norm] using (S.P σ).lipschitz.norm_sub_le g (S.P (s - σ) g)
+          simpa [dist_eq_norm] using (S.P σ).lipschitzWith.norm_sub_le g (S.P (s - σ) g)
       _ ≤ dist g (S.P (s - σ) g) :=
           mul_le_of_le_one_left dist_nonneg (S.P_contraction σ hσ_in)
       _ = dist (S.P (s - σ) g) g := dist_comm _ _
@@ -312,7 +312,7 @@ lemma strong_cont_at (S : MarkovSemigroup X) (g : Lp ℝ 2 S.μ) {s : ℝ}
     rw [h_decomp]
     calc dist (S.P s (S.P (σ - s) g)) (S.P s g)
         ≤ ‖S.P s‖ * dist (S.P (σ - s) g) g := by
-          simpa [dist_eq_norm] using (S.P s).lipschitz.norm_sub_le (S.P (σ - s) g) g
+          simpa [dist_eq_norm] using (S.P s).lipschitzWith.norm_sub_le (S.P (σ - s) g) g
       _ ≤ dist (S.P (σ - s) g) g := mul_le_of_le_one_left dist_nonneg (S.P_contraction s hs)
       _ < ε := h_g_close
 

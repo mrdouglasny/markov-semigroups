@@ -163,7 +163,7 @@ theorem residual_mass_eq
   rw [hμ, hν]
 
 /-- The diagonal embedding is measurable. -/
-theorem measurable_diag : Measurable (fun a : S => (a, a)) :=
+theorem measurable_pair_self : Measurable (fun a : S => (a, a)) :=
   Measurable.prodMk measurable_id measurable_id
 
 /-- The overlap is dominated by both measures. -/
@@ -191,8 +191,8 @@ theorem canonicalMaximalCoupling_fst [Countable S] [MeasurableSingletonClass S]
   rw [Measure.map_add _ _ measurable_fst]
   -- Step 2: diagonal part
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.fst = μ ⊓ ν := by
-    rw [Measure.map_map measurable_fst measurable_diag]; convert Measure.map_id using 2
-  rw [hd, Measure.map_smul]
+    rw [Measure.map_map measurable_fst measurable_pair_self]; convert Measure.map_id using 2; rfl
+  rw [hd, Measure.map_smul _ measurable_fst.aemeasurable]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.fst =
       (ν - μ ⊓ ν) Set.univ • (μ - μ ⊓ ν) := Measure.map_fst_prod
   rw [hp, ← residual_mass_eq μ ν,
@@ -212,8 +212,8 @@ theorem canonicalMaximalCoupling_snd [Countable S] [MeasurableSingletonClass S]
   unfold canonicalMaximalCoupling
   rw [Measure.map_add _ _ measurable_snd]
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.snd = μ ⊓ ν := by
-    rw [Measure.map_map measurable_snd measurable_diag]; convert Measure.map_id using 2
-  rw [hd, Measure.map_smul]
+    rw [Measure.map_map measurable_snd measurable_pair_self]; convert Measure.map_id using 2; rfl
+  rw [hd, Measure.map_smul _ measurable_snd.aemeasurable]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.snd =
       (μ - μ ⊓ ν) Set.univ • (ν - μ ⊓ ν) := Measure.map_snd_prod
   rw [hp, inv_smul_smul_measure (measure_ne_top (μ - μ ⊓ ν) Set.univ) (ν - μ ⊓ ν)
@@ -316,8 +316,8 @@ theorem canonicalMaximalCoupling_ne
     have hne_meas : MeasurableSet {p : S × S | p.1 ≠ p.2} := measurableSet_diagonal.compl
     -- Diagonal part: 0
     have hdiag_ne : ((μ ⊓ ν).map (fun a => (a, a))) {p : S × S | p.1 ≠ p.2} = 0 := by
-      rw [Measure.map_apply measurable_diag hne_meas]
-      convert (μ ⊓ ν).empty
+      rw [Measure.map_apply measurable_pair_self hne_meas]
+      convert measure_empty (μ := μ ⊓ ν)
       ext x; simp
     -- Product part on {ne} = total mass of product (since diagonal has 0 mass)
     have hprod_ne : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)) {p : S × S | p.1 ≠ p.2} =
@@ -465,8 +465,8 @@ theorem canonicalMaximalCoupling_measurable
     exact measurable_const.sub (measurable_inf_coe f g hf hg _ MeasurableSet.univ)
   apply Measurable.add
   · -- Piece 1: x ↦ (f x ⊓ g x).map(diag) A = (f x ⊓ g x) (diag⁻¹' A)
-    simp_rw [Measure.map_apply measurable_diag hA]
-    exact measurable_inf_coe f g hf hg _ (measurable_diag hA)
+    simp_rw [Measure.map_apply measurable_pair_self hA]
+    exact measurable_inf_coe f g hf hg _ (measurable_pair_self hA)
   · -- Piece 2: x ↦ c(x)⁻¹ * ((f x - f x ⊓ g x).prod (g x - f x ⊓ g x)) A
     apply Measurable.mul hc_meas
     -- Convert product measure evaluation to a double tsum over singletons.

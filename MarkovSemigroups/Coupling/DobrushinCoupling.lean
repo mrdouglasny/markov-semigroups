@@ -157,7 +157,7 @@ private theorem tvDist_telescope_finset [Fintype I]
     have hset : {c : ℝ | ∃ A : Set S, MeasurableSet A ∧
         c = |(marginalAtSite (γ.condDist {z} (interp ∅)) z A).toReal -
              (marginalAtSite (γ.condDist {z} (interp ∅)) z A).toReal|} = {0} := by
-      ext c; simp only [Set.mem_setOf_eq, Set.mem_singleton_iff, sub_self, abs_zero]
+      ext c; simp only [Set.mem_ofPred_eq, Set.mem_singleton_iff, sub_self, abs_zero]
       constructor
       · rintro ⟨A, _, hc⟩; exact hc
       · intro hc; exact ⟨Set.univ, MeasurableSet.univ, hc⟩
@@ -288,7 +288,7 @@ theorem updateCoupling_disagree_preserve [Fintype I]
         {q : SpinConfig I S × SpinConfig I S | q.1 v ≠ q.2 v} =
       if p.1 v ≠ p.2 v then Set.univ else ∅ := by
       ext ⟨s1, s2⟩
-      simp only [Set.mem_preimage, Set.mem_setOf_eq, ne_eq,
+      simp only [Set.mem_preimage, Set.mem_ofPred_eq, ne_eq,
                   Function.update_of_ne hv]
       split_ifs with h <;> simp [h]
     rw [hpre]
@@ -303,7 +303,7 @@ theorem updateCoupling_disagree_preserve [Fintype I]
   have heq : (fun p : SpinConfig I S × SpinConfig I S =>
       if p.1 v ≠ p.2 v then (1 : ENNReal) else 0) =
       Set.indicator {p | p.1 v ≠ p.2 v} 1 := by
-    ext p; simp [Set.indicator_apply, Set.mem_setOf_eq]
+    ext p; simp [Set.indicator_apply, Set.mem_ofPred_eq]
   rw [heq, lintegral_indicator_one MeasurableSet.of_discrete]
 
 /-- The z-disagreement after a single-site update at z is bounded by the
@@ -344,7 +344,7 @@ theorem updateCoupling_contraction_at_z [Fintype I]
     rw [Measure.map_apply Measurable.of_discrete MeasurableSet.of_discrete]
     congr 1
     ext ⟨s1, s2⟩
-    simp only [Set.mem_preimage, Set.mem_setOf_eq, ne_eq,
+    simp only [Set.mem_preimage, Set.mem_ofPred_eq, ne_eq,
                Function.update_self]
   -- Step 3: Pointwise bound (ENNReal version)
   have h_ptwise_ennreal : ∀ p : SpinConfig I S × SpinConfig I S,
@@ -385,7 +385,7 @@ theorem updateCoupling_contraction_at_z [Fintype I]
         (fun p => ∑ w : I, ENNReal.ofReal (influenceCoeff γ z w *
           (if p.1 w = p.2 w then (0 : ℝ) else 1)))
       from funext h_ofReal_sum]
-    rw [lintegral_finset_sum _ (fun w _ => Measurable.of_discrete)]
+    rw [lintegral_finsetSum _ (fun w _ => Measurable.of_discrete)]
     congr 1; ext w
     -- Factor out constant
     have hfact : ∀ p : SpinConfig I S × SpinConfig I S,
@@ -407,7 +407,7 @@ theorem updateCoupling_contraction_at_z [Fintype I]
         ENNReal.ofReal (if p.1 w = p.2 w then (0 : ℝ) else 1)) =
         Set.indicator {p : SpinConfig I S × SpinConfig I S | p.1 w ≠ p.2 w} 1 := by
       ext p
-      simp only [Set.indicator, Set.mem_setOf_eq, ne_eq, Pi.one_apply]
+      simp only [Set.indicator, Set.mem_ofPred_eq, ne_eq, Pi.one_apply]
       by_cases h : p.1 w = p.2 w
       · simp [h, ENNReal.ofReal_zero]
       · simp [h, ENNReal.ofReal_one]
@@ -431,8 +431,7 @@ theorem updateCoupling_contraction_at_z [Fintype I]
     rw [Measure.bind_apply MeasurableSet.univ hf_meas.aemeasurable]
     have hf_univ : ∀ p, f p Set.univ = 1 := fun p => by
       haveI := hkernel_prob p.1 p.2
-      exact (Measure.isProbabilityMeasure_map
-        (Measurable.of_discrete).aemeasurable).measure_univ
+      exact (inferInstance : IsProbabilityMeasure (f p)).measure_univ
     simp_rw [hf_univ, lintegral_const, one_mul, measure_univ]
   have h_lhs_finite : (updateCoupling γ z P) {p | p.1 z ≠ p.2 z} ≠ ⊤ :=
     (measure_lt_top _ _).ne
@@ -573,7 +572,7 @@ theorem updateCoupling_isCoupling [Fintype I] [Countable S] [MeasurableSingleton
   have hf_prob : ∀ p, IsProbabilityMeasure (f p) := by
     intro p
     haveI := hkernel_prob p.1 p.2
-    exact Measure.isProbabilityMeasure_map (Measurable.of_discrete).aemeasurable
+    infer_instance
   -- The coupling kernel's first marginal relates to condDist via properness
   have hf_fst : ∀ p : SpinConfig I S × SpinConfig I S,
       (f p).map Prod.fst = γ.condDist {z} p.1 := by
@@ -793,7 +792,7 @@ theorem dobrushinCouplingList_contraction_last [Fintype I]
                          (marginalAtSite (γ.condDist {z}
                          (fun _ => Classical.arbitrary S)) z A).toReal|} = {0} := by
                      ext c_1
-                     simp only [Set.mem_setOf_eq, Set.mem_singleton_iff, sub_self, abs_zero]
+                     simp only [Set.mem_ofPred_eq, Set.mem_singleton_iff, sub_self, abs_zero]
                      exact ⟨fun ⟨_, _, h⟩ => h,
                             fun h => ⟨Set.univ, MeasurableSet.univ, h⟩⟩
                    rw [hset, csSup_singleton]⟩
@@ -812,7 +811,7 @@ theorem dobrushinCouplingList_contraction_last [Fintype I]
                 have hset : {c_1 : ℝ | ∃ A : Set S, MeasurableSet A ∧
                     c_1 = |(marginalAtSite (γ.condDist {z} τ) z A).toReal -
                            (marginalAtSite (γ.condDist {z} τ) z A).toReal|} = {0} := by
-                  ext c_1; simp only [Set.mem_setOf_eq, Set.mem_singleton_iff, sub_self, abs_zero]
+                  ext c_1; simp only [Set.mem_ofPred_eq, Set.mem_singleton_iff, sub_self, abs_zero]
                   constructor
                   · rintro ⟨_, _, hc1⟩; exact hc1
                   · intro hc1; exact ⟨Set.univ, MeasurableSet.univ, hc1⟩
@@ -1012,7 +1011,7 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
           ⋂ σ : SpinConfig I S,
             {ν : ProbabilityMeasure Ω |
               ((ν : Measure Ω) (f ⁻¹' {σ})).toReal = (target {σ}).toReal} := by
-        ext ν; simp only [Set.mem_setOf_eq, Set.mem_iInter]; constructor
+        ext ν; simp only [Set.mem_ofPred_eq, Set.mem_iInter]; constructor
         · intro h σ; rw [← Measure.map_apply Measurable.of_discrete
             MeasurableSet.of_discrete, h]
         · intro h
@@ -1058,7 +1057,7 @@ theorem dobrushin_iterated_coupling_fintype [Fintype I]
     -- with indicator functions, which are bounded continuous on discrete spaces.
     -- D is continuous on the whole ProbabilityMeasure space, hence on the coupling set.
     intro ν _
-    apply (continuous_finset_sum _ (fun z _ => ?_)).continuousAt.continuousWithinAt
+    apply (continuous_finsetSum _ (fun z _ => ?_)).continuousAt.continuousWithinAt
     -- Each ν ↦ ν(A).toReal is continuous for discrete Ω
     -- ν ↦ ν(A).toReal is continuous on ProbabilityMeasure Ω for discrete Ω.
     -- Proof: ν(A).toReal = ∫ 1_A dν where 1_A is a bounded continuous function

@@ -131,9 +131,9 @@ def toAbstract (h : ZegarlinskiCondition V c) :
     rw [show (Finset.univ : Finset Λ) = insert y (Finset.univ.erase y) from
           (Finset.insert_erase (Finset.mem_univ y)).symm,
         Finset.sum_insert (Finset.notMem_erase y _),
-        if_pos (rfl : y = y), zero_add]
+        ite_eq_left (rfl : y = y), zero_add]
     rw [Finset.sum_congr rfl
-      (fun x hx => if_neg (Finset.ne_of_mem_erase hx))]
+      (fun x hx => ite_eq_right (Finset.ne_of_mem_erase hx))]
     exact h.col_bound y
   row_summable _ :=
     summable_of_ne_finset_zero (s := Finset.univ)
@@ -144,9 +144,9 @@ def toAbstract (h : ZegarlinskiCondition V c) :
     rw [show (Finset.univ : Finset Λ) = insert x (Finset.univ.erase x) from
           (Finset.insert_erase (Finset.mem_univ x)).symm,
         Finset.sum_insert (Finset.notMem_erase x _),
-        if_pos (rfl : x = x), zero_add]
+        ite_eq_left (rfl : x = x), zero_add]
     rw [Finset.sum_congr rfl
-      (fun y hy => if_neg (Ne.symm (Finset.ne_of_mem_erase hy)))]
+      (fun y hy => ite_eq_right (Ne.symm (Finset.ne_of_mem_erase hy)))]
     exact h.row_bound x
 
 end ZegarlinskiCondition

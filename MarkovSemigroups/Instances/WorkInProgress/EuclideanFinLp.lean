@@ -482,7 +482,7 @@ private theorem integralProdRightL2_coeFn_ae
         ext z
         simp
       simpa [fstPullL2, hs_prod, hpre]
-        using
+        using!
           (MeasureTheory.Lp.indicatorConstLp_compMeasurePreserving
             (p := 2) (f := Prod.fst) (μ := (γFin n).prod (γFin n)) (μb := γFin n)
             (hs := hs) (hμs := hμs.ne) (c := (1 : ℝ)) measurePreserving_fst)
@@ -541,14 +541,14 @@ theorem ouSemigroupFinLpNonneg_coeFn_ae (t : ℝ) (ht : 0 ≤ t)
       ((mixPullL2 (n := n) t ht f : Lp ℝ 2 ((γFin n).prod (γFin n))) :
           ((Fin n → ℝ) × (Fin n → ℝ)) → ℝ) =ᵐ[((γFin n).prod (γFin n))]
         fun z => f (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) z) := by
-    simpa [mixPullL2, hmp] using
+    simpa [mixPullL2, hmp] using!
       (MeasureTheory.Lp.coeFn_compMeasurePreserving (g := f) (hf := hmp))
   have hsec :
     ∀ᵐ x ∂γFin n,
       (fun y => ((mixPullL2 (n := n) t ht f :
         Lp ℝ 2 ((γFin n).prod (γFin n))) : ((Fin n → ℝ) × (Fin n → ℝ)) → ℝ) (x, y)) =ᵐ[γFin n]
         (fun y => f (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) (x, y))) := by
-    simpa [Function.curry] using
+    simpa [Function.curry] using!
       (MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod)
   filter_upwards [hsec] with x hx
   rw [ouSemigroupFin]
@@ -1020,7 +1020,7 @@ private theorem ouSemigroupFin_ae_eq_of_aeEq (t : ℝ) (ht : 0 ≤ t)
       ∀ᵐ x ∂γFin n,
         (fun y => f (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) (x, y))) =ᵐ[γFin n]
         (fun y => g (mixCLM (n := n) (exp (-t)) (sqrt (1 - exp (-2 * t))) (x, y))) := by
-    simpa [Function.curry] using MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
+    simpa [Function.curry] using! MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
   filter_upwards [hsec] with x hx
   rw [ouSemigroupFin, ouSemigroupFin]
   exact integral_congr_ae hx
@@ -1347,7 +1347,7 @@ theorem ouSemigroupFinLp_strong_cont (f : Lp ℝ 2 (γFin n)) :
         + dist (hg_mem.toLp g) f := by
           gcongr
           simpa [dist_eq_norm, norm_sub_rev] using
-            (ouSemigroupFinLp (n := n) t).lipschitz.norm_sub_le f (hg_mem.toLp g)
+            (ouSemigroupFinLp (n := n) t).lipschitzWith.norm_sub_le f (hg_mem.toLp g)
     _ ≤ dist f (hg_mem.toLp g)
         + dist (ouSemigroupFinLp (n := n) t (hg_mem.toLp g)) (hg_mem.toLp g)
         + dist (hg_mem.toLp g) f := by

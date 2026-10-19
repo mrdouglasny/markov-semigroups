@@ -72,7 +72,7 @@ theorem memLp_ouGeneratorFin {f : (Fin n → ℝ) → ℝ} (hf : IsCoreFin f) :
   -- Drift part `∑ᵢ xᵢ ∂ᵢf`: each term is (Gaussian coordinate)·(bounded) ∈ `L²`.
   have hB : MemLp
       (∑ i : Fin n, fun x : Fin n → ℝ => x i * partialDeriv i f x) 2 (γFin n) := by
-    refine memLp_finset_sum' _ (fun i _ => ?_)
+    refine memLp_finsetSum' _ (fun i _ => ?_)
     have hsm : AEStronglyMeasurable
         (fun x : Fin n → ℝ => x i * partialDeriv i f x) (γFin n) :=
       (((measurable_pi_apply i).stronglyMeasurable).mul
@@ -190,7 +190,7 @@ private theorem gaussianFin_integrationByParts_coord {n : ℕ}
                   exact mul_le_mul_of_nonneg_left hpartial hMg0
       _ = (Mg * Mf) * |p.1| := by ring
   have hA_int : Integrable A (Gaussian1D.γ.prod (γFin n)) := by
-    simpa [A, mul_sub] using hA1_int.sub hA2_int
+    simpa [A, mul_sub] using! hA1_int.sub hA2_int
   have hB_int : Integrable B (Gaussian1D.γ.prod (γFin n)) := by
     refine Integrable.mono' (integrable_const (Mg * Mf))
       ((((IsCoreFin.partial_measurable hg_core i).comp hφ_meas).mul
@@ -334,10 +334,10 @@ theorem gaussianFin_integrationByParts {n : ℕ}
               (fun _ : Fin n => ProbabilityTheory.gaussianReal 0 1)) := by
   have hf : IsCoreFin f := by
     refine ⟨hf_smooth, Mf, ?_⟩
-    simpa [partialDeriv, secondPartial] using hf_bd
+    simpa [partialDeriv, secondPartial] using! hf_bd
   have hg : IsCoreFin g := by
     refine ⟨hg_smooth, Mg, ?_⟩
-    simpa [partialDeriv, secondPartial] using hg_bd
+    simpa [partialDeriv, secondPartial] using! hg_bd
   have hMf0 : (0 : ℝ) ≤ Mf := le_trans (norm_nonneg _) ((hf_bd (fun _ => 0)).1)
   have hMg0 : (0 : ℝ) ≤ Mg := le_trans (norm_nonneg _) ((hg_bd (fun _ => 0)).1)
   change ∫ x, g x *
@@ -391,7 +391,7 @@ theorem gaussianFin_integrationByParts {n : ℕ}
                   _ ≤ Mg * (|x i| * Mf) := by
                           exact mul_le_mul_of_nonneg_left hpartial hMg0
             _ = (Mg * Mf) * |x i| := by ring
-        simpa [mul_sub] using hA.sub hB
+        simpa [mul_sub] using! hA.sub hB
       have hsum_int :
           ∀ i ∈ (Finset.univ : Finset (Fin (m + 1))),
             Integrable (fun x => g x * (secondPartial i f x - x i * partialDeriv i f x))
@@ -427,7 +427,7 @@ theorem gaussianFin_integrationByParts {n : ℕ}
                   ring
         _ = ∑ i : Fin (m + 1),
               ∫ x, g x * (secondPartial i f x - x i * partialDeriv i f x) ∂γFin (m + 1) := by
-                rw [integral_finset_sum (s := Finset.univ) (f := fun i x =>
+                rw [integral_finsetSum (s := Finset.univ) (f := fun i x =>
                   g x * (secondPartial i f x - x i * partialDeriv i f x)) hsum_int]
         _ = ∑ i : Fin (m + 1),
               - ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
@@ -438,7 +438,7 @@ theorem gaussianFin_integrationByParts {n : ℕ}
               ∫ x, partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
                 simp
         _ = - ∫ x, ∑ i : Fin (m + 1), partialDeriv i g x * partialDeriv i f x ∂γFin (m + 1) := by
-                rw [integral_finset_sum (s := Finset.univ) (f := fun i x =>
+                rw [integral_finsetSum (s := Finset.univ) (f := fun i x =>
                   partialDeriv i g x * partialDeriv i f x) henergy_int]
 
 /-- **G4 — nD Gaussian integration by parts, integral form**
@@ -451,7 +451,7 @@ theorem ouGeneratorFin_ibp_integral {f g : (Fin n → ℝ) → ℝ}
   obtain ⟨hsf, Mf, hMf⟩ := hf
   obtain ⟨hsg, Mg, hMg⟩ := hg
   simpa only [ouGeneratorFin_apply, ouEnergyFin, ouGammaFin, γFin,
-    Gaussian1D.γ, secondPartial, partialDeriv] using
+    Gaussian1D.γ, secondPartial, partialDeriv] using!
     gaussianFin_integrationByParts (n := n) f g hsf Mf hMf hsg Mg hMg
 
 /-- **G4 — nD Gaussian integration by parts (inner-product form).**

@@ -217,7 +217,7 @@ theorem cov_entrywise_decay_nn
       intro heq
       rw [heq, h_refl] at hab
       exact Nat.lt_irrefl 0 (lt_trans Nat.one_pos hab)
-    rw [if_neg ha_ne_b, h_nn a b hab, zero_div]
+    rw [ite_eq_right ha_ne_b, h_nn a b hab, zero_div]
   -- Apply the dist-aware Neumann bound.
   have h_dist :
       (h_weak.toAbstract).neumannEntrywise x y
@@ -276,7 +276,7 @@ theorem cov_entrywise_decay_finite_range
       intro heq
       rw [heq, h_refl] at hab
       exact Nat.lt_irrefl 0 (lt_of_lt_of_le hR_pos hab.le)
-    rw [if_neg ha_ne_b, h_range a b hab, zero_div]
+    rw [ite_eq_right ha_ne_b, h_range a b hab, zero_div]
   have h_dist :
       (h_weak.toAbstract).neumannEntrywise x y
         ≤ h_weak.α ^ k / (1 - h_weak.α) :=

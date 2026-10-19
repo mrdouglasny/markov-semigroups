@@ -48,7 +48,7 @@ lemma tvDist_self {X : Type*} [MeasurableSpace X]
   have hset : {c : ℝ | ∃ A : Set X, MeasurableSet A ∧
       c = |(μ A).toReal - (μ A).toReal|} = {0} := by
     ext c
-    simp only [Set.mem_setOf_eq, Set.mem_singleton_iff, sub_self, abs_zero]
+    simp only [Set.mem_ofPred_eq, Set.mem_singleton_iff, sub_self, abs_zero]
     constructor
     · rintro ⟨A, _, hc⟩; exact hc
     · intro hc; exact ⟨Set.univ, MeasurableSet.univ, hc⟩
@@ -250,7 +250,7 @@ private lemma InteractionBound.influenceCoeff_eq_zero_of_not_isNeighbor
     influenceCoeff γ x y = 0 := by
   have hle := hIB.tv_bound x y
   have hne : ¬(isNeighbor x y = true) := by rw [h]; decide
-  rw [if_neg hne] at hle
+  rw [ite_eq_right hne] at hle
   linarith [influenceCoeff_nonneg γ x y]
 
 /-- InteractionBound gives influenceCoeff ≤ β for neighbors. -/
@@ -260,7 +260,7 @@ private lemma InteractionBound.influenceCoeff_le_beta
     influenceCoeff γ x y ≤ β := by
   have hle := hIB.tv_bound x y
   by_cases h : isNeighbor x y = true
-  · rw [if_pos h] at hle; exact hle
+  · rw [ite_eq_left h] at hle; exact hle
   · simp only [Bool.not_eq_true] at h
     rw [hIB.influenceCoeff_eq_zero_of_not_isNeighbor x y h]
     exact hIB.hβ_pos

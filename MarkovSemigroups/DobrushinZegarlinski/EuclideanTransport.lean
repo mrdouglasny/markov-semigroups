@@ -52,7 +52,11 @@ Downstream callers (e.g. `pphi2N`) need only one line:
 import Mathlib.Analysis.InnerProductSpace.PiL2
 import Mathlib.MeasureTheory.Constructions.BorelSpace.Basic
 import Mathlib.MeasureTheory.MeasurableSpace.Defs
-import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.Algebra.Order.Module.Field
+import Mathlib.Data.EReal.Inv
+import Mathlib.Tactic.Measurability
+import Mathlib.Topology.Algebra.InfiniteSum.Order
+import Mathlib.Topology.MetricSpace.Bounded
 import MarkovSemigroups.Dobrushin.Specification
 
 noncomputable section
@@ -105,7 +109,7 @@ instance isProbabilityMeasure_toEuclideanMeasure
     [IsProbabilityMeasure μ] :
     IsProbabilityMeasure (spec.toEuclideanMeasure μ) := by
   unfold toEuclideanMeasure
-  exact μ.isProbabilityMeasure_map measurable_euclideanEquiv_symm.aemeasurable
+  infer_instance
 
 /-- Explicit formula for the pushforward measure on a Borel set. -/
 lemma toEuclideanMeasure_apply

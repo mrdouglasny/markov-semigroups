@@ -32,7 +32,7 @@ theorem ouSemigroupFin_ae_eq_of_aeEq (t : ℝ) (ht : 0 ≤ t)
         (fun y => f (mixCLM (n := n) (Real.exp (-t)) (Real.sqrt (1 - Real.exp (-2 * t))) (x, y)))
           =ᵐ[γFin n]
         (fun y => g (mixCLM (n := n) (Real.exp (-t)) (Real.sqrt (1 - Real.exp (-2 * t))) (x, y))) := by
-    simpa [Function.curry] using MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
+    simpa [Function.curry] using! MeasureTheory.Measure.ae_ae_eq_curry_of_prod hprod
   filter_upwards [hsec] with x hx
   rw [ouSemigroupFin, ouSemigroupFin]
   exact integral_congr_ae hx
@@ -111,7 +111,7 @@ private theorem tendsto_ouSemigroupFinLp_right (t : ℝ) (ht : 0 ≤ t)
         (ouSemigroupFinLp (n := n) t v)
       ≤ ‖ouSemigroupFinLp (n := n) t‖ * dist (ouSemigroupFinLp (n := n) s v) v := by
           simpa [dist_eq_norm, norm_sub_rev] using
-            (ouSemigroupFinLp (n := n) t).lipschitz.norm_sub_le
+            (ouSemigroupFinLp (n := n) t).lipschitzWith.norm_sub_le
               (ouSemigroupFinLp (n := n) s v) v
     _ ≤ dist (ouSemigroupFinLp (n := n) s v) v := by
           exact mul_le_of_le_one_left (dist_nonneg)
@@ -150,7 +150,7 @@ private theorem tendsto_ouSemigroupFinLp_left {t : ℝ} (ht : 0 < t)
         (ouSemigroupFinLp (n := n) s (ouSemigroupFinLp (n := n) (t - s) v))
       ≤ ‖ouSemigroupFinLp (n := n) s‖ * dist v (ouSemigroupFinLp (n := n) (t - s) v) := by
           simpa [dist_eq_norm] using
-            (ouSemigroupFinLp (n := n) s).lipschitz.norm_sub_le v
+            (ouSemigroupFinLp (n := n) s).lipschitzWith.norm_sub_le v
               (ouSemigroupFinLp (n := n) (t - s) v)
     _ ≤ dist v (ouSemigroupFinLp (n := n) (t - s) v) := by
           exact mul_le_of_le_one_left (dist_nonneg)
@@ -842,7 +842,7 @@ def bakryEmerySpace (n : ℕ) : BakryEmerySpace (Fin n → ℝ) where
   ρ := 1
   hρ := one_pos
   gradient_decay := fun f t ht hf => by
-    simpa using GaussianFin.ouSemigroupFin_gradient_decay (n := n) f t ht hf
+    simpa using! GaussianFin.ouSemigroupFin_gradient_decay (n := n) f t ht hf
   semigroup_zero := fun f => GaussianFin.ouSemigroupFin_zero (n := n) f
   semigroup_add := fun s t f hs ht hf =>
     GaussianFin.ouSemigroupFin_compose (n := n) s t hs ht hf
@@ -853,7 +853,7 @@ def bakryEmerySpace (n : ℕ) : BakryEmerySpace (Fin n → ℝ) where
   semigroup_selfAdjoint := fun f g t ht hf hg =>
     GaussianFin.ouSemigroupFin_selfAdjoint (n := n) f g t ht hf hg
   semigroup_l2_decay_bound := fun f t ht hf => by
-    simpa using GaussianFin.ouSemigroupFin_l2_decay_bound (n := n) f t ht hf
+    simpa using! GaussianFin.ouSemigroupFin_l2_decay_bound (n := n) f t ht hf
   semigroup_l2_sq_hasDerivWithinAt := fun f t ht hf =>
     GaussianFin.ouSemigroupFin_l2_sq_hasDerivWithinAt f t ht hf
   semigroup_ergodic := fun f hf =>

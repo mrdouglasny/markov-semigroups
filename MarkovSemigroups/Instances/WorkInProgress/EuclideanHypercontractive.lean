@@ -234,7 +234,7 @@ theorem stdGaussianFin_stroockVaropoulos (n : ℕ) :
   have hibp : (⟪D.coreToL2 hu_one, ouGeneratorFinLp hu⟫_ℝ : ℝ)
       = - D.energy (fun x => u x ^ (q - 1)) u := ouGeneratorFin_ibp hu hu_one
   have hpair : (⟪D.coreToL2 hu_one, -Au⟫_ℝ : ℝ) = D.energy u (fun x => u x ^ (q - 1)) := by
-    rw [hAu_eq, inner_neg_right, hibp, neg_neg, D.energy_symm (fun x => u x ^ (q - 1)) u]
+    rw [inner_neg_right, hAu_eq, hibp, neg_neg, D.energy_symm (fun x => u x ^ (q - 1)) u]
   -- Stroock–Varopoulos is an *equality* for the gradient form.
   have hSV : (4 * (q - 1) / q ^ 2) *
         D.energy (fun x => u x ^ (q / 2)) (fun x => u x ^ (q / 2))
@@ -269,7 +269,7 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
   have hf_r : MemLp ((f : (Fin n → ℝ) → ℝ)) r (γFin n) := by
     by_cases hp2 : ENNReal.ofReal p ≤ 2
     · simpa [r, max_eq_right hp2] using hf_two
-    · simpa [r, max_eq_left (le_of_not_ge hp2)] using hf_p
+    · simpa [r, max_eq_left (le_of_not_ge hp2)] using! hf_p
   let fr : Lp ℝ r (γFin n) := hf_r.toLp ((f : (Fin n → ℝ) → ℝ))
   let δ : ℕ → ℝ := fun m => (((m : ℝ) + 1)⁻¹)
   have hδ_pos : ∀ m, 0 < δ m := by
@@ -279,7 +279,7 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
     simpa [δ, one_div] using (tendsto_one_div_add_atTop_nhds_zero_nat : Tendsto
       (fun m : ℕ => 1 / ((m : ℝ) + 1)) atTop (nhds 0))
   have hδ_enn_tendsto : Tendsto (fun m => ENNReal.ofReal (δ m)) atTop (nhds 0) := by
-    simpa using (ENNReal.continuous_ofReal.tendsto 0).comp hδ_tendsto
+    simpa using! (ENNReal.continuous_ofReal.tendsto 0).comp hδ_tendsto
   let S : Set (Lp ℝ r (γFin n)) := smoothCoreSet n r
   choose u huS huDist using fun m : ℕ =>
     (smoothCoreSet_dense (n := n) (r := r) hr_top).exists_dist_lt fr (hδ_pos m)
@@ -302,7 +302,7 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
     simpa using max_eq_left hx3
   have hpos_tendsto :
       Tendsto (fun m => MeasureTheory.Lp.posPart ((hh_mem m).toLp (h m))) atTop (nhds fr) := by
-    simpa [hfr_posPart] using
+    simpa [hfr_posPart] using!
       (MeasureTheory.Lp.continuous_posPart.tendsto fr).comp hh_tendsto
   let hpos : ℕ → (Fin n → ℝ) → ℝ := fun m x => max (h m x) 0
   have hpos_mem : ∀ m, MemLp (hpos m) r (γFin n) := by
@@ -334,7 +334,7 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
   let k : ℕ → (Fin n → ℝ) → ℝ := fun m x => smoothPosApprox (δ m) (h m x)
   have hk_supp : ∀ m, HasCompactSupport (k m) := by
     intro m
-    simpa [k] using (hh_supp m).comp_left (smoothPosApprox_zero (hδ_pos m))
+    simpa [k] using! (hh_supp m).comp_left (smoothPosApprox_zero (hδ_pos m))
   have hk_smooth : ∀ m, ContDiff ℝ (⊤ : ℕ∞) (k m) := by
     intro m
     exact (smoothPosApprox_contDiff (ne_of_gt (hδ_pos m))).comp (hh_smooth m)
@@ -353,7 +353,8 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
     calc
       eLpNorm (hpos m - k m) r (γFin n)
           ≤ eLpNorm (fun _ : Fin n → ℝ => δ m) r (γFin n) :=
-        eLpNorm_mono_ae_real <| Filter.Eventually.of_forall hbound
+        eLpNorm_mono_ae_real ((hpos_mem m).aestronglyMeasurable.sub (hk_mem m).aestronglyMeasurable)
+          <| Filter.Eventually.of_forall hbound
       _ = ENNReal.ofReal (δ m) := by
         rw [eLpNorm_const' (c := δ m) hr_zero hr_top]
         simp [measure_univ, Real.enorm_of_nonneg (hδ_pos m).le]
@@ -381,17 +382,14 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
               rw [hsplit]
         _ ≤ eLpNorm (((f : (Fin n → ℝ) → ℝ)) - hpos m) r (γFin n)
               + eLpNorm (hpos m - k m) r (γFin n) :=
-            eLpNorm_add_le
-              ((hf_r.aestronglyMeasurable.sub (hpos_mem m).aestronglyMeasurable))
-              ((hpos_mem m).aestronglyMeasurable.sub (hk_mem m).aestronglyMeasurable)
-              hr_one
+            eLpNorm_add_le hr_one
         _ ≤ eLpNorm (((f : (Fin n → ℝ) → ℝ)) - hpos m) r (γFin n) + ENNReal.ofReal (δ m) := by
             gcongr
             exact hk_err_le m
   let g : ℕ → (Fin n → ℝ) → ℝ := fun m x => k m x + δ m
   have hg_core : ∀ m, IsCoreFin (g m) := by
     intro m
-    simpa [g] using IsCoreFin_add (hk_core m) (IsCoreFin_const (n := n) (δ m))
+    simpa [g] using! IsCoreFin_add (hk_core m) (IsCoreFin_const (n := n) (δ m))
   have hg_mem_r : ∀ m, MemLp (g m) r (γFin n) := by
     intro m
     refine MemLp.of_bound (hg_core m).stronglyMeasurable.aestronglyMeasurable ?B ?hB
@@ -433,9 +431,7 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
               rw [hsplit]
         _ ≤ eLpNorm (((f : (Fin n → ℝ) → ℝ)) - k m) r (γFin n)
               + eLpNorm (fun _ : Fin n → ℝ => -δ m) r (γFin n) :=
-            eLpNorm_add_le
-              ((hf_r.aestronglyMeasurable.sub (hk_mem m).aestronglyMeasurable))
-              aestronglyMeasurable_const hr_one
+            eLpNorm_add_le hr_one
         _ = eLpNorm (((f : (Fin n → ℝ) → ℝ)) - k m) r (γFin n)
               + eLpNorm (fun _ : Fin n → ℝ => δ m) r (γFin n) := by
             rw [hconst_neg]
@@ -451,7 +447,6 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
             ≤ eLpNorm (((f : (Fin n → ℝ) → ℝ)) - g m) r (γFin n) := by
       intro m
       exact eLpNorm_le_eLpNorm_of_exponent_le hp_le_r
-        ((hf_r.aestronglyMeasurable.sub (hg_core m).stronglyMeasurable.aestronglyMeasurable))
     exact
       tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hg_r_tendsto
         (fun m => bot_le) hp_tendsto_le
@@ -461,7 +456,6 @@ theorem stdGaussianFin_coreLpL2Approx (n : ℕ) :
             ≤ eLpNorm (((f : (Fin n → ℝ) → ℝ)) - g m) r (γFin n) := by
       intro m
       exact eLpNorm_le_eLpNorm_of_exponent_le h2_le_r
-        ((hf_r.aestronglyMeasurable.sub (hg_core m).stronglyMeasurable.aestronglyMeasurable))
     exact
       tendsto_of_tendsto_of_tendsto_of_le_of_le tendsto_const_nhds hg_r_tendsto
         (fun m => bot_le) htwo_tendsto_le

@@ -170,7 +170,7 @@ theorem lipschitz_concentration_of_lsi
   -- Pass from {≥ t} to {> t}.
   have h_subset : {x | X x > t} ⊆ {x | t ≤ X x} := by
     intro x hx
-    simp only [Set.mem_setOf_eq] at hx ⊢
+    simp only [Set.mem_ofPred_eq] at hx ⊢
     exact hx.le
   have h_mono : (μ {x | X x > t}).toReal ≤ μ.real {x | t ≤ X x} :=
     ENNReal.toReal_mono (measure_ne_top _ _) (measure_mono h_subset)
@@ -199,7 +199,7 @@ theorem lipschitz_concentration_left_of_lsi
       {x | (-F) x - ∫ y, (-F) y ∂μ > t}
         = {x | F x - ∫ y, F y ∂μ < -t} := by
     ext x
-    simp only [Set.mem_setOf_eq, Pi.neg_apply, integral_neg]
+    simp only [Set.mem_ofPred_eq, Pi.neg_apply, integral_neg]
     constructor
     · intro hx; linarith
     · intro hx; linarith
@@ -290,13 +290,13 @@ theorem lipschitz_concentration_two_sided_of_lsi
   have h_subset :
       {x | t < |X x|} ⊆ {x | X x > t} ∪ {x | -X x > t} := by
     intro x hx
-    simp only [Set.mem_setOf_eq] at hx ⊢
+    simp only [Set.mem_ofPred_eq] at hx ⊢
     rcases abs_cases (X x) with ⟨heq, _⟩ | ⟨heq, _⟩
     · -- |X x| = X x (≥ 0): conclude X x > t.
       left; rw [heq] at hx; exact hx
     · -- |X x| = -X x: conclude -X x > t.
       right
-      simp only [Set.mem_setOf_eq]
+      simp only [Set.mem_ofPred_eq]
       rw [heq] at hx; exact hx
   have h_right := lipschitz_concentration_of_lsi h_lsi hF_lip hF_int t ht
   -- For -F: still L-Lipschitz, integrable; gives {(-F) − ∫(-F) > t}.
@@ -306,7 +306,7 @@ theorem lipschitz_concentration_two_sided_of_lsi
   have h_left_set_eq :
       {x | (- F) x - ∫ y, (- F) y ∂μ > t} = {x | -X x > t} := by
     ext x
-    simp only [Set.mem_setOf_eq, Pi.neg_apply, integral_neg, hX]
+    simp only [Set.mem_ofPred_eq, Pi.neg_apply, integral_neg, hX]
     constructor
     · intro hx; linarith
     · intro hx; linarith

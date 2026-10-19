@@ -114,16 +114,16 @@ theorem CouplingSet_isClosed (μ₁ μ₂ : Measure Ω)
   let pm₂ : ProbabilityMeasure Ω := ⟨μ₂, inferInstance⟩
   -- The marginal maps as ProbabilityMeasure-valued functions
   let fst_map : ProbabilityMeasure (Ω × Ω) → ProbabilityMeasure Ω :=
-    fun ν => ν.map measurable_fst.aemeasurable
+    fun ν => ν.map Prod.fst
   let snd_map : ProbabilityMeasure (Ω × Ω) → ProbabilityMeasure Ω :=
-    fun ν => ν.map measurable_snd.aemeasurable
+    fun ν => ν.map Prod.snd
   -- Show CouplingSet = preimage intersection
   suffices h : CouplingSet μ₁ μ₂ = fst_map ⁻¹' {pm₁} ∩ snd_map ⁻¹' {pm₂} by
     rw [h]
     exact (isClosed_singleton.preimage (ProbabilityMeasure.continuous_map continuous_fst)).inter
       (isClosed_singleton.preimage (ProbabilityMeasure.continuous_map continuous_snd))
   ext ν
-  simp only [CouplingSet, Set.mem_setOf_eq, Set.mem_inter_iff, Set.mem_preimage,
+  simp only [CouplingSet, Set.mem_ofPred_eq, Set.mem_inter_iff, Set.mem_preimage,
     Set.mem_singleton_iff]
   constructor
   · rintro ⟨h1, h2⟩
@@ -237,8 +237,8 @@ theorem canonicalMaximalCoupling_compact_fst
   unfold canonicalMaximalCoupling_compact
   rw [Measure.map_add _ _ measurable_fst]
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.fst = μ ⊓ ν := by
-    rw [Measure.map_map measurable_fst measurable_diag]; convert Measure.map_id using 2
-  rw [hd, Measure.map_smul]
+    rw [Measure.map_map measurable_fst measurable_pair_self]; convert Measure.map_id using 2; rfl
+  rw [hd, Measure.map_smul _ measurable_fst.aemeasurable]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.fst =
       (ν - μ ⊓ ν) Set.univ • (μ - μ ⊓ ν) := Measure.map_fst_prod
   rw [hp, ← residual_mass_eq' μ ν,
@@ -259,8 +259,8 @@ theorem canonicalMaximalCoupling_compact_snd
   unfold canonicalMaximalCoupling_compact
   rw [Measure.map_add _ _ measurable_snd]
   have hd : ((μ ⊓ ν).map (fun a => (a, a))).map Prod.snd = μ ⊓ ν := by
-    rw [Measure.map_map measurable_snd measurable_diag]; convert Measure.map_id using 2
-  rw [hd, Measure.map_smul]
+    rw [Measure.map_map measurable_snd measurable_pair_self]; convert Measure.map_id using 2; rfl
+  rw [hd, Measure.map_smul _ measurable_snd.aemeasurable]
   have hp : ((μ - μ ⊓ ν).prod (ν - μ ⊓ ν)).map Prod.snd =
       (μ - μ ⊓ ν) Set.univ • (ν - μ ⊓ ν) := Measure.map_snd_prod
   rw [hp, inv_smul_smul_measure' (measure_ne_top (μ - μ ⊓ ν) Set.univ) (ν - μ ⊓ ν)
@@ -361,7 +361,7 @@ private theorem measurable_inf_apply {X Y : Type*} [MeasurableSpace X] [Measurab
     -- h : Kernel.withDensity κ_sum (rnDeriv κ_f κ_sum) + singularPart κ_f κ_sum = κ_f
     have h_eval := congr_fun (congr_arg DFunLike.coe h) x
     -- h_eval at x: (withDensity κ_sum (rnDeriv κ_f κ_sum)) x + (singularPart κ_f κ_sum) x = κ_f x
-    simp only [Kernel.coe_add, Pi.add_apply, hsp, add_zero] at h_eval
+    simp only [FunLike.coe_add, Pi.add_apply, hsp, add_zero] at h_eval
     -- h_eval: (Kernel.withDensity κ_sum (rnDeriv κ_f κ_sum)) x = κ_f x = f x
     show κ_f x = _
     rw [← h_eval, Kernel.withDensity_apply _ (Kernel.measurable_rnDeriv κ_f κ_sum)]
@@ -369,7 +369,7 @@ private theorem measurable_inf_apply {X Y : Type*} [MeasurableSpace X] [Measurab
     have h := Kernel.rnDeriv_add_singularPart κ_g κ_sum
     have hsp := (Kernel.singularPart_eq_zero_iff_absolutelyContinuous κ_g κ_sum x).mpr hg_ac
     have h_eval := congr_fun (congr_arg DFunLike.coe h) x
-    simp only [Kernel.coe_add, Pi.add_apply, hsp, add_zero] at h_eval
+    simp only [FunLike.coe_add, Pi.add_apply, hsp, add_zero] at h_eval
     show κ_g x = _
     rw [← h_eval, Kernel.withDensity_apply _ (Kernel.measurable_rnDeriv κ_g κ_sum)]
   rw [hf_eq, hg_eq, inf_eq_withDensity_min (κ_sum x)
@@ -444,8 +444,8 @@ theorem canonicalMaximalCoupling_compact_measurable
     exact measurable_const.sub (measurable_inf_apply hf hg _ MeasurableSet.univ)
   apply Measurable.add
   · -- Piece 1: x ↦ (f x ⊓ g x).map(diag) A = (f x ⊓ g x)(diag⁻¹' A)
-    simp_rw [Measure.map_apply measurable_diag hA]
-    exact measurable_inf_apply hf hg _ (measurable_diag hA)
+    simp_rw [Measure.map_apply measurable_pair_self hA]
+    exact measurable_inf_apply hf hg _ (measurable_pair_self hA)
   · -- Piece 2: x ↦ c(x)⁻¹ * ((f x - f x ⊓ g x).prod (g x - f x ⊓ g x)) A
     apply Measurable.mul hc_meas
     -- Use kernel product: (Kernel.prod κ_rf κ_rg) x = (κ_rf x).prod (κ_rg x)
@@ -475,7 +475,7 @@ private theorem canonicalMaximalCoupling_compact_ne_le_residual
         ext ⟨a, b⟩; simp [Set.diagonal]
       rw [this]
       exact isClosed_diagonal.measurableSet.compl
-    rw [Measure.map_apply measurable_diag hne_meas]
+    rw [Measure.map_apply measurable_pair_self hne_meas]
     -- Preimage of {≠} under diag is ∅
     have : (fun a : X => (a, a)) ⁻¹' {p : X × X | p.1 ≠ p.2} = ∅ := by
       ext x; simp
@@ -549,7 +549,7 @@ private lemma condDist_eq_marginal_map_update_compact
   -- the map (update σ z ∘ (· z)) is the identity ae condDist {z} σ.
   -- Measurability of the update map
   have h_update_meas : Measurable (Function.update σ z) :=
-    measurable_pi_lambda _ (fun i => by
+    Measurable.of_eval (fun i => by
       by_cases h : i = z
       · subst h; simp only [Function.update_self]; exact measurable_id
       · simp only [Function.update_of_ne h]; exact measurable_const)
@@ -613,7 +613,7 @@ theorem updateCoupling_compact_exists
   have hψ_meas : ∀ (σ η : Ω), Measurable (ψ σ η) := by
     intro σ η
     refine Measurable.prod ?_ ?_
-    · refine measurable_pi_lambda _ (fun i => ?_)
+    · refine Measurable.of_eval (fun i => ?_)
       -- Goal: Measurable (fun ss : S × S => (ψ σ η ss).1 i)
       -- = Measurable (fun ss => (Function.update σ z ss.1) i)
       by_cases hi : i = z
@@ -625,7 +625,7 @@ theorem updateCoupling_compact_exists
         have heq : (fun ss : S × S => (ψ σ η ss).1 i) = fun _ => σ i := by
           ext ⟨s1, s2⟩; dsimp [ψ]; rw [Function.update_of_ne hi]
         rw [heq]; exact measurable_const
-    · refine measurable_pi_lambda _ (fun i => ?_)
+    · refine Measurable.of_eval (fun i => ?_)
       by_cases hi : i = z
       · have heq : (fun ss : S × S => (ψ σ η ss).2 i) = fun ss => ss.2 := by
           ext ⟨s1, s2⟩; dsimp [ψ]; rw [hi, Function.update_self]
@@ -700,7 +700,7 @@ theorem updateCoupling_compact_exists
       -- Ψ (p, ss) = (update p.1 z ss.1, update p.2 z ss.2)
       refine Measurable.prod ?_ ?_
       · -- (p, ss) ↦ update p.1 z ss.1
-        refine measurable_pi_lambda _ (fun i => ?_)
+        refine Measurable.of_eval (fun i => ?_)
         by_cases hi : i = z
         · -- i = z: (update p.1 z ss.1) z = ss.1
           have : (fun pss : (Ω × Ω) × (S × S) =>
@@ -715,7 +715,7 @@ theorem updateCoupling_compact_exists
             ext ⟨⟨σ, η⟩, ⟨s1, s2⟩⟩; dsimp [ψ]; rw [Function.update_of_ne hi]
           rw [this]; exact (measurable_pi_apply i).comp measurable_fst.fst
       · -- (p, ss) ↦ update p.2 z ss.2
-        refine measurable_pi_lambda _ (fun i => ?_)
+        refine Measurable.of_eval (fun i => ?_)
         by_cases hi : i = z
         · have : (fun pss : (Ω × Ω) × (S × S) =>
               (ψ pss.1.1 pss.1.2 pss.2).2 i) =
@@ -739,7 +739,7 @@ theorem updateCoupling_compact_exists
     intro p
     show IsProbabilityMeasure ((cmc p.1 p.2).map (ψ p.1 p.2))
     haveI := hcmc_prob p.1 p.2
-    exact Measure.isProbabilityMeasure_map (hψ_meas p.1 p.2).aemeasurable
+    infer_instance
   -- Define Q = P.bind f
   let Q := P.bind f
   have hQ_prob : IsProbabilityMeasure Q := by
@@ -766,7 +766,7 @@ theorem updateCoupling_compact_exists
       have hpre : ψ p.1 p.2 ⁻¹' {q : Ω × Ω | q.1 w ≠ q.2 w} =
           if p.1 w ≠ p.2 w then Set.univ else ∅ := by
         ext ⟨s1, s2⟩
-        simp only [Set.mem_preimage, Set.mem_setOf_eq]
+        simp only [Set.mem_preimage, Set.mem_ofPred_eq]
         dsimp [ψ]
         rw [Function.update_of_ne hw, Function.update_of_ne hw]
         split_ifs with h <;> simp [h]
@@ -777,7 +777,7 @@ theorem updateCoupling_compact_exists
     simp_rw [hf_wne]
     rw [show (fun p : Ω × Ω => if p.1 w ≠ p.2 w then (1 : ENNReal) else 0) =
         Set.indicator {p | p.1 w ≠ p.2 w} 1 from by
-      ext p; simp [Set.indicator_apply, Set.mem_setOf_eq]]
+      ext p; simp [Set.indicator_apply, Set.mem_ofPred_eq]]
     exact lintegral_indicator_one (measurableSet_disagreement w)
   -- Q{z-ne}: contraction via coupling bound + influence coefficients
   have h_contract : (Q {p | p.1 z ≠ p.2 z}).toReal ≤
@@ -794,7 +794,7 @@ theorem updateCoupling_compact_exists
       show (cmc p.1 p.2).map (ψ p.1 p.2) {q | q.1 z ≠ q.2 z} = _
       rw [Measure.map_apply (hψ_meas p.1 p.2) (measurableSet_disagreement z)]
       congr 1; ext ⟨s1, s2⟩
-      simp only [Set.mem_preimage, Set.mem_setOf_eq, ne_eq]
+      simp only [Set.mem_preimage, Set.mem_ofPred_eq, ne_eq]
       dsimp [ψ]
       simp [Function.update_self]
     -- Step 3: Pointwise bound: cmc{≠}.toReal ≤ tvDist ≤ Σ C(z,w) indicator
@@ -828,7 +828,7 @@ theorem updateCoupling_compact_exists
               mul_nonneg (influenceCoeff_nonneg γ z w) (by split_ifs <;> norm_num))
         _ = ∑ w : I, ∫⁻ p, ENNReal.ofReal (influenceCoeff γ z w *
               (if p.1 w = p.2 w then (0 : ℝ) else 1)) ∂P := by
-            rw [lintegral_finset_sum _ (fun w _ => by
+            rw [lintegral_finsetSum _ (fun w _ => by
               -- p ↦ ofReal(C(z,w) * if p.1 w = p.2 w then 0 else 1) is measurable
               apply Measurable.ennreal_ofReal
               apply measurable_const.mul
@@ -850,7 +850,7 @@ theorem updateCoupling_compact_exists
             rw [show (fun p : Ω × Ω =>
                 ENNReal.ofReal (if p.1 w = p.2 w then (0 : ℝ) else 1)) =
                 Set.indicator {p : Ω × Ω | p.1 w ≠ p.2 w} 1 from by
-              ext p; simp only [Set.indicator, Set.mem_setOf_eq, ne_eq, Pi.one_apply]
+              ext p; simp only [Set.indicator, Set.mem_ofPred_eq, ne_eq, Pi.one_apply]
               by_cases h : p.1 w = p.2 w
               · simp [h, ENNReal.ofReal_zero]
               · simp [h, ENNReal.ofReal_one]]
@@ -924,7 +924,7 @@ theorem updateCoupling_compact_exists
     have hcomp : Prod.fst ∘ ψ p.1 p.2 = (Function.update p.1 z) ∘ Prod.fst := by
       ext ⟨s1, s2⟩; rfl
     rw [hcomp, ← Measure.map_map
-      (measurable_pi_lambda _ (fun i => by
+      (Measurable.of_eval (fun i => by
         by_cases h : i = z
         · subst h; simp only [Function.update_self]; exact measurable_id
         · simp only [Function.update_of_ne h]; exact measurable_const))
@@ -941,7 +941,7 @@ theorem updateCoupling_compact_exists
     have hcomp : Prod.snd ∘ ψ p.1 p.2 = (Function.update p.2 z) ∘ Prod.snd := by
       ext ⟨s1, s2⟩; rfl
     rw [hcomp, ← Measure.map_map
-      (measurable_pi_lambda _ (fun i => by
+      (Measurable.of_eval (fun i => by
         by_cases h : i = z
         · subst h; simp only [Function.update_self]; exact measurable_id
         · simp only [Function.update_of_ne h]; exact measurable_const))

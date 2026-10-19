@@ -101,7 +101,7 @@ theorem ou_kernel_map (t : ℝ) (ht : 0 ≤ t) :
     (indepFun_prod measurable_id measurable_id).comp
       (measurable_const.mul measurable_id) (measurable_const.mul measurable_id)
   -- Sum has law N(0, a²+b²)
-  have hmap := gaussianReal_add_gaussianReal_of_indepFun hindep haX.map_eq hbY.map_eq
+  have hmap := gaussianReal_add_gaussianReal_of_indepFun hindep haX hbY
   -- Key: a² + b² = 1 (as ℝ)
   have hab_real : a ^ 2 + b ^ 2 = 1 := by
     simp only [a, b]
@@ -114,8 +114,10 @@ theorem ou_kernel_map (t : ℝ) (ht : 0 ≤ t) :
         = gaussianReal 0 1
     congr 1
     · simp
-    · simp only [mul_one]
-      exact NNReal.eq (by simp [NNReal.coe_add, NNReal.coe_mk]; exact hab_real)
+    · apply NNReal.eq
+      change a ^ 2 * 1 + b ^ 2 * 1 = 1
+      rw [mul_one, mul_one]
+      exact hab_real
   exact hmap.trans hgoal
 
 /-! ## DirichletSpace instance -/
@@ -460,13 +462,13 @@ theorem gaussian2D_orthogonal_invariance
           (Measure.map (WithLp.toLp 2)
             (Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ))) =
         Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ) := by
-    simpa [ew] using
+    simpa [ew] using!
       (MeasurableEquiv.map_map_symm
         (ν := Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ))
         ew)
   have hback_right :
       Measure.map WithLp.ofLp (Measure.map (WithLp.toLp 2) (γ.prod γ)) = γ.prod γ := by
-    simpa [ew] using (MeasurableEquiv.map_map_symm (ν := γ.prod γ) ew)
+    simpa [ew] using! (MeasurableEquiv.map_map_symm (ν := γ.prod γ) ew)
   calc
     Measure.map (fun p : ℝ × ℝ => (a * p.1 + b * p.2, b * p.1 - a * p.2)) (γ.prod γ)
         = Measure.map WithLp.ofLp
@@ -546,7 +548,7 @@ theorem hasDerivAt_ouSemigroup_C1 (t : ℝ) {f : ℝ → ℝ}
     have h_f : HasDerivAt f (deriv f (a * x + b * y)) (a * x + b * y) :=
       (hf_C1.differentiable (by simp)).differentiableAt.hasDerivAt
     have := h_f.comp x h_inner
-    simpa [mul_comm a (deriv f _)] using this
+    simpa [mul_comm a (deriv f _)] using! this
   obtain ⟨_, h_deriv⟩ :=
     hasDerivAt_integral_of_dominated_loc_of_deriv_le hs
       (Filter.Eventually.of_forall hF_meas) hF_int hF'_meas h_bound h_bound_int h_diff
@@ -960,16 +962,16 @@ theorem ouSemigroup_compose (s t : ℝ) (hs : 0 ≤ s) (ht : 0 ≤ t) {f : ℝ �
     (indepFun_prod measurable_id measurable_id).comp
       (measurable_const.mul measurable_id) (measurable_const.mul measurable_id)
   -- Sum has law gaussianReal 0 ((at_*bs)²·1 + bt²·1)
-  have hΨ_law := gaussianReal_add_gaussianReal_of_indepFun hindep h1.map_eq h2.map_eq
+  have hΨ_law := gaussianReal_add_gaussianReal_of_indepFun hindep h1 h2
   -- Convert to N(0, 1 - exp(-2(s+t)))
   have h_eq : gaussianReal ((at_ * bs) * 0 + bt * 0)
       (⟨(at_ * bs) ^ 2, sq_nonneg _⟩ * 1 + ⟨bt ^ 2, sq_nonneg _⟩ * 1) =
       gaussianReal 0 ⟨1 - Real.exp (-2 * (s + t)), hbst_nn⟩ := by
     congr 1
     · simp
-    · simp only [mul_one]
-      apply NNReal.eq
-      simp only [NNReal.coe_add, NNReal.coe_mk]
+    · apply NNReal.eq
+      change (at_ * bs) ^ 2 * 1 + bt ^ 2 * 1 = 1 - Real.exp (-2 * (s + t))
+      rw [mul_one, mul_one]
       exact h_var_eq
   replace hΨ_law := hΨ_law.trans h_eq
   -- hΨ_law: (γ.prod γ).map Ψ = N(0, 1-exp(-2(s+t)))

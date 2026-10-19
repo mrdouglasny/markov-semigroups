@@ -43,7 +43,11 @@ The coupling characterization is fundamental for:
 
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Mathlib.MeasureTheory.Measure.GiryMonad
-import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.Algebra.Order.Module.Field
+import Mathlib.Data.EReal.Inv
+import Mathlib.Tactic.Measurability
+import Mathlib.Topology.Algebra.InfiniteSum.Order
+import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.MeasureTheory.Measure.Prod
 import Mathlib.MeasureTheory.Measure.Decomposition.RadonNikodym
 
@@ -106,7 +110,7 @@ theorem measure_sub_le_coupling_ne (P : Measure (X × X))
   have hsubset : (Prod.fst ⁻¹' A) \ (Prod.snd ⁻¹' A) ⊆ {p : X × X | p.1 ≠ p.2} := by
     intro p ⟨hp1, hp2⟩
     simp only [mem_preimage] at hp1 hp2
-    simp only [mem_setOf_eq]
+    simp only [mem_ofPred_eq]
     intro heq
     exact hp2 (heq ▸ hp1)
   -- P(fst ⁻¹' A) - P(snd ⁻¹' A) ≤ P(fst ⁻¹' A \ snd ⁻¹' A) at ENNReal level
@@ -115,7 +119,7 @@ theorem measure_sub_le_coupling_ne (P : Measure (X × X))
     apply tsub_le_iff_right.mpr
     calc P (Prod.fst ⁻¹' A)
         ≤ P ((Prod.fst ⁻¹' A \ Prod.snd ⁻¹' A) ∪ Prod.snd ⁻¹' A) := by
-          apply measure_mono; intro p hp; simp only [mem_union, mem_diff]; tauto
+          apply measure_mono; intro p hp; simp only [mem_union, mem_sdiff]; tauto
       _ ≤ P (Prod.fst ⁻¹' A \ Prod.snd ⁻¹' A) + P (Prod.snd ⁻¹' A) :=
           measure_union_le _ _
   -- Chain with the subset bound
@@ -193,19 +197,19 @@ theorem tvNorm_eq_of_hahn (μ ν : Measure X)
   have decompose_real (m : Measure X) [IsFiniteMeasure m] (A : Set X) (_hA : MeasurableSet A) :
       (m A).toReal = (m (A ∩ s)).toReal + (m (A ∩ sᶜ)).toReal := by
     rw [← ENNReal.toReal_add (measure_ne_top m _) (measure_ne_top m _)]
-    congr 1; rw [← diff_eq]; exact (measure_inter_add_diff A hs).symm
+    congr 1; rw [← sdiff_eq]; exact (measure_inter_add_sdiff A hs).symm
   have decompose_s (m : Measure X) [IsFiniteMeasure m] (A : Set X) (hA : MeasurableSet A) :
       (m s).toReal = (m (A ∩ s)).toReal + (m (Aᶜ ∩ s)).toReal := by
     rw [← ENNReal.toReal_add (measure_ne_top m _) (measure_ne_top m _)]
     congr 1
-    rw [inter_comm A s, inter_comm Aᶜ s, ← diff_eq]
-    exact (measure_inter_add_diff s hA).symm
+    rw [inter_comm A s, inter_comm Aᶜ s, ← sdiff_eq]
+    exact (measure_inter_add_sdiff s hA).symm
   have decompose_sc (m : Measure X) [IsFiniteMeasure m] (A : Set X) (hA : MeasurableSet A) :
       (m sᶜ).toReal = (m (A ∩ sᶜ)).toReal + (m (Aᶜ ∩ sᶜ)).toReal := by
     rw [← ENNReal.toReal_add (measure_ne_top m _) (measure_ne_top m _)]
     congr 1
-    rw [inter_comm A sᶜ, inter_comm Aᶜ sᶜ, ← diff_eq]
-    exact (measure_inter_add_diff sᶜ hA).symm
+    rw [inter_comm A sᶜ, inter_comm Aᶜ sᶜ, ← sdiff_eq]
+    exact (measure_inter_add_sdiff sᶜ hA).symm
   apply le_antisymm
   · -- sSup ≤ ν(s) - μ(s): every |μ(A) - ν(A)| ≤ ν(s) - μ(s)
     apply csSup_le
@@ -290,7 +294,7 @@ theorem overlapMeasure_mass (μ ν : Measure X)
       -- Step 1: μ(s) + ν(sᶜ) ≤ μ(A) + ν(Aᶜ) using Hahn on measurable sets
       have h_hahn_bound : μ s + ν sᶜ ≤ μ A + ν Aᶜ := by
         -- Hahn bounds:
-        have h1 : μ (s \ A) ≤ ν (s \ A) := h_le_on_s _ (hs.diff hAm) diff_subset
+        have h1 : μ (s \ A) ≤ ν (s \ A) := h_le_on_s _ (hs.diff hAm) sdiff_subset
         have h2 : ν (sᶜ ∩ A) ≤ μ (sᶜ ∩ A) :=
           h_le_on_sc _ (hs.compl.inter hAm) inter_subset_left
         -- Decompose: μ(s) = μ(s∩A) + μ(s\A), ν(sᶜ) = ν(sᶜ∩A) + ν(sᶜ\A)
@@ -302,7 +306,7 @@ theorem overlapMeasure_mass (μ ν : Measure X)
         -- Diff: μ(s\A) + ν(sᶜ∩A) vs ν(s\A) + μ(sᶜ∩A) by key
         calc μ s + ν sᶜ
             = (μ (s ∩ A) + μ (s \ A)) + (ν (sᶜ ∩ A) + ν (sᶜ \ A)) := by
-              rw [measure_inter_add_diff s hAm, measure_inter_add_diff sᶜ hAm]
+              rw [measure_inter_add_sdiff s hAm, measure_inter_add_sdiff sᶜ hAm]
           _ = μ (s ∩ A) + ν (sᶜ \ A) + (μ (s \ A) + ν (sᶜ ∩ A)) := by
               abel
           _ ≤ μ (s ∩ A) + ν (sᶜ \ A) + (ν (s \ A) + μ (sᶜ ∩ A)) := by
@@ -311,11 +315,11 @@ theorem overlapMeasure_mass (μ ν : Measure X)
               abel
           _ = (μ (A ∩ s) + μ (A \ s)) + (ν (Aᶜ ∩ s) + ν (Aᶜ \ s)) := by
               -- s∩A = A∩s, sᶜ∩A = A∩sᶜ = A\s
-              rw [inter_comm s A, show sᶜ ∩ A = A \ s from by ext; simp [mem_diff]; tauto,
-                  show s \ A = Aᶜ ∩ s from by ext; simp [mem_diff]; tauto,
-                  show sᶜ \ A = Aᶜ \ s from by ext; simp [mem_diff]; tauto]
+              rw [inter_comm s A, show sᶜ ∩ A = A \ s from by ext; simp [mem_sdiff]; tauto,
+                  show s \ A = Aᶜ ∩ s from by ext; simp [mem_sdiff]; tauto,
+                  show sᶜ \ A = Aᶜ \ s from by ext; simp [mem_sdiff]; tauto]
           _ = μ A + ν Aᶜ := by
-              rw [measure_inter_add_diff A hs, measure_inter_add_diff Aᶜ hs]
+              rw [measure_inter_add_sdiff A hs, measure_inter_add_sdiff Aᶜ hs]
       -- Step 2: μ(A) + ν(Aᶜ) ≤ μ(t) + ν(tᶜ)
       calc μ s + ν sᶜ
           ≤ μ A + ν Aᶜ := h_hahn_bound
@@ -445,7 +449,7 @@ theorem exists_maximal_coupling (μ ν : Measure X)
       d⁻¹ • (γ.prod β)).map Prod.fst = μ := by
     rw [Measure.map_add _ _ measurable_fst, Measure.map_add _ _ measurable_fst,
         hdiag_fst, hdiag_fst,
-        Measure.map_smul, hprod_fst, hd_inv_smul_γ]
+        Measure.map_smul _ measurable_fst.aemeasurable, hprod_fst, hd_inv_smul_γ]
     -- Goal: μ.restrict s + ν.restrict sᶜ + γ = μ
     calc μ.restrict s + ν.restrict sᶜ + γ
         = μ.restrict s + (γ + ν.restrict sᶜ) := by abel
@@ -455,7 +459,7 @@ theorem exists_maximal_coupling (μ ν : Measure X)
       d⁻¹ • (γ.prod β)).map Prod.snd = ν := by
     rw [Measure.map_add _ _ measurable_snd, Measure.map_add _ _ measurable_snd,
         hdiag_snd, hdiag_snd,
-        Measure.map_smul, hprod_snd, hd_inv_smul_β]
+        Measure.map_smul _ measurable_snd.aemeasurable, hprod_snd, hd_inv_smul_β]
     -- Goal: μ.restrict s + ν.restrict sᶜ + β = ν
     calc μ.restrict s + ν.restrict sᶜ + β
         = (β + μ.restrict s) + ν.restrict sᶜ := by abel
@@ -482,9 +486,9 @@ theorem exists_maximal_coupling (μ ν : Measure X)
     have hdiag_ne : ∀ (m : Measure X), (m.map diag) {p : X × X | p.1 ≠ p.2} = 0 := by
       intro m
       rw [Measure.map_apply hdiag hne_meas]
-      convert m.empty
+      convert measure_empty (μ := m)
       ext x
-      simp [diag, mem_preimage, mem_setOf_eq]
+      simp [diag, mem_preimage, mem_ofPred_eq]
     -- Step 2: γ is supported on sᶜ, β is supported on s
     -- Therefore (γ.prod β) is supported on sᶜ × s ⊆ {p | p.1 ≠ p.2}
     have hγ_support : ∀ A, MeasurableSet A → γ (A ∩ s) = 0 := by
@@ -513,7 +517,7 @@ theorem exists_maximal_coupling (μ ν : Measure X)
         have := hβ_support univ MeasurableSet.univ; rwa [univ_inter] at this
       have hdiag_sub : diagonal X ⊆ (s ×ˢ s) ∪ (sᶜ ×ˢ sᶜ) := by
         intro ⟨x, y⟩ hxy
-        simp only [diagonal, mem_setOf_eq] at hxy
+        simp only [diagonal, mem_ofPred_eq] at hxy
         subst hxy
         simp only [mem_union, Set.mem_prod, mem_compl_iff]
         by_cases hxs : x ∈ s
@@ -603,7 +607,7 @@ theorem coupling_coord_ne_le (P : Measure (X × X))
   apply ENNReal.toReal_le_toReal (measure_ne_top P _) (measure_ne_top P _) |>.mpr
   apply measure_mono
   intro p hp
-  simp only [mem_setOf_eq] at hp ⊢
+  simp only [mem_ofPred_eq] at hp ⊢
   intro heq
   exact hp (congrArg π heq)
 
@@ -828,7 +832,7 @@ theorem integral_lipschitz_coupling_bound
           -- Step 2: Swap sum and integral
           have step2 : ∫⁻ p, ∑ y ∈ F, ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P
               = ∑ y ∈ F, ∫⁻ p, ENNReal.ofReal (c y * if p.1 y ≠ p.2 y then 1 else 0) ∂P := by
-            apply lintegral_finset_sum
+            apply lintegral_finsetSum
             intro y _
             apply Measurable.ennreal_ofReal
             exact measurable_const.mul
@@ -854,7 +858,7 @@ theorem integral_lipschitz_coupling_bound
                 ENNReal.ofReal (if p.1 y ≠ p.2 y then (1 : ℝ) else 0)) =
                 Set.indicator {p : (ι → S) × (ι → S) | p.1 y ≠ p.2 y} 1 := by
               ext p
-              simp only [Set.indicator, Set.mem_setOf_eq]
+              simp only [Set.indicator, Set.mem_ofPred_eq]
               split_ifs <;> simp [ENNReal.ofReal_zero, ENNReal.ofReal_one]
             rw [hind, lintegral_indicator_one (h_meas_ne y)]
           -- Combine all steps

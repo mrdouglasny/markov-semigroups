@@ -104,7 +104,7 @@ lemma multiFiber_eq_iInter (N_f : Finset I) (a : I → S) :
     multiFiber (I := I) (S := S) N_f a =
       ⋂ w ∈ (N_f : Set I), fiber w (a w) := by
   ext σ
-  simp only [multiFiber, Set.mem_setOf_eq, Set.mem_iInter, Finset.mem_coe,
+  simp only [multiFiber, Set.mem_ofPred_eq, Set.mem_iInter, Finset.mem_coe,
     fiber, evalAt, Set.mem_preimage, Set.mem_singleton_iff]
 
 /-- The multi-fiber is measurable when singletons in `S` are measurable. -/
@@ -513,7 +513,7 @@ lemma abstract_neumann_iteration_finset
         have h_zero_terms : ∀ x ∈ N_f, iterateInfluence γ 0 y x = 0 := by
           intro x hx
           simp only [iterateInfluence_zero]
-          rw [if_neg]
+          rw [ite_eq_right]
           intro hyx; subst hyx; exact hyN hx
         have h_sum_zero : ∑ x ∈ N_f, iterateInfluence γ 0 y x = 0 :=
           Finset.sum_eq_zero h_zero_terms
@@ -763,7 +763,7 @@ lemma abstract_neumann_iteration_finset
         Tendsto (fun N => ∑ x ∈ N_f,
           ∑ k ∈ Finset.range (N + 1), iterateInfluence γ k y x)
           atTop (𝓝 (∑ x ∈ N_f, neumannSeriesCoeff γ y x)) :=
-      tendsto_finset_sum N_f h_each
+      tendsto_finsetSum N_f h_each
     have hfun_eq : (fun N => ∑ k ∈ Finset.range (N + 1),
         ∑ x ∈ N_f, iterateInfluence γ k y x) =
         (fun N => ∑ x ∈ N_f, ∑ k ∈ Finset.range (N + 1),
@@ -1381,12 +1381,12 @@ theorem covariance_bound_gibbs_multisite
               ∂(condFiniteSupportMeasure μ N_f (extendOnFinset N_f a)) := by
       rw [show (fun σ => g σ) =
             (fun σ => ∑ y ∈ N_g, g_witness y σ) from funext g_decomp]
-      rw [integral_finset_sum N_g (fun y _ => g_witness_cond_int y a hpos)]
+      rw [integral_finsetSum N_g (fun y _ => g_witness_cond_int y a hpos)]
     have hRHS :
         ∫ σ, g σ ∂μ = ∑ y ∈ N_g, ∫ σ, g_witness y σ ∂μ := by
       rw [show (fun σ => g σ) =
             (fun σ => ∑ y ∈ N_g, g_witness y σ) from funext g_decomp]
-      rw [integral_finset_sum N_g (fun y _ => g_witness_int y)]
+      rw [integral_finsetSum N_g (fun y _ => g_witness_int y)]
     rw [hLHS, hRHS, ← Finset.sum_sub_distrib]
     calc |∑ y ∈ N_g,
             (∫ σ, g_witness y σ
@@ -1654,7 +1654,7 @@ lemma local_integral_sub_le_coupling_Ng
         · exact ae_of_all _ (fun p => abs_nonneg _)
         · -- Integrability of the pointwise upper bound.
           refine Integrable.const_mul ?_ (2 * Bg)
-          exact integrable_finset_sum N_g h_int_indicator
+          exact integrable_finsetSum N_g h_int_indicator
         · exact ae_of_all _ h_ptwise
     _ = 2 * Bg * ∫ p, ∑ y ∈ N_g,
           Set.indicator {q : SpinConfig I S × SpinConfig I S | q.1 y ≠ q.2 y}
@@ -1665,7 +1665,7 @@ lemma local_integral_sub_le_coupling_Ng
             {q : SpinConfig I S × SpinConfig I S | q.1 y ≠ q.2 y}
             (fun _ => (1 : ℝ)) p ∂P := by
         congr 1
-        rw [integral_finset_sum N_g h_int_indicator]
+        rw [integral_finsetSum N_g h_int_indicator]
     _ = 2 * Bg * ∑ y ∈ N_g,
           (P {p : SpinConfig I S × SpinConfig I S | p.1 y ≠ p.2 y}).toReal := by
         congr 1
@@ -2298,8 +2298,7 @@ theorem covariance_tower_property_compact
   haveI : DecidablePred p := fun i => N_f.decidableMem i
   let e := MeasurableEquiv.piEquivPiSubtypeProd (fun _ : I => S) p
   let ρ := μ.map e
-  haveI : IsProbabilityMeasure ρ :=
-    Measure.isProbabilityMeasure_map e.measurable.aemeasurable
+  haveI : IsProbabilityMeasure ρ := inferInstance
   haveI : Nonempty ({i // ¬p i} → S) := ⟨fun _ => default⟩
   set Eg := ∫ σ, g σ ∂μ
   -- Centering identity: Cov(f, g) = E[f · (g - Eg)]

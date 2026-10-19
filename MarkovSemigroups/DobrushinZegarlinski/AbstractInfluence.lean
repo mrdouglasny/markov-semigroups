@@ -108,9 +108,9 @@ lemma iterate_row_summable_and_bound (M : AbstractInfluenceMatrix I) :
       · simp only [iterate_zero]
         exact summable_of_ne_finset_zero (s := {x}) fun b hb => by
           rw [Finset.mem_singleton] at hb
-          exact if_neg (fun h => hb h.symm)
+          exact ite_eq_right (fun h => hb h.symm)
       · simp only [iterate_zero, pow_zero]
-        rw [tsum_eq_single x (fun z hz => if_neg (fun h => hz h.symm))]
+        rw [tsum_eq_single x (fun z hz => ite_eq_right (fun h => hz h.symm))]
         simp
   | n + 1, x => by
       obtain ⟨ih_sum, ih_bd⟩ := M.iterate_row_summable_and_bound n x

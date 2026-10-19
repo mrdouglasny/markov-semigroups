@@ -32,7 +32,11 @@ Also postulated:
 -/
 
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import Mathlib.MeasureTheory.Measure.MeasureSpace
+import Mathlib.Algebra.Order.Module.Field
+import Mathlib.Data.EReal.Inv
+import Mathlib.Tactic.Measurability
+import Mathlib.Topology.Algebra.InfiniteSum.Order
+import Mathlib.Topology.MetricSpace.Bounded
 import Mathlib.Analysis.InnerProductSpace.Basic
 import Mathlib.Analysis.InnerProductSpace.Dual
 import Mathlib.Analysis.Calculus.ContDiff.Defs
@@ -182,7 +186,7 @@ theorem weighted_young (m : LogConcaveMeasure E)
   have hexpand : hessianBilin m.V x (a - b) (a - b) =
       hessianBilin m.V x a a - 2 * hessianBilin m.V x a b +
       hessianBilin m.V x b b := by
-    simp only [hessianBilin, map_sub, ContinuousLinearMap.sub_apply]
+    simp only [hessianBilin, map_sub, sub_apply]
     have := hsymm a b
     simp only [hessianBilin] at this
     linarith

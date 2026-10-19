@@ -78,7 +78,7 @@ instance marginalAtSite.isProbabilityMeasure
     (μ : Measure (SpinConfig I S)) [IsProbabilityMeasure μ] (x : I) :
     IsProbabilityMeasure (marginalAtSite μ x) := by
   unfold marginalAtSite
-  exact Measure.isProbabilityMeasure_map (measurable_pi_apply x).aemeasurable
+  infer_instance
 
 /-- The influence coefficient C(x, y) for a Gibbs specification γ.
 

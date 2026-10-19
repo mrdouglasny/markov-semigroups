@@ -336,10 +336,9 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
                   induction d with
                   | zero => simpa using measurable_id
                   | succ d ih =>
-                      simpa [MarkovKernel.transferOp, Function.iterate_succ] using
-                        ih.comp (Measure.measurable_bind' K.measurable)
-                simpa [MarkovKernel.iteratePoint] using
-                  h_transfer_meas.comp Measure.measurable_dirac
+                      rw [Function.iterate_succ]
+                      exact ih.comp (Measure.measurable_bind' K.measurable)
+                exact h_transfer_meas.comp Measure.measurable_dirac
               have h_plus : Measurable fun x =>
                   ENNReal.toReal (∫⁻ y, ENNReal.ofReal (f₂ y) ∂(K.iteratePoint d x)) :=
                 Measurable.ennreal_toReal <|
@@ -354,7 +353,7 @@ theorem doeblin_correlation_decay {X : Type*} [MeasurableSpace X]
                 convert h_plus.sub h_minus using 1
                 funext x
                 letI := iteratePoint_isProbabilityMeasure K d x
-                rw [integral_eq_lintegral_pos_part_sub_lintegral_neg_part
+                rw [Pi.sub_apply, integral_eq_lintegral_pos_part_sub_lintegral_neg_part
                   (integrable_of_bound hf2 hB2)]
               exact (hf1.mul hCE_meas).stronglyMeasurable.aestronglyMeasurable) -- AEStronglyMeasurable of f₁ * conditionalExpectation
                        -- (measurability of parametric integral x ↦ ∫f₂ dK^d(x,·))

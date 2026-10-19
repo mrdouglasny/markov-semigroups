@@ -13,13 +13,13 @@ rev = "493143c"
 
 [[require]]
 name = "SpectralPositivity"
-git = "https://github.com/mrdouglasny/spectral-positivity.git"
-rev = "073f4af"
+# Port of 073f4af at v4.34.1 (branch pin-v4.34.1); local sibling until publication.
+path = "../spectral-positivity"
 
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-version = "git#v4.30.0"
+version = "git#v4.34.1"
 
 [[lean_lib]]
 name = "MarkovSemigroups"

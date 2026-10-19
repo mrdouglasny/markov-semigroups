@@ -74,7 +74,7 @@ lemma local_fn_eq_comp_proj [Inhabited S]
 /-- The map `s -> Function.update base y s` is measurable. -/
 lemma measurable_update_at (base : SpinConfig I S) (y : I) :
     Measurable (fun s : S => Function.update base y s) :=
-  measurable_pi_lambda _ (fun i => by
+  Measurable.of_eval (fun i => by
     by_cases h : i = y
     · subst h
       have : (fun s => (Function.update base i s) i) = id := by
@@ -636,8 +636,7 @@ lemma marginalTvDist_le_coupling_site
       ((measurable_pi_apply y).comp measurable_snd)
   -- Q := P.map ρ is a coupling of (marginalAtSite μ₁ y) and (marginalAtSite μ₂ y).
   set Q : Measure (S × S) := P.map ρ with hQ_def
-  haveI hQ_isProb : IsProbabilityMeasure Q :=
-    Measure.isProbabilityMeasure_map hρ_meas.aemeasurable
+  haveI hQ_isProb : IsProbabilityMeasure Q := inferInstance
   -- First marginal: Q.map Prod.fst = marginalAtSite μ₁ y
   have hQ_fst : Q.map Prod.fst = marginalAtSite μ₁ y := by
     have h1 : Prod.fst ∘ ρ = (fun σ : SpinConfig I S => σ y) ∘ Prod.fst := by
@@ -690,8 +689,7 @@ lemma marginalTvDist_le_coupling_site_nocount
     ((measurable_pi_apply y).comp measurable_fst).prodMk
       ((measurable_pi_apply y).comp measurable_snd)
   set Q : Measure (S × S) := P.map ρ with hQ_def
-  haveI hQ_isProb : IsProbabilityMeasure Q :=
-    Measure.isProbabilityMeasure_map hρ_meas.aemeasurable
+  haveI hQ_isProb : IsProbabilityMeasure Q := inferInstance
   have hQ_fst : Q.map Prod.fst = marginalAtSite μ₁ y := by
     have h1 : Prod.fst ∘ ρ = (fun σ : SpinConfig I S => σ y) ∘ Prod.fst := by funext p; rfl
     rw [hQ_def, Measure.map_map measurable_fst hρ_meas, h1,
